@@ -200,7 +200,7 @@ Checkpoint: Ops review before staging rollout.
 
 Actions:
 
-- Deploy service behind HTTPS at the planned hostname or a staging hostname.
+- Deploy service behind HTTPS at the configured hostname (or a staging hostname).
 - Run health checks.
 - Send controlled test messages using a temporary token and allowed sender.
 - Confirm mail appears in the existing backend/relay logs and downstream recipient mailbox.

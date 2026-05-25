@@ -100,25 +100,29 @@ Responsibilities (implemented in `playbooks/deploy-mailgun-relay.yml`):
 - Configure allowed sender domains per application.
 - Deploy and verify the service using the ops workflow.
 
-Possible SOPS-backed secret shape:
+SOPS-backed secret shape (matches `ops-control/secrets/prod/mailgun-relay.yml`
+and what `playbooks/deploy-mailgun-relay.yml` consumes — top-level keys, no
+outer `mailgun_relay:` wrapper):
 
 ```yaml
-mailgun_relay:
-  smtp_username: "service-account@example.invalid"
-  smtp_password: "REDACTED"
-  tokens:
-    - label: "homepage-production"
-      token_hash: "REDACTED"
-      mailgun_domains:
-        - "xn--wersdrfer-47a.de"
-      allowed_from_domains:
-        - "xn--wersdrfer-47a.de"
-        - "wersdoerfer.de"
-      allowed_from_addresses:
-        - "jochen-homepage@wersdoerfer.de"
+smtp_username: "mailgun-relay@xn--wersdrfer-47a.de"
+smtp_password: "REDACTED"
+envelope_sender: "mailgun-relay@xn--wersdrfer-47a.de"
+tokens:
+  - label: "homepage-production"
+    token_sha256: "REDACTED"  # lowercase hex sha256(raw_token); 64 chars
+    mailgun_domains:
+      - "mg.wersdoerfer.de"
+    allowed_from_domains:
+      - "wersdoerfer.de"
+    allowed_from_addresses:
+      - "jochen-homepage@wersdoerfer.de"
 ```
 
-This example is structural only. Do not commit real tokens, SMTP passwords, private keys, or decrypted secret output.
+This example is structural only. Do not commit real tokens, SMTP passwords,
+private keys, or decrypted secret output. The raw token is never stored on
+the relay host — only its `token_sha256` lives in SOPS; the raw value goes
+into the consuming Django app's SOPS file as `django_mailgun_api_key`.
 
 ## DNS and TLS Considerations
 

@@ -80,12 +80,11 @@ The token model is policy based:
 ```yaml
 tokens:
   - label: homepage-production
-    token_hash: "<secret-managed hash or verifier>"
+    token_sha256: "<lowercase hex sha256 of the raw token; 64 chars>"
     mailgun_domains:
-      - "xn--wersdrfer-47a.de"
+      - "mg.wersdoerfer.de"
     allowed_from_domains:
       - "wersdoerfer.de"
-      - "xn--wersdrfer-47a.de"
     allowed_from_addresses:
       - "jochen-homepage@wersdoerfer.de"
 ```
@@ -195,17 +194,22 @@ Successful response:
 {"id": "generated-message-id", "message": "Queued. Thank you."}
 ```
 
-Failure categories (verified against `django-anymail` 15.x behavior):
+Failure categories (verified against `django-anymail` 15.x behavior; full
+table in `docs/api-compatibility.md`):
 
-- `400 Bad Request`: malformed form data, missing required fields, invalid sender, unsupported required feature, invalid header, oversized message.
-- `401 Unauthorized`: missing auth, wrong username, invalid token.
-- `403 Forbidden`: authenticated token is not allowed to use the requested domain or sender.
-- `413 Payload Too Large`: body or attachment limit exceeded.
-- `429 Too Many Requests`: per-token or global rate limit exceeded.
-- `502 Bad Gateway`: possible mapping for SMTP rejection or backend failure where the adapter could not submit.
-- `503 Service Unavailable`: possible mapping for SMTP backend unavailability or timeout.
+- `400 Bad Request`: malformed form data, missing required fields, invalid sender, unsupported field, header injection, dangerous custom header.
+- `401 Unauthorized`: missing auth, wrong username, invalid token. `WWW-Authenticate: Basic realm="MG API"` set on the response.
+- `403 Forbidden`: authenticated token is not allowed to use the requested path domain, from-domain, or from-address.
+- `413 Payload Too Large`: body, attachment, or recipient count limit exceeded.
+- `429 Too Many Requests`: reserved for future per-token / global rate limiting; not enforced by the relay today.
+- `502 Bad Gateway`: SMTP permanent failure (5xx response, recipients refused, sender refused, helo failure, backend auth failure).
+- `503 Service Unavailable`: SMTP temporary failure (4xx response, connection refused, timeout, OSError).
 
-The implementation should verify how Anymail handles Mailgun HTTP errors before finalizing exact bodies and retry semantics.
+All non-2xx responses use the body shape `{"message": "<human readable>"}`.
+`django-anymail` makes no transient/permanent distinction internally (every
+non-2xx raises the same `AnymailRequestsAPIError` with `.status_code` set),
+so the 502 vs. 503 split is informational for callers that inspect the
+status code, not a contract the Anymail client enforces.
 
 ## Mailgun-Compatible Enough for Anymail
 
