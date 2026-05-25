@@ -61,6 +61,15 @@ Out of scope:
 - Deployment roles, playbooks, secrets, DNS, TLS, or Django app settings changes in this repository. Deployment lives in `ops-library` (`mailgun_relay_deploy`, `mailgun_relay_ingress_deploy`) and `ops-control` (`playbooks/deploy-mailgun-relay.yml`).
 - Adding new sender domains to the live mail stack.
 
+## Alternatives Considered
+
+Postal is the closest open source alternative if this service grows into a
+self-hosted ESP with queues, delivery logs, webhooks, suppressions, and domain
+management. It is not used for the current MVP because the requirement is a
+narrow Mailgun send API compatibility shim for existing django-anymail Mailgun
+callers, backed by the existing SMTP stack. Revisit Postal if requirements
+expand beyond simple trusted transactional sends.
+
 ## Documentation
 
 - [Backlog](docs/backlog.md) defines phased, actionable work with acceptance criteria.

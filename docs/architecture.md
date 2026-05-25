@@ -227,6 +227,21 @@ It does not mean:
 - Mailgun webhooks or event status.
 - Mailgun templates, tracking, suppressions, inbound routing, analytics, domains API, message search, or account management.
 
+## Alternative: Postal
+
+Postal remains the primary off-the-shelf alternative if the requirement changes
+from a narrow compatibility adapter to a self-hosted email service provider.
+That would shift the architecture toward Postal's own HTTP API, delivery
+queues, logs, webhooks, suppressions, domain management, and Anymail Postal
+backend support.
+
+The MVP deliberately does not use Postal. The current target is to keep existing
+Django applications on Anymail's Mailgun backend, add only a `MAILGUN_API_URL`
+override, validate trusted application sends, and submit through the existing
+authenticated SMTP backend. Postal should be reconsidered if this service needs
+platform features such as event tracking, delivery history, inbound routing,
+suppression management, or multi-tenant sending operations.
+
 ## Existing Infrastructure Context
 
 The current backend deployment hosts mail domains including:
