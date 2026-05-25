@@ -10,7 +10,8 @@ def main() -> None:
     port = int(os.environ.get("MAILGUN_RELAY_BIND_PORT", "8085"))
     log_level = os.environ.get("MAILGUN_RELAY_LOG_LEVEL", "info").lower()
     uvicorn.run(
-        "mailgun_relay.app:app",
+        "mailgun_relay.app:create_app",
+        factory=True,
         host=host,
         port=port,
         log_level=log_level,
