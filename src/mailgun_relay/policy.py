@@ -1,7 +1,12 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import idna
 from email_validator import EmailNotValidError, validate_email
+
+if TYPE_CHECKING:
+    from mailgun_relay.config import TokenPolicy
 
 
 class PolicyError(ValueError):
@@ -49,3 +54,26 @@ def parse_email_strict(value: str) -> tuple[str, str]:
     addr = result.normalized.lower()
     _, _, domain = addr.rpartition("@")
     return addr, normalize_domain(domain)
+
+
+def enforce_policy(
+    policy: TokenPolicy,
+    *,
+    path_domain: str,
+    from_address: str,
+) -> None:
+    """Raise PolicyError unless the request is allowed by the policy.
+
+    Validates: path_domain ∈ policy.mailgun_domains, from-domain ∈ policy.allowed_from_domains,
+    and (if allowed_from_addresses is not None) from-address ∈ allowed_from_addresses.
+    """
+    normalized_path = normalize_domain(path_domain)
+    if normalized_path not in policy.mailgun_domains:
+        raise PolicyError(f"token not allowed for path domain {normalized_path!r}")
+
+    addr, from_domain = parse_email_strict(from_address)
+    if from_domain not in policy.allowed_from_domains:
+        raise PolicyError(f"token not allowed for from domain {from_domain!r}")
+
+    if policy.allowed_from_addresses is not None and addr not in policy.allowed_from_addresses:
+        raise PolicyError(f"token not allowed for from address {addr!r}")
