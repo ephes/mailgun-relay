@@ -114,7 +114,10 @@ Before coding, verify exact `o:*` keys emitted by ordinary `EmailMessage`, `Emai
 
 ## Error Mapping
 
-Candidate mapping, pending Anymail behavior verification:
+Verified against `django-anymail` 15.x (`anymail/backends/mailgun.py`,
+`anymail/backends/base_requests.py`): every non-2xx response raises the same
+`AnymailRequestsAPIError` with the HTTP status code on the exception. The
+table below is therefore the contract the relay implements:
 
 | Condition | HTTP status | Notes |
 | --- | --- | --- |

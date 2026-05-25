@@ -113,3 +113,19 @@ def test_parse_address_list_rejects_crlf() -> None:
 def test_parse_address_list_rejects_invalid() -> None:
     with pytest.raises(HeaderInjectionError):
         parse_address_list(["not an address"])
+
+
+@pytest.mark.parametrize(
+    "bad",
+    [
+        "bad@bad domain",
+        "a@x..test",
+        "foo@",
+        "@bar.com",
+        "user@-.example.com",
+        "no-at-sign",
+    ],
+)
+def test_parse_address_list_rejects_malformed_domains(bad: str) -> None:
+    with pytest.raises(HeaderInjectionError):
+        parse_address_list([bad])

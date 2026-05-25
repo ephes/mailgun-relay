@@ -53,7 +53,10 @@ def parse_email_strict(value: str) -> tuple[str, str]:
     if not addr_spec:
         raise InvalidAddressError(f"invalid address: {value!r}")
     try:
-        result = validate_email(addr_spec, check_deliverability=False)
+        # `test_environment=True` keeps syntactic checks (spaces, '..',
+        # invalid characters) but allows reserved/special-use TLDs because
+        # the SMTP backend is the authoritative deliverability decision.
+        result = validate_email(addr_spec, check_deliverability=False, test_environment=True)
     except EmailNotValidError as exc:
         raise InvalidAddressError(str(exc)) from exc
     addr = result.normalized.lower()

@@ -1,8 +1,8 @@
 # mailgun-relay
 
-`mailgun-relay` is planned as a small Mailgun send API adapter for existing Django projects that already use `django-anymail` with `anymail.backends.mailgun.EmailBackend`.
+`mailgun-relay` is a small Mailgun send API adapter for existing Django projects that already use `django-anymail` with `anymail.backends.mailgun.EmailBackend`.
 
-The goal is compatibility with the Mailgun send API surface Anymail needs, not a full Mailgun clone. Django projects should keep their current email backend and later point Anymail at this service with `MAILGUN_API_URL`, while continuing to use a scoped token as `MAILGUN_API_KEY`.
+The goal is compatibility with the Mailgun send API surface Anymail needs, not a full Mailgun clone. Django projects keep their current email backend and point Anymail at this service with `MAILGUN_API_URL`, while using a scoped service-issued token as `MAILGUN_API_KEY`.
 
 ## Status
 
@@ -46,20 +46,20 @@ The existing mail stack remains responsible for SMTP delivery, DKIM signing, SPF
 
 ## Boundaries
 
-In scope for the future service:
+In scope:
 
 - Mailgun-like `POST /v3/{domain}/messages` for Anymail sends.
-- Optional `POST /v3/{domain}/messages.mime` after verifying whether current applications need it.
 - Basic auth with username `api` and a service-issued token as password.
 - Strict token, sender domain, and `from` address validation so the service cannot become an open relay.
-- MIME construction from accepted form fields, including selected `h:*` headers and attachments when required.
+- MIME construction from accepted form fields, including selected `h:*` headers and attachments.
 - Authenticated SMTP submission to the existing home mail backend.
 
 Out of scope:
 
+- `POST /v3/{domain}/messages.mime` (raw MIME submission) — verified unused by current Anymail callers.
 - Mailgun domains API, events API, webhooks, tracking, templates, suppressions, inbound routing, analytics, message search, or account management.
-- Deployment roles, playbooks, secrets, DNS, TLS, or Django app settings changes in this repository unless explicitly requested in a later slice.
-- Adding `django-cast.com` or any other new domain to the live mail stack as part of this planning slice.
+- Deployment roles, playbooks, secrets, DNS, TLS, or Django app settings changes in this repository. Deployment lives in `ops-library` (`mailgun_relay_deploy`, `mailgun_relay_ingress_deploy`) and `ops-control` (`playbooks/deploy-mailgun-relay.yml`).
+- Adding new sender domains to the live mail stack.
 
 ## Documentation
 

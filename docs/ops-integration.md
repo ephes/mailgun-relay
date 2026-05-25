@@ -1,11 +1,9 @@
 # Ops Integration Plan
 
-This repo should define the service contract and runtime expectations. Deployment implementation belongs in the ops repositories:
+This repo defines the service contract and runtime expectations. Deployment implementation lives in the ops repositories:
 
-- `ops-library`: public deployment role logic and role documentation.
-- `ops-control`: private playbooks, inventory, host-specific config, and SOPS secrets.
-
-No ops changes are part of the current documentation slice.
+- `ops-library`: public deployment role logic and role documentation. The `mailgun_relay_deploy` and `mailgun_relay_ingress_deploy` roles implement the deploy.
+- `ops-control`: private playbooks, inventory, host-specific config, and SOPS secrets. `playbooks/deploy-mailgun-relay.yml` and `secrets/prod/mailgun-relay.yml` are the active artifacts.
 
 ## Existing Mail Stack Context
 
@@ -60,9 +58,10 @@ The backend mail role documents client submission on port 587/465 and DKIM signi
 
 ## `ops-library` Role Shape
 
-A future role might be named `mailgun_relay_deploy` or similar.
+The shipped role is `mailgun_relay_deploy` (paired with
+`mailgun_relay_ingress_deploy` for Traefik dynamic config).
 
-Expected responsibilities:
+Responsibilities:
 
 - Install runtime dependencies or deploy packaged artifact.
 - Create service user and directories.

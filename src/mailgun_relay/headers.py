@@ -4,6 +4,8 @@ import re
 from email.headerregistry import Address
 from email.utils import getaddresses
 
+from email_validator import EmailNotValidError, validate_email
+
 
 class HeaderInjectionError(ValueError):
     """Raised when a header value or address contains CR/LF or invalid characters."""
@@ -87,8 +89,10 @@ def validate_custom_headers(
 def parse_address_list(values: list[str]) -> list[Address]:
     """Parse a list of RFC 5322 address strings (possibly with display names).
 
-    Rejects CR/LF anywhere, rejects entries that don't yield a usable address.
-    Display names are kept verbatim (they will be encoded by the email library).
+    Each value yields exactly one address. CR/LF anywhere is rejected. The
+    addr-spec is validated via ``email_validator.validate_email`` (no DNS
+    deliverability), so malformed domains (e.g. spaces, ``..``) are rejected
+    rather than silently rewritten by ``email.utils.getaddresses``.
     """
     addresses: list[Address] = []
     for raw in values:
@@ -99,7 +103,18 @@ def parse_address_list(values: list[str]) -> list[Address]:
         display, addr = parsed[0]
         if not addr or "@" not in addr:
             raise HeaderInjectionError(f"invalid address: {raw!r}")
-        local, _, domain = addr.rpartition("@")
+        # email_validator is strict about the addr-spec (rejects spaces, '..',
+        # bare-IP without brackets, etc.) — that's what we want. We disable
+        # DNS deliverability AND special-use-domain blocking because deciding
+        # whether the backend will accept a domain is the SMTP backend's job,
+        # not the relay's. `test_environment=True` is the upstream knob for
+        # exactly that ("don't reject .test/.example/.localhost").
+        try:
+            result = validate_email(addr, check_deliverability=False, test_environment=True)
+        except EmailNotValidError as exc:
+            raise HeaderInjectionError(f"invalid address: {raw!r} ({exc})") from exc
+        normalized = result.normalized
+        local, _, domain = normalized.rpartition("@")
         if not local or not domain:
             raise HeaderInjectionError(f"invalid address: {raw!r}")
         addresses.append(Address(display_name=display, username=local, domain=domain))

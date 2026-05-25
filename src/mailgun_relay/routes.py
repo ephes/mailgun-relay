@@ -26,7 +26,12 @@ from mailgun_relay.headers import (
 )
 from mailgun_relay.logging_setup import access_logger
 from mailgun_relay.mime_build import Attachment, MessageInput, build_message
-from mailgun_relay.policy import InvalidAddressError, PolicyError, enforce_policy
+from mailgun_relay.policy import (
+    InvalidAddressError,
+    PolicyError,
+    enforce_policy,
+    normalize_domain,
+)
 from mailgun_relay.smtp_client import FailureCategory, SmtpSubmitError, SmtpTransport, submit
 from mailgun_relay.version import __version__
 
@@ -63,6 +68,12 @@ def register_routes(app: FastAPI) -> None:
         result = "ok"
         error_class = None
         status_code = 200
+        # Normalize for logging up front; falls back to the raw value if
+        # normalization fails so the log line still has *something* useful.
+        try:
+            path_domain_log = normalize_domain(domain)
+        except InvalidAddressError:
+            path_domain_log = domain
 
         try:
             policy = authenticate(
@@ -184,7 +195,7 @@ def register_routes(app: FastAPI) -> None:
                     "event": "request",
                     "request_id": request_id,
                     "token_label": token_label,
-                    "path_domain": domain,
+                    "path_domain": path_domain_log,
                     "from": from_for_log,
                     "recipient_count": recipient_count,
                     "message_id": message_id or "-",
@@ -229,7 +240,16 @@ def _parse_form(form: Any, settings: Settings) -> _ParsedForm:
     attachments: list[Attachment] = []
     inline: list[Attachment] = []
 
-    total_attachment_bytes = 0
+    total_body_bytes = 0
+
+    def _track_text(field_name: str, content: str) -> str:
+        nonlocal total_body_bytes
+        total_body_bytes += len(content.encode("utf-8"))
+        if total_body_bytes > settings.max_body_bytes:
+            raise PayloadTooLargeError(
+                f"aggregate body size exceeds {settings.max_body_bytes} bytes ({field_name})"
+            )
+        return content
 
     for key, value in form.multi_items():
         # Reject metadata/variable namespaces wholesale.
@@ -255,24 +275,28 @@ def _parse_form(form: Any, settings: Settings) -> _ParsedForm:
         elif key == "subject":
             subject = _require_str(key, value)
         elif key == "text":
-            text = _require_str(key, value)
+            text = _track_text("text", _require_str(key, value))
         elif key == "html":
-            html = _require_str(key, value)
+            html = _track_text("html", _require_str(key, value))
         elif key == "amp-html":
-            amp_html = _require_str(key, value)
+            amp_html = _track_text("amp-html", _require_str(key, value))
         elif key in {"attachment", "inline"}:
             att = _read_upload(value, settings)
-            total_attachment_bytes += len(att.data)
-            if total_attachment_bytes > settings.max_body_bytes:
-                raise PayloadTooLargeError("aggregate attachment size exceeds limit")
+            total_body_bytes += len(att.data)
+            if total_body_bytes > settings.max_body_bytes:
+                raise PayloadTooLargeError(
+                    f"aggregate body size exceeds {settings.max_body_bytes} bytes"
+                )
             if key == "attachment":
                 attachments.append(att)
-                if len(attachments) > settings.max_attachments:
-                    raise PayloadTooLargeError(
-                        f"too many attachments (max {settings.max_attachments})"
-                    )
             else:
                 inline.append(att)
+            # max_attachments caps the combined attachment + inline file count;
+            # both occupy MIME parts in the outgoing message.
+            if len(attachments) + len(inline) > settings.max_attachments:
+                raise PayloadTooLargeError(
+                    f"too many attachments+inline (max {settings.max_attachments})"
+                )
 
     if len(from_addresses) != 1:
         raise BadRequestError("exactly one 'from' is required")

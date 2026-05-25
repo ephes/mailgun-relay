@@ -306,6 +306,90 @@ def test_no_body_returns_400(client: TestClient, auth: dict[str, str]) -> None:
     assert r.status_code == 400
 
 
+def test_huge_text_returns_413(client: TestClient, auth: dict[str, str], app_state: object) -> None:
+    # tests/conftest.py sets max_body_bytes=1_048_576; exceed it with text.
+    form = {
+        "from": ["Jochen <jochen-homepage@wersdoerfer.de>"],
+        "to": ["admin@wersdoerfer.de"],
+        "subject": ["x"],
+        "text": ["A" * 2_000_000],
+    }
+    r = client.post("/v3/wersdoerfer.de/messages", headers=auth, data=form)
+    assert r.status_code == 413
+
+
+def test_inline_counts_toward_max_attachments_returns_413(
+    client: TestClient, auth: dict[str, str]
+) -> None:
+    # max_attachments=3 in the test settings.
+    files = [("inline", (f"f{i}.txt", b"x", "text/plain")) for i in range(4)]
+    r = client.post("/v3/wersdoerfer.de/messages", headers=auth, data=_minimum_form(), files=files)
+    assert r.status_code == 413
+
+
+def test_mixed_attachment_inline_counts_toward_max_attachments(
+    client: TestClient, auth: dict[str, str]
+) -> None:
+    # 2 attachments + 2 inlines = 4 > max_attachments(3)
+    files = [("attachment", (f"a{i}.txt", b"x", "text/plain")) for i in range(2)] + [
+        ("inline", (f"i{i}.txt", b"x", "text/plain")) for i in range(2)
+    ]
+    r = client.post("/v3/wersdoerfer.de/messages", headers=auth, data=_minimum_form(), files=files)
+    assert r.status_code == 413
+
+
+def test_malformed_to_address_returns_400(client: TestClient, auth: dict[str, str]) -> None:
+    form = {
+        "from": ["Jochen <jochen-homepage@wersdoerfer.de>"],
+        "to": ["bad@bad domain"],
+        "subject": ["x"],
+        "text": ["body"],
+    }
+    r = client.post("/v3/wersdoerfer.de/messages", headers=auth, data=form)
+    assert r.status_code == 400
+
+
+def test_malformed_reply_to_returns_400(client: TestClient, auth: dict[str, str]) -> None:
+    form = _with({"h:Reply-To": ["bad@bad domain"]})
+    r = client.post("/v3/wersdoerfer.de/messages", headers=auth, data=form)
+    assert r.status_code == 400
+
+
+def test_path_domain_logged_as_punycode(
+    client: TestClient,
+    auth: dict[str, str],
+    homepage_token: str,
+) -> None:
+    """A request whose path uses a U-label should still log the A-label."""
+    import io as _io
+    import logging as _logging
+
+    buf = _io.StringIO()
+    handler = _logging.StreamHandler(buf)
+    handler.setFormatter(_JsonFormatter())
+    log = access_logger()
+    saved = list(log.handlers)
+    saved_prop = log.propagate
+    log.handlers = [handler]
+    log.setLevel(_logging.INFO)
+    log.propagate = False
+    try:
+        # Path uses U-label for an unrelated domain; we only assert on the log,
+        # not on the response status (policy will reject 403).
+        r = client.post(
+            "/v3/wersdörfer.de/messages",
+            headers=auth,
+            data=_minimum_form(),
+        )
+        assert r.status_code in (200, 403)
+    finally:
+        handler.flush()
+        log.handlers = saved
+        log.propagate = saved_prop
+    rec = next(json.loads(line) for line in buf.getvalue().splitlines() if line.strip())
+    assert rec["path_domain"] == "xn--wersdrfer-47a.de"
+
+
 def test_log_redacts_token_and_smtp_password(
     client: TestClient,
     auth: dict[str, str],

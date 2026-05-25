@@ -82,7 +82,11 @@ def build_message(payload: MessageInput) -> tuple[EmailMessage, str, list[str]]:
 
     for name, value in payload.custom_headers.items():
         if name.lower() == "reply-to":
-            msg["Reply-To"] = value
+            # Reply-To can be a comma-separated address list; validate each.
+            reply_to = parse_address_list(
+                [part.strip() for part in value.split(",") if part.strip()]
+            )
+            msg["Reply-To"] = ", ".join(str(a) for a in reply_to)
         else:
             msg[name] = value
 
