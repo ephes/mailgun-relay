@@ -114,23 +114,74 @@ restores the upstream Mailgun behavior on the next deploy.
 Per-environment rollback affects only that environment's `.env` file; no
 relay-side change is required.
 
-### Acceptance evidence
+### App settings migration
 
-The final acceptance step (real send from each staging app to the Django
-`ADMINS` mailbox, plus matching relay log capture) must be performed by the
-operator after step 5 above completes for both staging environments. Capture
-the relay log line for each send — it identifies the token label, the
-sender, the recipient count, the request id, and the SMTP `Message-Id:` — and
-append the matching entries below.
+The `homepage` and `python-podcast` Django settings each grew an
+`MAILGUN_API_URL` entry under `ANYMAIL` (defaulting to
+`https://api.mailgun.net/v3` if unset). Anymail did not previously read
+`MAILGUN_API_URL` from env at all, so the relay's URL would not have taken
+effect without this change. The fallback default keeps the upstream Mailgun
+URL active when SOPS leaves `mailgun_api_url` unset, so the same code can
+run on environments not migrated to the relay yet.
 
-```
-homepage-staging:    request_id=<TBD-by-operator>  message_id=<TBD>  ts=<TBD>
-python-podcast-staging: request_id=<TBD-by-operator>  message_id=<TBD>  ts=<TBD>
-```
+### Acceptance evidence (2026-05-25)
 
-Operator: replace the `<TBD>` markers above with the values from the relay
-log (`journalctl -u mailgun-relay -o cat | jq` and filter
-`event=="request" and result=="ok"`).
+Both staging environments delivered real mail to their respective
+`ADMINS` mailbox via the relay. Both responses' `id` matched the SMTP
+`Message-Id:` header observed on the home mail stack.
+
+Outgoing send: `homepage` staging
+- relay `request_id`: `37ece89243734e0cab6b3adc6b31c767`
+- relay `message_id`: `<73528a08bbef4c87967da86e12159336@mailgun.home.xn--wersdrfer-47a.de>`
+- timestamp: `2026-05-25T10:22:44+0200`
+- token_label: `homepage-staging`
+- from: `Jochen <jochen-homepage@wersdoerfer.de>`
+- recipient_count: 1
+- duration_ms: 378
+- postfix queue id: `B553556CCBA`
+- lmtp delivery: `jochen-homepage@wersdoerfer.de` -> `jochen-homepage@opaq.de` INBOX (saved by Dovecot at `10:22:44.090439+02:00`)
+
+Outgoing send: `python-podcast` staging
+- relay `request_id`: `80d967211fa948a4b7f2799afb38bc5a`
+- relay `message_id`: `<7046e13389b54c829930ef4d55a9012d@mailgun.home.xn--wersdrfer-47a.de>`
+- timestamp: `2026-05-25T10:22:46+0200`
+- token_label: `python-podcast-staging`
+- from: `Python Podcast <noreply@mg.python-podcast.de>`
+- recipient_count: 1
+- duration_ms: 330
+- postfix queue id: `25FCA56CCBA`
+- lmtp delivery: `jochen-pythonpodcast@wersdoerfer.de` -> `jochen-pythonpodcast@opaq.de` INBOX (saved by Dovecot at `10:22:46.490954+02:00`)
+
+The acceptance sends used `EmailMessage` with the explicit `from_email`
+matching each token's allow-list (not `mail_admins`, which uses
+`SERVER_EMAIL=jochen-django@wersdoerfer.de` and would have been
+correctly rejected as `PolicyError` because neither token allows that
+sender). The relay's `policy_error` log lines from the rejected attempts
+are evidence of the policy enforcement.
+
+### Operator follow-ups
+
+- The commercial Mailgun API key previously shared across `homepage` and
+  `python-podcast` (staging + prod SOPS files) was rotated out during this
+  migration. Each app now uses its own relay-issued token; the old commercial
+  key likely still exists at Mailgun.com. **Revoke it at Mailgun's control
+  panel** to close that surface. The value is intentionally not reproduced
+  here — retrieve it from git history of `ops-control/secrets/{staging,prod}/{homepage,python-podcast}.yml`
+  prior to the rotation if needed for the revocation lookup.
+- `mailgun-relay@xn--wersdrfer-47a.de` PostfixAdmin mailbox was created
+  during this migration with the password supplied to the provisioning
+  script. If the mailbox needs to be rotated, run the provisioning
+  script again with a new password and update the PostfixAdmin
+  mailbox row (`UPDATE mailbox SET password = ... WHERE username = ...`).
+- The `homepage` + `python-podcast` Justfile entries in `ops-control`
+  pass `-l "$host"` but not `-e target_host="$host"`, which makes
+  `just deploy-one homepage staging` a no-op (no hosts match). Until the
+  Justfile is updated, deploy staging with
+  `ansible-playbook ... -e target_host=staging`.
+- Production rollout: after smoke-testing the staging behavior, the
+  `prod` SOPS files already contain the relay token + `mailgun_api_url`,
+  so `just deploy-one homepage` and `just deploy-one python-podcast` will
+  pick up the relay automatically.
 
 ### Non-goals (explicit, not deferred)
 
