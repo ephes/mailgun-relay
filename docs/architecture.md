@@ -8,7 +8,7 @@
 }
 </style>
 
-`mailgun-relay` is planned as a narrow HTTP-to-SMTP adapter. It accepts the subset of Mailgun's send API that Django Anymail needs, validates the caller and sender policy, constructs an email message, and submits it to the existing authenticated SMTP backend.
+`mailgun-relay` is a narrow HTTP-to-SMTP adapter. It accepts the subset of Mailgun's send API that Django Anymail needs, validates the caller and sender policy, constructs an email message, and submits it to the existing authenticated SMTP backend.
 
 ## Components
 
@@ -75,7 +75,7 @@ Logs are an information boundary. They may contain request ids, token labels, do
 
 ## Token Model
 
-The planned token model is policy based:
+The token model is policy based:
 
 ```yaml
 tokens:
@@ -195,7 +195,7 @@ Successful response:
 {"id": "generated-message-id", "message": "Queued. Thank you."}
 ```
 
-Candidate failure categories, pending Anymail behavior verification:
+Failure categories (verified against `django-anymail` 15.x behavior):
 
 - `400 Bad Request`: malformed form data, missing required fields, invalid sender, unsupported required feature, invalid header, oversized message.
 - `401 Unauthorized`: missing auth, wrong username, invalid token.

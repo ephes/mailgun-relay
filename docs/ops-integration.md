@@ -20,15 +20,15 @@ Known backend-hosted domains from current playbooks:
 
 The service should not assume every hosted domain is valid for every application token.
 
-## Planned Public Endpoint
+## Public Endpoint
 
-Planned hostname:
+Hostname:
 
 ```text
 mailgun.home.xn--wersdrfer-47a.de
 ```
 
-Planned API base URL for Django Anymail:
+API base URL for Django Anymail:
 
 ```text
 https://mailgun.home.xn--wersdrfer-47a.de/v3
@@ -38,13 +38,13 @@ Docs and configs should use the punycode domain.
 
 ## SMTP Submission Target
 
-Expected target:
+Target:
 
 ```text
 smtp.home.xn--wersdrfer-47a.de:587
 ```
 
-Expected behavior:
+Behavior:
 
 - STARTTLS required.
 - Authenticated SMTP submission.
@@ -72,27 +72,27 @@ Responsibilities:
 - Optionally configure reverse proxy integration if that pattern belongs in existing roles.
 - Document variables, examples, ports, security assumptions, and troubleshooting in the role README.
 
-Expected variables:
+Key variables (full list with descriptions in
+`ops-library/roles/mailgun_relay_deploy/README.md`):
 
 ```yaml
-mailgun_relay_hostname: "mailgun.home.xn--wersdrfer-47a.de"
-mailgun_relay_listen_host: "127.0.0.1"
-mailgun_relay_listen_port: 8080
-mailgun_relay_public_base_url: "https://mailgun.home.xn--wersdrfer-47a.de/v3"
+mailgun_relay_public_host: "mailgun.home.xn--wersdrfer-47a.de"
+mailgun_relay_bind_host: "127.0.0.1"
+mailgun_relay_bind_port: 8085
 mailgun_relay_smtp_host: "smtp.home.xn--wersdrfer-47a.de"
 mailgun_relay_smtp_port: 587
 mailgun_relay_smtp_starttls: true
-mailgun_relay_config_path: "/etc/mailgun-relay/config.yml"
-mailgun_relay_secret_path: "/etc/mailgun-relay/secrets.yml"
+mailgun_relay_env_path: "/etc/mailgun-relay/mailgun-relay.env"
+mailgun_relay_secrets_path: "/etc/mailgun-relay/secrets.yml"
 ```
 
-The loopback listen default assumes a local reverse proxy terminates TLS and forwards to the service. If the service is bound to a non-loopback interface, that must be an explicit ops decision with firewall and TLS implications documented.
-
-The actual names should follow ops-library conventions when implemented.
+The loopback bind assumes a local reverse proxy (Traefik) terminates TLS and
+forwards to the service. Binding to a non-loopback interface requires an
+explicit ops decision with firewall and TLS implications documented.
 
 ## `ops-control` Playbook and Secrets Shape
 
-Expected responsibilities:
+Responsibilities (implemented in `playbooks/deploy-mailgun-relay.yml`):
 
 - Select target host.
 - Provide hostname and reverse proxy/TLS settings.

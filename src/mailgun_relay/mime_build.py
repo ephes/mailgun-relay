@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 from email.message import EmailMessage
 from email.utils import formatdate
 
-from mailgun_relay.headers import parse_address_list
+from mailgun_relay.headers import parse_address_list, parse_header_address_list
 
 
 @dataclass(frozen=True)
@@ -82,10 +82,10 @@ def build_message(payload: MessageInput) -> tuple[EmailMessage, str, list[str]]:
 
     for name, value in payload.custom_headers.items():
         if name.lower() == "reply-to":
-            # Reply-To can be a comma-separated address list; validate each.
-            reply_to = parse_address_list(
-                [part.strip() for part in value.split(",") if part.strip()]
-            )
+            # Reply-To may be a single address or a comma-separated list; use
+            # the RFC 5322 list parser so quoted commas inside display names
+            # ('"Doe, Jane" <jane@example>') are not shattered.
+            reply_to = parse_header_address_list(value)
             msg["Reply-To"] = ", ".join(str(a) for a in reply_to)
         else:
             msg[name] = value

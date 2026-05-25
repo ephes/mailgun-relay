@@ -7,6 +7,7 @@ from mailgun_relay.headers import (
     HeaderInjectionError,
     HeaderTooLongError,
     parse_address_list,
+    parse_header_address_list,
     validate_custom_headers,
     validate_subject,
 )
@@ -129,3 +130,26 @@ def test_parse_address_list_rejects_invalid() -> None:
 def test_parse_address_list_rejects_malformed_domains(bad: str) -> None:
     with pytest.raises(HeaderInjectionError):
         parse_address_list([bad])
+
+
+def test_header_address_list_quoted_comma_in_display_name() -> None:
+    """Quoted comma inside the display name must not split the address."""
+    out = parse_header_address_list('"Doe, Jane" <jane@example.test>')
+    assert len(out) == 1
+    assert out[0].addr_spec == "jane@example.test"
+    assert "Doe, Jane" in out[0].display_name
+
+
+def test_header_address_list_multiple_addresses() -> None:
+    out = parse_header_address_list("a@x.test, b@y.test, Carol <c@z.test>")
+    assert [str(addr.addr_spec) for addr in out] == ["a@x.test", "b@y.test", "c@z.test"]
+
+
+def test_header_address_list_rejects_crlf() -> None:
+    with pytest.raises(HeaderInjectionError):
+        parse_header_address_list("a@x.test,\nb@y.test")
+
+
+def test_header_address_list_rejects_invalid_in_middle() -> None:
+    with pytest.raises(HeaderInjectionError):
+        parse_header_address_list("a@x.test, bad@bad domain")

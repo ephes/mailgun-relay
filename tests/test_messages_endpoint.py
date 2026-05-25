@@ -181,6 +181,32 @@ def test_reply_to_header_propagates(
     assert recording_smtp.calls[0].message["Reply-To"] == "support@wersdoerfer.de"
 
 
+def test_reply_to_with_quoted_comma_in_display_name(
+    client: TestClient, auth: dict[str, str], recording_smtp: RecordingSubmitter
+) -> None:
+    r = client.post(
+        "/v3/wersdoerfer.de/messages",
+        headers=auth,
+        data=_with({"h:Reply-To": ['"Doe, Jane" <support@wersdoerfer.de>']}),
+    )
+    assert r.status_code == 200, r.text
+    assert "support@wersdoerfer.de" in str(recording_smtp.calls[0].message["Reply-To"])
+
+
+def test_reply_to_with_multiple_addresses(
+    client: TestClient, auth: dict[str, str], recording_smtp: RecordingSubmitter
+) -> None:
+    r = client.post(
+        "/v3/wersdoerfer.de/messages",
+        headers=auth,
+        data=_with({"h:Reply-To": ["a@wersdoerfer.de, b@wersdoerfer.de"]}),
+    )
+    assert r.status_code == 200, r.text
+    rt = str(recording_smtp.calls[0].message["Reply-To"])
+    assert "a@wersdoerfer.de" in rt
+    assert "b@wersdoerfer.de" in rt
+
+
 def test_bcc_only_envelope_not_in_headers(
     client: TestClient, auth: dict[str, str], recording_smtp: RecordingSubmitter
 ) -> None:

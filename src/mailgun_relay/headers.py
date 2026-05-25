@@ -86,13 +86,37 @@ def validate_custom_headers(
     return cleaned
 
 
-def parse_address_list(values: list[str]) -> list[Address]:
-    """Parse a list of RFC 5322 address strings (possibly with display names).
+def _validate_addr(raw_label: str, display: str, addr: str) -> Address:
+    """Apply syntactic validation to one (display, addr) pair from ``getaddresses``.
 
-    Each value yields exactly one address. CR/LF anywhere is rejected. The
-    addr-spec is validated via ``email_validator.validate_email`` (no DNS
-    deliverability), so malformed domains (e.g. spaces, ``..``) are rejected
-    rather than silently rewritten by ``email.utils.getaddresses``.
+    ``raw_label`` is used only in error messages (the original header value).
+    """
+    if not addr or "@" not in addr:
+        raise HeaderInjectionError(f"invalid address: {raw_label!r}")
+    # email_validator is strict about the addr-spec (rejects spaces, '..',
+    # bare-IP without brackets, etc.) — that's what we want. We disable
+    # DNS deliverability AND special-use-domain blocking because deciding
+    # whether the backend will accept a domain is the SMTP backend's job,
+    # not the relay's. `test_environment=True` is the upstream knob for
+    # exactly that ("don't reject .test/.example/.localhost").
+    try:
+        result = validate_email(addr, check_deliverability=False, test_environment=True)
+    except EmailNotValidError as exc:
+        raise HeaderInjectionError(f"invalid address: {raw_label!r} ({exc})") from exc
+    normalized = result.normalized
+    local, _, domain = normalized.rpartition("@")
+    if not local or not domain:
+        raise HeaderInjectionError(f"invalid address: {raw_label!r}")
+    return Address(display_name=display, username=local, domain=domain)
+
+
+def parse_address_list(values: list[str]) -> list[Address]:
+    """Parse a list of single-address values.
+
+    Each entry MUST contain exactly one RFC 5322 address (display name optional).
+    For headers that may contain comma-separated lists in a single value (e.g.
+    ``h:Reply-To``), use :func:`parse_header_address_list` instead — it handles
+    quoted commas inside display names correctly.
     """
     addresses: list[Address] = []
     for raw in values:
@@ -101,21 +125,20 @@ def parse_address_list(values: list[str]) -> list[Address]:
         if len(parsed) != 1:
             raise HeaderInjectionError(f"expected one address per value, got {parsed!r}")
         display, addr = parsed[0]
-        if not addr or "@" not in addr:
-            raise HeaderInjectionError(f"invalid address: {raw!r}")
-        # email_validator is strict about the addr-spec (rejects spaces, '..',
-        # bare-IP without brackets, etc.) — that's what we want. We disable
-        # DNS deliverability AND special-use-domain blocking because deciding
-        # whether the backend will accept a domain is the SMTP backend's job,
-        # not the relay's. `test_environment=True` is the upstream knob for
-        # exactly that ("don't reject .test/.example/.localhost").
-        try:
-            result = validate_email(addr, check_deliverability=False, test_environment=True)
-        except EmailNotValidError as exc:
-            raise HeaderInjectionError(f"invalid address: {raw!r} ({exc})") from exc
-        normalized = result.normalized
-        local, _, domain = normalized.rpartition("@")
-        if not local or not domain:
-            raise HeaderInjectionError(f"invalid address: {raw!r}")
-        addresses.append(Address(display_name=display, username=local, domain=domain))
+        addresses.append(_validate_addr(raw, display, addr))
     return addresses
+
+
+def parse_header_address_list(raw: str) -> list[Address]:
+    """Parse an RFC 5322 address-list header value (one or more addresses).
+
+    Unlike :func:`parse_address_list`, this delegates to
+    ``email.utils.getaddresses`` over the full raw string so quoted commas
+    inside display names (e.g. ``"Doe, Jane" <jane@example.test>``) are
+    parsed as a single address rather than split on the comma.
+    """
+    _ensure_no_crlf(raw)
+    parsed = getaddresses([raw])
+    if not parsed:
+        raise HeaderInjectionError(f"invalid address list: {raw!r}")
+    return [_validate_addr(raw, display, addr) for display, addr in parsed]

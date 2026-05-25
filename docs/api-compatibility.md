@@ -1,6 +1,6 @@
-# API Compatibility Plan
+# API Compatibility
 
-This document defines the planned Mailgun subset for Django Anymail compatibility. It must be re-verified against current upstream docs before implementation:
+This document defines the Mailgun subset implemented for Django Anymail compatibility. Behavior was verified against the upstream `django-anymail` 15.x Mailgun backend during implementation; re-verify against these references when bumping Anymail:
 
 - Anymail Mailgun docs: https://anymail.dev/en/stable/esps/mailgun/
 - Mailgun Messages API docs: https://documentation.mailgun.com/docs/mailgun/api-reference/send/mailgun/messages
@@ -53,25 +53,26 @@ Required fields:
 - At least one recipient across `to`, `cc`, or `bcc`.
 - At least one content part, usually `text` or `html`.
 
-Planned supported fields:
+Supported fields:
 
 | Field | Support | Notes |
 | --- | --- | --- |
-| `from` | MVP | Parsed and validated against token sender policy. |
-| `to` | MVP | Repeated values supported. Included in headers and SMTP envelope. |
-| `cc` | MVP | Repeated values supported. Included in headers and SMTP envelope. |
-| `bcc` | MVP | Repeated values supported. SMTP envelope only; no BCC header. |
-| `subject` | MVP | Header injection rejected. |
-| `text` | MVP | Text body. |
-| `html` | MVP | HTML body, combined with text as multipart alternative when both exist. |
-| `h:Reply-To` | MVP candidate | Accept if safely parsed as a header address. |
-| `h:*` custom headers | MVP candidate | Allowlist or strict validation required. |
-| `attachment` | MVP if needed | Use uploaded file metadata; enforce size/count limits. |
-| `inline` | Future if needed | Only after verifying current app usage. |
-| `o:*` options | Allowlist only | Accept and ignore only Phase-0-verified harmless no-op options; reject unknown or behavior-affecting options. |
-| `v:*` variables | Reject | No events/templates metadata support in MVP. |
-| `recipient-variables` | Reject | Batch personalization is out of scope initially. |
-| `template` / `t:*` | Reject | Stored Mailgun templates are out of scope. |
+| `from` | Yes | Parsed and validated against token sender policy. |
+| `to` | Yes | Repeated values supported. Included in headers and SMTP envelope. |
+| `cc` | Yes | Repeated values supported. Included in headers and SMTP envelope. |
+| `bcc` | Yes | Repeated values supported. SMTP envelope only; no BCC header. |
+| `subject` | Yes | Header injection rejected. |
+| `text` | Yes | Text body. |
+| `html` | Yes | HTML body, combined with text as multipart alternative when both exist. |
+| `amp-html` | Yes | Added as `multipart/alternative` part with `text/x-amp-html` subtype. |
+| `h:Reply-To` | Yes | Parsed via RFC 5322 address-list parser (quoted commas in display names preserved). |
+| `h:*` custom headers | Yes | Strict header-name regex; CR/LF rejection; dangerous-header denylist. |
+| `attachment` | Yes | Per-file and aggregate body-size caps. |
+| `inline` | Yes | Counted toward the same `max_attachments` cap as `attachment`. |
+| `o:*` options | Reject (400) | Phase-0 audit found neither homepage nor python-podcast emits any in default-settings sends; adding selective accept-and-ignore is a future change with its own audit. |
+| `v:*` variables | Reject (400) | No events/templates metadata support. |
+| `recipient-variables` | Reject (400) | Batch personalization out of scope. |
+| `template` / `t:*` | Reject (400) | Stored Mailgun templates out of scope. |
 
 Success response:
 
@@ -86,9 +87,11 @@ The `id` should be unique enough for logs and client correlation. Prefer generat
 
 ## Endpoint: `POST /v3/{domain}/messages.mime`
 
-Status: optional future endpoint.
+Status: not implemented. Out of scope.
 
 Purpose: Accept a raw MIME message if Anymail or future callers require it.
+
+Phase-0 source audit confirmed neither `homepage` nor `python-podcast` uses `send_mime_message` or raw MIME submission; the endpoint will only be added when a real caller needs it.
 
 Requirements before implementation:
 
@@ -130,11 +133,12 @@ table below is therefore the contract the relay implements:
 | Unsupported required feature | 400 | Avoid pretending unsupported Mailgun behavior worked. |
 | Request too large | 413 | Body, attachment, or recipient limits. |
 | Rate limited | 429 | Per-token or global. |
-| SMTP temporary failure/timeout | 503 candidate | Retry semantics to verify with Anymail before finalizing. |
-| SMTP permanent rejection | 502 or 400 candidate | Final decision requires Anymail behavior verification. |
-| Internal error | 500 | No secrets or message bodies in response. |
+| SMTP temporary failure/timeout/connection refused | 503 | Anymail does not retry on its own; the caller surfaces the status as `AnymailRequestsAPIError.status_code`. |
+| SMTP permanent rejection (5xx response, recipients refused, sender refused, helo failure) | 502 | Same Anymail exception shape; permanent vs. temporary is informational for callers that inspect `.status_code`. |
+| SMTP authentication failure (relay → backend) | 502 | Treated as a permanent upstream failure. Never exposes the credential. |
+| Internal error | 500 | Body is `{"message": "Internal Server Error"}`; no secrets or message bodies in response. |
 
-Response body format should be consistent and close enough for Anymail to surface useful errors. Exact error JSON should be verified against Anymail's Mailgun error handling before implementation is finalized.
+Response body shape is `{"message": "<human readable>"}` on all non-2xx. `django-anymail`'s `AnymailRequestsAPIError` stores the full body so callers can log it; the relay never includes credential material in that message.
 
 ## Compatibility Assumptions to Verify
 
