@@ -6,7 +6,30 @@ The goal is compatibility with the Mailgun send API surface Anymail needs, not a
 
 ## Status
 
-Planning phase only. This repository currently contains backlog and architecture documentation. There is no service implementation, deployment role, secret, DNS change, or Django app migration in this slice.
+`0.1.0` — Implementation complete. The FastAPI service, ops-library role
+(`mailgun_relay_deploy` + `mailgun_relay_ingress_deploy`), and ops-control
+playbook (`deploy-mailgun-relay.yml`) are in place. The homepage and
+python-podcast deploy playbooks accept a `mailgun_api_url` override that
+flips Anymail's Mailgun backend at the relay.
+
+See [`CHANGELOG.md`](./CHANGELOG.md) for the pre-deploy operator checklist,
+per-app migration steps, rollback procedure, and acceptance evidence
+template.
+
+## Quickstart (development)
+
+```bash
+uv sync
+uv run pytest -q
+uv run ruff check .
+uv run ruff format --check .
+uv run mypy src
+```
+
+The service starts with `uv run python -m mailgun_relay` and reads runtime
+config from environment variables prefixed `MAILGUN_RELAY_` (see
+`src/mailgun_relay/config.py::Settings`). Token policy and SMTP credentials
+load from the YAML file at `MAILGUN_RELAY_SECRETS_PATH`.
 
 ## Intended Flow
 
