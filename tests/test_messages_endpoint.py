@@ -297,7 +297,9 @@ def test_attachment_accepted(
     client: TestClient, auth: dict[str, str], recording_smtp: RecordingSubmitter
 ) -> None:
     files = [("attachment", ("hello.txt", b"hello attachment", "text/plain"))]
-    r = client.post("/v3/mg.wersdoerfer.de/messages", headers=auth, data=_minimum_form(), files=files)
+    r = client.post(
+        "/v3/mg.wersdoerfer.de/messages", headers=auth, data=_minimum_form(), files=files
+    )
     assert r.status_code == 200, r.text
     sent = recording_smtp.calls[0]
     serialized = bytes(sent.message)
@@ -307,13 +309,17 @@ def test_attachment_accepted(
 def test_attachment_too_big_returns_413(client: TestClient, auth: dict[str, str]) -> None:
     too_big = b"x" * 600_000
     files = [("attachment", ("big.bin", too_big, "application/octet-stream"))]
-    r = client.post("/v3/mg.wersdoerfer.de/messages", headers=auth, data=_minimum_form(), files=files)
+    r = client.post(
+        "/v3/mg.wersdoerfer.de/messages", headers=auth, data=_minimum_form(), files=files
+    )
     assert r.status_code == 413
 
 
 def test_too_many_attachments_returns_413(client: TestClient, auth: dict[str, str]) -> None:
     files = [("attachment", (f"f{i}.txt", b"x", "text/plain")) for i in range(4)]
-    r = client.post("/v3/mg.wersdoerfer.de/messages", headers=auth, data=_minimum_form(), files=files)
+    r = client.post(
+        "/v3/mg.wersdoerfer.de/messages", headers=auth, data=_minimum_form(), files=files
+    )
     assert r.status_code == 413
 
 
@@ -381,7 +387,9 @@ def test_inline_counts_toward_max_attachments_returns_413(
 ) -> None:
     # max_attachments=3 in the test settings.
     files = [("inline", (f"f{i}.txt", b"x", "text/plain")) for i in range(4)]
-    r = client.post("/v3/mg.wersdoerfer.de/messages", headers=auth, data=_minimum_form(), files=files)
+    r = client.post(
+        "/v3/mg.wersdoerfer.de/messages", headers=auth, data=_minimum_form(), files=files
+    )
     assert r.status_code == 413
 
 
@@ -392,7 +400,9 @@ def test_mixed_attachment_inline_counts_toward_max_attachments(
     files = [("attachment", (f"a{i}.txt", b"x", "text/plain")) for i in range(2)] + [
         ("inline", (f"i{i}.txt", b"x", "text/plain")) for i in range(2)
     ]
-    r = client.post("/v3/mg.wersdoerfer.de/messages", headers=auth, data=_minimum_form(), files=files)
+    r = client.post(
+        "/v3/mg.wersdoerfer.de/messages", headers=auth, data=_minimum_form(), files=files
+    )
     assert r.status_code == 413
 
 
