@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from email.utils import parseaddr
 from typing import TYPE_CHECKING
 
 import idna
@@ -43,12 +44,16 @@ def normalize_address(value: str) -> str:
 
 
 def parse_email_strict(value: str) -> tuple[str, str]:
-    """Validate a single email address (no display name).
+    """Validate a single email address, optionally with a display name.
 
-    Returns (normalized_address, normalized_domain). Raises InvalidAddressError.
+    Returns (normalized_addr_spec, normalized_domain). Raises InvalidAddressError.
+    Accepts both ``addr@host`` and ``Display Name <addr@host>`` forms.
     """
+    _, addr_spec = parseaddr(value)
+    if not addr_spec:
+        raise InvalidAddressError(f"invalid address: {value!r}")
     try:
-        result = validate_email(value, check_deliverability=False)
+        result = validate_email(addr_spec, check_deliverability=False)
     except EmailNotValidError as exc:
         raise InvalidAddressError(str(exc)) from exc
     addr = result.normalized.lower()
