@@ -46,7 +46,7 @@ def _with(extra: dict[str, list[str]]) -> dict[str, list[str]]:
 def test_happy_path_returns_queued(
     client: TestClient, auth: dict[str, str], recording_smtp: RecordingSubmitter
 ) -> None:
-    r = client.post("/v3/wersdoerfer.de/messages", headers=auth, data=_minimum_form())
+    r = client.post("/v3/mg.wersdoerfer.de/messages", headers=auth, data=_minimum_form())
     assert r.status_code == 200, r.text
     body = r.json()
     assert body["message"] == "Queued. Thank you."
@@ -59,14 +59,14 @@ def test_happy_path_returns_queued(
 
 
 def test_auth_missing_returns_401_with_realm(client: TestClient) -> None:
-    r = client.post("/v3/wersdoerfer.de/messages", data=_minimum_form())
+    r = client.post("/v3/mg.wersdoerfer.de/messages", data=_minimum_form())
     assert r.status_code == 401
     assert r.headers.get("WWW-Authenticate") == 'Basic realm="MG API"'
 
 
 def test_auth_wrong_password_returns_401(client: TestClient) -> None:
     r = client.post(
-        "/v3/wersdoerfer.de/messages",
+        "/v3/mg.wersdoerfer.de/messages",
         headers={"Authorization": basic("api", "nope")},
         data=_minimum_form(),
     )
@@ -75,7 +75,7 @@ def test_auth_wrong_password_returns_401(client: TestClient) -> None:
 
 def test_auth_wrong_username_returns_401(client: TestClient, homepage_token: str) -> None:
     r = client.post(
-        "/v3/wersdoerfer.de/messages",
+        "/v3/mg.wersdoerfer.de/messages",
         headers={"Authorization": basic("notapi", homepage_token)},
         data=_minimum_form(),
     )
@@ -84,6 +84,38 @@ def test_auth_wrong_username_returns_401(client: TestClient, homepage_token: str
 
 def test_path_domain_not_allowed_returns_403(client: TestClient, auth: dict[str, str]) -> None:
     r = client.post("/v3/evil.test/messages", headers=auth, data=_minimum_form())
+    assert r.status_code == 403
+
+
+def test_homepage_uses_cross_domain_path_and_from(
+    client: TestClient, auth: dict[str, str], recording_smtp: RecordingSubmitter
+) -> None:
+    """Production homepage uses cross-domain policy: path subdomain != from domain.
+
+    This pins the shipped shape so a future refactor that conflates the two
+    domains (or that copy-pastes a same-domain example into SOPS) fails fast.
+    """
+    # Path subdomain: mg.wersdoerfer.de (Mailgun sender domain).
+    # From-domain: wersdoerfer.de (the parent — Mailgun lets you send from
+    # the parent through a sender subdomain).
+    r = client.post("/v3/mg.wersdoerfer.de/messages", headers=auth, data=_minimum_form())
+    assert r.status_code == 200, r.text
+    sent = recording_smtp.calls[0]
+    assert str(sent.message["From"]).endswith("@wersdoerfer.de>")
+
+
+def test_homepage_parent_domain_as_path_returns_403(
+    client: TestClient, auth: dict[str, str]
+) -> None:
+    """Regression guard: POST to /v3/wersdoerfer.de/messages must 403.
+
+    The pre-deploy plan-doc value used `wersdoerfer.de` as path subdomain.
+    The shipped token policy is strict: only `mg.wersdoerfer.de` is in
+    `mailgun_domains`. Any operator who copies the old example into SOPS
+    will see this 403 — the test exists so the production policy shape
+    cannot quietly regress to that wrong value.
+    """
+    r = client.post("/v3/wersdoerfer.de/messages", headers=auth, data=_minimum_form())
     assert r.status_code == 403
 
 
@@ -96,7 +128,7 @@ def test_from_address_outside_allowlist_returns_403(
         "subject": ["hi"],
         "text": ["hello"],
     }
-    r = client.post("/v3/wersdoerfer.de/messages", headers=auth, data=form)
+    r = client.post("/v3/mg.wersdoerfer.de/messages", headers=auth, data=form)
     assert r.status_code == 403
 
 
@@ -109,13 +141,13 @@ def test_from_domain_outside_allowlist_returns_403(
         "subject": ["hi"],
         "text": ["hello"],
     }
-    r = client.post("/v3/wersdoerfer.de/messages", headers=auth, data=form)
+    r = client.post("/v3/mg.wersdoerfer.de/messages", headers=auth, data=form)
     assert r.status_code == 403
 
 
 def test_unsupported_o_field_returns_400(client: TestClient, auth: dict[str, str]) -> None:
     r = client.post(
-        "/v3/wersdoerfer.de/messages",
+        "/v3/mg.wersdoerfer.de/messages",
         headers=auth,
         data=_with({"o:tag": ["foo"]}),
     )
@@ -124,7 +156,7 @@ def test_unsupported_o_field_returns_400(client: TestClient, auth: dict[str, str
 
 def test_unsupported_v_field_returns_400(client: TestClient, auth: dict[str, str]) -> None:
     r = client.post(
-        "/v3/wersdoerfer.de/messages",
+        "/v3/mg.wersdoerfer.de/messages",
         headers=auth,
         data=_with({"v:userid": ["xyz"]}),
     )
@@ -133,7 +165,7 @@ def test_unsupported_v_field_returns_400(client: TestClient, auth: dict[str, str
 
 def test_template_field_returns_400(client: TestClient, auth: dict[str, str]) -> None:
     r = client.post(
-        "/v3/wersdoerfer.de/messages",
+        "/v3/mg.wersdoerfer.de/messages",
         headers=auth,
         data=_with({"template": ["welcome"]}),
     )
@@ -142,7 +174,7 @@ def test_template_field_returns_400(client: TestClient, auth: dict[str, str]) ->
 
 def test_recipient_variables_returns_400(client: TestClient, auth: dict[str, str]) -> None:
     r = client.post(
-        "/v3/wersdoerfer.de/messages",
+        "/v3/mg.wersdoerfer.de/messages",
         headers=auth,
         data=_with({"recipient-variables": ["{}"]}),
     )
@@ -156,13 +188,13 @@ def test_subject_crlf_returns_400(client: TestClient, auth: dict[str, str]) -> N
         "subject": ["hi\nBcc: evil@x.com"],
         "text": ["hello"],
     }
-    r = client.post("/v3/wersdoerfer.de/messages", headers=auth, data=form)
+    r = client.post("/v3/mg.wersdoerfer.de/messages", headers=auth, data=form)
     assert r.status_code == 400
 
 
 def test_dangerous_h_bcc_returns_400(client: TestClient, auth: dict[str, str]) -> None:
     r = client.post(
-        "/v3/wersdoerfer.de/messages",
+        "/v3/mg.wersdoerfer.de/messages",
         headers=auth,
         data=_with({"h:Bcc": ["evil@x.com"]}),
     )
@@ -173,7 +205,7 @@ def test_reply_to_header_propagates(
     client: TestClient, auth: dict[str, str], recording_smtp: RecordingSubmitter
 ) -> None:
     r = client.post(
-        "/v3/wersdoerfer.de/messages",
+        "/v3/mg.wersdoerfer.de/messages",
         headers=auth,
         data=_with({"h:Reply-To": ["support@wersdoerfer.de"]}),
     )
@@ -185,7 +217,7 @@ def test_reply_to_with_quoted_comma_in_display_name(
     client: TestClient, auth: dict[str, str], recording_smtp: RecordingSubmitter
 ) -> None:
     r = client.post(
-        "/v3/wersdoerfer.de/messages",
+        "/v3/mg.wersdoerfer.de/messages",
         headers=auth,
         data=_with({"h:Reply-To": ['"Doe, Jane" <support@wersdoerfer.de>']}),
     )
@@ -197,7 +229,7 @@ def test_reply_to_with_multiple_addresses(
     client: TestClient, auth: dict[str, str], recording_smtp: RecordingSubmitter
 ) -> None:
     r = client.post(
-        "/v3/wersdoerfer.de/messages",
+        "/v3/mg.wersdoerfer.de/messages",
         headers=auth,
         data=_with({"h:Reply-To": ["a@wersdoerfer.de, b@wersdoerfer.de"]}),
     )
@@ -211,7 +243,7 @@ def test_bcc_only_envelope_not_in_headers(
     client: TestClient, auth: dict[str, str], recording_smtp: RecordingSubmitter
 ) -> None:
     r = client.post(
-        "/v3/wersdoerfer.de/messages",
+        "/v3/mg.wersdoerfer.de/messages",
         headers=auth,
         data=_with({"bcc": ["secret@wersdoerfer.de"]}),
     )
@@ -227,7 +259,7 @@ def test_cc_in_headers_and_envelope(
     client: TestClient, auth: dict[str, str], recording_smtp: RecordingSubmitter
 ) -> None:
     r = client.post(
-        "/v3/wersdoerfer.de/messages",
+        "/v3/mg.wersdoerfer.de/messages",
         headers=auth,
         data=_with({"cc": ["copied@wersdoerfer.de"]}),
     )
@@ -241,7 +273,7 @@ def test_smtp_temporary_returns_503(
     client: TestClient, auth: dict[str, str], recording_smtp: RecordingSubmitter
 ) -> None:
     recording_smtp.raise_with = SmtpSubmitError(FailureCategory.TEMPORARY, reason="busy")
-    r = client.post("/v3/wersdoerfer.de/messages", headers=auth, data=_minimum_form())
+    r = client.post("/v3/mg.wersdoerfer.de/messages", headers=auth, data=_minimum_form())
     assert r.status_code == 503
 
 
@@ -249,7 +281,7 @@ def test_smtp_permanent_returns_502(
     client: TestClient, auth: dict[str, str], recording_smtp: RecordingSubmitter
 ) -> None:
     recording_smtp.raise_with = SmtpSubmitError(FailureCategory.PERMANENT, reason="rejected")
-    r = client.post("/v3/wersdoerfer.de/messages", headers=auth, data=_minimum_form())
+    r = client.post("/v3/mg.wersdoerfer.de/messages", headers=auth, data=_minimum_form())
     assert r.status_code == 502
 
 
@@ -257,7 +289,7 @@ def test_smtp_auth_returns_502(
     client: TestClient, auth: dict[str, str], recording_smtp: RecordingSubmitter
 ) -> None:
     recording_smtp.raise_with = SmtpSubmitError(FailureCategory.AUTH, reason="bad creds")
-    r = client.post("/v3/wersdoerfer.de/messages", headers=auth, data=_minimum_form())
+    r = client.post("/v3/mg.wersdoerfer.de/messages", headers=auth, data=_minimum_form())
     assert r.status_code == 502
 
 
@@ -265,7 +297,7 @@ def test_attachment_accepted(
     client: TestClient, auth: dict[str, str], recording_smtp: RecordingSubmitter
 ) -> None:
     files = [("attachment", ("hello.txt", b"hello attachment", "text/plain"))]
-    r = client.post("/v3/wersdoerfer.de/messages", headers=auth, data=_minimum_form(), files=files)
+    r = client.post("/v3/mg.wersdoerfer.de/messages", headers=auth, data=_minimum_form(), files=files)
     assert r.status_code == 200, r.text
     sent = recording_smtp.calls[0]
     serialized = bytes(sent.message)
@@ -275,13 +307,13 @@ def test_attachment_accepted(
 def test_attachment_too_big_returns_413(client: TestClient, auth: dict[str, str]) -> None:
     too_big = b"x" * 600_000
     files = [("attachment", ("big.bin", too_big, "application/octet-stream"))]
-    r = client.post("/v3/wersdoerfer.de/messages", headers=auth, data=_minimum_form(), files=files)
+    r = client.post("/v3/mg.wersdoerfer.de/messages", headers=auth, data=_minimum_form(), files=files)
     assert r.status_code == 413
 
 
 def test_too_many_attachments_returns_413(client: TestClient, auth: dict[str, str]) -> None:
     files = [("attachment", (f"f{i}.txt", b"x", "text/plain")) for i in range(4)]
-    r = client.post("/v3/wersdoerfer.de/messages", headers=auth, data=_minimum_form(), files=files)
+    r = client.post("/v3/mg.wersdoerfer.de/messages", headers=auth, data=_minimum_form(), files=files)
     assert r.status_code == 413
 
 
@@ -318,7 +350,7 @@ def test_no_recipients_returns_400(client: TestClient, auth: dict[str, str]) -> 
         "subject": ["hi"],
         "text": ["hello"],
     }
-    r = client.post("/v3/wersdoerfer.de/messages", headers=auth, data=form)
+    r = client.post("/v3/mg.wersdoerfer.de/messages", headers=auth, data=form)
     assert r.status_code == 400
 
 
@@ -328,7 +360,7 @@ def test_no_body_returns_400(client: TestClient, auth: dict[str, str]) -> None:
         "to": ["admin@wersdoerfer.de"],
         "subject": ["hi"],
     }
-    r = client.post("/v3/wersdoerfer.de/messages", headers=auth, data=form)
+    r = client.post("/v3/mg.wersdoerfer.de/messages", headers=auth, data=form)
     assert r.status_code == 400
 
 
@@ -340,7 +372,7 @@ def test_huge_text_returns_413(client: TestClient, auth: dict[str, str], app_sta
         "subject": ["x"],
         "text": ["A" * 2_000_000],
     }
-    r = client.post("/v3/wersdoerfer.de/messages", headers=auth, data=form)
+    r = client.post("/v3/mg.wersdoerfer.de/messages", headers=auth, data=form)
     assert r.status_code == 413
 
 
@@ -349,7 +381,7 @@ def test_inline_counts_toward_max_attachments_returns_413(
 ) -> None:
     # max_attachments=3 in the test settings.
     files = [("inline", (f"f{i}.txt", b"x", "text/plain")) for i in range(4)]
-    r = client.post("/v3/wersdoerfer.de/messages", headers=auth, data=_minimum_form(), files=files)
+    r = client.post("/v3/mg.wersdoerfer.de/messages", headers=auth, data=_minimum_form(), files=files)
     assert r.status_code == 413
 
 
@@ -360,7 +392,7 @@ def test_mixed_attachment_inline_counts_toward_max_attachments(
     files = [("attachment", (f"a{i}.txt", b"x", "text/plain")) for i in range(2)] + [
         ("inline", (f"i{i}.txt", b"x", "text/plain")) for i in range(2)
     ]
-    r = client.post("/v3/wersdoerfer.de/messages", headers=auth, data=_minimum_form(), files=files)
+    r = client.post("/v3/mg.wersdoerfer.de/messages", headers=auth, data=_minimum_form(), files=files)
     assert r.status_code == 413
 
 
@@ -371,13 +403,13 @@ def test_malformed_to_address_returns_400(client: TestClient, auth: dict[str, st
         "subject": ["x"],
         "text": ["body"],
     }
-    r = client.post("/v3/wersdoerfer.de/messages", headers=auth, data=form)
+    r = client.post("/v3/mg.wersdoerfer.de/messages", headers=auth, data=form)
     assert r.status_code == 400
 
 
 def test_malformed_reply_to_returns_400(client: TestClient, auth: dict[str, str]) -> None:
     form = _with({"h:Reply-To": ["bad@bad domain"]})
-    r = client.post("/v3/wersdoerfer.de/messages", headers=auth, data=form)
+    r = client.post("/v3/mg.wersdoerfer.de/messages", headers=auth, data=form)
     assert r.status_code == 400
 
 
@@ -431,7 +463,7 @@ def test_log_redacts_token_and_smtp_password(
     log.setLevel(logging.INFO)
     log.propagate = False
     try:
-        r = client.post("/v3/wersdoerfer.de/messages", headers=auth, data=_minimum_form())
+        r = client.post("/v3/mg.wersdoerfer.de/messages", headers=auth, data=_minimum_form())
         assert r.status_code == 200, r.text
     finally:
         handler.flush()

@@ -95,8 +95,11 @@ For each of `homepage` and `python_podcast`, in each of `staging` and `prod`:
 2. Set `mailgun_api_url: "https://mailgun.home.xn--wersdrfer-47a.de/v3"`.
 3. Replace `django_mailgun_api_key` value with the matching raw token
    generated in step 2 of the relay checklist above.
-4. (`python-podcast` only) leave `mailgun_sender_domain: mg.python-podcast.de`.
-   (`homepage`) leave `mailgun_sender_domain: wersdoerfer.de`.
+4. Leave `mailgun_sender_domain` at the app's existing value — that's the
+   value already in the SOPS file and it must match the relay token's
+   `mailgun_domains` policy:
+   - `homepage`: `mg.wersdoerfer.de`
+   - `python-podcast`: `mg.python-podcast.de`
 5. Redeploy the app: `just deploy-one homepage staging`
    (or `python-podcast staging`). The new `.env` on the target host will
    contain `MAILGUN_API_URL=https://mailgun.home.xn--wersdrfer-47a.de/v3` and

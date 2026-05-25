@@ -77,9 +77,13 @@ def test_secrets() -> Secrets:
         ),
         tokens=(
             TokenPolicy(
+                # Mirrors the shipped production policy: the Mailgun path
+                # subdomain (mg.wersdoerfer.de) is distinct from the from-domain
+                # (wersdoerfer.de) — this is the cross-domain case Anymail
+                # uses for homepage. Tests exercise this shape end-to-end.
                 label="homepage-staging",
                 token_sha256=_sha(_TEST_TOKEN_HOMEPAGE),
-                mailgun_domains=frozenset({"wersdoerfer.de"}),
+                mailgun_domains=frozenset({"mg.wersdoerfer.de"}),
                 allowed_from_domains=frozenset({"wersdoerfer.de"}),
                 allowed_from_addresses=frozenset({"jochen-homepage@wersdoerfer.de"}),
             ),

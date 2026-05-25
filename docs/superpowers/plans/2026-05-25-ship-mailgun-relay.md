@@ -261,33 +261,34 @@ Pattern modeled on `ops-library/roles/graphyard_deploy/` and `voxhelm_deploy`.
 - [ ] `playbooks/deploy-mailgun-relay.yml`:
   - Play 1 on macmini: load `secrets/prod/mailgun-relay.yml` via `community.sops.sops`; validate non-CHANGEME; include `uv_install` then `mailgun_relay_deploy` with bound vars.
   - Play 2 on macmini: include `mailgun_relay_ingress_deploy` for traefik labels.
-- [ ] `secrets/prod/mailgun-relay.yml` (SOPS-encrypted):
+- [ ] `secrets/prod/mailgun-relay.yml` (SOPS-encrypted; top-level keys, no
+  outer `mailgun_relay:` wrapper — this is what the deploy playbook
+  consumes):
   ```yaml
-  mailgun_relay:
-    smtp_username: "mailgun-relay@xn--wersdrfer-47a.de"
-    smtp_password: "<generated>"
-    envelope_sender: "mailgun-relay@xn--wersdrfer-47a.de"
-    tokens:
-      - label: homepage-staging
-        token_sha256: "<sha256 of generated token>"
-        mailgun_domains: ["mg.wersdoerfer.de"]
-        allowed_from_domains: ["wersdoerfer.de"]
-        allowed_from_addresses: ["jochen-homepage@wersdoerfer.de"]
-      - label: homepage-production
-        token_sha256: "..."
-        mailgun_domains: ["mg.wersdoerfer.de"]
-        allowed_from_domains: ["wersdoerfer.de"]
-        allowed_from_addresses: ["jochen-homepage@wersdoerfer.de"]
-      - label: python-podcast-staging
-        token_sha256: "..."
-        mailgun_domains: ["mg.python-podcast.de"]
-        allowed_from_domains: ["mg.python-podcast.de"]
-        allowed_from_addresses: ["noreply@mg.python-podcast.de"]
-      - label: python-podcast-production
-        token_sha256: "..."
-        mailgun_domains: ["mg.python-podcast.de"]
-        allowed_from_domains: ["mg.python-podcast.de"]
-        allowed_from_addresses: ["noreply@mg.python-podcast.de"]
+  smtp_username: "mailgun-relay@xn--wersdrfer-47a.de"
+  smtp_password: "<generated>"
+  envelope_sender: "mailgun-relay@xn--wersdrfer-47a.de"
+  tokens:
+    - label: homepage-staging
+      token_sha256: "<sha256 of generated token>"
+      mailgun_domains: ["mg.wersdoerfer.de"]
+      allowed_from_domains: ["wersdoerfer.de"]
+      allowed_from_addresses: ["jochen-homepage@wersdoerfer.de"]
+    - label: homepage-production
+      token_sha256: "..."
+      mailgun_domains: ["mg.wersdoerfer.de"]
+      allowed_from_domains: ["wersdoerfer.de"]
+      allowed_from_addresses: ["jochen-homepage@wersdoerfer.de"]
+    - label: python-podcast-staging
+      token_sha256: "..."
+      mailgun_domains: ["mg.python-podcast.de"]
+      allowed_from_domains: ["mg.python-podcast.de"]
+      allowed_from_addresses: ["noreply@mg.python-podcast.de"]
+    - label: python-podcast-production
+      token_sha256: "..."
+      mailgun_domains: ["mg.python-podcast.de"]
+      allowed_from_domains: ["mg.python-podcast.de"]
+      allowed_from_addresses: ["noreply@mg.python-podcast.de"]
   ```
   *Real values generated locally; only sha256 of tokens stored.* The raw token values live in the per-app SOPS files (next task) and are never committed in cleartext.
 - [ ] Add `inventories/prod/host_vars/macmini.yml` lines binding the relay vars.
