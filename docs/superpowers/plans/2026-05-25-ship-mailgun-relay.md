@@ -16,8 +16,12 @@
 2. **SMTP login**: same mailbox `mailgun-relay@xn--wersdrfer-47a.de`.
 3. **Bounce destination**: same mailbox (default `MAIL FROM` is the bounce target).
 4. **Token labels**: `homepage-staging`, `homepage-production`, `python-podcast-staging`, `python-podcast-production`. Per-app per-environment so we can rotate independently.
-5. **Token policy per app**:
-   - `homepage-*`: `mailgun_domains: [wersdoerfer.de]`, `allowed_from_domains: [wersdoerfer.de]`, `allowed_from_addresses: [jochen-homepage@wersdoerfer.de]`. (Homepage's `DEFAULT_FROM_EMAIL` is `jochen-homepage@wersdoerfer.de`. The `MAILGUN_SENDER_DOMAIN` becomes `wersdoerfer.de`.)
+5. **Token policy per app** (final shipped values; pre-deploy plan said
+   `wersdoerfer.de` but live SOPS inspection during deploy showed homepage's
+   actual `MAILGUN_SENDER_DOMAIN` is `mg.wersdoerfer.de`. The values below
+   match `ops-control/secrets/prod/mailgun-relay.yml` and the homepage
+   acceptance log in `CHANGELOG.md`):
+   - `homepage-*`: `mailgun_domains: [mg.wersdoerfer.de]`, `allowed_from_domains: [wersdoerfer.de]`, `allowed_from_addresses: [jochen-homepage@wersdoerfer.de]`. Path subdomain differs from from-domain because Mailgun callers send via a subdomain while the actual `From:` is on the parent domain.
    - `python-podcast-*`: `mailgun_domains: [mg.python-podcast.de]`, `allowed_from_domains: [mg.python-podcast.de]`, `allowed_from_addresses: [noreply@mg.python-podcast.de]`. (Path `/v3/mg.python-podcast.de/messages`. Note: the home mail stack does NOT host `mg.python-podcast.de`, but the relay does not need it to: the relay only submits via SMTP to the local stack; the message `From:` will not be DKIM-signed by the home stack because OpenDKIM only signs hosted domains. For acceptance (delivery to internal `jochen-pythonpodcast@wersdoerfer.de`) this is fine.)
 6. **HTTP status mapping** (consistent with `docs/api-compatibility.md`, status code interpretation verified against `anymail/backends/mailgun.py`):
    - `200` + `{"id":"<msg-id@host>","message":"Queued. Thank you."}` — success
@@ -177,7 +181,7 @@ tests/fixtures/                         # tiny binary fixtures for attachment te
 ### Task H: Routes + end-to-end
 
 - [ ] `tests/test_messages_endpoint.py`:
-  - POST `/v3/wersdoerfer.de/messages` with valid Basic auth and form `from=Jochen <jochen-homepage@wersdoerfer.de>&to=admin@wersdoerfer.de&subject=hi&text=body` → 200 with `{"id":"<...@mailgun.home.xn--wersdrfer-47a.de>","message":"Queued. Thank you."}`. Returned `id` matches the SMTP `Message-Id:` header seen by the fake SMTP.
+  - POST `/v3/mg.wersdoerfer.de/messages` with valid Basic auth and form `from=Jochen <jochen-homepage@wersdoerfer.de>&to=admin@wersdoerfer.de&subject=hi&text=body` → 200 with `{"id":"<...@mailgun.home.xn--wersdrfer-47a.de>","message":"Queued. Thank you."}`. Returned `id` matches the SMTP `Message-Id:` header seen by the fake SMTP.
   - Auth missing → 401 + `WWW-Authenticate: Basic realm="MG API"`.
   - Path domain mismatched → 403.
   - `from` address not in token's allowed_from_addresses → 403.
@@ -266,12 +270,12 @@ Pattern modeled on `ops-library/roles/graphyard_deploy/` and `voxhelm_deploy`.
     tokens:
       - label: homepage-staging
         token_sha256: "<sha256 of generated token>"
-        mailgun_domains: ["wersdoerfer.de"]
+        mailgun_domains: ["mg.wersdoerfer.de"]
         allowed_from_domains: ["wersdoerfer.de"]
         allowed_from_addresses: ["jochen-homepage@wersdoerfer.de"]
       - label: homepage-production
         token_sha256: "..."
-        mailgun_domains: ["wersdoerfer.de"]
+        mailgun_domains: ["mg.wersdoerfer.de"]
         allowed_from_domains: ["wersdoerfer.de"]
         allowed_from_addresses: ["jochen-homepage@wersdoerfer.de"]
       - label: python-podcast-staging
@@ -304,7 +308,7 @@ Pattern modeled on `ops-library/roles/graphyard_deploy/` and `voxhelm_deploy`.
 ### Task N: Migrate homepage staging
 
 - [ ] In `homepage/deploy/templates/env.template.j2`, add a line `MAILGUN_API_URL={{ mailgun_api_url }}`.
-- [ ] In `ops-control/secrets/staging/homepage.yml`, set `mailgun_api_url: "https://mailgun.home.xn--wersdrfer-47a.de/v3"` and replace `django_mailgun_api_key` value with the staging relay token. Set `mailgun_sender_domain: "wersdoerfer.de"`. Encrypt with SOPS.
+- [ ] In `ops-control/secrets/staging/homepage.yml`, set `mailgun_api_url: "https://mailgun.home.xn--wersdrfer-47a.de/v3"` and replace `django_mailgun_api_key` value with the staging relay token. Leave `mailgun_sender_domain: "mg.wersdoerfer.de"` (the existing value — homepage's real Mailgun sender subdomain). Encrypt with SOPS.
 - [ ] In the deploy playbook (`ops-control/playbooks/deploy-homepage.yml` or the existing path the agent identified), wire `mailgun_api_url` from secrets through to the rendered env.
 - [ ] `just deploy-one homepage` (staging selector).
 - [ ] On staging host, confirm `.env` contains the new `MAILGUN_API_URL` and the new token; **commercial Mailgun key is no longer present** (the only `DJANGO_MAILGUN_API_KEY` is the relay token).
