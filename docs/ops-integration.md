@@ -46,8 +46,13 @@ smtp.home.xn--wersdrfer-47a.de:587
 
 Behavior:
 
-- STARTTLS required.
-- Authenticated SMTP submission.
+- STARTTLS required, with full certificate **and hostname verification** (it
+  cannot be disabled). If the backend presents a certificate from a private CA,
+  set `MAILGUN_RELAY_SMTP_CA_FILE` to the CA bundle path so verification
+  succeeds; do not work around it by disabling STARTTLS.
+- Authenticated SMTP submission. The service refuses to send credentials over a
+  non-TLS connection, so leaving `smtp_starttls` off with credentials set fails
+  closed instead of leaking them.
 - Dedicated SMTP credentials for this service, not a personal mailbox password if avoidable.
 - Sender permissions should be as narrow as the backend supports.
 - Backend sender/login binding must be verified. If enforced, the service's SMTP envelope sender must be allowed for the relay login, or ops must add an explicit backend-side allowance.
@@ -84,7 +89,13 @@ mailgun_relay_smtp_port: 587
 mailgun_relay_smtp_starttls: true
 mailgun_relay_env_path: "/etc/mailgun-relay/mailgun-relay.env"
 mailgun_relay_secrets_path: "/etc/mailgun-relay/secrets.yml"
+# Optional: CA bundle for a private-CA SMTP backend. Empty = system trust store.
+# mailgun_relay_smtp_ca_file: "/etc/ssl/private/home-ca.pem"
 ```
+
+The secrets file must be `0640` or stricter (the role renders
+`0640 root:mailgun-relay`). The service refuses to start if the file is
+world-accessible or group-writable.
 
 The loopback bind assumes a local reverse proxy (Traefik) terminates TLS and
 forwards to the service. Binding to a non-loopback interface requires an

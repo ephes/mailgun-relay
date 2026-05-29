@@ -6,6 +6,8 @@ from typing import TYPE_CHECKING
 import idna
 from email_validator import EmailNotValidError, validate_email
 
+from mailgun_relay.headers import contains_forbidden_control_chars
+
 if TYPE_CHECKING:
     from mailgun_relay.config import TokenPolicy
 
@@ -49,6 +51,11 @@ def parse_email_strict(value: str) -> tuple[str, str]:
     Returns (normalized_addr_spec, normalized_domain). Raises InvalidAddressError.
     Accepts both ``addr@host`` and ``Display Name <addr@host>`` forms.
     """
+    # Reject CR/LF/NUL/control chars up front: `parseaddr` silently swallows
+    # embedded newlines (extracting an address from a smuggled line), which
+    # would turn a header-injection attempt into a confusing policy decision.
+    if contains_forbidden_control_chars(value):
+        raise InvalidAddressError(f"invalid address: {value!r}")
     _, addr_spec = parseaddr(value)
     if not addr_spec:
         raise InvalidAddressError(f"invalid address: {value!r}")
@@ -59,9 +66,14 @@ def parse_email_strict(value: str) -> tuple[str, str]:
         result = validate_email(addr_spec, check_deliverability=False, test_environment=True)
     except EmailNotValidError as exc:
         raise InvalidAddressError(str(exc)) from exc
-    addr = result.normalized.lower()
-    _, _, domain = addr.rpartition("@")
-    return addr, normalize_domain(domain)
+    # `email_validator` returns the domain as a U-label (Unicode) for IDNs, but
+    # the configured allowlist stores A-labels (punycode) via `normalize_address`.
+    # Re-normalize the domain to the A-label form so the policy comparison is
+    # apples-to-apples; otherwise every IDN sender would be wrongly rejected.
+    local, _, domain = result.normalized.rpartition("@")
+    normalized_domain = normalize_domain(domain)
+    addr = f"{local.lower()}@{normalized_domain}"
+    return addr, normalized_domain
 
 
 def enforce_policy(

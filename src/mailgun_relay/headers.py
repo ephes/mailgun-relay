@@ -21,10 +21,19 @@ class DangerousHeaderError(ValueError):
 
 _HEADER_NAME_RE = re.compile(r"^[A-Za-z][A-Za-z0-9-]*$")
 
-# Headers the relay manages itself or that are unsafe for callers to supply.
-# All comparisons are case-insensitive.
+# Characters that can break header framing, truncate a value, or be treated as
+# a line break by a downstream parser. Tab (\x09) is permitted as legitimate
+# folding whitespace; everything else in the C0/C1 control ranges (including
+# CR, LF and NUL), DEL, and the Unicode line/paragraph separators is rejected.
+_FORBIDDEN_CONTROL_RE = re.compile("[\x00-\x08\x0a-\x1f\x7f-\x9f\u2028\u2029]")
+
+# Headers the relay manages itself, that are structural (set by MIME
+# construction), or that are unsafe for callers to supply because they let a
+# caller spoof identity or exfiltrate receipts. All comparisons are
+# case-insensitive.
 _DANGEROUS_HEADER_NAMES = frozenset(
     {
+        # Relay-managed / addressing headers.
         "bcc",
         "received",
         "return-path",
@@ -34,6 +43,18 @@ _DANGEROUS_HEADER_NAMES = frozenset(
         "to",
         "cc",
         "subject",
+        # Identity headers a caller must not forge.
+        "sender",
+        # Structural MIME headers — set by build_message; a duplicate from a
+        # caller would otherwise raise deep in the email package (HTTP 500).
+        "mime-version",
+        "content-type",
+        "content-transfer-encoding",
+        "content-disposition",
+        "content-id",
+        # Read-receipt / notification headers (exfiltration vector).
+        "disposition-notification-to",
+        "return-receipt-to",
     }
 )
 
@@ -47,9 +68,18 @@ def _is_dangerous(name: str) -> bool:
     return lowered.startswith(_RESENT_PREFIX)
 
 
+def contains_forbidden_control_chars(value: str) -> bool:
+    """Return True if ``value`` holds a control char unsafe in a header value.
+
+    Shared so address validation (policy) applies the same definition as header
+    validation, rather than maintaining a divergent injection rule.
+    """
+    return _FORBIDDEN_CONTROL_RE.search(value) is not None
+
+
 def _ensure_no_crlf(value: str) -> None:
-    if "\r" in value or "\n" in value:
-        raise HeaderInjectionError("header value contains CR/LF")
+    if contains_forbidden_control_chars(value):
+        raise HeaderInjectionError("header value contains control characters")
 
 
 def validate_subject(value: str, *, max_length: int) -> str:

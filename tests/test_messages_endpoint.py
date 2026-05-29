@@ -323,6 +323,17 @@ def test_too_many_attachments_returns_413(client: TestClient, auth: dict[str, st
     assert r.status_code == 413
 
 
+def test_far_too_many_attachments_still_returns_413(
+    client: TestClient, auth: dict[str, str]
+) -> None:
+    """A flood well past max_files hits starlette's cap; must still be 413, not 400."""
+    files = [("attachment", (f"f{i}.txt", b"x", "text/plain")) for i in range(20)]
+    r = client.post(
+        "/v3/mg.wersdoerfer.de/messages", headers=auth, data=_minimum_form(), files=files
+    )
+    assert r.status_code == 413, r.text
+
+
 def test_python_podcast_token_uses_its_own_path(
     client: TestClient, podcast_auth: dict[str, str], recording_smtp: RecordingSubmitter
 ) -> None:
@@ -404,6 +415,28 @@ def test_mixed_attachment_inline_counts_toward_max_attachments(
         "/v3/mg.wersdoerfer.de/messages", headers=auth, data=_minimum_form(), files=files
     )
     assert r.status_code == 413
+
+
+@pytest.mark.parametrize("bad_from", ["not-an-email", "bad@bad domain"])
+def test_malformed_from_address_returns_400(
+    client: TestClient, auth: dict[str, str], bad_from: str
+) -> None:
+    """A malformed sender is a bad request (400), not an authorization failure (403)."""
+    form = {"from": [bad_from], "to": ["admin@wersdoerfer.de"], "subject": ["x"], "text": ["y"]}
+    r = client.post("/v3/mg.wersdoerfer.de/messages", headers=auth, data=form)
+    assert r.status_code == 400, r.text
+
+
+def test_injected_from_crlf_returns_400(client: TestClient, auth: dict[str, str]) -> None:
+    """CRLF in `from` is header injection → 400, not silently reinterpreted to 403."""
+    form = {
+        "from": ["jochen-homepage@wersdoerfer.de\nBcc: evil@wersdoerfer.de"],
+        "to": ["admin@wersdoerfer.de"],
+        "subject": ["x"],
+        "text": ["y"],
+    }
+    r = client.post("/v3/mg.wersdoerfer.de/messages", headers=auth, data=form)
+    assert r.status_code == 400, r.text
 
 
 def test_malformed_to_address_returns_400(client: TestClient, auth: dict[str, str]) -> None:

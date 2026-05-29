@@ -2,6 +2,62 @@
 
 All notable changes to mailgun-relay are documented here.
 
+## Unreleased
+
+### Security hardening
+
+Findings from a full security review of the service, fixed in this change. No
+public request/response contract changes except the two noted under *Behavior*.
+
+- **SMTP TLS is now verified.** STARTTLS uses `ssl.create_default_context()`,
+  so the relay→SMTP hop verifies the server certificate chain and hostname.
+  Previously STARTTLS ran with no verification, so an active MITM on that hop
+  could capture the SMTP credentials and message contents. A private-CA backend
+  can be pointed at its bundle via the new `MAILGUN_RELAY_SMTP_CA_FILE` setting;
+  verification can never be turned off.
+- **Credentials are never sent over a non-TLS connection.** If SMTP AUTH would
+  run without STARTTLS (`smtp_starttls=false`) the submission now fails closed
+  instead of sending the username/password in cleartext.
+- **Request bodies are bounded at the ASGI layer.** A new body-size-limit
+  middleware rejects requests over `max_body_bytes` (413) using the declared
+  `Content-Length` and, for chunked/streamed bodies, a cumulative byte count —
+  before `request.form()` buffers the body. The multipart parser is now also
+  bounded (`max_files`, `max_fields`, `max_part_size`) to the relay's own
+  limits, and oversized attachments are rejected by spooled size before being
+  read into memory.
+- **Header validation hardened.** Custom-header value checks now reject NUL and
+  all C0/C1 control characters plus the Unicode line/paragraph separators
+  (previously only CR/LF). The dangerous-header denylist gained `Sender`,
+  `MIME-Version`, `Content-*`, `Content-ID`, `Disposition-Notification-To`, and
+  `Return-Receipt-To` to block identity spoofing, receipt exfiltration, and
+  structural-header duplication. Residual MIME-construction `ValueError`s now
+  map to a clean 400 instead of 500.
+- **IDN sender allowlist fixed.** `from`-address comparison normalizes the
+  domain to its A-label (punycode) form, matching the stored allowlist; IDN
+  senders were previously rejected because the parsed value was a U-label.
+- **Secrets file permissions are enforced.** `load_secrets` refuses to read a
+  secrets file that is world-accessible or group-writable (requires `0640` or
+  stricter); the deployment's `0640 root:mailgun-relay` layout is accepted.
+- **Token hash validation tightened.** `token_sha256` must be canonical
+  64-char lowercase hex; non-canonical spellings (`0x…`, signs, `_`) that could
+  silently produce a dead token are rejected.
+- **Log line bounded.** The attacker-controlled `from` value in the access log
+  is truncated to 320 chars. `log_level` from settings/env is now actually
+  applied to the structured logger (was hardcoded to INFO).
+
+#### Behavior
+
+- `GET /health` now returns `{"status":"ok"}` without the service version
+  (the version was an unauthenticated info-disclosure hint).
+- Oversized requests may now be rejected with 413 at the ASGI layer (before the
+  route runs), in addition to the existing per-field 413 checks. A multipart
+  request that trips the parser's file/field/part-size caps also maps to 413
+  (not 400), matching the documented "too large" contract.
+- A malformed or header-injected `from` address now returns **400** (bad
+  request) instead of 403; it is rejected as a parse/injection error before any
+  authorization decision, so a CR/LF-bearing `from` can no longer be silently
+  reinterpreted by lenient address parsing.
+
 ## 0.1.0 — 2026-05-25
 
 Initial implementation: Mailgun-API-compatible HTTP→SMTP adapter for
@@ -73,7 +129,7 @@ The role refuses to deploy until SOPS contains real values.
    address), and each token's `token_sha256`.
 4. **Deploy**: `just deploy-one mailgun-relay`. Verify
    `curl -fsS https://mailgun.home.xn--wersdrfer-47a.de/health` returns
-   `{"status":"ok","version":"0.1.0"}` and check `journalctl -u mailgun-relay`
+   `{"status":"ok"}` and check `journalctl -u mailgun-relay`
    for the first structured log line (it should show `event=request` if you
    probed it).
 

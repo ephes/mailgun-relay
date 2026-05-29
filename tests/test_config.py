@@ -15,7 +15,20 @@ from mailgun_relay.config import (
 def write_secrets(tmp_path: Path, body: str) -> Path:
     p = tmp_path / "secrets.yml"
     p.write_text(body)
+    p.chmod(0o600)
     return p
+
+
+_VALID_BODY = """
+smtp:
+  username: relay@example.test
+  password: hunter2
+tokens:
+  - label: t
+    token_sha256: 0000000000000000000000000000000000000000000000000000000000000000
+    mailgun_domains: [wersdoerfer.de]
+    allowed_from_domains: [wersdoerfer.de]
+"""
 
 
 def test_load_secrets_minimal(tmp_path: Path) -> None:
@@ -182,6 +195,24 @@ tokens:
     policy = secrets.tokens[0]
     assert "deadbeef" not in repr(policy)
     assert "label='t'" in repr(policy) or "label=t" in repr(policy)
+
+
+@pytest.mark.parametrize("mode", [0o644, 0o604, 0o666, 0o660, 0o620])
+def test_load_secrets_rejects_world_access_or_group_write(tmp_path: Path, mode: int) -> None:
+    p = write_secrets(tmp_path, _VALID_BODY)
+    p.chmod(mode)
+    with pytest.raises(InvalidPolicyError):
+        load_secrets(p)
+
+
+@pytest.mark.parametrize("mode", [0o600, 0o400, 0o640, 0o440])
+def test_load_secrets_accepts_owner_and_group_read_modes(tmp_path: Path, mode: int) -> None:
+    # 0640 is the deployment layout (root:service-group); 0600/0400 also fine.
+    p = tmp_path / f"secrets-{mode:o}.yml"
+    p.write_text(_VALID_BODY)
+    p.chmod(mode)
+    secrets = load_secrets(p)
+    assert secrets.smtp.username == "relay@example.test"
 
 
 def test_settings_reads_env(monkeypatch: pytest.MonkeyPatch) -> None:

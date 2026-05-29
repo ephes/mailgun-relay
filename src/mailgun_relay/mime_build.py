@@ -5,7 +5,11 @@ from dataclasses import dataclass, field
 from email.message import EmailMessage
 from email.utils import formatdate
 
-from mailgun_relay.headers import parse_address_list, parse_header_address_list
+from mailgun_relay.headers import (
+    HeaderInjectionError,
+    parse_address_list,
+    parse_header_address_list,
+)
 
 
 @dataclass(frozen=True)
@@ -81,14 +85,21 @@ def build_message(payload: MessageInput) -> tuple[EmailMessage, str, list[str]]:
         msg.add_alternative(payload.amp_html, subtype="x-amp-html")
 
     for name, value in payload.custom_headers.items():
-        if name.lower() == "reply-to":
-            # Reply-To may be a single address or a comma-separated list; use
-            # the RFC 5322 list parser so quoted commas inside display names
-            # ('"Doe, Jane" <jane@example>') are not shattered.
-            reply_to = parse_header_address_list(value)
-            msg["Reply-To"] = ", ".join(str(a) for a in reply_to)
-        else:
-            msg[name] = value
+        try:
+            if name.lower() == "reply-to":
+                # Reply-To may be a single address or a comma-separated list; use
+                # the RFC 5322 list parser so quoted commas inside display names
+                # ('"Doe, Jane" <jane@example>') are not shattered.
+                reply_to = parse_header_address_list(value)
+                msg["Reply-To"] = ", ".join(str(a) for a in reply_to)
+            else:
+                msg[name] = value
+        except HeaderInjectionError:
+            raise
+        except ValueError as exc:
+            # Map any residual email-package rejection (e.g. a duplicate
+            # structural header) to a clean 400 instead of a 500.
+            raise HeaderInjectionError(f"invalid header {name!r}: {exc}") from exc
 
     for att in payload.attachments:
         main, sub = _split_ct(att.content_type)

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import os
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -54,6 +56,9 @@ class Settings(BaseSettings):
     smtp_port: int = 587
     smtp_starttls: bool = True
     smtp_timeout_s: float = 30.0
+    # Optional CA bundle for verifying the SMTP server certificate. Empty means
+    # "use the system trust store"; certificate verification is never disabled.
+    smtp_ca_file: str = ""
     envelope_sender: str = ""
 
     max_body_bytes: int = 26_214_400
@@ -70,14 +75,16 @@ def _reject_changeme(field_name: str, value: str) -> None:
         raise InvalidPolicyError(f"{field_name}: refuses placeholder/empty value")
 
 
+_SHA256_HEX_RE = re.compile(r"^[0-9a-f]{64}$")
+
+
 def _validate_sha256_hex(value: str) -> str:
+    # Strict canonical form only. `int(value, 16)` would accept non-canonical
+    # spellings (0x-prefix, +/- signs, underscore separators) that can never
+    # equal a real hashlib hexdigest, masking a misconfigured (dead) token.
     value = value.strip().lower()
-    if len(value) != 64:
-        raise InvalidPolicyError("token_sha256 must be 64 hex chars (sha256)")
-    try:
-        int(value, 16)
-    except ValueError as exc:
-        raise InvalidPolicyError("token_sha256 must be hex") from exc
+    if not _SHA256_HEX_RE.match(value):
+        raise InvalidPolicyError("token_sha256 must be 64 lowercase hex chars (sha256)")
     return value
 
 
@@ -154,8 +161,36 @@ def _load_smtp(raw: object) -> SmtpCredentials:
     return SmtpCredentials(username=username, password=password)
 
 
+# Permission bits that must NOT be set on the secrets file: any world access
+# (r/w/x) and group write/execute. Group *read* is intentionally allowed so the
+# deployment's `0640 root:<service-group>` layout works — the file is owned by
+# root and the service reads it via its dedicated group.
+_FORBIDDEN_SECRET_MODE_BITS = 0o037
+
+
+def _check_secret_file_permissions(path: Path) -> None:
+    """Refuse to load a secrets file that is world-accessible or group-writable.
+
+    The file holds the SMTP password and token hashes; an over-permissive mode
+    (e.g. ``0644`` or ``0660``) would expose or allow tampering with them. We
+    require ``0640`` or stricter (``0600``/``0400`` also fine). POSIX only; the
+    mode bits are not meaningful elsewhere. The error names only the path and
+    mode — never the secret content.
+    """
+    if os.name != "posix":
+        return
+    mode = path.stat().st_mode
+    if mode & _FORBIDDEN_SECRET_MODE_BITS:
+        raise InvalidPolicyError(
+            f"secrets file {str(path)!r} is world-accessible or group-writable "
+            f"(mode {oct(mode & 0o777)}); restrict it to 0640 or stricter"
+        )
+
+
 def load_secrets(path: str | Path) -> Secrets:
-    data_text = Path(path).read_text(encoding="utf-8")
+    resolved = Path(path)
+    _check_secret_file_permissions(resolved)
+    data_text = resolved.read_text(encoding="utf-8")
     try:
         data = yaml.safe_load(data_text)
     except yaml.YAMLError as exc:

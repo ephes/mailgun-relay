@@ -36,6 +36,49 @@ def test_validate_subject_too_long() -> None:
         validate_subject("a" * 1000, max_length=998)
 
 
+@pytest.mark.parametrize(
+    "payload",
+    [
+        "Hi\x00World",  # NUL truncation
+        "Hi\x0bWorld",  # vertical tab
+        "Hi\x0cWorld",  # form feed
+        "Hi\x85World",  # NEL (C1)
+        "Hi\u2028World",  # line separator
+        "Hi\u2029World",  # paragraph separator
+    ],
+)
+def test_validate_subject_rejects_control_and_unicode_separators(payload: str) -> None:
+    with pytest.raises(HeaderInjectionError):
+        validate_subject(payload, max_length=998)
+
+
+def test_validate_subject_allows_tab() -> None:
+    assert validate_subject("Hello\tthere", max_length=998) == "Hello\tthere"
+
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        "Sender",
+        "MIME-Version",
+        "Content-Type",
+        "Content-Transfer-Encoding",
+        "Content-Disposition",
+        "Content-ID",
+        "Disposition-Notification-To",
+        "Return-Receipt-To",
+    ],
+)
+def test_custom_headers_reject_structural_and_spoof_headers(name: str) -> None:
+    with pytest.raises(DangerousHeaderError):
+        validate_custom_headers({name: "x@example.test"}, max_value_length=998)
+
+
+def test_custom_headers_reject_nul_in_value() -> None:
+    with pytest.raises(HeaderInjectionError):
+        validate_custom_headers({"X-Thing": "a\x00b"}, max_value_length=998)
+
+
 def test_custom_headers_accept_reply_to() -> None:
     out = validate_custom_headers({"Reply-To": "support@example.test"}, max_value_length=998)
     assert out == {"Reply-To": "support@example.test"}

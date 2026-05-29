@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import smtplib
+import ssl
 from dataclasses import dataclass
 from email.message import EmailMessage
 from enum import StrEnum
@@ -34,6 +35,24 @@ class SmtpTransport:
     password: str | None
     use_starttls: bool
     timeout_s: float
+    # Optional path to a CA bundle used to verify the SMTP server certificate.
+    # Empty/None means "use the system trust store". Verification is always on;
+    # there is deliberately no switch to disable certificate validation.
+    ca_file: str | None = None
+
+
+def _tls_context(transport: SmtpTransport) -> ssl.SSLContext:
+    """Build a verifying TLS context (CERT_REQUIRED + hostname check).
+
+    ``smtplib`` passes ``server_hostname=transport.host`` into the TLS
+    handshake, so ``create_default_context`` gives both chain verification and
+    hostname matching for free. A private-CA deployment can point ``ca_file`` at
+    its bundle; we never disable verification.
+    """
+    context = ssl.create_default_context()
+    if transport.ca_file:
+        context.load_verify_locations(cafile=transport.ca_file)
+    return context
 
 
 _PERMANENT_TYPES: tuple[type[BaseException], ...] = (
@@ -94,10 +113,21 @@ def submit(
     try:
         with smtplib.SMTP(transport.host, transport.port, timeout=transport.timeout_s) as smtp:
             smtp.ehlo()
+            tls_active = False
             if transport.use_starttls:
-                smtp.starttls()
+                # Verify the server certificate and hostname; raises on a
+                # server that does not advertise STARTTLS (downgrade attempt).
+                smtp.starttls(context=_tls_context(transport))
                 smtp.ehlo()
+                tls_active = True
             if transport.username is not None and transport.password is not None:
+                if not tls_active:
+                    # Never transmit SMTP credentials over an unencrypted
+                    # channel — fail closed instead of leaking them in cleartext.
+                    raise SmtpSubmitError(
+                        FailureCategory.PERMANENT,
+                        reason="refusing to send SMTP credentials over a non-TLS connection",
+                    )
                 smtp.login(transport.username, transport.password)
             smtp.send_message(
                 message,

@@ -59,7 +59,15 @@ The service must treat every request as untrusted until token, domain, and sende
 
 ### mailgun-relay to SMTP backend
 
-This boundary uses authenticated SMTP submission. The service should have dedicated SMTP credentials with the smallest practical sender permissions.
+This boundary uses authenticated SMTP submission over STARTTLS with full
+certificate **and hostname verification** (`ssl.create_default_context()`).
+Verification cannot be disabled; a private-CA backend is supported by pointing
+`MAILGUN_RELAY_SMTP_CA_FILE` at its bundle. The service refuses to send SMTP
+credentials over a connection that is not TLS-protected, so a misconfiguration
+fails closed rather than leaking the credentials in cleartext.
+
+The service should have dedicated SMTP credentials with the smallest practical
+sender permissions.
 
 SMTP credentials are deployment secrets. They must not be stored in this repo.
 
@@ -67,7 +75,7 @@ The backend uses a PostfixAdmin-style schema and exposes sender/login binding th
 
 ### mailgun-relay to local secret storage
 
-Deployment secrets are expected to be rendered by `ops-control` to a root/service-readable file or equivalent secret mechanism. The service host must protect token verifiers and SMTP credentials at rest with restrictive owner and mode settings. Startup and validation errors must not print secret values or full decrypted secret content.
+Deployment secrets are expected to be rendered by `ops-control` to a root/service-readable file or equivalent secret mechanism. The service host must protect token verifiers and SMTP credentials at rest with restrictive owner and mode settings. This is **enforced at load**: the service refuses to read a secrets file that is world-accessible or group-writable, requiring `0640` (the deployment's `root:mailgun-relay` layout) or stricter. Startup and validation errors must not print secret values or full decrypted secret content (the permission error names only the path and octal mode).
 
 ### mailgun-relay logs and monitoring
 
@@ -167,9 +175,19 @@ MIME construction should use Python's standard `email` package or a mature libra
 
 The service should reject:
 
-- Header injection in addresses, subject, or accepted header fields.
-- Attachments over configured size limits.
-- Forbidden or dangerous custom headers, including `Bcc`, `Received`, `Return-Path`, and `Resent-*`.
+- Header injection in addresses, subject, or accepted header fields. The
+  control-character check covers CR, LF, NUL, all other C0/C1 controls (tab
+  excepted), and the Unicode line/paragraph separators — not just CR/LF.
+- Attachments over configured size limits (checked against the spooled size
+  before the file is read into memory).
+- Request bodies over `max_body_bytes`, rejected at the ASGI layer (via
+  `Content-Length` and a streamed byte count) before the body is buffered.
+- Forbidden or dangerous custom headers. The denylist covers relay-managed and
+  addressing headers (`Bcc`, `Received`, `Return-Path`, `Message-Id`, `Date`,
+  `From`, `To`, `Cc`, `Subject`, `Resent-*`), the identity header `Sender`,
+  structural MIME headers (`MIME-Version`, `Content-Type`,
+  `Content-Transfer-Encoding`, `Content-Disposition`, `Content-ID`), and
+  receipt headers (`Disposition-Notification-To`, `Return-Receipt-To`).
 - Custom header values over configured length limits.
 - Unsupported Mailgun fields according to the explicit namespace policy below.
 

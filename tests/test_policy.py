@@ -99,6 +99,24 @@ def test_from_address_in_allowlist_ok() -> None:
     )
 
 
+def test_from_address_idn_allowlist_ok() -> None:
+    """An IDN sender stored as an A-label must match a U-label request.
+
+    Regression for the normalization mismatch where ``email_validator``
+    returns the domain as a U-label but the allowlist stores A-labels.
+    """
+    p = _policy(
+        mailgun_domains={"xn--wersdrfer-47a.de"},
+        allowed_from_domains={"xn--wersdrfer-47a.de"},
+        allowed_from_addresses={normalize_address("jochen@wersdörfer.de")},
+    )
+    enforce_policy(
+        p,
+        path_domain="wersdörfer.de",
+        from_address="Jochen <jochen@wersdörfer.de>",
+    )
+
+
 def test_from_address_outside_allowlist_raises() -> None:
     p = _policy(
         mailgun_domains={"wersdoerfer.de"},
@@ -120,3 +138,21 @@ def test_invalid_from_address_raises() -> None:
     )
     with pytest.raises(InvalidAddressError):
         enforce_policy(p, path_domain="wersdoerfer.de", from_address="not-an-email")
+
+
+def test_from_address_with_crlf_raises_invalid_not_policy() -> None:
+    """CRLF in `from` must be a parse/injection error, not silently reinterpreted.
+
+    `parseaddr` would otherwise extract an address from a smuggled second line;
+    the control-char guard turns that into InvalidAddressError (→ 400).
+    """
+    p = _policy(
+        mailgun_domains={"wersdoerfer.de"},
+        allowed_from_domains={"wersdoerfer.de"},
+    )
+    with pytest.raises(InvalidAddressError):
+        enforce_policy(
+            p,
+            path_domain="wersdoerfer.de",
+            from_address="ok@wersdoerfer.de\nBcc: evil@wersdoerfer.de",
+        )

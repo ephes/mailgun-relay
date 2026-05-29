@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import contextlib
+import os
 import time
 import uuid
 from dataclasses import dataclass
@@ -33,7 +34,6 @@ from mailgun_relay.policy import (
     normalize_domain,
 )
 from mailgun_relay.smtp_client import FailureCategory, SmtpSubmitError, SmtpTransport, submit
-from mailgun_relay.version import __version__
 
 
 @dataclass(frozen=True)
@@ -48,11 +48,26 @@ _KNOWN_FORM_FIELDS = frozenset(
     {"from", "to", "cc", "bcc", "subject", "text", "html", "amp-html", "attachment", "inline"}
 )
 
+# Headroom above max_recipients for the non-recipient fields a request may
+# legitimately carry (from/subject/text/html/amp-html plus custom h:* headers),
+# so the multipart field cap never rejects a well-formed message.
+_FORM_FIELD_HEADROOM = 100
+
+# Cap on the attacker-controlled `from` value written to the access log.
+_FROM_LOG_MAX_LEN = 320
+
+# Substrings in starlette's MultiPartException messages that mean "too big"
+# rather than "malformed", so they map to 413 instead of 400. Matched on the
+# stable phrasing; an unexpected wording degrades safely to 400.
+_MULTIPART_LIMIT_MARKERS = ("Too many files", "Too many fields", "exceeded maximum size")
+
 
 def register_routes(app: FastAPI) -> None:
     @app.get("/health")
     def health() -> dict[str, str]:
-        return {"status": "ok", "version": __version__}
+        # Intentionally does not disclose the service version to unauthenticated
+        # callers (avoids handing a CVE-matching hint to anyone who can reach it).
+        return {"status": "ok"}
 
     @app.post("/v3/{domain}/messages")
     async def post_messages(domain: str, request: Request) -> JSONResponse:
@@ -83,12 +98,33 @@ def register_routes(app: FastAPI) -> None:
             token_label = policy.label
 
             try:
-                form = await request.form()
+                # Bound the multipart parser to the relay's own policy so it
+                # cannot spool far more parts/bytes than we will ever accept.
+                # `max_files` leaves room for the relay's own 413 on the
+                # (max_attachments + 1)th file; starlette's cap is a backstop.
+                form = await request.form(
+                    max_files=state.settings.max_attachments + 1,
+                    max_fields=state.settings.max_recipients + _FORM_FIELD_HEADROOM,
+                    max_part_size=state.settings.max_body_bytes,
+                )
+            except PayloadTooLargeError:
+                # Raised by the ASGI body-size limit while streaming; preserve 413.
+                raise
             except Exception as exc:
+                # Starlette converts a MultiPartException into HTTPException(400);
+                # its resource-limit variants are really "payload too large", so
+                # map those to 413 to match the relay's own count/size limits and
+                # the documented contract. Genuinely malformed bodies stay 400.
+                detail = getattr(exc, "detail", "") or str(exc)
+                if any(marker in detail for marker in _MULTIPART_LIMIT_MARKERS):
+                    raise PayloadTooLargeError("request exceeds multipart limits") from exc
                 raise BadRequestError(f"malformed multipart form: {type(exc).__name__}") from exc
 
             parsed = _parse_form(form, state.settings)
-            from_for_log = parsed.from_address
+            # Cap the logged (attacker-controlled, pre-validation) value so a
+            # huge `from` cannot bloat each log line. JSON encoding already
+            # neutralizes control chars, so truncation is the only gap left.
+            from_for_log = parsed.from_address[:_FROM_LOG_MAX_LEN]
 
             enforce_policy(
                 policy,
@@ -146,7 +182,15 @@ def register_routes(app: FastAPI) -> None:
             result = "auth_error"
             status_code = 401
             return _err_response(status_code, "Unauthorized", realm=True)
-        except (PolicyError, InvalidAddressError) as exc:
+        except InvalidAddressError as exc:
+            # A malformed or injected address is a bad request, not an
+            # authorization failure — must precede the PolicyError handler
+            # because InvalidAddressError is a PolicyError subclass.
+            error_class = type(exc).__name__
+            result = "bad_request"
+            status_code = 400
+            return _err_response(status_code, str(exc))
+        except PolicyError as exc:
             error_class = type(exc).__name__
             result = "policy_error"
             status_code = 403
@@ -330,9 +374,15 @@ def _read_upload(value: object, settings: Settings) -> Attachment:
     if not isinstance(value, UploadFile):
         raise BadRequestError("attachment/inline must be an uploaded file")
     try:
-        data = value.file.read()
-        if len(data) > settings.max_attachment_bytes:
+        # Determine the spooled size before pulling the whole file into memory,
+        # so an oversized attachment is rejected without a large allocation.
+        fileobj = value.file
+        fileobj.seek(0, os.SEEK_END)
+        size = fileobj.tell()
+        fileobj.seek(0)
+        if size > settings.max_attachment_bytes:
             raise PayloadTooLargeError(f"attachment {value.filename!r} exceeds max size")
+        data = fileobj.read()
         content_type = value.content_type or "application/octet-stream"
         return Attachment(
             filename=value.filename or "attachment",
