@@ -4,6 +4,46 @@ All notable changes to mailgun-relay are documented here.
 
 ## Unreleased
 
+### Mailgun decommission status (re-established 2026-08-04)
+
+The 0.1.0 *Operator follow-ups* section claimed the commercial Mailgun API key
+"was rotated out during this migration" and only needed revoking. That was true
+of `homepage` and `python-podcast` and of nothing else, and it has been read
+since as "the Mailgun account is done". It is not. What the Mailgun API and the
+deployed hosts actually say:
+
+- **The Mailgun account is live and carrying traffic.** `GET /v3/domains`
+  returns seven domains, six of them `active`. Account-wide `GET
+  /v3/stats/total?duration=30d` reports 2360 `accepted` against 56 `delivered`
+  in the last 30 days, which is what pushed a 1000-message Flex allowance to
+  1356 of 1000 in the billing period. Almost all of that volume is retried mail
+  that never lands.
+- **Only two applications still send through Mailgun, and neither can use this
+  relay.** Takahe (`fedi.python-podcast.de`) and Mastodon
+  (`fedi.wersdoerfer.de`), in production *and* staging, speak plain SMTP to
+  `smtp.mailgun.org:587`. This service is an HTTP shim for the Mailgun Messages
+  API; it has no SMTP listener, so it is the wrong tool for them. They move to
+  the home backend's submission service instead — see
+  `ops-control/runbooks/mail-fedi-smtp-cutover.md`.
+- All four of those deployments authenticate as the *same* Mailgun SMTP login,
+  `postmaster@mg.wersdoerfer.de`, with the same 50-character password
+  (confirmed by comparing SHA-256 of the deployed values across both hosts).
+  That password was disclosed in cleartext during an operator session and has
+  to be rotated in the Mailgun control panel, which is a four-deployment change.
+- **The commercial API key is still live.** One private API key — shared by
+  `dotcom` prod, `lead` prod and staging, `ohrkanal` prod and `registry`
+  staging — authenticates successfully against `GET /v3/domains` today. Two
+  further keys found in deployed `.env` files (`django-chat` staging,
+  `konektom` staging) are already dead: both regions answer
+  `401 {"message": "Invalid private key"}`.
+- `homepage` and `python-podcast` (both environments), `villakunterbunt`
+  staging and `recorder` are confirmed on relay tokens: their deployed `.env`
+  carries `MAILGUN_API_URL=https://mailgun.home.xn--wersdrfer-47a.de/v3`.
+
+The ordered decommission plan, the manual steps and the verification gate live
+in `ops-control/runbooks/mailgun-decommission.md`. Nothing in this repository
+has to change for it.
+
 ### Observability
 
 - **The service now logs a `startup` line.** Previously the relay only logged
@@ -212,6 +252,16 @@ Both staging environments delivered real mail to their respective
 `ADMINS` mailbox via the relay. Both responses' `id` matched the SMTP
 `Message-Id:` header observed on the home mail stack.
 
+> **`jochen-<tag>@` addresses below are real, not typos.** Postfix and Dovecot
+> on the home backend are both configured with `recipient_delimiter = -`, so
+> `jochen-homepage@wersdoerfer.de` and `jochen-pythonpodcast@wersdoerfer.de`
+> are tagged forms of the `jochen@` mailbox and deliver to it. The tag is how
+> the operator traces which application sent a message, and the LMTP lines
+> below show exactly that. Do not "fix" them to the untagged address —
+> that mistake has already been made once while auditing this file, and it
+> discards the only routing evidence in the record. Note that the delimiter is
+> `-`, not the `+` that Gmail and most providers use.
+
 Outgoing send: `homepage` staging
 - relay `request_id`: `37ece89243734e0cab6b3adc6b31c767`
 - relay `message_id`: `<73528a08bbef4c87967da86e12159336@mailgun.home.xn--wersdrfer-47a.de>`
@@ -250,20 +300,45 @@ are evidence of the policy enforcement.
   panel** to close that surface. The value is intentionally not reproduced
   here — retrieve it from git history of `ops-control/secrets/{staging,prod}/{homepage,python-podcast}.yml`
   prior to the rotation if needed for the revocation lookup.
+
+  **Superseded, and it was wrong in a way that mattered.** Rotating these two
+  applications did not disarm the key: the same private API key is deployed in
+  five other places that this migration never touched (`dotcom` prod, `lead`
+  prod, `lead` staging, `ohrkanal` prod, `registry` staging), and as of
+  2026-08-04 it still authenticates against the Mailgun API. Revoking it therefore breaks
+  those consumers rather than merely closing a surface, and it is not the last
+  step either — Takahe and Mastodon still send over Mailgun *SMTP*, which no
+  API-key revocation touches. See *Unreleased → Mailgun decommission status*
+  above and `ops-control/runbooks/mailgun-decommission.md` for the ordered
+  procedure. `ops-control/docs/MAILGUN_CREDENTIAL_DISARM.md` has the per-key
+  breakdown.
 - `mailgun-relay@xn--wersdrfer-47a.de` PostfixAdmin mailbox was created
   during this migration with the password supplied to the provisioning
   script. If the mailbox needs to be rotated, run the provisioning
   script again with a new password and update the PostfixAdmin
   mailbox row (`UPDATE mailbox SET password = ... WHERE username = ...`).
+
+  Still true. Worth knowing: because it was created out-of-band it is *not* in
+  `ops-control/secrets/prod/mail-users.yml`, so `just mail-users-sync` will
+  neither recreate nor rotate it.
 - The `homepage` + `python-podcast` Justfile entries in `ops-control`
   pass `-l "$host"` but not `-e target_host="$host"`, which makes
   `just deploy-one homepage staging` a no-op (no hosts match). Until the
   Justfile is updated, deploy staging with
   `ansible-playbook ... -e target_host=staging`.
+
+  Still true as of 2026-08-04, for a slightly different reason than described:
+  the recipe now defaults the host, but still passes only `-l`, and
+  `inventories/prod/hosts.yml` puts just `production` in the `homepage` and
+  `python_podcast` groups. `-l staging` therefore still matches no host.
 - Production rollout: after smoke-testing the staging behavior, the
   `prod` SOPS files already contain the relay token + `mailgun_api_url`,
   so `just deploy-one homepage` and `just deploy-one python-podcast` will
   pick up the relay automatically.
+
+  Done. Both production `.env` files on the edge host carry
+  `MAILGUN_API_URL=https://mailgun.home.xn--wersdrfer-47a.de/v3` and a relay
+  token, and neither has produced a Mailgun event in the retention window.
 
 ### Non-goals (explicit, not deferred)
 

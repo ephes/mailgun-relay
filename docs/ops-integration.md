@@ -130,6 +130,12 @@ tokens:
       - "jochen-homepage@wersdoerfer.de"
 ```
 
+`jochen-homepage@wersdoerfer.de` is a real, deliverable address, not a
+placeholder: the home mail backend runs Postfix and Dovecot with
+`recipient_delimiter = -`, so `jochen-<tag>@wersdoerfer.de` is a tagged form of
+the `jochen@` mailbox and the tag records which application sent the message.
+The delimiter is `-`, not the `+` most providers use.
+
 This example is structural only. Do not commit real tokens, SMTP passwords,
 private keys, or decrypted secret output. The raw token is never stored on
 the relay host — only its `token_sha256` lives in SOPS; the raw value goes
