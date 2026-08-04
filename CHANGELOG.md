@@ -14,7 +14,7 @@ deployed hosts actually say:
 
 - **The Mailgun account is live and carrying traffic.** `GET /v3/domains`
   returns seven domains, six of them `active`. Account-wide `GET
-  /v3/stats/total?duration=30d` reports 2360 `accepted` against 56 `delivered`
+  /v3/stats/total?duration=30d` reports 1180 `accepted` against 28 `delivered`
   in the last 30 days, which is what pushed a 1000-message Flex allowance to
   1356 of 1000 in the billing period. Almost all of that volume is retried mail
   that never lands.
@@ -33,9 +33,11 @@ deployed hosts actually say:
 - **The commercial API key is still live.** One private API key — shared by
   `dotcom` prod, `lead` prod and staging, `ohrkanal` prod and `registry`
   staging — authenticates successfully against `GET /v3/domains` today. Two
-  further keys found in deployed `.env` files (`django-chat` staging,
-  `konektom` staging) are already dead: both regions answer
-  `401 {"message": "Invalid private key"}`.
+  further values found in deployed `.env` files (`django-chat` staging,
+  `konektom` staging) are dead: both regions answer `401` on `GET /v3/domains`
+  *and* on `POST /v3/{domain}/messages`, so they are not scoped domain sending
+  keys either, and at 22 and 9 characters they are nowhere near the 36
+  characters of a real Mailgun private key.
 - `homepage` and `python-podcast` (both environments), `villakunterbunt`
   staging and `recorder` are confirmed on relay tokens: their deployed `.env`
   carries `MAILGUN_API_URL=https://mailgun.home.xn--wersdrfer-47a.de/v3`.
