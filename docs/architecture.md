@@ -81,6 +81,15 @@ Deployment secrets are expected to be rendered by `ops-control` to a root/servic
 
 Logs are an information boundary. They may contain request ids, token labels, domains, senders, recipient counts, generated message ids, and failure categories. They must not contain token values, SMTP passwords, message bodies, or attachment content.
 
+The service emits two record types, both as one JSON object per line on stdout (journald under systemd):
+
+- `event=startup`, once per process start, carrying the effective configuration (version, bind address, public host, SMTP host/port/STARTTLS, custom-CA flag, log level, configured token labels, body and recipient caps).
+- `event=request`, once per `POST /v3/{domain}/messages`.
+
+`GET /health` deliberately logs nothing, so the deploy-time health probe does not pollute the access log.
+
+The `startup` record exists because a relay with no traffic would otherwise be indistinguishable from a relay whose logging is broken. Do not assume silence means a buffering problem: `logging.StreamHandler` flushes after every record, so records reach journald as they are emitted without `PYTHONUNBUFFERED`. If history is missing rather than current records, check journald retention on the host, not the service.
+
 ## Token Model
 
 The token model is policy based:

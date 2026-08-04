@@ -44,6 +44,33 @@ Django app using django-anymail
 
 The existing mail stack remains responsible for SMTP delivery, DKIM signing, SPF/DMARC alignment, queueing, and downstream relay behavior. This service is the HTTP compatibility boundary for trusted applications.
 
+## Observability
+
+The service writes one JSON object per line to stdout. Under systemd that is
+journald, so `journalctl -u mailgun-relay -f` is the live view.
+
+- `event=startup` — one record per process start, with the effective
+  configuration: version, bind address, public host, SMTP host/port/STARTTLS,
+  whether a custom CA bundle is in use, log level, the configured token
+  *labels*, and the body/recipient caps. Raising `MAILGUN_RELAY_LOG_LEVEL`
+  above `INFO` quietens the request records but never this one.
+- `event=request` — one record per `POST /v3/{domain}/messages`, with
+  `request_id`, `token_label`, `path_domain`, `from`, `recipient_count`,
+  `message_id`, `result`, `status_code`, `error_class`, `duration_ms`.
+
+Neither record contains token values or hashes, the `Authorization` header,
+SMTP credentials, message bodies, or attachment content.
+
+A relay nobody has asked to send anything logs nothing between restarts — that
+is normal, not a fault. The `startup` record is the anchor: if it is there, the
+logging pipeline works. Log records are flushed per record, so `PYTHONUNBUFFERED`
+is not needed; if recent records are present but older history is gone, the
+cause is journald retention on the host, not the service.
+
+`GET /health` returns `{"status":"ok"}`, touches no SMTP, and writes no log
+line. It deliberately omits the service version: the ingress router has no path
+restriction, so the endpoint is reachable by unauthenticated callers.
+
 ## Boundaries
 
 In scope:

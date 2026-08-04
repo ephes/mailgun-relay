@@ -4,6 +4,27 @@ All notable changes to mailgun-relay are documented here.
 
 ## Unreleased
 
+### Observability
+
+- **The service now logs a `startup` line.** Previously the relay only logged
+  per request, so a relay that had simply not been asked to send anything was
+  indistinguishable from a relay whose logging was broken — and that ambiguity
+  led to a wrong diagnosis ("the relay logs nothing to journald"). Every
+  process start now emits one structured record with `event=startup` carrying
+  the version, bind address, public host, SMTP host/port/STARTTLS, whether a
+  custom CA bundle is in use, the effective log level, the configured token
+  *labels*, and the body/recipient caps. It obeys the same information
+  boundary as the access log: no token values or hashes, no SMTP credentials.
+  It is emitted at INFO or at the configured level, whichever is higher, so
+  raising `MAILGUN_RELAY_LOG_LEVEL` to quieten the per-request records cannot
+  take the anchor away with them.
+- **No buffering fix was needed, and the reason is now pinned by a test.**
+  `logging.StreamHandler.emit` flushes its stream after every record, so log
+  lines reach journald as they are emitted even though systemd gives the
+  process a block-buffered stdout pipe. `PYTHONUNBUFFERED` is not required for
+  the relay's own log output. `tests/test_logging.py` asserts the per-record
+  flush so the guarantee cannot silently regress.
+
 ### Security hardening
 
 Findings from a full security review of the service, fixed in this change. No
@@ -85,6 +106,8 @@ django-anymail clients.
   field), 413 (payload too large), 502 (SMTP permanent / auth), 503 (SMTP
   temporary), 500 (internal).
 - `GET /health` returns `{"status":"ok","version":...}` without touching SMTP.
+  **Superseded:** the version field was removed under *Unreleased → Security
+  hardening → Behavior*; the current contract is `{"status":"ok"}`.
 - Structured JSON access log per request with `request_id, token_label,
   path_domain, from, recipient_count, message_id, result, status_code,
   error_class, duration_ms`. Never logs token values, the SMTP password,
