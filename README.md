@@ -23,7 +23,7 @@ uv sync
 uv run pytest -q
 uv run ruff check .
 uv run ruff format --check .
-uv run mypy src
+uv run mypy
 ```
 
 GitHub Actions (`.github/workflows/ci.yml`) runs the same checks on every push
@@ -55,11 +55,18 @@ journald, so `journalctl -u mailgun-relay -f` is the live view.
 - `event=startup` — one record per process start, with the effective
   configuration: version, bind address, public host, SMTP host/port/STARTTLS,
   whether a custom CA bundle is in use, the SMTP concurrency cap, log level,
-  the configured token *labels*, and the body/recipient caps. Raising `MAILGUN_RELAY_LOG_LEVEL`
+  the configured token *labels*, the body/recipient caps, and
+  `fail_on_partial_refusal`. Raising `MAILGUN_RELAY_LOG_LEVEL`
   above `INFO` quietens the request records but never this one.
 - `event=request` — one record per `POST /v3/{domain}/messages`, with
   `request_id`, `token_label`, `path_domain`, `from`, `recipient_count`,
-  `message_id`, `result`, `status_code`, `error_class`, `duration_ms`.
+  `refused_count`, `message_id`, `result`, `status_code`, `error_class`,
+  `duration_ms`.
+- `event=recipients_refused` — a `WARNING` emitted when the SMTP server
+  accepted the message for some recipients and refused others. It carries the
+  same `request_id`/`message_id` as the request record, `refused_count`, and a
+  `refused` list of `{domain, code}` pairs. Local parts and the SMTP reply text
+  are never logged. See `docs/api-compatibility.md` for the HTTP behaviour.
 
 Neither record contains token values or hashes, the `Authorization` header,
 SMTP credentials, message bodies, or attachment content.

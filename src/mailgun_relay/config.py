@@ -63,6 +63,12 @@ class Settings(BaseSettings):
     # thread); further sends queue until a slot frees up.
     smtp_max_concurrency: int = Field(default=8, ge=1)
     envelope_sender: str = ""
+    # When the SMTP server accepts the message for some recipients but refuses
+    # others, the relay answers 200 by default (the message *was* sent, and a
+    # client retry would duplicate it for the accepted recipients) and logs a
+    # WARNING. Set this to answer 502 instead, for callers that prefer a hard
+    # failure over a partially delivered message.
+    fail_on_partial_refusal: bool = False
 
     max_body_bytes: int = 26_214_400
     max_attachments: int = 10

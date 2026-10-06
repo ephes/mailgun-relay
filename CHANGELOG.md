@@ -46,6 +46,31 @@ The ordered decommission plan, the manual steps and the verification gate live
 in `ops-control/runbooks/mailgun-decommission.md`. Nothing in this repository
 has to change for it.
 
+### Delivery reliability
+
+- **Partially refused recipients are no longer dropped silently.** When the
+  submission server accepted a message for some recipients and refused others
+  at `RCPT TO`, `smtplib` returned the refused ones instead of raising, the
+  relay discarded that return value, answered `200 "Queued. Thank you."` and
+  logged nothing about it. The relay still answers `200` by default — the
+  message was accepted for the others, a client retry would duplicate it, and
+  real Mailgun reports per-recipient failures only asynchronously — but now
+  logs one `WARNING` record `event=recipients_refused` with the refused
+  *domains* and SMTP codes (never local parts or reply text), and the request
+  record gains `refused_count` and `result=partial_refusal`. A refusal of every
+  recipient is still a `502`.
+- **New setting `MAILGUN_RELAY_FAIL_ON_PARTIAL_REFUSAL` (default `false`).**
+  When `true`, a partial refusal answers `502` instead of `200`. Callers that
+  enable it must not blindly retry. The value is included in the `startup` log
+  line.
+- Operators who alert on `result != "ok"` in the access log will now also see
+  `partial_refusal` on `200` responses; that is intended.
+
+### Development
+
+- `[tool.mypy] files` now includes `tests`, so a bare `uv run mypy` (README
+  quickstart and CI) type-checks the tests as well as the package.
+
 ### Availability
 
 - **A slow SMTP backend no longer freezes the relay.** `POST

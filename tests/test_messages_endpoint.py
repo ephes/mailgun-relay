@@ -4,11 +4,17 @@ import base64
 import io
 import json
 import logging
+import tomllib
+from collections.abc import Iterator
+from dataclasses import replace
+from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
 
+from mailgun_relay.app import create_app
 from mailgun_relay.logging_setup import _JsonFormatter, access_logger
+from mailgun_relay.routes import AppState
 from mailgun_relay.smtp_client import FailureCategory, SmtpSubmitError
 from tests.conftest import RecordingSubmitter
 
@@ -522,3 +528,144 @@ def test_log_redacts_token_and_smtp_password(
     assert rec["status_code"] == 200
     assert rec["message_id"].startswith("<")
     assert rec["from"] == "Jochen <jochen-homepage@wersdoerfer.de>"
+
+
+# --- Partial recipient refusal ------------------------------------------------
+
+
+def _partial_form() -> dict[str, list[str]]:
+    form = _minimum_form()
+    form["to"] = ["admin@wersdoerfer.de", "gone-user@Example.org"]
+    form["bcc"] = ["hidden-user@example.net"]
+    return form
+
+
+@pytest.fixture
+def access_log_lines() -> Iterator[io.StringIO]:
+    buf = io.StringIO()
+    handler = logging.StreamHandler(buf)
+    handler.setFormatter(_JsonFormatter())
+    log = access_logger()
+    saved_handlers = list(log.handlers)
+    saved_propagate = log.propagate
+    saved_level = log.level
+    log.handlers = [handler]
+    log.setLevel(logging.INFO)
+    log.propagate = False
+    try:
+        yield buf
+    finally:
+        handler.flush()
+        log.handlers = saved_handlers
+        log.propagate = saved_propagate
+        log.setLevel(saved_level)
+
+
+def _records(buf: io.StringIO) -> list[dict[str, object]]:
+    return [json.loads(line) for line in buf.getvalue().splitlines() if line.strip()]
+
+
+def test_partial_refusal_answers_200_and_reports_refusals_in_logs(
+    client: TestClient,
+    auth: dict[str, str],
+    recording_smtp: RecordingSubmitter,
+    access_log_lines: io.StringIO,
+) -> None:
+    recording_smtp.refused = {
+        "gone-user@Example.org": (550, b"5.1.1 <gone-user@Example.org>: no such user"),
+        "hidden-user@example.net": (450, b"4.2.0 <hidden-user@example.net>: greylisted"),
+    }
+    r = client.post("/v3/mg.wersdoerfer.de/messages", headers=auth, data=_partial_form())
+
+    # Mailgun-compatible: the message was accepted for the other recipient, so
+    # the body keeps the exact shape Anymail parses, and a retry would only
+    # duplicate it.
+    assert r.status_code == 200, r.text
+    assert r.json()["message"] == "Queued. Thank you."
+
+    out = access_log_lines.getvalue()
+    # Local parts of refused recipients are personal data and never logged,
+    # neither directly nor through the SMTP reply text that echoes them.
+    assert "gone-user" not in out
+    assert "hidden-user" not in out
+    assert "no such user" not in out
+
+    records = _records(access_log_lines)
+    warning = next(rec for rec in records if rec.get("event") == "recipients_refused")
+    request = next(rec for rec in records if rec.get("event") == "request")
+    assert warning["level"] == "WARNING"
+    assert warning["refused_count"] == 2
+    assert warning["recipient_count"] == 3
+    assert warning["refused"] == [
+        {"domain": "example.net", "code": 450},
+        {"domain": "example.org", "code": 550},
+    ]
+    assert warning["request_id"] == request["request_id"]
+    assert warning["message_id"] == request["message_id"] == r.json()["id"]
+    assert request["refused_count"] == 2
+    assert request["recipient_count"] == 3
+    assert request["result"] == "partial_refusal"
+    assert request["status_code"] == 200
+
+
+def test_full_acceptance_logs_zero_refusals(
+    client: TestClient,
+    auth: dict[str, str],
+    access_log_lines: io.StringIO,
+) -> None:
+    r = client.post("/v3/mg.wersdoerfer.de/messages", headers=auth, data=_minimum_form())
+    assert r.status_code == 200, r.text
+    records = _records(access_log_lines)
+    assert not any(rec.get("event") == "recipients_refused" for rec in records)
+    request = next(rec for rec in records if rec.get("event") == "request")
+    assert request["refused_count"] == 0
+    assert request["result"] == "ok"
+
+
+@pytest.fixture
+def strict_client(app_state: AppState) -> Iterator[TestClient]:
+    settings = app_state.settings.model_copy(update={"fail_on_partial_refusal": True})
+    app = create_app(app_state=replace(app_state, settings=settings))
+    with TestClient(app) as tc:
+        yield tc
+
+
+def test_partial_refusal_answers_502_when_configured(
+    strict_client: TestClient,
+    auth: dict[str, str],
+    recording_smtp: RecordingSubmitter,
+    access_log_lines: io.StringIO,
+) -> None:
+    recording_smtp.refused = {"gone-user@example.org": (550, b"no")}
+    r = strict_client.post("/v3/mg.wersdoerfer.de/messages", headers=auth, data=_partial_form())
+    assert r.status_code == 502
+    body = r.json()
+    assert set(body) == {"message"}
+    assert "1 of 3" in body["message"]
+    assert "gone-user" not in body["message"]
+    # The message was still handed to SMTP once; the relay does not retry.
+    assert len(recording_smtp.calls) == 1
+
+    records = _records(access_log_lines)
+    assert any(rec.get("event") == "recipients_refused" for rec in records)
+    request = next(rec for rec in records if rec.get("event") == "request")
+    assert request["status_code"] == 502
+    assert request["result"] == "partial_refusal"
+    assert request["refused_count"] == 1
+
+
+def test_strict_mode_full_acceptance_still_200(
+    strict_client: TestClient,
+    auth: dict[str, str],
+) -> None:
+    r = strict_client.post("/v3/mg.wersdoerfer.de/messages", headers=auth, data=_minimum_form())
+    assert r.status_code == 200, r.text
+
+
+def test_mypy_without_arguments_checks_the_tests() -> None:
+    """`uv run mypy` (README, CI) relies on pyproject's `files` list."""
+    pyproject = Path(__file__).resolve().parent.parent / "pyproject.toml"
+    config = tomllib.loads(pyproject.read_text(encoding="utf-8"))
+    files = config["tool"]["mypy"]["files"]
+    assert "tests" in files
+    assert "src/mailgun_relay" in files

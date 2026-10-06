@@ -85,6 +85,16 @@ Success response:
 
 The `id` should be unique enough for logs and client correlation. Prefer generating one Message-Id-shaped value, using it as the SMTP `Message-Id:` header, and returning the same value in the JSON response. Final SMTP delivery status is not represented by this response.
 
+### Partial recipient refusal
+
+The submission server can accept a message for some envelope recipients and refuse others at `RCPT TO`. `smtplib` raises only when *every* recipient is refused (that case is a 502, see the error table); otherwise it returns the refused ones, and the relay acts on them:
+
+- **Default: `200` with the unchanged success body.** The message has already been accepted for the other recipients, so an error status would make a retrying caller send it to them twice. Real Mailgun has no synchronous partial-failure response either: its only 200 is `{"id", "message": "Queued. Thank you."}`, and per-recipient rejections surface later through events and webhooks. `django-anymail` parses exactly that shape (it requires `id` and a `message` starting with `Queued`) and marks every recipient `queued`; the relay therefore does not add fields to the body.
+- **Always logged.** The relay emits one `WARNING` record `event=recipients_refused` with `refused_count` and a `refused` list of `{domain, code}` pairs, and the request record gets `refused_count` and `result=partial_refusal`. Local parts of refused addresses and the SMTP reply text (which usually echoes the address) are never logged.
+- **Opt-in hard failure: `MAILGUN_RELAY_FAIL_ON_PARTIAL_REFUSAL=true`** maps a partial refusal to `502` with `{"message": "Upstream SMTP refused N of M recipients; the message was sent to the others"}`. Anymail raises `AnymailRequestsAPIError` for it. Callers that enable this must not blindly retry, because the accepted recipients already have the message.
+
+Recipients the server accepts but later bounces are outside the relay's view; those bounces go to the envelope sender like any other SMTP submission.
+
 ## Endpoint: `POST /v3/{domain}/messages.mime`
 
 Status: not implemented. Out of scope.
@@ -134,7 +144,8 @@ table below is therefore the contract the relay implements:
 | Request too large | 413 | Body, attachment, or recipient limits. |
 | Rate limited | 429 | Per-token or global. |
 | SMTP temporary failure/timeout/connection refused | 503 | Anymail does not retry on its own; the caller surfaces the status as `AnymailRequestsAPIError.status_code`. |
-| SMTP permanent rejection (5xx response, recipients refused, sender refused, helo failure) | 502 | Same Anymail exception shape; permanent vs. temporary is informational for callers that inspect `.status_code`. |
+| SMTP permanent rejection (5xx response, all recipients refused, sender refused, helo failure) | 502 | Same Anymail exception shape; permanent vs. temporary is informational for callers that inspect `.status_code`. |
+| Some (not all) recipients refused | 200 (default) or 502 | 200 with the normal success body plus a `recipients_refused` WARNING log; 502 only with `MAILGUN_RELAY_FAIL_ON_PARTIAL_REFUSAL=true`. See *Partial recipient refusal*. |
 | SMTP authentication failure (relay → backend) | 502 | Treated as a permanent upstream failure. Never exposes the credential. |
 | Internal error | 500 | Body is `{"message": "Internal Server Error"}`; no secrets or message bodies in response. |
 

@@ -86,6 +86,91 @@ def _msg() -> EmailMessage:
     return m
 
 
+class _RefusingHandler(_RecordingHandler):
+    """Accepts the message but refuses any recipient whose local part is `nope`."""
+
+    async def handle_RCPT(  # noqa: N802
+        self,
+        server: Any,
+        session: Any,
+        envelope: Any,
+        address: str,
+        rcpt_options: list[str],
+    ) -> str:
+        if address.startswith("nope@"):
+            return "550 5.1.1 <nope@refused.test>: Recipient address rejected"
+        envelope.rcpt_tos.append(address)
+        return "250 OK"
+
+
+@pytest.fixture
+def refusing_smtp() -> Iterator[tuple[_RefusingHandler, int]]:
+    handler = _RefusingHandler()
+    port = _free_port()
+    controller = Controller(handler, hostname="127.0.0.1", port=port)
+    controller.start()
+    try:
+        yield handler, port
+    finally:
+        controller.stop()
+
+
+def _plain_transport(port: int) -> SmtpTransport:
+    return SmtpTransport(
+        host="127.0.0.1",
+        port=port,
+        username=None,
+        password=None,
+        use_starttls=False,
+        timeout_s=5.0,
+    )
+
+
+def test_submit_returns_empty_refusals_when_all_accepted(
+    fake_smtp: tuple[_RecordingHandler, int],
+) -> None:
+    _, port = fake_smtp
+    refused = submit(
+        _msg(),
+        envelope_sender="relay@example.test",
+        recipients=["bob@example.test"],
+        transport=_plain_transport(port),
+    )
+    assert refused == {}
+
+
+def test_submit_returns_partially_refused_recipients(
+    refusing_smtp: tuple[_RefusingHandler, int],
+) -> None:
+    """smtplib does not raise when only some recipients are refused; submit()
+    must hand the refused ones back instead of dropping them."""
+    handler, port = refusing_smtp
+    refused = submit(
+        _msg(),
+        envelope_sender="relay@example.test",
+        recipients=["bob@example.test", "nope@refused.test"],
+        transport=_plain_transport(port),
+    )
+    assert handler.rcpt_tos == ["bob@example.test"]
+    assert list(refused) == ["nope@refused.test"]
+    code, _text = refused["nope@refused.test"]
+    assert code == 550
+
+
+def test_submit_all_recipients_refused_still_raises_permanent(
+    refusing_smtp: tuple[_RefusingHandler, int],
+) -> None:
+    _, port = refusing_smtp
+    with pytest.raises(SmtpSubmitError) as ei:
+        submit(
+            _msg(),
+            envelope_sender="relay@example.test",
+            recipients=["nope@refused.test"],
+            transport=_plain_transport(port),
+        )
+    assert ei.value.category is FailureCategory.PERMANENT
+
+
 def test_submit_happy_path(fake_smtp: tuple[_RecordingHandler, int]) -> None:
     handler, port = fake_smtp
     transport = SmtpTransport(

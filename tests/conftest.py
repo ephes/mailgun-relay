@@ -12,7 +12,7 @@ from fastapi.testclient import TestClient
 from mailgun_relay.app import create_app
 from mailgun_relay.config import Secrets, Settings, SmtpCredentials, TokenPolicy
 from mailgun_relay.routes import AppState
-from mailgun_relay.smtp_client import SmtpTransport
+from mailgun_relay.smtp_client import RefusedRecipients, SmtpTransport
 
 
 @dataclass
@@ -28,6 +28,9 @@ class RecordingSubmitter:
     """Drop-in replacement for `smtp_client.submit` used in route tests."""
 
     raise_with: Exception | None = None
+    # What the submitter returns: recipients the SMTP server refused while
+    # accepting the message for the rest (mirrors smtplib.send_message).
+    refused: RefusedRecipients = field(default_factory=dict)
     calls: list[RecordedSend] = field(default_factory=list)
 
     def __call__(
@@ -37,7 +40,7 @@ class RecordingSubmitter:
         envelope_sender: str,
         recipients: list[str],
         transport: SmtpTransport,
-    ) -> None:
+    ) -> RefusedRecipients:
         self.calls.append(
             RecordedSend(
                 envelope_sender=envelope_sender,
@@ -48,6 +51,7 @@ class RecordingSubmitter:
         )
         if self.raise_with is not None:
             raise self.raise_with
+        return dict(self.refused)
 
 
 _TEST_TOKEN_HOMEPAGE = "homepage-token-secret"

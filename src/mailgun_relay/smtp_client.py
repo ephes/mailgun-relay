@@ -27,6 +27,13 @@ class SmtpSubmitError(Exception):
         self.reason = reason
 
 
+# Recipients the SMTP server refused while still accepting the message for the
+# others: address -> (SMTP reply code, reply text). This is exactly what
+# ``smtplib.SMTP.send_message`` returns; it only *raises* when every recipient
+# is refused.
+RefusedRecipients = dict[str, tuple[int, bytes]]
+
+
 @dataclass(frozen=True)
 class SmtpTransport:
     host: str
@@ -104,11 +111,16 @@ def submit(
     envelope_sender: str,
     recipients: list[str],
     transport: SmtpTransport,
-) -> None:
+) -> RefusedRecipients:
     """Submit an EmailMessage via authenticated SMTP.
 
     Uses STARTTLS when transport.use_starttls is True. Raises SmtpSubmitError on any
     SMTP/connection failure; the exception's category drives the HTTP response mapping.
+
+    Returns the recipients the server refused while accepting the message for
+    the rest (empty when every recipient was accepted). A refusal of *all*
+    recipients is not returned: smtplib raises SMTPRecipientsRefused, which
+    becomes a PERMANENT SmtpSubmitError.
     """
     try:
         with smtplib.SMTP(transport.host, transport.port, timeout=transport.timeout_s) as smtp:
@@ -129,7 +141,7 @@ def submit(
                         reason="refusing to send SMTP credentials over a non-TLS connection",
                     )
                 smtp.login(transport.username, transport.password)
-            smtp.send_message(
+            refused = smtp.send_message(
                 message,
                 from_addr=envelope_sender,
                 to_addrs=recipients,
@@ -139,3 +151,4 @@ def submit(
     except BaseException as exc:
         category = _category_for(exc)
         raise SmtpSubmitError(category, reason=_safe_reason(exc)) from exc
+    return dict(refused)

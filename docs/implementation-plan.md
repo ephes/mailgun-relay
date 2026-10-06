@@ -129,7 +129,7 @@ Acceptance criteria:
 - Tests use a fake SMTP server or mocked SMTP client.
 - Tests assert envelope `MAIL FROM`, envelope recipients, BCC privacy, and bounce address behavior.
 - SMTP auth failures do not expose credentials.
-- Partial recipient failures have documented behavior.
+- Partial recipient failures have documented behavior. (Done: see `docs/api-compatibility.md`, *Partial recipient refusal*.)
 
 Future verification commands:
 

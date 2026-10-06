@@ -179,7 +179,7 @@ Rationale: Users need predictable behavior when SMTP is slow, temporarily unavai
 Acceptance criteria:
 
 - Timeouts are explicit.
-- Partial recipient acceptance behavior is documented and tested.
+- Partial recipient acceptance behavior is documented and tested. (Done: logged 200 by default, opt-in 502; see `docs/api-compatibility.md`.)
 - Retry policy is deliberate: either synchronous SMTP result only, or a queue is introduced with documented semantics.
 
 Notes/dependencies: MVP should prefer synchronous submission unless a queue becomes necessary.

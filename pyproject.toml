@@ -46,5 +46,5 @@ filterwarnings = [
 [tool.mypy]
 python_version = "3.14"
 strict = true
-files = ["src/mailgun_relay"]
+files = ["src/mailgun_relay", "tests"]
 plugins = ["pydantic.mypy"]

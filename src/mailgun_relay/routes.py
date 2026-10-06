@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import contextlib
 import functools
+import logging
 import os
 import time
 import uuid
@@ -36,7 +37,13 @@ from mailgun_relay.policy import (
     enforce_policy,
     normalize_domain,
 )
-from mailgun_relay.smtp_client import FailureCategory, SmtpSubmitError, SmtpTransport, submit
+from mailgun_relay.smtp_client import (
+    FailureCategory,
+    RefusedRecipients,
+    SmtpSubmitError,
+    SmtpTransport,
+    submit,
+)
 
 
 @dataclass(frozen=True)
@@ -92,6 +99,7 @@ def register_routes(app: FastAPI) -> None:
         token_label = "-"  # noqa: S105 - this is a log placeholder, not a password
         from_for_log = "-"
         recipient_count = 0
+        refused_count = 0
         message_id: str | None = None
         result = "ok"
         error_class = None
@@ -184,7 +192,7 @@ def register_routes(app: FastAPI) -> None:
             # The dedicated limiter caps concurrent SMTP sessions; requests
             # beyond the cap wait for a free slot. A client disconnect does
             # not abandon a submission already handed to the thread.
-            await anyio.to_thread.run_sync(
+            refused: RefusedRecipients | None = await anyio.to_thread.run_sync(
                 functools.partial(
                     submitter,
                     msg,
@@ -194,6 +202,29 @@ def register_routes(app: FastAPI) -> None:
                 ),
                 limiter=_smtp_limiter(state),
             )
+
+            if refused:
+                # The server accepted the message for the other recipients;
+                # smtplib reports the refused ones only through this return
+                # value. Never let them vanish behind a plain 200.
+                refused_count = len(refused)
+                _log_partial_refusal(
+                    log,
+                    request_id=request_id,
+                    token_label=token_label,
+                    path_domain=path_domain_log,
+                    message_id=message_id,
+                    recipient_count=recipient_count,
+                    refused=refused,
+                )
+                result = "partial_refusal"
+                if state.settings.fail_on_partial_refusal:
+                    status_code = 502
+                    return _err_response(
+                        status_code,
+                        f"Upstream SMTP refused {refused_count} of {recipient_count} "
+                        "recipients; the message was sent to the others",
+                    )
 
             return JSONResponse(
                 {"id": message_id, "message": "Queued. Thank you."},
@@ -265,6 +296,7 @@ def register_routes(app: FastAPI) -> None:
                     "path_domain": path_domain_log,
                     "from": from_for_log,
                     "recipient_count": recipient_count,
+                    "refused_count": refused_count,
                     "message_id": message_id or "-",
                     "result": result,
                     "status_code": status_code,
@@ -272,6 +304,58 @@ def register_routes(app: FastAPI) -> None:
                     "duration_ms": duration_ms,
                 },
             )
+
+
+def _refused_domain(address: str) -> str:
+    """Domain part of a refused envelope address, for logging.
+
+    Local parts are personal data and are never logged; an address without a
+    usable domain is logged as "-".
+    """
+    _, sep, domain = address.rpartition("@")
+    if not sep or not domain:
+        return "-"
+    return domain.lower()
+
+
+def _log_partial_refusal(
+    log: logging.Logger,
+    *,
+    request_id: str,
+    token_label: str,
+    path_domain: str,
+    message_id: str | None,
+    recipient_count: int,
+    refused: RefusedRecipients,
+) -> None:
+    """One WARNING per request whose recipients were partly refused.
+
+    Carries refused *domains* and SMTP reply codes only. The reply text is
+    omitted because servers commonly echo the full recipient address in it.
+    """
+    entries = sorted(
+        {(_refused_domain(address), _reply_code(reply)) for address, reply in refused.items()},
+        key=lambda entry: (entry[0], -1 if entry[1] is None else entry[1]),
+    )
+    log.warning(
+        "recipients_refused",
+        extra={
+            "event": "recipients_refused",
+            "request_id": request_id,
+            "token_label": token_label,
+            "path_domain": path_domain,
+            "message_id": message_id or "-",
+            "recipient_count": recipient_count,
+            "refused_count": len(refused),
+            "refused": [{"domain": domain, "code": code} for domain, code in entries],
+        },
+    )
+
+
+def _reply_code(reply: object) -> int | None:
+    if isinstance(reply, tuple) and reply and isinstance(reply[0], int):
+        return reply[0]
+    return None
 
 
 def _err_response(status_code: int, message: str, *, realm: bool = False) -> JSONResponse:
