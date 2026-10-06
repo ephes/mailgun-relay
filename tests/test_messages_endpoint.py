@@ -669,3 +669,41 @@ def test_mypy_without_arguments_checks_the_tests() -> None:
     files = config["tool"]["mypy"]["files"]
     assert "tests" in files
     assert "src/mailgun_relay" in files
+
+
+def test_inline_upload_is_related_to_html_with_bracketed_content_id(
+    client: TestClient, auth: dict[str, str], recording_smtp: RecordingSubmitter
+) -> None:
+    files = [
+        ("inline", ("logo.png", b"\x89PNG\r\n", "image/png")),
+        ("attachment", ("a.bin", b"payload", "multipart/mixed")),
+    ]
+    form = _with({"html": ['<img src="cid:logo.png">']})
+    r = client.post("/v3/mg.wersdoerfer.de/messages", headers=auth, data=form, files=files)
+    assert r.status_code == 200, r.text
+    sent = recording_smtp.calls[0].message
+    related = [p for p in sent.walk() if p.get_content_type() == "multipart/related"]
+    assert len(related) == 1
+    html, image = list(related[0].iter_parts())
+    assert html.get_content_type() == "text/html"
+    assert image["Content-ID"] == "<logo.png>"
+    types = [p.get_content_type() for p in sent.walk()]
+    assert "multipart/mixed" in types  # top level only
+    assert types.count("multipart/mixed") == 1
+    assert "application/octet-stream" in types
+
+
+# Control characters are covered in test_mime_build; the multipart client and
+# parser strip a leading tab before it reaches the route.
+@pytest.mark.parametrize("filename", ["<logo.png>", "<logo.png", "logo.png>"])
+def test_malformed_inline_filename_returns_400(
+    client: TestClient,
+    auth: dict[str, str],
+    recording_smtp: RecordingSubmitter,
+    filename: str,
+) -> None:
+    files = [("inline", (filename, b"\x89PNG\r\n", "image/png"))]
+    form = _with({"html": ['<img src="cid:logo.png">']})
+    r = client.post("/v3/mg.wersdoerfer.de/messages", headers=auth, data=form, files=files)
+    assert r.status_code == 400, r.text
+    assert recording_smtp.calls == []

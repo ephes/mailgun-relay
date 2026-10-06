@@ -1,5 +1,10 @@
 from __future__ import annotations
 
+from email.message import EmailMessage
+
+import pytest
+
+from mailgun_relay.headers import HeaderInjectionError
 from mailgun_relay.mime_build import Attachment, MessageInput, build_message
 
 
@@ -106,3 +111,113 @@ def test_display_name_in_from_preserved() -> None:
     )
     assert "noreply@mg.python-podcast.de" in str(msg["From"])
     assert "Python Podcast" in str(msg["From"])
+
+
+def _png(name: str = "logo.png", content_id: str | None = None) -> Attachment:
+    return Attachment(
+        filename=name, content_type="image/png", data=b"\x89PNG\r\n", content_id=content_id
+    )
+
+
+def _parts_by_type(msg: EmailMessage) -> dict[str, list[EmailMessage]]:
+    found: dict[str, list[EmailMessage]] = {}
+    for part in msg.walk():
+        assert isinstance(part, EmailMessage)
+        found.setdefault(part.get_content_type(), []).append(part)
+    return found
+
+
+def test_inline_content_id_has_angle_brackets() -> None:
+    msg, _, _ = build_message(_base_input(html='<img src="cid:logo.png">', inline=[_png()]))
+    [image] = _parts_by_type(msg)["image/png"]
+    assert image["Content-ID"] == "<logo.png>"
+    assert image.get_content_disposition() == "inline"
+    assert image.get_filename() == "logo.png"
+    # The serialized header uses the RFC 2392 bracketed form too.
+    assert "Content-ID: <logo.png>" in msg.as_string()
+
+
+def test_inline_explicit_content_id_is_not_double_bracketed() -> None:
+    msg, _, _ = build_message(_base_input(html="<p>x</p>", inline=[_png(content_id="<logo>")]))
+    [image] = _parts_by_type(msg)["image/png"]
+    assert image["Content-ID"] == "<logo>"
+
+
+def test_inline_part_grouped_with_html_in_multipart_related() -> None:
+    msg, _, _ = build_message(
+        _base_input(
+            html='<img src="cid:logo.png">',
+            inline=[_png()],
+            attachments=[Attachment("a.pdf", "application/pdf", b"%PDF")],
+        )
+    )
+    assert msg.get_content_type() == "multipart/mixed"
+    alternative, attachment = list(msg.iter_parts())
+    assert alternative.get_content_type() == "multipart/alternative"
+    assert attachment.get_content_type() == "application/pdf"
+    plain, related = list(alternative.iter_parts())
+    assert plain.get_content_type() == "text/plain"
+    assert related.get_content_type() == "multipart/related"
+    html, image = list(related.iter_parts())
+    assert html.get_content_type() == "text/html"
+    assert image.get_content_type() == "image/png"
+    assert image["Content-ID"] == "<logo.png>"
+
+
+def test_inline_with_html_only_body_builds_related_root() -> None:
+    msg, _, _ = build_message(
+        _base_input(text=None, html='<img src="cid:logo.png">', inline=[_png()])
+    )
+    assert msg.get_content_type() == "multipart/related"
+    assert msg["Subject"] == "hi"
+    html, image = list(msg.iter_parts())
+    assert html.get_content_type() == "text/html"
+    assert image["Content-ID"] == "<logo.png>"
+
+
+def test_inline_with_amp_html_keeps_amp_alternative() -> None:
+    msg, _, _ = build_message(
+        _base_input(html="<p>x</p>", amp_html="<html amp4email></html>", inline=[_png()])
+    )
+    assert msg.get_content_type() == "multipart/alternative"
+    types = [p.get_content_type() for p in msg.iter_parts()]
+    assert types == ["text/plain", "multipart/related", "text/x-amp-html"]
+
+
+def test_inline_with_text_only_message_still_builds() -> None:
+    msg, _, _ = build_message(_base_input(inline=[_png()]))
+    assert msg.get_content_type() == "multipart/mixed"
+    plain, image = list(msg.iter_parts())
+    assert plain.get_content_type() == "text/plain"
+    assert image["Content-ID"] == "<logo.png>"
+    assert image.get_content_disposition() == "inline"
+
+
+@pytest.mark.parametrize(
+    "filename",
+    ["a\r\nb.png", "<logo.png>", "<logo.png", "logo.png>", "\tlogo.png", " logo.png", "a\x7f.png"],
+)
+def test_malformed_inline_filename_rejected(filename: str) -> None:
+    with pytest.raises(HeaderInjectionError):
+        build_message(_base_input(html="<p>x</p>", inline=[_png(filename)]))
+
+
+@pytest.mark.parametrize("content_type", ["multipart/mixed", "message/rfc822", "Multipart/Related"])
+def test_container_upload_types_become_octet_stream(content_type: str) -> None:
+    msg, _, _ = build_message(
+        _base_input(attachments=[Attachment("a.bin", content_type, b"payload")])
+    )
+    _, attachment = list(msg.iter_parts())
+    assert attachment.get_content_type() == "application/octet-stream"
+    assert attachment.get_content() == b"payload"
+    assert attachment.get_filename() == "a.bin"
+
+
+def test_container_inline_type_becomes_octet_stream() -> None:
+    msg, _, _ = build_message(
+        _base_input(html="<p>x</p>", inline=[Attachment("x.eml", "message/rfc822", b"hi")])
+    )
+    parts = _parts_by_type(msg)
+    assert "message/rfc822" not in parts
+    [inline] = parts["application/octet-stream"]
+    assert inline["Content-ID"] == "<x.eml>"
