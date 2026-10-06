@@ -51,8 +51,8 @@ journald, so `journalctl -u mailgun-relay -f` is the live view.
 
 - `event=startup` — one record per process start, with the effective
   configuration: version, bind address, public host, SMTP host/port/STARTTLS,
-  whether a custom CA bundle is in use, log level, the configured token
-  *labels*, and the body/recipient caps. Raising `MAILGUN_RELAY_LOG_LEVEL`
+  whether a custom CA bundle is in use, the SMTP concurrency cap, log level,
+  the configured token *labels*, and the body/recipient caps. Raising `MAILGUN_RELAY_LOG_LEVEL`
   above `INFO` quietens the request records but never this one.
 - `event=request` — one record per `POST /v3/{domain}/messages`, with
   `request_id`, `token_label`, `path_domain`, `from`, `recipient_count`,

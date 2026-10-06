@@ -1,12 +1,15 @@
 from __future__ import annotations
 
 import contextlib
+import functools
 import os
 import time
 import uuid
 from dataclasses import dataclass
 from typing import Any
 
+import anyio.to_thread
+from anyio import CapacityLimiter
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from starlette.datastructures import UploadFile
@@ -63,6 +66,16 @@ _MULTIPART_LIMIT_MARKERS = ("Too many files", "Too many fields", "exceeded maxim
 
 
 def register_routes(app: FastAPI) -> None:
+    # Created lazily on first use: an anyio CapacityLimiter belongs to the
+    # running event loop, which does not exist yet when the app is built.
+    smtp_limiter: CapacityLimiter | None = None
+
+    def _smtp_limiter(state: AppState) -> CapacityLimiter:
+        nonlocal smtp_limiter
+        if smtp_limiter is None:
+            smtp_limiter = CapacityLimiter(state.settings.smtp_max_concurrency)
+        return smtp_limiter
+
     @app.get("/health")
     def health() -> dict[str, str]:
         # Intentionally does not disclose the service version to unauthenticated
@@ -165,11 +178,21 @@ def register_routes(app: FastAPI) -> None:
             recipient_count = len(envelope_recipients)
 
             submitter = state.smtp_submit or submit
-            submitter(
-                msg,
-                envelope_sender=state.settings.envelope_sender,
-                recipients=envelope_recipients,
-                transport=state.transport,
+            # The submitter is blocking smtplib I/O (up to smtp_timeout_s per
+            # SMTP step). Run it in a worker thread so a slow or unreachable
+            # backend cannot stall the event loop, /health, or other requests.
+            # The dedicated limiter caps concurrent SMTP sessions; requests
+            # beyond the cap wait for a free slot. A client disconnect does
+            # not abandon a submission already handed to the thread.
+            await anyio.to_thread.run_sync(
+                functools.partial(
+                    submitter,
+                    msg,
+                    envelope_sender=state.settings.envelope_sender,
+                    recipients=envelope_recipients,
+                    transport=state.transport,
+                ),
+                limiter=_smtp_limiter(state),
             )
 
             return JSONResponse(

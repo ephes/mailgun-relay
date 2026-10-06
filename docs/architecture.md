@@ -66,6 +66,13 @@ Verification cannot be disabled; a private-CA backend is supported by pointing
 credentials over a connection that is not TLS-protected, so a misconfiguration
 fails closed rather than leaking the credentials in cleartext.
 
+SMTP submission is blocking `smtplib` I/O, bounded per step by
+`MAILGUN_RELAY_SMTP_TIMEOUT_S` (default 30 s). The route runs it in a worker
+thread so a slow or unreachable backend never blocks the event loop: `/health`
+and other requests keep answering while a send is in flight. At most
+`MAILGUN_RELAY_SMTP_MAX_CONCURRENCY` (default 8) submissions run at once;
+further sends wait for a free slot rather than opening more SMTP sessions.
+
 The service should have dedicated SMTP credentials with the smallest practical
 sender permissions.
 

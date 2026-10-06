@@ -59,6 +59,9 @@ class Settings(BaseSettings):
     # Optional CA bundle for verifying the SMTP server certificate. Empty means
     # "use the system trust store"; certificate verification is never disabled.
     smtp_ca_file: str = ""
+    # Upper bound on concurrent SMTP submissions (each runs in a worker
+    # thread); further sends queue until a slot frees up.
+    smtp_max_concurrency: int = Field(default=8, ge=1)
     envelope_sender: str = ""
 
     max_body_bytes: int = 26_214_400

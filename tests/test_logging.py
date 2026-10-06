@@ -90,6 +90,7 @@ def test_startup_line_records_effective_configuration(
     assert payload["smtp_port"] == test_settings.smtp_port
     assert payload["smtp_starttls"] is test_settings.smtp_starttls
     assert payload["smtp_custom_ca"] is False
+    assert payload["smtp_max_concurrency"] == test_settings.smtp_max_concurrency
     assert payload["token_labels"] == ["homepage-staging", "python-podcast-staging"]
 
 
