@@ -46,6 +46,24 @@ The ordered decommission plan, the manual steps and the verification gate live
 in `ops-control/runbooks/mailgun-decommission.md`. Nothing in this repository
 has to change for it.
 
+### Availability
+
+- **A slow SMTP backend no longer freezes the relay.** `POST
+  /v3/{domain}/messages` is an async route, but it called the blocking
+  `smtplib` submitter directly on the event loop. The service runs a single
+  uvicorn process, so while the home submission backend was slow or
+  unreachable every other send *and* `/health` waited behind it — up to
+  `MAILGUN_RELAY_SMTP_TIMEOUT_S` (30 s) per SMTP step — and monitoring saw the
+  relay as down. The submission now runs in a worker thread, so the event loop,
+  `/health` and other requests stay responsive while a send is in flight.
+  Status codes and the SMTP error mapping (503 temporary, 502 permanent) are
+  unchanged, and the relay still does not retry on its own.
+- **New setting `MAILGUN_RELAY_SMTP_MAX_CONCURRENCY` (default `8`, minimum
+  `1`).** It caps how many SMTP sessions the relay opens at once; further sends
+  wait for a free slot instead of opening an unbounded number of connections to
+  the backend. `/health` never waits on it. The value is included in the
+  `startup` log line.
+
 ### Observability
 
 - **The service now logs a `startup` line.** Previously the relay only logged

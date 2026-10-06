@@ -122,6 +122,7 @@ def log_startup(settings: Settings, secrets: Secrets) -> None:
             "smtp_port": settings.smtp_port,
             "smtp_starttls": settings.smtp_starttls,
             "smtp_custom_ca": bool(settings.smtp_ca_file),
+            "smtp_max_concurrency": settings.smtp_max_concurrency,
             "log_level": settings.log_level.upper(),
             "token_labels": sorted(policy.label for policy in secrets.tokens),
             "max_body_bytes": settings.max_body_bytes,
