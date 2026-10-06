@@ -121,6 +121,11 @@ public request/response contract changes except the two noted under *Behavior*.
   authorization decision, so a CR/LF-bearing `from` can no longer be silently
   reinterpreted by lenient address parsing.
 
+### CI
+
+- Add a GitHub Actions workflow that runs the quickstart checks (ruff check,
+  ruff format --check, mypy, pytest) on every push and pull request.
+
 ## 0.1.0 — 2026-05-25
 
 Initial implementation: Mailgun-API-compatible HTTP→SMTP adapter for

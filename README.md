@@ -26,6 +26,9 @@ uv run ruff format --check .
 uv run mypy src
 ```
 
+GitHub Actions (`.github/workflows/ci.yml`) runs the same checks on every push
+and pull request. It needs no secrets.
+
 The service starts with `uv run python -m mailgun_relay` and reads runtime
 config from environment variables prefixed `MAILGUN_RELAY_` (see
 `src/mailgun_relay/config.py::Settings`). Token policy and SMTP credentials
