@@ -1,15 +1,15 @@
 from __future__ import annotations
 
 import asyncio
-from typing import Any
 
 import pytest
+from starlette.types import Message, Receive, Scope, Send
 
 from mailgun_relay.app import BodySizeLimitMiddleware
 from mailgun_relay.errors import PayloadTooLargeError
 
 
-async def _drain_app(scope: Any, receive: Any, send: Any) -> None:
+async def _drain_app(scope: Scope, receive: Receive, send: Send) -> None:
     """Minimal ASGI app that reads the whole body, then returns 200."""
     while True:
         message = await receive()
@@ -19,16 +19,16 @@ async def _drain_app(scope: Any, receive: Any, send: Any) -> None:
     await send({"type": "http.response.body", "body": b"ok"})
 
 
-def _http_scope(headers: list[tuple[bytes, bytes]]) -> dict[str, Any]:
+def _http_scope(headers: list[tuple[bytes, bytes]]) -> Scope:
     return {"type": "http", "method": "POST", "path": "/", "headers": headers}
 
 
 class _Collector:
     def __init__(self) -> None:
-        self.messages: list[dict[str, Any]] = []
+        self.messages: list[Message] = []
         self.app_called = False
 
-    async def send(self, message: dict[str, Any]) -> None:
+    async def send(self, message: Message) -> None:
         self.messages.append(message)
 
     @property
@@ -42,14 +42,14 @@ class _Collector:
 def test_declared_content_length_over_limit_rejected_before_app() -> None:
     collector = _Collector()
 
-    async def inner(scope: Any, receive: Any, send: Any) -> None:
+    async def inner(scope: Scope, receive: Receive, send: Send) -> None:
         collector.app_called = True
         await _drain_app(scope, receive, send)
 
     mw = BodySizeLimitMiddleware(inner, max_bytes=10)
     scope = _http_scope([(b"content-length", b"100")])
 
-    async def receive() -> dict[str, Any]:
+    async def receive() -> Message:
         return {"type": "http.request", "body": b"x" * 100, "more_body": False}
 
     asyncio.run(mw(scope, receive, collector.send))
@@ -65,7 +65,7 @@ def test_invalid_or_negative_content_length_rejected(value: bytes) -> None:
     mw = BodySizeLimitMiddleware(_drain_app, max_bytes=10)
     scope = _http_scope([(b"content-length", value)])
 
-    async def receive() -> dict[str, Any]:
+    async def receive() -> Message:
         return {"type": "http.request", "body": b"", "more_body": False}
 
     asyncio.run(mw(scope, receive, collector.send))
@@ -83,7 +83,7 @@ def test_streamed_body_over_limit_raises_without_content_length() -> None:
         {"type": "http.request", "body": b"x" * 6, "more_body": False},
     ]
 
-    async def receive() -> dict[str, Any]:
+    async def receive() -> Message:
         return chunks.pop(0)
 
     with pytest.raises(PayloadTooLargeError):
@@ -95,7 +95,7 @@ def test_body_within_limit_passes_through() -> None:
     mw = BodySizeLimitMiddleware(_drain_app, max_bytes=100)
     scope = _http_scope([(b"content-length", b"5")])
 
-    async def receive() -> dict[str, Any]:
+    async def receive() -> Message:
         return {"type": "http.request", "body": b"hello", "more_body": False}
 
     asyncio.run(mw(scope, receive, collector.send))
@@ -105,9 +105,15 @@ def test_body_within_limit_passes_through() -> None:
 def test_non_http_scope_passes_through() -> None:
     seen = {"called": False}
 
-    async def inner(scope: Any, receive: Any, send: Any) -> None:
+    async def inner(scope: Scope, receive: Receive, send: Send) -> None:
         seen["called"] = True
 
+    async def receive() -> Message:
+        raise AssertionError("receive must not be called")
+
+    async def send(message: Message) -> None:
+        raise AssertionError("send must not be called")
+
     mw = BodySizeLimitMiddleware(inner, max_bytes=10)
-    asyncio.run(mw({"type": "lifespan"}, None, None))
+    asyncio.run(mw({"type": "lifespan"}, receive, send))
     assert seen["called"] is True

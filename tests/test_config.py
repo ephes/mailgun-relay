@@ -78,7 +78,7 @@ tokens:
     policy = secrets.tokens[0]
     assert policy.mailgun_domains == {"xn--wersdrfer-47a.de"}
     assert policy.allowed_from_domains == {"xn--wersdrfer-47a.de"}
-    assert policy.allowed_from_addresses == {"some.user@xn--wersdrfer-47a.de"}
+    assert policy.allowed_from_addresses == frozenset({"some.user@xn--wersdrfer-47a.de"})
 
 
 def test_load_secrets_rejects_empty_tokens(tmp_path: Path) -> None:
