@@ -169,6 +169,19 @@ public request/response contract changes except the two noted under *Behavior*.
 - Add a GitHub Actions workflow that runs the quickstart checks (ruff check,
   ruff format --check, mypy, pytest) on every push and pull request.
 
+### Dependency security refresh (2026-10-06)
+
+- Lock the minimal fixed versions of four runtime dependencies with known
+  advisories: `python-multipart` 0.0.29 -> 0.0.31 (PYSEC-2026-3036/3037/3040;
+  the relay parses multipart request bodies), `starlette` 1.1.0 -> 1.3.1
+  (PYSEC-2026-248/249), `anyio` 4.13.0 -> 4.14.2 (PYSEC-2026-4024/4025) and
+  `pydantic-settings` 2.14.1 -> 2.14.2 (CVE-2026-58203). `pip-audit` on the
+  exported runtime lock reports no known vulnerabilities.
+- starlette 1.3 deprecates `httpx` for `TestClient` in favour of `httpx2`. The
+  pytest config ignores exactly that warning so `filterwarnings = error` keeps
+  catching everything else; no new dependency is added.
+- No code or API changes. Redeploy the relay to pick up the new lock.
+
 ## 0.1.0 — 2026-05-25
 
 Initial implementation: Mailgun-API-compatible HTTP→SMTP adapter for
