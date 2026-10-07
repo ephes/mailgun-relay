@@ -37,11 +37,57 @@ class MessageInput:
     date: str | None = field(default=None)
 
 
+_OCTET_STREAM = ("application", "octet-stream")
+
+# Uploaded bytes are always wrapped as a single leaf part. A declared
+# ``multipart/*`` or ``message/*`` type would produce a part with no boundary
+# or embedded message, which recipients cannot parse, so those are downgraded
+# to an opaque binary part.
+_CONTAINER_MAINTYPES = frozenset({"multipart", "message"})
+
+
 def _split_ct(content_type: str) -> tuple[str, str]:
     main, _, sub = content_type.partition("/")
-    if not sub:
-        return "application", "octet-stream"
-    return main.lower(), sub.split(";", 1)[0].strip().lower() or "octet-stream"
+    main = main.strip().lower()
+    sub = sub.split(";", 1)[0].strip().lower()
+    if not main or not sub or main in _CONTAINER_MAINTYPES:
+        return _OCTET_STREAM
+    return main, sub
+
+
+def _content_id(inline_att: Attachment) -> str:
+    """Return an RFC 2392 ``Content-ID`` (``<id>``) for an inline upload.
+
+    Mailgun names inline parts after the uploaded filename, so HTML refers to
+    them as ``cid:<filename>``. The header value must carry angle brackets for
+    clients to match that reference.
+    """
+    if inline_att.content_id is not None:
+        # An explicitly supplied id may already be in the bracketed form.
+        name = inline_att.content_id.strip().removeprefix("<").removesuffix(">")
+    else:
+        # The uploaded filename is used as-is; it is never normalized, so a
+        # malformed name is rejected rather than silently rewritten.
+        name = inline_att.filename
+    if (
+        not name
+        or name != name.strip()
+        or any(ch in name for ch in "<>")
+        or any(ord(ch) < 0x20 or ord(ch) == 0x7F for ch in name)
+    ):
+        raise HeaderInjectionError(f"invalid inline filename {inline_att.filename!r}")
+    return f"<{name}>"
+
+
+def _find_html_part(msg: EmailMessage) -> EmailMessage | None:
+    if msg.get_content_type() == "text/html":
+        return msg
+    if msg.get_content_type() == "multipart/alternative":
+        for part in msg.iter_parts():
+            if part.get_content_type() == "text/html":
+                assert isinstance(part, EmailMessage)
+                return part
+    return None
 
 
 def _addr_only(values: list[str]) -> list[str]:
@@ -101,20 +147,44 @@ def build_message(payload: MessageInput) -> tuple[EmailMessage, str, list[str]]:
             # structural header) to a clean 400 instead of a 500.
             raise HeaderInjectionError(f"invalid header {name!r}: {exc}") from exc
 
-    for att in payload.attachments:
-        main, sub = _split_ct(att.content_type)
-        msg.add_attachment(att.data, maintype=main, subtype=sub, filename=att.filename)
-
+    # Inline parts are grouped with the HTML body in multipart/related (the
+    # structure Mailgun sends), so ``cid:`` references resolve. Without an HTML
+    # body there is nothing to relate them to; they are then added to the
+    # top-level multipart/mixed with ``Content-Disposition: inline``.
+    html_part = _find_html_part(msg)
     for inline_att in payload.inline:
         main, sub = _split_ct(inline_att.content_type)
-        msg.add_attachment(
-            inline_att.data,
-            maintype=main,
-            subtype=sub,
-            filename=inline_att.filename,
-            disposition="inline",
-            cid=inline_att.content_id or inline_att.filename,
-        )
+        cid = _content_id(inline_att)
+        try:
+            if html_part is not None:
+                html_part.add_related(
+                    inline_att.data,
+                    maintype=main,
+                    subtype=sub,
+                    filename=inline_att.filename,
+                    disposition="inline",
+                    cid=cid,
+                )
+            else:
+                msg.add_attachment(
+                    inline_att.data,
+                    maintype=main,
+                    subtype=sub,
+                    filename=inline_att.filename,
+                    disposition="inline",
+                    cid=cid,
+                )
+        except ValueError as exc:
+            raise HeaderInjectionError(
+                f"invalid inline file {inline_att.filename!r}: {exc}"
+            ) from exc
+
+    for att in payload.attachments:
+        main, sub = _split_ct(att.content_type)
+        try:
+            msg.add_attachment(att.data, maintype=main, subtype=sub, filename=att.filename)
+        except ValueError as exc:
+            raise HeaderInjectionError(f"invalid attachment {att.filename!r}: {exc}") from exc
 
     envelope: list[str] = []
     envelope.extend(_addr_only(payload.to) if payload.to else [])

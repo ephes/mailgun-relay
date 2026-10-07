@@ -46,6 +46,24 @@ The ordered decommission plan, the manual steps and the verification gate live
 in `ops-control/runbooks/mailgun-decommission.md`. Nothing in this repository
 has to change for it.
 
+### Mailgun API compatibility
+
+- **Inline images now resolve in strict clients.** An `inline` upload was sent
+  with a bare `Content-ID: logo.png` and attached to the top-level
+  `multipart/mixed` next to the body. It now gets the RFC 2392 form
+  `Content-ID: <logo.png>` (what Mailgun sends, and what `cid:logo.png` in the
+  HTML refers to), and with an HTML body it is grouped with the HTML part in
+  `multipart/related` inside the `multipart/alternative`. Text-only messages
+  keep inline parts in `multipart/mixed`. An inline filename with control
+  characters or `<>` is now a `400` instead of an unhandled error.
+- **`multipart/*` and `message/*` uploads no longer produce broken parts.** An
+  `attachment` or `inline` file declared as, say, `multipart/mixed` or
+  `message/rfc822` became a base64 part of that type with no boundary or
+  embedded message. Such uploads are now sent as `application/octet-stream`.
+- Inline parts are now added before regular attachments in the MIME tree.
+- homepage and python-podcast send no inline files today, so this is
+  compatibility hardening; it takes effect on the next mailgun-relay redeploy.
+
 ### Delivery reliability
 
 - **Partially refused recipients are no longer dropped silently.** When the

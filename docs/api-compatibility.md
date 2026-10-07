@@ -67,8 +67,8 @@ Supported fields:
 | `amp-html` | Yes | Added as `multipart/alternative` part with `text/x-amp-html` subtype. |
 | `h:Reply-To` | Yes | Parsed via RFC 5322 address-list parser (quoted commas in display names preserved). |
 | `h:*` custom headers | Yes | Strict header-name regex; CR/LF rejection; dangerous-header denylist. |
-| `attachment` | Yes | Per-file and aggregate body-size caps. |
-| `inline` | Yes | Counted toward the same `max_attachments` cap as `attachment`. |
+| `attachment` | Yes | Per-file and aggregate body-size caps. A declared `multipart/*` or `message/*` content type is sent as `application/octet-stream`, because the upload is always one leaf part. |
+| `inline` | Yes | Counted toward the same `max_attachments` cap as `attachment`. Sent with `Content-ID: <filename>` (RFC 2392 angle-bracket form, as Mailgun does), so HTML references it as `cid:filename`. With an HTML body, inline parts are grouped with it in `multipart/related`; with a text-only body they go into the top-level `multipart/mixed` with `Content-Disposition: inline`. Filenames with control characters, `<>`, or leading/trailing whitespace are rejected with 400 (the filename is never rewritten). Same `multipart/*` / `message/*` downgrade as `attachment`. |
 | `o:*` options | Reject (400) | Phase-0 audit found neither homepage nor python-podcast emits any in default-settings sends; adding selective accept-and-ignore is a future change with its own audit. |
 | `v:*` variables | Reject (400) | No events/templates metadata support. |
 | `recipient-variables` | Reject (400) | Batch personalization out of scope. |
