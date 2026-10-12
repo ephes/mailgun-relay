@@ -68,7 +68,10 @@ journald, so `journalctl -u mailgun-relay -f` is the live view.
   `refused` list of `{domain, code}` pairs. Local parts and the SMTP reply text
   are never logged. See `docs/api-compatibility.md` for the HTTP behaviour.
 
-Neither record contains token values or hashes, the `Authorization` header,
+- `event=smtp_cleanup_failed` — a `WARNING` with only the exception class when
+  QUIT or close fails. Accepted sends keep their outcome; closed sessions skip QUIT.
+
+These records contain no token values or hashes, the `Authorization` header,
 SMTP credentials, message bodies, or attachment content.
 
 A relay nobody has asked to send anything logs nothing between restarts — that

@@ -6,6 +6,8 @@ from dataclasses import dataclass
 from email.message import EmailMessage
 from enum import StrEnum
 
+from mailgun_relay.logging_setup import service_logger
+
 
 class FailureCategory(StrEnum):
     PERMANENT = "permanent"
@@ -62,17 +64,14 @@ def _tls_context(transport: SmtpTransport) -> ssl.SSLContext:
     return context
 
 
-_PERMANENT_TYPES: tuple[type[BaseException], ...] = (
-    smtplib.SMTPRecipientsRefused,
-    smtplib.SMTPSenderRefused,
-    smtplib.SMTPHeloError,
-)
-
-
 def _category_for(exc: BaseException) -> FailureCategory:
     if isinstance(exc, smtplib.SMTPAuthenticationError):
         return FailureCategory.AUTH
-    if isinstance(exc, _PERMANENT_TYPES):
+    if isinstance(exc, smtplib.SMTPRecipientsRefused):
+        # No DATA was accepted. A temporary refusal anywhere makes retry useful,
+        # including a mixture of temporary and permanent recipient refusals.
+        if any(400 <= code <= 499 for code, _reply in exc.recipients.values()):
+            return FailureCategory.TEMPORARY
         return FailureCategory.PERMANENT
     if isinstance(exc, smtplib.SMTPResponseException):
         code = exc.smtp_code
@@ -115,15 +114,18 @@ def submit(
     """Submit an EmailMessage via authenticated SMTP.
 
     Uses STARTTLS when transport.use_starttls is True. Raises SmtpSubmitError on any
-    SMTP/connection failure; the exception's category drives the HTTP response mapping.
+    SMTP/connection failure before acceptance; the category drives the HTTP response.
+    Teardown failures do not change an accepted submission outcome.
 
     Returns the recipients the server refused while accepting the message for
     the rest (empty when every recipient was accepted). A refusal of *all*
     recipients is not returned: smtplib raises SMTPRecipientsRefused, which
-    becomes a PERMANENT SmtpSubmitError.
+    becomes a temporary error if any reply is 4xx, otherwise permanent.
     """
+    smtp: smtplib.SMTP | None = None
     try:
-        with smtplib.SMTP(transport.host, transport.port, timeout=transport.timeout_s) as smtp:
+        smtp = smtplib.SMTP(transport.host, transport.port, timeout=transport.timeout_s)
+        try:
             smtp.ehlo()
             tls_active = False
             if transport.use_starttls:
@@ -146,6 +148,29 @@ def submit(
                 from_addr=envelope_sender,
                 to_addrs=recipients,
             )
+        finally:
+            # Preserve both successful DATA acceptance and the original send
+            # failure: QUIT is connection cleanup, not a delivery decision.
+            try:
+                # smtplib already closes on 421 and connection loss; there is
+                # no remaining session to QUIT in that case.
+                if smtp.sock is not None:
+                    code, reply = smtp.quit()
+                    if code != 221:
+                        raise smtplib.SMTPResponseException(code, reply)
+            except (smtplib.SMTPException, OSError) as exc:
+                service_logger().warning(
+                    "smtp_cleanup_failed",
+                    extra={"event": "smtp_cleanup_failed", "error_class": type(exc).__name__},
+                )
+            finally:
+                try:
+                    smtp.close()
+                except (smtplib.SMTPException, OSError) as exc:
+                    service_logger().warning(
+                        "smtp_cleanup_failed",
+                        extra={"event": "smtp_cleanup_failed", "error_class": type(exc).__name__},
+                    )
     except SmtpSubmitError:
         raise
     except BaseException as exc:

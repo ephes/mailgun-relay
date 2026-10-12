@@ -87,7 +87,7 @@ The `id` should be unique enough for logs and client correlation. Prefer generat
 
 ### Partial recipient refusal
 
-The submission server can accept a message for some envelope recipients and refuse others at `RCPT TO`. `smtplib` raises only when *every* recipient is refused (that case is a 502, see the error table); otherwise it returns the refused ones, and the relay acts on them:
+The submission server can accept a message for some envelope recipients and refuse others at `RCPT TO`. `smtplib` raises only when *every* recipient is refused (503 if any refusal is 4xx, otherwise 502; see the error table); otherwise it returns the refused ones, and the relay acts on them:
 
 - **Default: `200` with the unchanged success body.** The message has already been accepted for the other recipients, so an error status would make a retrying caller send it to them twice. Real Mailgun has no synchronous partial-failure response either: its only 200 is `{"id", "message": "Queued. Thank you."}`, and per-recipient rejections surface later through events and webhooks. `django-anymail` parses exactly that shape (it requires `id` and a `message` starting with `Queued`) and marks every recipient `queued`; the relay therefore does not add fields to the body.
 - **Always logged.** The relay emits one `WARNING` record `event=recipients_refused` with `refused_count` and a `refused` list of `{domain, code}` pairs, and the request record gets `refused_count` and `result=partial_refusal`. Local parts of refused addresses and the SMTP reply text (which usually echoes the address) are never logged.
@@ -143,13 +143,19 @@ table below is therefore the contract the relay implements:
 | Unsupported required feature | 400 | Avoid pretending unsupported Mailgun behavior worked. |
 | Request too large | 413 | Body, attachment, or recipient limits. |
 | Rate limited | 429 | Per-token or global. |
-| SMTP temporary failure/timeout/connection refused | 503 | Anymail does not retry on its own; the caller surfaces the status as `AnymailRequestsAPIError.status_code`. |
-| SMTP permanent rejection (5xx response, all recipients refused, sender refused, helo failure) | 502 | Same Anymail exception shape; permanent vs. temporary is informational for callers that inspect `.status_code`. |
+| SMTP temporary failure (4xx sender/HELO/DATA or any all-refused recipient reply), timeout/connection refused | 503 | Anymail does not retry on its own; the caller surfaces the status as `AnymailRequestsAPIError.status_code`. |
+| SMTP permanent rejection (5xx response; all recipients refused without any 4xx reply) | 502 | Same Anymail exception shape; permanent vs. temporary is informational for callers that inspect `.status_code`. |
 | Some (not all) recipients refused | 200 (default) or 502 | 200 with the normal success body plus a `recipients_refused` WARNING log; 502 only with `MAILGUN_RELAY_FAIL_ON_PARTIAL_REFUSAL=true`. See *Partial recipient refusal*. |
 | SMTP authentication failure (relay → backend) | 502 | Treated as a permanent upstream failure. Never exposes the credential. |
 | Internal error | 500 | Body is `{"message": "Internal Server Error"}`; no secrets or message bodies in response. |
 
 Response body shape is `{"message": "<human readable>"}` on all non-2xx. `django-anymail`'s `AnymailRequestsAPIError` stores the full body so callers can log it; the relay never includes credential material in that message.
+
+Once DATA is accepted, a failed QUIT or connection close preserves the accepted
+result, including partial-refusal policy. Cleanup is attempted without retrying
+the send. A safe `smtp_cleanup_failed` warning records only the exception class,
+never SMTP reply text or recipient addresses. Pre-acceptance failures retain their
+original error category even if cleanup also fails.
 
 ## Compatibility Assumptions to Verify
 

@@ -77,5 +77,5 @@ def access_logger() -> logging.Logger:
 
 
 def service_logger() -> logging.Logger:
-    """Logger for service-lifecycle events (startup), not per-request events."""
+    """Logger for lifecycle and transport diagnostics without request context."""
     return logging.getLogger(_SERVICE_LOGGER_NAME)

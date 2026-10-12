@@ -198,6 +198,7 @@ def _make_mock_smtp_with_exc(exc: Exception) -> MagicMock:
     mock = MagicMock()
     instance = MagicMock()
     instance.send_message.side_effect = exc
+    instance.quit.return_value = (221, b"bye")
     instance.starttls.return_value = (220, b"ok")
     instance.login.return_value = (235, b"ok")
     instance.has_extn.return_value = True
@@ -268,6 +269,7 @@ def _make_ok_mock_smtp() -> tuple[MagicMock, MagicMock]:
     instance.starttls.return_value = (220, b"ok")
     instance.login.return_value = (235, b"ok")
     instance.send_message.return_value = {}
+    instance.quit.return_value = (221, b"bye")
     instance.__enter__.return_value = instance
     instance.__exit__.return_value = False
     mock.return_value = instance

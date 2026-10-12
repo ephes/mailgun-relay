@@ -95,11 +95,12 @@ Deployment secrets are expected to be rendered by `ops-control` to a root/servic
 
 Logs are an information boundary. They may contain request ids, token labels, domains, senders, recipient counts, refused-recipient counts with the refused recipients' *domains* and SMTP codes (never their local parts or the SMTP reply text), generated message ids, and failure categories. They must not contain token values, SMTP passwords, message bodies, or attachment content.
 
-The service emits two record types, both as one JSON object per line on stdout (journald under systemd):
+The service emits these record types, each as one JSON object per line on stdout (journald under systemd):
 
 - `event=startup`, once per process start, carrying the effective configuration (version, bind address, public host, SMTP host/port/STARTTLS, custom-CA flag, log level, configured token labels, body and recipient caps).
 - `event=request`, once per `POST /v3/{domain}/messages`, including `refused_count`.
 - `event=recipients_refused` (WARNING), only when the backend refused some but not all recipients.
+- `event=smtp_cleanup_failed` (WARNING), when QUIT or close fails; contains only the exception class, without reply text or request identifiers. Already closed connections skip QUIT. Cleanup failures preserve the submission outcome.
 
 `GET /health` deliberately logs nothing, so the deploy-time health probe does not pollute the access log.
 
@@ -244,8 +245,8 @@ table in `docs/api-compatibility.md`):
 - `403 Forbidden`: authenticated token is not allowed to use the requested path domain, from-domain, or from-address.
 - `413 Payload Too Large`: body, attachment, or recipient count limit exceeded.
 - `429 Too Many Requests`: reserved for future per-token / global rate limiting; not enforced by the relay today.
-- `502 Bad Gateway`: SMTP permanent failure (5xx response, all recipients refused, sender refused, helo failure, backend auth failure), and a partial recipient refusal when `MAILGUN_RELAY_FAIL_ON_PARTIAL_REFUSAL=true` (by default a partial refusal is a logged `200`).
-- `503 Service Unavailable`: SMTP temporary failure (4xx response, connection refused, timeout, OSError).
+- `502 Bad Gateway`: SMTP permanent failure (5xx response, all recipients refused without any 4xx reply, backend auth failure), and a partial recipient refusal when `MAILGUN_RELAY_FAIL_ON_PARTIAL_REFUSAL=true` (by default a partial refusal is a logged `200`).
+- `503 Service Unavailable`: SMTP temporary failure (4xx sender/HELO/DATA response, any 4xx reply when all recipients are refused including mixed 4xx/5xx replies, connection refused, timeout, OSError).
 
 All non-2xx responses use the body shape `{"message": "<human readable>"}`.
 `django-anymail` makes no transient/permanent distinction internally (every
