@@ -66,6 +66,12 @@ has to change for it.
 
 ### Delivery reliability
 
+- Classify temporary sender, HELO, and all-recipient SMTP refusals as HTTP 503.
+  Mixed all-refused 4xx/5xx replies are temporary; pure permanent refusals remain 502.
+- Preserve accepted and partially accepted sends when SMTP QUIT/close fails,
+  with safe cleanup warnings; retain original pre-acceptance failures.
+
+
 - **Partially refused recipients are no longer dropped silently.** When the
   submission server accepted a message for some recipients and refused others
   at `RCPT TO`, `smtplib` returned the refused ones instead of raising, the
@@ -76,7 +82,7 @@ has to change for it.
   logs one `WARNING` record `event=recipients_refused` with the refused
   *domains* and SMTP codes (never local parts or reply text), and the request
   record gains `refused_count` and `result=partial_refusal`. A refusal of every
-  recipient is still a `502`.
+  recipient returns `503` if any refusal is 4xx, otherwise `502`.
 - **New setting `MAILGUN_RELAY_FAIL_ON_PARTIAL_REFUSAL` (default `false`).**
   When `true`, a partial refusal answers `502` instead of `200`. Callers that
   enable it must not blindly retry. The value is included in the `startup` log
