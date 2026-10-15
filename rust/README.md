@@ -6,7 +6,7 @@ exactly, what may differ (section 3), the slices and the switch of
 production. [`TESTMAP.md`](TESTMAP.md) maps every Python test to its Rust
 counterpart.
 
-**Status: slices S1 to S5 of PLAN.md section 6 are done**;
+**Status: slices S1 to S6 of PLAN.md section 6 are done**;
 S3 adds subject and header validation, form parsing and
 `POST /v3/{domain}/messages` with every decision of the Python route. The
 binary loads and validates the configuration, answers `GET /health`, the
@@ -20,7 +20,8 @@ status mapping of PLAN.md 2.4, pinned by `fixtures/smtp_outcomes.json`
 (Python's `submit` against the same scripted server). At most
 `SMTP_MAX_CONCURRENCY` sessions run at once, further messages wait; a
 submission whose client went away is finished, and SIGTERM waits for it.
-S7 adds the release pipeline (see Release below).
+S7 adds the release pipeline (see Release below). The parity harness (S6,
+below) runs both implementations as processes against the same requests.
 Nothing deploys this code until the role is switched (PLAN.md section 9).
 
 ## Build and check
@@ -163,6 +164,29 @@ dump=$(mktemp -d)
 uv run python rust/fixtures/check_mime.py "$dump"
 ```
 
+## Parity harness
+
+`parity/` (PLAN.md 7.4) starts the Python relay (`python -m mailgun_relay`,
+real uvicorn) and the release binary as processes, each with its own fake
+SMTP server (STARTTLS with a throwaway CA, AUTH, scripted replies), sends
+every case of `parity/cases.py` to both byte for byte, and compares what the
+parity contract fixes: status, contract headers and JSON, the SMTP
+envelope, the message as Python's parser reads it, and the log records.
+Expected differences name their entry of PLAN.md section 3; any other
+difference fails. From the repository root:
+
+```bash
+(cd rust && cargo build --release --locked)
+uv run python rust/parity/run_parity.py            # -v: every case; --filter TEXT
+```
+
+CI runs it in the `parity` job. The modules use the standard library only
+and run with a host's `python3` (3.12+): `--targets PY_URL,RS_URL --sinks
+PY_DIR,RS_DIR [--logs PY_LOG,RS_LOG]` runs the corpus against two running
+instances whose SMTP goes to capture sinks (`parity/smtp_fake.py --listen
+HOST:PORT --certs DIR --record-dir DIR`) and whose secrets come from
+`run_parity.py --write-secrets PATH` (the shadow of PLAN.md 10.1).
+
 ## Layout
 
 ```
@@ -187,4 +211,5 @@ tests/binary.rs process-level tests of the built binary
 tests/support/fake_smtp.rs  scripted fake SMTP server (unit and process tests)
 fixtures/       generator + generated JSON; check_mime.py (Python's parser on Rust messages)
 scripts/release_checks.py  release gate of .github/workflows/rust-release.yml
+parity/         process-level parity harness: run_parity.py, cases.py, smtp_fake.py, semantic.py
 ```

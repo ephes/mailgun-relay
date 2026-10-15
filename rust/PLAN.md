@@ -502,7 +502,7 @@ does not validate stops the process with exit status 1 and no bind.
 | `MAX_ATTACHMENT_BYTES` | int | `10485760` | – |
 | `MAX_RECIPIENTS` | int | `100` | – |
 | `MAX_HEADER_VALUE_LENGTH` | int | `998` | – |
-| `LOG_LEVEL` | str | `INFO` | case-insensitive one of `CRITICAL ERROR WARNING INFO DEBUG` (the intersection uvicorn and `logging` accept); else exit 1 |
+| `LOG_LEVEL` | str | `INFO` | case-insensitive one of `CRITICAL ERROR WARNING INFO DEBUG TRACE` (the intersection uvicorn and `logging` accept; uvicorn registers `TRACE` with `logging` before the app sets its level, measured by the harness in S6); else exit 1 |
 
 Production sets every variable except `SMTP_CA_FILE`,
 `SMTP_MAX_CONCURRENCY` and `FAIL_ON_PARTIAL_REFUSAL`
@@ -691,7 +691,9 @@ format, logger names, `ensure_ascii`, uvicorn's stderr lines; all MIME byte
 details (header order, folding, encoded-word choice, transfer encodings,
 boundaries, `MIME-Version` in sub-parts, Date format); SMTP wording (verb case,
 EHLO name, AUTH mechanism as long as login succeeds, `SIZE`); HTTP
-keep-alive and header-size limits; graceful-shutdown timing.
+keep-alive and header-size limits; graceful-shutdown timing; the exit status
+after SIGTERM (uvicorn re-raises the signal after its graceful shutdown, which
+systemd counts as a clean stop; the Rust binary exits 0).
 
 ---
 
@@ -720,7 +722,7 @@ where Python starts), never the reverse.
 | D-9 | Multipart decoding uses the `charset` parameter of the request Content-Type with any Python codec (`cp1252`, `utf-16`, `iso-8859-15`, …), falling back to latin-1 on a decoding error or an unknown codec name. | Absent, UTF-8 spellings (`utf-8`, `utf8`, `utf_8`, case-insensitive) and latin-1 spellings (`latin-1`, `latin1`, `iso-8859-1`, `iso8859-1`, `iso_8859_1`, `l1`) and `ascii`/`us-ascii` behave as in Python (incl. the latin-1 fallback). Any other declared charset → **400** (Rust-stricter; recorder and Anymail send no charset). | Decided 2026-10-15 (Q4) |
 | D-10 | `idna` 3.16 applies IDNA2008 code point classes; labels that UTS46 allows but IDNA2008 disallows (symbols, emoji, some CONTEXTO cases) are invalid: path domain → 400, and a secrets file containing such a domain fails to load. | Runtime path domains: the `idna` crate (UTS46 + STD3 + hyphen + bidi + joiner + DNS length checks) maps them to an A-label → 403 instead of 400. Configuration must not accept more than Python: a domain entry (in `mailgun_domains`, `allowed_from_domains`, the domain part of `allowed_from_addresses` and of a non-ASCII `ENVELOPE_SENDER`) whose stripped, lower-cased form contains anything other than ASCII letters and digits, `-`, `.`, the letters of Latin-1, Latin Extended-A/B, IPA Extensions and Latin Extended Additional, and the combining diacritical marks U+0300–U+036F is a startup error (S1, `src/domain.rs`); the set applies to the input and to the Unicode form of the resulting A-label, so neither a UTS46 mapping (`ŀ` → `l·`, CONTEXTO in IDNA2008) nor an A-label input (`xn--n3h` = `☃`) brings in another character. So every configured domain is one Python also loads (all production domains are ASCII). Compatibility forms Python maps (`ⅻ.de`, fullwidth letters) and other scripts are therefore refused in the configuration. Because both sides apply the same UTS46 mapping before comparing, a runtime input can then only match a configured domain if Python's mapped form matches it too, so acceptance cannot widen; only the 400/403 split for garbage path domains differs. `config_secrets.json` includes emoji, symbol and mixed-script domains. `domain.json` (S2a) pins the runtime side: every case where Rust maps a domain Python refuses carries `D-10` and the Rust A-label, which the configuration side refuses; it also checks every character of the Latin set in a label, at runtime and as a configured domain. | Decided 2026-10-15 (Q4) |
 | D-11 | Address acceptance comes from `email_validator`, `parseaddr` and `getaddresses` (strict mode); comments become display names (`j@x.de (Kommentar)` → `Kommentar <j@x.de>`). | Address rules implemented directly (2.6), pinned by a corpus of ≥ 400 addresses and ≥ 100 domains generated from Python. Corpus cases must match; residual differences found later must be Rust-stricter (400 where Python accepted), and are added to the corpus and this table. The mailbox parser reproduces Python's display-name result for comments (a comment becomes the display name when there is no phrase), pinned by the corpus. S2b: `address.json` (1,570 values: Python test inputs, production senders, each mailbox rule, every Latin-set character in a domain label, every combining mark where a domain or label starts, lengths at the limits, 240 seeded mutations) pins 1,022 accepted mailboxes with Python's address and display name. Rust-stricter residuals (marked `D-11`, 48 values): whitespace or comments inside the addr-spec (`a . b@x.de`, `a(c)@x.de`), an unclosed `<` or quoted string, groups (`grp: a@x.de;`), nested comments and comments holding `\`, `"` or `,`, a backslash outside quotes, address domains outside the Latin set (Greek, Cyrillic, CJK, mixed script) or mapped out of it by UTS46 (`ⅻ`, fullwidth forms, `ŉ`, `·`), and values the two Python parses judge differently (a comment with a comma: Python 400 at step 9 instead of step 5; only the step differs). The `normalize_address` rows of the same corpus carry D-10/D-17 as in S1. | Decided 2026-10-15 (Q4); grammar and residuals S2b |
-| D-12 | The ASGI middleware maps unparseable or negative `Content-Length` to 413 (`app.py:42-51`), but in the deployed process uvicorn/httptools rejects such requests before the app. | hyper rejects them before the app as well. The harness compares against real uvicorn; if the status differs it is listed here. | expected no-op |
+| D-12 | The ASGI middleware maps unparseable or negative `Content-Length` to 413 (`app.py:42-51`), but in the deployed process uvicorn/httptools rejects such requests before the app. | hyper rejects them before the app as well. The harness compares against real uvicorn (S6: not a number, negative, `+n`, two values): both answer 400 before the app, without a record. | no divergence (measured, S6) |
 | D-13 | Logs: local-time `ts` without milliseconds, `ensure_ascii=True`, uvicorn plain-text lines on stderr. | `ts` in UTC RFC 3339 seconds, raw UTF-8, no stderr chatter; the startup record gains `"impl":"rust"`. | free (section 4) |
 | D-14 | MIME byte form (Python `email` folding, CTE heuristic, boundaries, `MIME-Version` in sub-parts, Date `+0000`). | lettre's form, 7-bit clean transfer encodings for non-ASCII bodies (no `8BITMIME` dependency). | free |
 | D-15 | `ENVELOPE_SENDER` is not validated; any string is sent in `MAIL FROM:<…>`; an IDN or non-ASCII value switches `smtplib` to SMTPUTF8 even for ASCII recipients (verified in the final review). | Empty → null sender (as Python). Python since S0-py: an ASCII value passes unchanged; a non-ASCII value has its domain converted to an A-label and a non-ASCII local part fails the start, so Q2's "no SMTPUTF8" also holds for `MAIL FROM`. Rust applies the same IDN/EAI rule and **additionally** requires a syntactically valid address (fail at start), the remaining divergence: a bare addr-spec by the address rules of 2.6 (no display name, angle brackets or whitespace; special-use names such as `localhost` and dotless domains refused); an ASCII value is used unchanged (no lowercasing). Production renders `mailgun-relay@xn--wersdrfer-47a.de`. `config_env.json` marks the senders Python accepts and Rust refuses `D-15` (S2b). | Decided 2026-10-15 (Q2, Q4); IDN/EAI part via S0-py; validity check S2b |
@@ -857,7 +859,7 @@ changed lines per slice excluding generated fixtures.
 | S3 | Request parsing and pipeline | `form.rs` (both encodings, limits), `pipeline.rs` (2.3 steps 1–9 with a stub submitter), header/subject validation, error mapping, response JSON, `event=request` record; fixtures `headers.json`; counterparts of `test_messages_endpoint.py` (non-SMTP), `test_headers.py`, `test_body_limit.py` | S2. **Status: split by size into S3a (`headers.rs`, `headers.json`; merged), S3b (`form.rs`, `form_decoding.json`; merged), S3c (`pipeline.rs`, the route, the request record, a step-9 stub in `mime.rs`, the core endpoint tests; merged) and S3d (the remaining endpoint tests: limits, body reading, decision order, records, route, production shapes, panics; merged). Done**. Interfaces for the later slices: S4 replaces the stub behind `mime::build(MessageInput) -> Result<BuiltMessage, InvalidMessage>` (`InvalidMessage` is the 400 of step 9; `BuiltMessage` carries `message_id`, `envelope`, `formatted`); S5 implements `pipeline::Submitter::submit(BuiltMessage) -> Result<Vec<Refusal>, SubmitError>` (refused recipients with their codes; `Temporary` 503, `Permanent` 502). Until S5 the binary's submitter answers every message with 503, so no build claims a message as queued that was not sent |
 | S4 | MIME construction | `mime.rs` with lettre builder (2.10), envelope and de-duplication, Message-Id/Date, inline/related/mixed, container downgrade, Reply-To; IDN as A-labels, EAI rejected (Q2); semantic tests by parsing the output; counterparts of `test_mime_build.py` | S2 (parallel to S3). **Status: split by size into S4a (`mime.rs`, S3's step-9 stub replaced behind its interface (2.10), D-21, the Python fix of non-ASCII message-id headers; lettre with the `builder` feature only, `deny.toml` gains 0BSD for its `quoted_printable`) and S4b (`mime.json`, `check_mime.py`, the CI step); both merged. Done** |
 | S5 | SMTP submission | `smtp.rs` on lettre's connection API: STARTTLS with system roots + CA file, AUTH, per-recipient RCPT, partial refusal, classification of 2.4, QUIT/close cleanup records, concurrency semaphore, per-operation timeout, `recipients_refused` and `smtp_cleanup_failed` records; scripted fake SMTP server tests mirroring `test_smtp_submission.py`, `test_smtp_outcomes.py`, `test_nonblocking_submit.py`; the S1b conditions (see "S1b result") | S1b, S3, S4. **Status: split by size into S5a (`smtp.rs`: the submitter, the classification, cleanup records, TLS with the CA file read at start (D-22), the fake server and its unit tests, wired into the binary; merged) and S5b (the concurrency semaphore and the shutdown task tracker in the route, `test_nonblocking_submit.py`, `fixtures/smtp_outcomes.json` from Python's `submit`, process tests, RSS; merged). Done** |
-| S6 | Parity harness | `rust/parity/` (7.4): fake SMTP with STARTTLS/AUTH, case corpus, runner for both implementations, semantic MIME comparison, CI job `parity`; process-level tests of the binary | S5 |
+| S6 | Parity harness | `rust/parity/` (7.4): fake SMTP with STARTTLS/AUTH, case corpus, runner for both implementations, semantic MIME comparison, CI job `parity`; process-level tests of the binary | S5. **Status: merged. 474 request cases and 8 startup cases, 0 unexplained differences; the harness found `LOG_LEVEL=trace` (Python starts, Rust refused; fixed in Rust and in the fixture model). Done** |
 | S7 | Release pipeline | `.github/workflows/rust-release.yml`, `scripts/release_checks.py` + tests (adapted from nyxmon), first tag `rs-v0.2.0` after S6 | S6 (tag). **Status: workflow, `rust/scripts/release_checks.py` and `tests/test_rust_release_checks.py` merged; the first tag `rs-v0.2.0` waits for S6 on `main` and the owner's approval** |
 | S8 | Role and inventory | ops-library `mailgun_relay_deploy` changes (9.1) with tests and molecule; ops-control host vars (impl `python`, version pinned), playbook gate, runbook `docs/MAILGUN_RELAY_RUST.md`; deploy to macmini: binary installed, `--check-config` green against production files, nothing switched | S7 |
 | S9 | Shadow | section 10 phases A and B on macmini, report in ops-control docs | S8, S0-py deployed, E2E probe item |
@@ -1030,44 +1032,91 @@ suffixes, IDN in both forms). The seed is fixed and the output committed.
 
 ### 7.4 Differential parity harness (process level)
 
-`rust/parity/run_parity.py` (stdlib only, so it also runs on macmini;
-started in CI via `uv run`):
+`rust/parity/` (S6), standard library only, so it also runs with a host's
+bare `python3` (3.12 or later; the CI checks that the modules compile with
+the runner's `python3`):
 
-- Starts the Python relay with real uvicorn (`python -m mailgun_relay`) and
-  the Rust binary on two loopback ports with identical env and a test secrets
-  file (dummy tokens, production-shaped policies, mode 0640).
-- Each implementation gets its own fake SMTP server (`parity/smtp_fake.py`,
-  stdlib: STARTTLS with a throwaway CA made by `openssl` at start, AUTH
-  PLAIN/LOGIN accepted, scripted replies per case, records envelope and DATA).
-  `SMTP_CA_FILE` points at the throwaway CA, `SMTP_HOST=localhost`.
-- Sends every case of `parity/cases/*.yaml` byte-identically to both (fields
-  ordered; urlencoded, multipart or raw body; raw headers for auth cases).
-- Compares: status; contract headers (`www-authenticate`, `allow`,
-  `location` path, `content-type`); JSON keys and the `Queued` prefix;
-  whether an SMTP session happened; `MAIL FROM`; the ordered `RCPT TO` list
-  (A-label normalised, D-2); DATA parsed for both with Python
-  `email.message_from_bytes(policy=default)`: From/To/Cc/Reply-To as
-  (display name, A-label addr-spec), Subject decoded, `h:*` headers
-  decoded, absence of Bcc, Message-Id equal to the response `id`, Date
-  present, the content-type tree, decoded bodies (line endings normalised, one
-  trailing newline tolerated), parts (disposition, filename, Content-ID,
-  content type, sha256); for the Rust message additionally no parser defects,
-  CRLF only, lines ≤ 998 (the normalisation is `generate.py`
-  `semantic_message`, shared with `check_mime.py`, S4b); the `event=request` record (`token_label`,
-  `result`, `status_code`).
-- Masks nothing else; error texts and non-contract headers are not compared.
-- Cases expected to differ carry `divergence: D-n` and the Rust expectation.
+- `run_parity.py` starts the Python relay with real uvicorn
+  (`python -m mailgun_relay`) and the Rust release binary on two free
+  loopback ports with identical env and a test secrets file (mode 0640):
+  the twelve production policy shapes (labels, domains and senders of the
+  startup record, `fix-403-result.md`, `e2e-probe-result.md`) with fake
+  tokens, plus a domain-only and an IDN test policy (`cases.POLICIES`).
+  A pair runs per **profile** (`cases.PROFILES`): `default`, `small` (tiny
+  limits for the N/N+1 cases), `strict` (`FAIL_ON_PARTIAL_REFUSAL`),
+  `plain` (`SMTP_STARTTLS=false`).
+- Each implementation gets its own fake SMTP server (`smtp_fake.py`:
+  STARTTLS with a throwaway CA made by `openssl`, AUTH PLAIN/LOGIN, the
+  scenario format of `smtp_outcomes.json` scripted per case, records TLS,
+  login, `MAIL FROM`, every `RCPT` with its reply, the recipients the
+  message went to and the un-stuffed DATA). `SMTP_CA_FILE` points at the
+  throwaway CA, `SMTP_HOST=localhost`, `SMTP_TIMEOUT_S=3`. The fixture
+  generator uses the same server for `smtp_outcomes.json`.
+- Sends every case of `cases.py` byte-identically to both (raw HTTP over a
+  socket: urlencoded, multipart as `requests` and Go's `mime/multipart`
+  write it, raw bodies, chunked bodies, bodies split over two writes, raw
+  `Authorization` and `Content-Length` values). After each case a marker
+  request (401 on the path domain `marker-<n>.parity`) closes the case in
+  both logs, so every record is attributed to its case.
+- Compares: status, and Python's status against the case (the oracle, so
+  a case that stops testing what it says fails); contract headers
+  (`www-authenticate`, `allow`, `location`) and the JSON content type; JSON
+  keys, the `Queued` message, the texts 2.2 keeps verbatim, no Anymail
+  special string; the number of SMTP sessions, TLS, login, `MAIL FROM`,
+  the ordered `RCPT TO` list with reply codes (A-label normalised, D-2),
+  who the message was sent for; DATA parsed for both with Python
+  `email.message_from_bytes(policy=default)` into the semantic view of
+  `parity/semantic.py` (shared with `generate.py` and `check_mime.py`:
+  decoded headers incl. From/To/Cc/Reply-To as (display name, addr-spec),
+  the MIME tree, decoded bodies with one trailing newline tolerated, parts
+  with disposition, filename, Content-ID, type and data), no Bcc header,
+  Message-Id equal to the response `id`, Date present; for the Rust
+  message additionally 7-bit, CRLF only, lines ≤ 998, encoded words ≤ 75
+  and no parser defects beyond Python's own; the `event=request` and
+  `recipients_refused` records (`token_label`, `result`, `status_code`,
+  counts, refused domains and codes, a message id exactly when Python logs
+  one); the `event=startup` record of each pair (labels and effective
+  settings). Error texts and other headers are not compared.
+- Cases expected to differ carry `divergence="D-n"` and the Rust status; the
+  run fails when the divergence no longer shows (except D-20, which depends
+  on how uvicorn reads the body), when Rust's record disagrees with its
+  status, or when Rust sends mail while refusing the request.
+- Startup cases (`cases.STARTUP_CASES`) start both with one changed
+  setting: both serve (status of a probe request) or both exit 1; D-22
+  pins where Rust refuses to start and Python serves 503 (or 502 without
+  STARTTLS). Both stop gracefully on SIGTERM (uvicorn re-raises the signal
+  after its shutdown, the Rust binary exits 0; free, 2.12).
 
-The case corpus covers P1–P12 of `phase1-code-clients.md` (Anymail
-urlencoded shapes of homepage, python-podcast and ggs, recorder multipart in
-random field order, Django error mails with long subjects and tracebacks,
-German allauth/Wagtail texts, `Auto-Submitted`, text+html, attachments,
-inline with and without HTML, amp-html, Reply-To lists, Cc/Bcc with
-duplicates), every row of 2.3 and 2.4, multi-fault ordering cases, limits at
-N and N+1, the D-entries, and the exotic list of phase 1 B 4.2.
+The corpus (S6: 474 request cases, 8 startup cases): the production client
+shapes (Anymail 15.2 urlencoded for every client with German texts, Django
+error mails with tracebacks, `Auto-Submitted`, html, amp-html, Reply-To
+lists, Cc/Bcc with duplicates, 24 seeded Anymail variants; Anymail
+multipart with attachments and inline parts; the recorder's multipart in
+10 seeded field orders); every production policy allowed and refused
+(other address, foreign from domain, foreign path); auth forms; every field
+rule of 2.3 in both encodings; the decision-order multi-fault cases; body
+framing, charsets, truncation, chunking and lengths; the routes; every
+limit at N and N+1; all 109 scenarios of `smtp_outcomes.json` through the
+endpoint plus partial refusal with records and the strict mode; D-1, D-2,
+D-3, D-4, D-9 to D-12, D-16, D-19 to D-22.
 
-CI: job `parity` (needs the `python` and `rust` jobs) builds the binary and
-runs the harness. The existing `python` job runs the drift test.
+Run (from the repository root; CI job `parity`, which needs the `python`
+and `rust` jobs and takes about 30 s for the harness itself):
+
+```bash
+(cd rust && cargo build --release --locked)
+uv run python rust/parity/run_parity.py [--filter TEXT] [-v] [--report FILE]
+```
+
+**Against two running instances** (the shadow, 10.1): `--targets
+PY_URL,RS_URL --sinks PY_DIR,RS_DIR [--logs PY_LOG,RS_LOG]`. The instances
+load the harness's secrets (`run_parity.py --write-secrets PATH`) and send
+to two capture sinks (`smtp_fake.py --listen HOST:PORT --certs DIR
+--record-dir DIR`, which accept every message and record it as JSON); with
+`--logs` the runner tails the files their stdout goes to. That mode runs
+the cases of the `default` profile whose SMTP scenario is the accepting
+default (335 of 474) and reports the others as skipped; checked locally
+against a uvicorn and a binary process under Python 3.12 (0 differences).
 
 ### 7.5 TESTMAP
 
@@ -1217,19 +1266,22 @@ service user:
   STARTTLS with a throwaway CA created in `/var/lib/mailgun-relay-shadow`
   (0700, owner `mailgun-relay`), AUTH accepted, recording envelope and DATA
   there.
-- Shadow secrets: a copy of `/etc/mailgun-relay/secrets.yml` (0640) plus one
-  shadow-only test token (random, hash only in the copy) whose policy covers
-  the test shapes. So the real production policies are loaded and exercised
-  (401/403 paths with real labels), and the 200 paths run with the test token.
+- Shadow secrets: the harness's file (`run_parity.py --write-secrets PATH`,
+  0640): the twelve production policy shapes with fake tokens the corpus
+  knows, so the 200, 401 and 403 paths of every policy run. The production
+  file itself is checked with the binary's `--check-config` (S8).
 - `mailgun-relay-shadow-py` (venv `python -m mailgun_relay`, port 8087) and
   `mailgun-relay-shadow-rs` (`/opt/mailgun-relay/<v>/mailgun-relay`, port
   8086), each with `EnvironmentFile=/etc/mailgun-relay/mailgun-relay.env` plus
   overrides `BIND_PORT`, `SECRETS_PATH`, `SMTP_HOST=localhost`, `SMTP_PORT`,
   `SMTP_CA_FILE`.
-- `run_parity.py --targets 127.0.0.1:8087,127.0.0.1:8086 --sinks …` replays
-  the full case corpus of 7.4 against both and compares exactly as in CI, but
-  with the production env, the production policies and the real host
-  (glibc resolver, systemd hardening, file modes).
+- `run_parity.py --targets http://127.0.0.1:8087,http://127.0.0.1:8086
+  --sinks <py dir>,<rs dir> --logs <py log>,<rs log>` (7.4) replays the
+  corpus against both and compares exactly as in CI, but with the
+  production env and the real host (glibc resolver, systemd hardening, file
+  modes); the sinks only accept, so the cases with a scripted SMTP reply or
+  another profile are skipped (they ran in CI). The units write stdout to
+  the log files (`StandardOutput=append:`) besides the journal.
 - The Rust shadow then stays up for ≥ 24 h idle with a light synthetic load
   (one corpus pass per hour) to measure RSS/CPU (section 12).
 

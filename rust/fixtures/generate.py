@@ -327,11 +327,15 @@ def _python_start(env: Env) -> dict[str, Any] | None:
     """The configuration a Python process starts with, or ``None``.
 
     A start needs the ``__main__`` reads (``int()`` of ``BIND_PORT``,
-    uvicorn's log level), ``Settings()``, ``logging``'s level, and a port
+    uvicorn's log level), ``Settings()``, ``logging``'s level (``TRACE``
+    included), and a port
     uvicorn can bind. Bind host and port are the ``__main__`` values.
     """
     probe = logging.getLogger("mailgun_relay.fixture_probe")
-    with mock.patch.dict(os.environ, dict(env), clear=True):
+    # uvicorn's Config registers its TRACE level with `logging` before the
+    # app factory sets the level (measured by the parity harness, S6).
+    trace = mock.patch.dict(logging._nameToLevel, {"TRACE": 5})
+    with mock.patch.dict(os.environ, dict(env), clear=True), trace:
         try:
             host = os.environ.get(f"{PREFIX}BIND_HOST", "127.0.0.1")
             port = int(os.environ.get(f"{PREFIX}BIND_PORT", "8085"))
@@ -469,6 +473,7 @@ def _env_cases() -> list[tuple[str, Env]]:
         ("lower-case bind host", [("mailgun_relay_bind_host", "0.0.0.0")]),  # noqa: S104
         ("lower-case log level", [("mailgun_relay_log_level", "debug")]),
         ("lower-case log level warn", [("mailgun_relay_log_level", "warn")]),
+        ("lower-case log level trace", [("mailgun_relay_log_level", "trace")]),
         ("lower-case bad bind port", [("mailgun_relay_bind_port", "x")]),
         (
             "exact name before variant",

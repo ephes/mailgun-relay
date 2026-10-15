@@ -21,8 +21,12 @@ impl fmt::Display for ConfigError {
 }
 
 /// Python `logging` levels; the names are the accepted `LOG_LEVEL` values.
+/// `TRACE` is uvicorn's: it registers the name with `logging` before the app
+/// configures its level, so the Python process accepts it (found by the
+/// parity harness, S6).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Level {
+    Trace,
     Debug,
     Info,
     Warning,
@@ -30,7 +34,8 @@ pub enum Level {
     Critical,
 }
 
-const LEVELS: [(Level, &str); 5] = [
+const LEVELS: [(Level, &str); 6] = [
+    (Level::Trace, "TRACE"),
     (Level::Debug, "DEBUG"),
     (Level::Info, "INFO"),
     (Level::Warning, "WARNING"),
@@ -114,7 +119,8 @@ impl Settings {
             max_recipients: env.parsed("MAX_RECIPIENTS", "100", parse_int)?,
             max_header_value_length: env.parsed("MAX_HEADER_VALUE_LENGTH", "998", parse_int)?,
             log_level: env.parsed("LOG_LEVEL", "INFO", |v| {
-                Level::from_name(v).ok_or_else(|| "one of CRITICAL ERROR WARNING INFO DEBUG".into())
+                Level::from_name(v)
+                    .ok_or_else(|| "one of CRITICAL ERROR WARNING INFO DEBUG TRACE".into())
             })?,
         };
         if settings.bind_host.is_empty() {

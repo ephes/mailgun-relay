@@ -4,6 +4,28 @@ All notable changes to mailgun-relay are documented here.
 
 ## Unreleased
 
+### Rust port: parity harness (slice S6b)
+
+- `rust/parity/run_parity.py` starts the Python relay (real uvicorn) and
+  the Rust release binary as processes, each with a fake SMTP server
+  (STARTTLS with a throwaway CA, AUTH, scripted replies), sends 474 request
+  cases byte for byte to both and compares what the parity contract fixes:
+  status, contract headers and JSON, the SMTP envelope, the message as
+  Python's parser reads it, and the `request`/`recipients_refused` and
+  `startup` records. The corpus covers every production client shape
+  (Anymail urlencoded and multipart, the recorder's multipart in random
+  field order), the twelve production policies with fake tokens, every
+  decision of `rust/PLAN.md` 2.3, every limit at N and N+1, all SMTP
+  scenarios of `smtp_outcomes.json` through the endpoint, and 8 startup
+  configurations. Expected differences name their divergence (D-3, D-4,
+  D-9 to D-11, D-20 to D-22); any other difference fails. CI runs it in
+  the new `parity` job (about 30 s). With `--targets` it runs against two
+  running instances whose SMTP goes to capture sinks, for the shadow run.
+- Found by the harness: `MAILGUN_RELAY_LOG_LEVEL=trace` starts the Python
+  service (uvicorn registers the level before the app sets it), but the
+  Rust port refused to start. The Rust port now accepts `TRACE` too; the
+  fixture model of the Python start includes it.
+
 ### Rust port: shared parity harness modules (slice S6a)
 
 - `rust/parity/smtp_fake.py` (the scripted fake SMTP server, now also

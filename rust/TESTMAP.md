@@ -7,7 +7,9 @@ Baseline: 222 Python tests at `13e274f`.
 
 Kinds: **unit** = Rust unit/integration test; **fixture** = case in
 `rust/fixtures/*.json` generated from Python; **harness** = case in
-`rust/parity/cases/` run against both implementations.
+`rust/parity/cases.py` run against both implementations as processes
+(PLAN.md 7.4; names below are case names, `[multipart]` marks the same
+fields in the other encoding).
 
 ## Python fix before the port (S0-py)
 
@@ -16,15 +18,15 @@ and fixture cases generated from the fixed Python.
 
 | Python test (new in S0-py) | Rust counterpart | Status |
 | --- | --- | --- |
-| empty `text`/`html` without another body → 400; empty text + html → 200 html-only | harness + unit `pipeline::tests` | pending (S0-py, S3) |
-| encoded CR/LF in To/Cc display name → 400, multi-fault with invalid Cc | unit `mime::tests::python_mime_build_tests`, `::line_break_detection_fails_closed`; harness | done (S4a); harness pending (S6) |
-| IDN recipients/from/Reply-To as A-labels, no SMTPUTF8; EAI local parts → 400 | fixture `address.json`, harness | pending (S0-py, S2/S4) |
+| empty `text`/`html` without another body → 400; empty text + html → 200 html-only | unit `pipeline::tests::field_rules_are_400`; harness `field empty text (D-1)`, `field empty text with html`, `field empty html with text`, `order empty text after policy` | done (S3c, S6) |
+| encoded CR/LF in To/Cc display name → 400, multi-fault with invalid Cc | unit `mime::tests::python_mime_build_tests`, `::line_break_detection_fails_closed`; harness `field to crlf display name (D-16)`, `field cc crlf display name (D-16)`, `field to crlf plus invalid cc`, `field from crlf display name` (200), `field bcc crlf display name` (200) | done (S4a, S6) |
+| IDN recipients/from/Reply-To as A-labels, no SMTPUTF8; EAI local parts → 400 | fixture `address.json`, `mime.json`; harness `field to IDN (D-2)`, `field h:Reply-To IDN`, `policy from IDN`, `anymail allauth unknown account to external IDN address` (envelope compared), `field to EAI`, `field bcc EAI`, `policy from EAI local part` | done (S2b, S4, S6) |
 
 ## Auth, policy, addresses (S2)
 
 | Python test | Rust counterpart | Status |
 | --- | --- | --- |
-| `test_auth.py` (the 8 original tests) | unit `auth::tests::python_auth_tests` + fixture `auth.json` (121 headers: whitespace, padding, trailing bits, alphabet, UTF-8, `:` in the password, duplicate hashes, non-ASCII bytes, seeded mutations) via `auth::tests::auth_fixture`; harness 401 cases with realm | done (S2a); harness pending (S6) |
+| `test_auth.py` (the 8 original tests) | unit `auth::tests::python_auth_tests` + fixture `auth.json` (121 headers: whitespace, padding, trailing bits, alphabet, UTF-8, `:` in the password, duplicate hashes, non-ASCII bytes, seeded mutations) via `auth::tests::auth_fixture`; harness `auth *` (401 with realm, trailing bits, padding, non-ASCII byte, body not read) | done (S2a, S6) |
 | `test_auth.py` new in S2a (accepted/refused spellings, non-ASCII → `AuthError`, colons and empty password, last duplicate wins) | fixture `auth.json`, unit `auth::tests::last_match_wins_and_trailing_bits_decode` | done (S2a) |
 | `test_policy.py::test_normalize_domain_*` (new in S2a) and the path-domain parts of `test_policy.py` | fixture `domain.json` (1,003 inputs incl. each Latin-set character) via `domain::tests::domain_fixture` | done (S2a) |
 | `test_policy.py` (the 13 original tests) | unit `policy::tests::python_policy_tests`; fixtures `domain.json`, `address.json`, `policy.json` via `policy::tests::policy_fixture` | done (S2c) |
@@ -45,7 +47,7 @@ and fixture cases generated from the fixed Python.
 | `test_config.py::test_token_policy_repr_does_not_leak_sha` | unit `secrets::tests::debug_redacts_password_and_token_hash` | done (S1c) |
 | `test_logging.py::test_each_record_is_flushed_to_stdout_immediately` | process test `binary.rs::serves_health_logs_startup_and_stops_on_sigterm` (reads the startup line from a pipe while the process runs) | done (S1d) |
 | `test_logging.py::test_startup_line_records_effective_configuration`, `::test_startup_line_survives_a_raised_log_level`, `::test_startup_line_never_leaks_credentials` | same process test (fields, `impl`, sorted labels, level ERROR under `LOG_LEVEL=error`, no password or hash) and unit `log::tests` | done (S1d) |
-| `test_health.py` (both) | unit `http::tests::health_and_fallbacks`, process test; harness `/health` cases | done (S1d); harness pending (S6) |
+| `test_health.py` (both) | unit `http::tests::health_and_fallbacks`, process test; harness `route *` (`/health`, HEAD/POST 405, 307 with `location`, 404s) | done (S1d, S6) |
 | new: 404/405/307, `HEAD /health`, 413 on `/health` and a 404 path, decoded-path routing | unit `http::tests` | done (S1d) |
 | new: bind failure exit 1, SIGTERM exit 0 | process tests `binary.rs` | done (S1d) |
 | new: `--version`, `--check-config` exit 0/1, unknown arguments exit 2 | process tests `binary.rs` | done (S1a, secrets S1c) |
@@ -55,30 +57,30 @@ and fixture cases generated from the fixed Python.
 
 | Python test | Rust counterpart | Status |
 | --- | --- | --- |
-| `test_body_limit.py` (declared, streamed, within limit) | unit `pipeline::tests::body_reading` (declared length over the limit: the layer's 413 before auth and without a record; a chunked body counted while read: 413 with a record) and `http::tests::declared_length_over_the_limit_is_413_everywhere`; harness | done (S3d); harness pending (S6) |
-| `test_body_limit.py::test_invalid_or_negative_content_length_rejected` | harness against real uvicorn (D-12) | pending (S6) |
+| `test_body_limit.py` (declared, streamed, within limit) | unit `pipeline::tests::body_reading` (declared length over the limit: the layer's 413 before auth and without a record; a chunked body counted while read: 413 with a record) and `http::tests::declared_length_over_the_limit_is_413_everywhere`; harness `limit declared length *`, `limit chunked over the limit *` | done (S3d, S6) |
+| `test_body_limit.py::test_invalid_or_negative_content_length_rejected` | harness `body content-length * (D-12)` against real uvicorn: both 400 before the app (no divergence) | done (S6) |
 | `test_body_limit.py::test_non_http_scope_passes_through` | n/a: ASGI lifespan scope has no Rust equivalent | n/a |
 | `test_headers.py::test_validate_subject_*`, `::test_custom_headers_*` | unit `headers::tests::python_header_tests` + fixture `headers.json` (196 subjects, 100 header lists, 168 control-character probes; D-19 fixed in Python, no divergence) via `headers::tests::headers_fixture` | done (S3a) |
 | `test_headers.py::test_custom_headers_reject_name_with_final_line_break`, `test_messages_endpoint.py::test_header_name_with_final_newline_returns_400` (new, D-19 fix) | fixture `headers.json` (`X-Foo\n`, `Bcc\n` → injection); unit `pipeline::tests::field_rules_are_400` (`h:X-Foo\n`, both encodings) | done |
 | new: form parsing of both encodings (Starlette `FormParser`/`MultiPartParser` as the route calls them: content type, decoding, charsets, framing, part headers, limits, truncation at every byte) | fixture `form_decoding.json` (350 bodies, each also in four chunkings) via `form::tests::form_decoding_fixture`; units `form::tests` (production shapes, `unquote_plus`, content types, limits) | done (S3b) |
-| `test_messages_endpoint.py::test_happy_path_returns_queued`, `::test_auth_*` | units `pipeline::tests::happy_path_in_both_encodings`, `::authentication_failures_are_401_with_realm` (response shape, realm, record) | done (S3c); harness pending (S6) |
-| `test_messages_endpoint.py` 400 cases (`o:`, `v:`, `template`, `recipient-variables`, subject CRLF, `h:Bcc`, no recipients, no body, malformed from/to/Reply-To, injected CRLF) and the S0-py `text=""` cases (D-1) | unit `pipeline::tests::field_rules_are_400` (both encodings, plus `t:`, unknown fields, two `from`, EAI addresses, Reply-To case variants, D-19) | done (S3c); harness pending (S6) |
-| `test_messages_endpoint.py` policy cases (path/from domain/from address, cross-domain, parent domain, foreign token) | unit `pipeline::tests::policy_decisions` (both encodings, 403 texts) | done (S3c); harness pending (S6) |
-| `test_messages_endpoint.py` 413 cases (attachments too big/too many/flood, inline counting, huge text), malformed inline filename | units `pipeline::tests::limits_are_413` (also the aggregate of decoded texts, recipients and Starlette's field cap at N and N+1), `::inline_filenames` | done (S3d); harness pending (S6) |
+| `test_messages_endpoint.py::test_happy_path_returns_queued`, `::test_auth_*` | units `pipeline::tests::happy_path_in_both_encodings`, `::authentication_failures_are_401_with_realm` (response shape, realm, record); harness `anymail homepage default from`, `auth *` | done (S3c, S6) |
+| `test_messages_endpoint.py` 400 cases (`o:`, `v:`, `template`, `recipient-variables`, subject CRLF, `h:Bcc`, no recipients, no body, malformed from/to/Reply-To, injected CRLF) and the S0-py `text=""` cases (D-1) | unit `pipeline::tests::field_rules_are_400` (both encodings, plus `t:`, unknown fields, two `from`, EAI addresses, Reply-To case variants, D-19); harness `field *` in both encodings | done (S3c, S6) |
+| `test_messages_endpoint.py` policy cases (path/from domain/from address, cross-domain, parent domain, foreign token) | unit `pipeline::tests::policy_decisions` (both encodings, 403 texts); harness `policy *` (each of the 12 production policies allowed, other address, foreign from domain, foreign path; path forms, IDN) | done (S3c, S6) |
+| `test_messages_endpoint.py` 413 cases (attachments too big/too many/flood, inline counting, huge text), malformed inline filename | units `pipeline::tests::limits_are_413` (also the aggregate of decoded texts, recipients and Starlette's field cap at N and N+1), `::inline_filenames`; harness `limit *` (profile `small`, N and N+1) | done (S3d, S6) |
 | `test_messages_endpoint.py::test_smtp_*`, `::test_partial_refusal_*` (route side: status, records, `FAIL_ON_PARTIAL_REFUSAL`) | unit `pipeline::tests::submission_outcomes` with a recording submitter | done (S3c); SMTP side S5, harness S6 |
 | `test_messages_endpoint.py::test_path_domain_logged_as_punycode`, `::test_log_redacts_token_and_smtp_password` | unit `pipeline::tests::records_follow_the_information_boundary` (captured log lines; also the 320-character `from` cap and the configured level) | done (S3d) |
-| new: decision-order multi-fault cases (foreign path domain + `o:tag` → 400, oversized attachment before `o:tag` → 413 and after it → 400, bad auth + malformed multipart → 401, policy before subject/headers/recipients, recipient count before addresses, D-1 after the policy), both encodings | unit `pipeline::tests::decision_order` | done (S3d); harness pending (S6) |
+| new: decision-order multi-fault cases (foreign path domain + `o:tag` → 400, oversized attachment before `o:tag` → 413 and after it → 400, bad auth + malformed multipart → 401, policy before subject/headers/recipients, recipient count before addresses, D-1 after the policy), both encodings | unit `pipeline::tests::decision_order`; harness `order *`, `auth missing before malformed multipart`, `limit attachment before o:tag is 413`, `limit o:tag before attachment is 400` | done (S3d, S6) |
 | new: route matching (405 with `allow: POST`, 307, `%2F` and other paths 404, `$` before a final newline), production client shapes (Anymail urlencoded, the recorder's multipart in all 24 field orders), envelope order and de-duplication, a panic is a 500 with one record | units `pipeline::tests::route_matching`, `::production_shapes`, `::envelope_order_and_deduplication`, `::panics_are_500_with_a_record` | done (S3d) |
 
 ## Message construction (S4)
 
 | Python test | Rust counterpart | Status |
 | --- | --- | --- |
-| `test_mime_build.py` structure tests (text, html, alternative, Cc/Bcc, Reply-To, attachment, Message-Id, display name, inline related/mixed, amp, container downgrade, malformed inline names, empty bodies, CR/LF display names, IDN as A-labels, EAI in every field) | unit `mime::tests::python_mime_build_tests` (parses the produced message with `mail-parser`); fixture `mime.json` via `mime::tests::mime_fixture` and `fixtures/check_mime.py` (Python's parser on the Rust output); harness semantic comparison | done (S4a, S4b); harness pending (S6) |
+| `test_mime_build.py` structure tests (text, html, alternative, Cc/Bcc, Reply-To, attachment, Message-Id, display name, inline related/mixed, amp, container downgrade, malformed inline names, empty bodies, CR/LF display names, IDN as A-labels, EAI in every field) | unit `mime::tests::python_mime_build_tests` (parses the produced message with `mail-parser`); fixture `mime.json` via `mime::tests::mime_fixture` and `fixtures/check_mime.py` (Python's parser on the Rust output); harness semantic comparison of every delivered message (`anymail *`, `recorder *`, `field *`) | done (S4a, S4b, S6) |
 | `test_mime_build.py` new in S4a (`test_non_ascii_message_id_header_is_rejected`, `test_ascii_message_id_headers_are_kept`), `test_messages_endpoint.py::test_non_ascii_references_is_400_before_smtp` | unit `mime::tests::exotic_headers` | done (S4a) |
 | `test_mime_build.py::test_inline_explicit_content_id_is_not_double_bracketed` | n/a: form uploads never carry an explicit Content-ID | n/a |
-| `test_messages_endpoint.py::test_bcc_only_envelope_not_in_headers`, `::test_cc_in_headers_and_envelope`, `::test_reply_to_*`, `::test_inline_upload_is_related_to_html_with_bracketed_content_id` | harness | pending (S6) |
-| new: IDN/EAI recipients (D-2), non-ASCII subject/body/filenames, RFC conformance of the output, display-name quoting (S2 open point 4), D-21 | units `mime::tests::display_names_are_quoted_like_python`, `::exotic_headers`, `::long_values_stay_conformant`, `::long_encoded_words_and_upload_headers`, `::upload_content_types`, `::message_id_is_32_hex_digits_at_the_public_host`; fixture `mime.json` (124 cases, D-11/D-21 marked) with `check_mime.py`; harness | done (S4a, S4b); harness pending (S6) |
+| `test_messages_endpoint.py::test_bcc_only_envelope_not_in_headers`, `::test_cc_in_headers_and_envelope`, `::test_reply_to_*`, `::test_inline_upload_is_related_to_html_with_bracketed_content_id` | harness `field bcc only`, `field cc only`, `anymail with reply-to cc bcc and duplicates` (quoted comma, two addresses, envelope de-duplication), `anymail multipart inline and attachment with html` | done (S6) |
+| new: IDN/EAI recipients (D-2), non-ASCII subject/body/filenames, RFC conformance of the output, display-name quoting (S2 open point 4), D-21 | units `mime::tests::display_names_are_quoted_like_python`, `::exotic_headers`, `::long_values_stay_conformant`, `::long_encoded_words_and_upload_headers`, `::upload_content_types`, `::message_id_is_32_hex_digits_at_the_public_host`; fixture `mime.json` (124 cases, D-11/D-21 marked) with `check_mime.py`; harness `field to IDN (D-2)`, `field subject *`, `anymail multipart attachment non-ascii name`, `field h:Orig-Date (D-21)` and the other D-21 cases | done (S4a, S4b, S6) |
 | new: fail closed, every input Python's `build_message` refuses the Rust port refuses; `check_mime.py` catches a bare LF, a long line and a changed header | `tests/test_rust_fixtures.py::test_rust_mime_decisions_never_widen_python`, `::test_check_mime_flags_broken_messages` | done (S4b) |
 
 ## SMTP (S5)
@@ -90,13 +92,20 @@ and fixture cases generated from the fixed Python.
 | `test_smtp_outcomes.py::test_refusal_codes_through_submit_and_endpoint`, `::test_all_refused_classifies_every_reply` (submit side) | unit `smtp::tests::every_row_of_the_outcome_table`; fixture `smtp_outcomes.json` (109 scenarios, Python's `submit` against the same scripted server; 421/450/451/550/554 in every phase with STARTTLS on, banner and EHLO with STARTTLS off, all-refused mixtures, disconnects, timeouts, garbage replies (D-3), CRAM-MD5 only (D-4), AUTH fallback, exact positive codes) via `smtp::tests::smtp_outcomes_fixture`; endpoint side `pipeline::tests::smtp_outcomes_through_the_endpoint` | done (S5a, S5b) |
 | `test_smtp_outcomes.py::test_quit_failure_preserves_endpoint_outcome` (submit side), `::test_data_failure_is_not_hidden_by_quit_failure`, `::test_already_closed_send_failure_does_not_warn_about_cleanup`, `::test_cleanup_reply_and_close_errors_preserve_acceptance` (reply case) | unit `smtp::tests::cleanup_never_changes_the_outcome` (QUIT 500 or closed after acceptance, also with a partial refusal; DATA 451 + QUIT 500; no QUIT and no record after 421, a disconnect or a timeout; QUIT after refusals before the transaction) | done (S5a) |
 | `test_smtp_outcomes.py::test_cleanup_reply_and_close_errors_preserve_acceptance` (close case) | n/a: dropping the connection closes the socket and cannot fail | n/a |
-| `test_messages_endpoint.py::test_smtp_*`, `::test_partial_refusal_*`, `::test_full_acceptance_logs_zero_refusals`, `::test_strict_mode_full_acceptance_still_200` | harness | pending (S6) |
+| `test_messages_endpoint.py::test_smtp_*`, `::test_partial_refusal_*`, `::test_full_acceptance_logs_zero_refusals`, `::test_strict_mode_full_acceptance_still_200` | harness `smtp *` (the 109 scenarios of `smtp_outcomes.json` through the endpoint, D-3/D-4 marked; `smtp partial refusal records`, `smtp strict *`), records compared | done (S6) |
 | `test_smtp_outcomes.py::test_quit_failure_preserves_endpoint_outcome` (endpoint side, also with `FAIL_ON_PARTIAL_REFUSAL`), `::test_data_failure_is_not_hidden_by_quit_failure` (endpoint side) | unit `pipeline::tests::smtp_outcomes_through_the_endpoint` (route with the SMTP submitter and the fake server) | done (S5b) |
 | `test_nonblocking_submit.py::test_health_and_other_sends_stay_responsive_while_a_send_hangs`, `::test_concurrency_cap_queues_sends_but_not_health` | units `pipeline::tests::health_and_other_sends_stay_responsive_while_a_send_hangs`, `::concurrency_cap_queues_sends_but_not_health` (gated submitter), `::health_answers_while_an_smtp_session_hangs` (real submitter, fake server hanging) | done (S5b) |
 | `test_nonblocking_submit.py::test_smtp_errors_from_the_worker_thread_keep_their_mapping` | unit `pipeline::tests::submission_outcomes` | done (S3c) |
 | `test_nonblocking_submit.py::test_smtp_max_concurrency_must_be_positive` | fixture `config_env.json` | done (S1a) |
 | new: delivery end to end, shutdown | process tests `binary.rs::delivers_over_starttls_with_the_ca_file` (STARTTLS with a test CA from `SMTP_CA_FILE`, AUTH, partial refusal, records, `--check-config` with an unusable CA file), `::shutdown_waits_for_a_submission_whose_client_left` | done (S5b) |
 | new: TLS certificate/hostname failure → 503, `SMTP_CA_FILE` read at start (D-22), D-3 classes, exact positive codes, ASCII envelope, dot-stuffing across the 64 KiB pieces | units `smtp::tests::tls_with_the_ca_file`, `::every_row_of_the_outcome_table`, `::envelope_and_reply_codes`, `::long_messages_survive_chunking` | done (S5a) |
+
+## Parity harness (S6)
+
+| Python test | Rust counterpart | Status |
+| --- | --- | --- |
+| new: `tests/test_parity_harness.py` (the fake SMTP server records TLS, login, envelope and the un-stuffed message without an extra line; the comparison catches every contract difference and ignores the free ones; divergences must show; request framing; the corpus has the S6 cases) | the CI job `parity` runs `rust/parity/run_parity.py`: 474 request cases and 8 startup cases against both processes | done (S6) |
+| new: configuration at process level (`LOG_LEVEL=trace` starts both: uvicorn registers the level; D-22 CA file; invalid settings exit 1; secrets modes) | harness `[startup] *`; fixture `config_env.json` (`log level 'trace'`, `lower-case log level trace`) | done (S6) |
 
 ## Release (S7)
 

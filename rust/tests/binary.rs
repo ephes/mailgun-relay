@@ -74,7 +74,7 @@ fn check_config_exit_codes() {
         ],
         &[
             ("MAILGUN_RELAY_SECRETS_PATH", path),
-            ("MAILGUN_RELAY_LOG_LEVEL", "trace"),
+            ("MAILGUN_RELAY_LOG_LEVEL", "warn"),
         ],
         &[
             ("MAILGUN_RELAY_SECRETS_PATH", path),

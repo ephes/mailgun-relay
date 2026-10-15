@@ -147,5 +147,7 @@ mod tests {
         );
         assert_eq!(Level::from_name("warning"), Some(Level::Warning));
         assert_eq!(Level::from_name("WARN"), None);
+        assert_eq!(Level::from_name("trace"), Some(Level::Trace));
+        assert!(Level::Trace < Level::Debug);
     }
 }

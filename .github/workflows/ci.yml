@@ -118,3 +118,58 @@ jobs:
           size=$(stat -c %s target/release/mailgun-relay)
           echo "mailgun-relay release binary: ${size} bytes"
           echo "mailgun-relay release binary: ${size} bytes" >> "$GITHUB_STEP_SUMMARY"
+
+  parity:
+    # rust/PLAN.md 7.4: both implementations as real processes, the same
+    # requests, compared by the parity contract.
+    name: Parity harness (Python and Rust processes)
+    needs: [python, rust]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      CARGO_TERM_COLOR: always
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install the pinned toolchain (rust/rust-toolchain.toml)
+        working-directory: rust
+        run: |
+          rustup toolchain install
+          rustc --version
+      - name: Cache cargo registry and build
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            rust/target
+          key: rust-${{ runner.os }}-${{ hashFiles('rust/rust-toolchain.toml', 'rust/Cargo.lock') }}
+          restore-keys: rust-${{ runner.os }}-
+      - name: Set up uv
+        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          version: "0.12.23"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - name: Sync locked dependencies
+        run: uv sync
+      - name: Release build
+        working-directory: rust
+        run: cargo build --release --locked
+      - name: The harness also runs with the host's python3 (shadow, PLAN.md 10.1)
+        run: |
+          python3 --version
+          python3 -m py_compile rust/parity/*.py
+      - name: Parity harness
+        run: |
+          timeout 300 uv run python rust/parity/run_parity.py --report "$RUNNER_TEMP/parity.json"
+      - name: Summary
+        if: always()
+        run: |
+          if [ -f "$RUNNER_TEMP/parity.json" ]; then
+            python3 -c 'import json,sys; r=json.load(open(sys.argv[1])); r.pop("cases"); print(json.dumps(r, indent=1))' \
+              "$RUNNER_TEMP/parity.json" | tee -a "$GITHUB_STEP_SUMMARY"
+          fi

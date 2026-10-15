@@ -2795,7 +2795,26 @@
      "trace"
     ]
    ],
-   "expected": null,
+   "expected": {
+    "bind_host": "127.0.0.1",
+    "bind_port": 8085,
+    "envelope_sender": "",
+    "fail_on_partial_refusal": false,
+    "log_level": "TRACE",
+    "max_attachment_bytes": 10485760,
+    "max_attachments": 10,
+    "max_body_bytes": 26214400,
+    "max_header_value_length": 998,
+    "max_recipients": 100,
+    "public_host": "mailgun.home.xn--wersdrfer-47a.de",
+    "secrets_path": "/etc/mailgun-relay/secrets.yml",
+    "smtp_ca_file": "",
+    "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
+    "smtp_max_concurrency": 8,
+    "smtp_port": 587,
+    "smtp_starttls": true,
+    "smtp_timeout_s": 30.0
+   },
    "name": "log level 'trace'"
   },
   {
@@ -3483,6 +3502,35 @@
    "expected": null,
    "name": "lower-case log level warn",
    "python_starts": true
+  },
+  {
+   "env": [
+    [
+     "mailgun_relay_log_level",
+     "trace"
+    ]
+   ],
+   "expected": {
+    "bind_host": "127.0.0.1",
+    "bind_port": 8085,
+    "envelope_sender": "",
+    "fail_on_partial_refusal": false,
+    "log_level": "TRACE",
+    "max_attachment_bytes": 10485760,
+    "max_attachments": 10,
+    "max_body_bytes": 26214400,
+    "max_header_value_length": 998,
+    "max_recipients": 100,
+    "public_host": "mailgun.home.xn--wersdrfer-47a.de",
+    "secrets_path": "/etc/mailgun-relay/secrets.yml",
+    "smtp_ca_file": "",
+    "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
+    "smtp_max_concurrency": 8,
+    "smtp_port": 587,
+    "smtp_starttls": true,
+    "smtp_timeout_s": 30.0
+   },
+   "name": "lower-case log level trace"
   },
   {
    "env": [
