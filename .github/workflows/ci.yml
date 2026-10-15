@@ -99,8 +99,18 @@ jobs:
           cargo deny --version
       - name: Supply chain (cargo deny, rust/deny.toml)
         run: cargo deny --locked check
-      - name: Tests (cargo test)
-        run: cargo test --locked
+      - name: Set up uv (Python's parser for the MIME check)
+        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          version: "0.12.23"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - name: Tests (cargo test) and the MIME check with Python's parser
+        run: |
+          dump="$RUNNER_TEMP/mime"
+          mkdir -p "$dump"
+          MIME_FIXTURE_DUMP="$dump" cargo test --locked
+          uv run python fixtures/check_mime.py "$dump"
       - name: Release build
         run: cargo build --release --locked
       - name: Binary size

@@ -805,7 +805,10 @@ fn leaf_content_type(raw: &str) -> ContentType {
 #[cfg(test)]
 mod tests {
     use base64::engine::general_purpose::STANDARD;
-    use mail_parser::{MessageParser, MimeHeaders};
+    use mail_parser::{
+        HeaderName as ParsedName, HeaderValue as Parsed, MessageParser, MessagePart, MimeHeaders,
+        PartType,
+    };
     use serde_json::{Value, json};
 
     use super::*;
@@ -896,6 +899,167 @@ mod tests {
         assert!(head.contains(&format!("\r\nMessage-ID: {}\r\n", built.message_id)));
         assert!(head.contains("\r\nDate: "));
         text
+    }
+
+    fn header_text(value: &Parsed<'_>) -> Value {
+        match value {
+            Parsed::Address(address) => Value::Array(
+                address
+                    .iter()
+                    .map(|a| {
+                        json!([
+                            a.name.as_deref().unwrap_or_default(),
+                            a.address.as_deref().unwrap_or_default()
+                        ])
+                    })
+                    .collect(),
+            ),
+            Parsed::Text(text) => json!(text),
+            Parsed::TextList(list) => json!(list.join(" ")),
+            Parsed::Empty => json!(""),
+            other => json!(format!("{other:?}")),
+        }
+    }
+
+    /// The semantic view of `generate.py` `semantic_message`, read with
+    /// mail-parser: addresses and MIME headers parsed, every other header
+    /// (Content-ID included) as decoded text. Unstructured values are
+    /// compared trimmed; `check_mime.py` compares exactly with Python's
+    /// parser.
+    fn semantic(bytes: &[u8]) -> Value {
+        let message = MessageParser::new()
+            .with_mime_headers()
+            .with_address_headers()
+            .header_text(ParsedName::ContentId)
+            .default_header_text()
+            .parse(bytes)
+            .unwrap();
+        let root = &message.parts[0];
+        let mut headers = Vec::new();
+        for header in &root.headers {
+            let name = header.name.as_str().to_ascii_lowercase();
+            if [
+                "message-id",
+                "date",
+                "mime-version",
+                "content-type",
+                "content-transfer-encoding",
+            ]
+            .contains(&name.as_str())
+            {
+                continue;
+            }
+            headers.push(json!([name, header_text(&header.value)]));
+        }
+        headers.sort_by_key(|h| h.to_string());
+        json!({"headers": headers, "body": node(&message.parts, root)})
+    }
+
+    fn node(parts: &[MessagePart<'_>], part: &MessagePart<'_>) -> Value {
+        let content_type = part.content_type().map_or("text/plain".to_owned(), |ct| {
+            format!(
+                "{}/{}",
+                ct.c_type,
+                ct.c_subtype.as_deref().unwrap_or_default()
+            )
+            .to_lowercase()
+        });
+        let mut node = json!({"type": content_type});
+        if let PartType::Multipart(children) = &part.body {
+            node["parts"] = children.iter().map(|&i| node_of(parts, i)).collect();
+            return node;
+        }
+        let disposition = part.content_disposition().map(|d| d.c_type.to_lowercase());
+        if let Some(disposition) = &disposition {
+            node["disposition"] = json!(disposition);
+            node["filename"] = json!(part.attachment_name());
+        }
+        if let Some(id) = part.content_id() {
+            node["content_id"] = json!(id.trim());
+        }
+        if content_type.starts_with("text/") && disposition.is_none() {
+            node["charset"] = json!(part.content_type().and_then(|ct| ct.attribute("charset")));
+            let text = part.text_contents().unwrap().replace("\r\n", "\n");
+            node["text"] = json!(text.strip_suffix('\n').unwrap_or(&text));
+        } else {
+            node["data"] = json!(STANDARD.encode(part.contents()));
+        }
+        node
+    }
+
+    fn node_of(parts: &[MessagePart<'_>], id: u32) -> Value {
+        node(parts, &parts[id as usize])
+    }
+
+    /// What the mail-parser comparison leaves to `check_mime.py`: the ends
+    /// of unstructured values and whitespace runs in display names (Python
+    /// collapses them in an unquoted phrase, mail-parser does not). A From
+    /// Python's registry cannot parse (CR/LF in the display name) is stored
+    /// as `["unparsable", "<name> <addr>"]`.
+    fn trimmed(mut message: Value) -> Value {
+        let collapse = |s: &str| s.split_whitespace().collect::<Vec<_>>().join(" ");
+        for header in message["headers"].as_array_mut().unwrap() {
+            if let Some(text) = header[1].as_str() {
+                header[1] = json!(text.trim());
+                continue;
+            }
+            if header[1][0] == "unparsable" {
+                let text = header[1][1].as_str().unwrap();
+                let (name, addr) = text.rsplit_once(" <").unwrap();
+                header[1] = json!([[name, addr.trim_end_matches('>')]]);
+            }
+            for mailbox in header[1].as_array_mut().unwrap() {
+                mailbox[0] = json!(collapse(mailbox[0].as_str().unwrap()));
+            }
+        }
+        message
+    }
+
+    /// Every case of `fixtures/mime.json`: status, envelope, RFC
+    /// conformance, and the semantic view against Python's. With
+    /// `MIME_FIXTURE_DUMP=<dir>` the messages are written there for
+    /// `fixtures/check_mime.py`.
+    #[test]
+    fn mime_fixture() {
+        let fixture: Value = serde_json::from_str(include_str!("../fixtures/mime.json")).unwrap();
+        let dump = std::env::var_os("MIME_FIXTURE_DUMP").map(std::path::PathBuf::from);
+        let mut mismatches = Vec::new();
+        for (index, case) in fixture["cases"].as_array().unwrap().iter().enumerate() {
+            let name = case["name"].as_str().unwrap();
+            let expected = &case["expected"];
+            let result = build(input(&case["input"]));
+            if expected["status"] == 400 {
+                if result.is_ok() {
+                    mismatches.push(format!("{name}: built, expected 400"));
+                }
+                continue;
+            }
+            let built = match result {
+                Ok(built) => built,
+                Err(e) => {
+                    mismatches.push(format!("{name}: {e:?}"));
+                    continue;
+                }
+            };
+            assert_conformant(&built);
+            if let Some(dir) = &dump {
+                std::fs::write(dir.join(format!("{index}.eml")), &built.formatted).unwrap();
+            }
+            if json!(built.envelope) != expected["envelope"] {
+                mismatches.push(format!("{name}: envelope {:?}", built.envelope));
+            }
+            // mail-parser reads an encoded word in a local part differently
+            // from Python's parser; check_mime.py covers that case.
+            if name == "encoded local part" {
+                continue;
+            }
+            let actual = trimmed(semantic(&built.formatted));
+            let wanted = trimmed(expected["message"].clone());
+            if actual != wanted {
+                mismatches.push(format!("{name}:\n  rust   {actual}\n  python {wanted}"));
+            }
+        }
+        assert!(mismatches.is_empty(), "{}", mismatches.join("\n"));
     }
 
     fn parse(built: &BuiltMessage) -> mail_parser::Message<'_> {

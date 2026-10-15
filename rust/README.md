@@ -10,7 +10,7 @@ counterpart.
 `POST /v3/{domain}/messages` with every decision of the Python route. The
 binary loads and validates the configuration, answers `GET /health`, the
 404/405/307 fallbacks and the 413 body-limit layer, and logs the startup
-record and one record per message request. S4a builds the message
+record and one record per message request. S4 builds the message
 (`src/mime.rs`); SMTP submission comes with S5: until then every accepted
 message is answered with 503 and nothing is sent. Nothing deploys this code
 until the role is switched (PLAN.md section 9).
@@ -83,7 +83,14 @@ uv run python rust/fixtures/generate.py --check   # exit 1 when stale
 ```
 
 `tests/test_rust_fixtures.py` (Python suite) fails when a committed fixture
-differs from a fresh render.
+differs from a fresh render. The messages the Rust port builds are also read
+with Python's parser (`mime.json`, PLAN.md 2.10):
+
+```bash
+dump=$(mktemp -d)
+(cd rust && MIME_FIXTURE_DUMP="$dump" cargo test --locked mime_fixture)
+uv run python rust/fixtures/check_mime.py "$dump"
+```
 
 ## Layout
 
@@ -100,6 +107,7 @@ src/domain.rs   domain normalisation (path, address and configured domains)
 src/http.rs     413 layer, /health, 404/405/307 fallbacks
 src/log.rs      JSON line logger
 src/pystr.rs    Python str.strip() semantics
+src/mime.rs     message construction (lettre)
 tests/binary.rs process-level tests of the built binary
-fixtures/       generator + generated JSON
+fixtures/       generator + generated JSON; check_mime.py (Python's parser on Rust messages)
 ```

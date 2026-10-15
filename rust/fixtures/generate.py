@@ -23,17 +23,24 @@ from __future__ import annotations
 import argparse
 import asyncio
 import base64
+import copy
+import email
+import email.header
+import email.policy
 import gc
 import hashlib
 import json
 import logging
 import os
 import random
+import re
+import string
 import sys
 import tempfile
 import urllib.parse
 import warnings
 from collections.abc import Callable, Mapping, Sequence
+from email.message import EmailMessage
 from pathlib import Path
 from typing import Any
 from unittest import mock
@@ -49,6 +56,7 @@ from mailgun_relay import headers as headers_module
 from mailgun_relay import routes
 from mailgun_relay.auth import AuthError, authenticate
 from mailgun_relay.config import Settings, TokenPolicy, load_secrets
+from mailgun_relay.errors import BadRequestError
 from mailgun_relay.headers import (
     DangerousHeaderError,
     HeaderInjectionError,
@@ -59,6 +67,7 @@ from mailgun_relay.headers import (
     validate_custom_headers,
     validate_subject,
 )
+from mailgun_relay.mime_build import Attachment, MessageInput, build_message
 from mailgun_relay.policy import (
     InvalidAddressError,
     PolicyError,
@@ -2269,6 +2278,710 @@ def build_form_decoding() -> dict[str, Any]:
     }
 
 
+# -------------------------------------------------------------------- mime
+
+# Message construction (PLAN.md 2.10, D-21). Python is the oracle for the
+# step-9 decisions and for what arrives: the generator builds each case with
+# ``build_message``, serialises it as smtplib does and stores the semantic
+# view a receiver's parser (``email`` with ``policy.default``) gets. The Rust
+# test builds the same input and compares; ``check_mime.py`` runs Python's
+# parser over the Rust output (PLAN.md 7.4).
+
+MIME_HOST = "relay.example.test"
+MIME_FROM = "Alice <alice@example.test>"
+PNG = b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR"
+# Headers the semantic view leaves out: per-message values (Message-Id is
+# checked against the response id, Date for presence) and MIME structure,
+# which the tree carries.
+_MIME_SKIPPED = {"message-id", "date", "mime-version", "content-type", "content-transfer-encoding"}
+_ADDRESS_HEADERS = {"from", "to", "cc", "reply-to", "bcc"}
+
+
+def _upload(filename: str, content_type: str, data: bytes) -> dict[str, str]:
+    return {
+        "filename": filename,
+        "content_type": content_type,
+        "data": base64.b64encode(data).decode(),
+    }
+
+
+def _mime_cases() -> list[tuple[str, dict[str, Any]]]:
+    """(name, overrides of the default input) per case."""
+    jorg_q = "=?utf-8?q?J=C3=B6rg?="
+    crlf_b = "=?utf-8?B?YQ0KYg==?="
+    long_word = "x" * 1200
+    # Anymail's `formataddr` writes a non-ASCII display name as one encoded
+    # word, longer than RFC 2047 allows for a long name.
+    name = "Benachrichtigungen für Jörg Müller aus Köln am Rhein"
+    anymail_long = "=?utf-8?b?" + base64.b64encode(name.encode()).decode() + "?="
+    cases: list[tuple[str, dict[str, Any]]] = [
+        # Bodies (2.10 "Bodies"; test_mime_build.py).
+        ("text only", {}),
+        ("html only", {"text": None, "html": "<p>hi</p>"}),
+        ("text and html", {"html": "<p>hi</p>"}),
+        ("text, html and amp", {"html": "<p>hi</p>", "amp_html": "<html amp4email></html>"}),
+        ("text and amp", {"amp_html": "<html amp4email></html>"}),
+        ("html and amp", {"text": None, "html": "<p>x</p>", "amp_html": "<html amp4email>"}),
+        ("empty text with html", {"text": "", "html": "<p>hi</p>"}),
+        ("empty text", {"text": ""}),
+        ("empty html", {"text": None, "html": ""}),
+        ("empty text and html", {"text": "", "html": ""}),
+        ("empty text with amp", {"text": "", "amp_html": "a"}),
+        ("empty amp is dropped", {"amp_html": ""}),
+        ("german text", {"text": "Grüße aus Köln — 100 €\nZeile 2"}),
+        ("line endings", {"text": "a\r\nb\rc\nd\n\ne"}),
+        ("other line separators", {"text": "a\x0bb\x0cc\x1cd\x85e\u2028f\u2029g"}),
+        ("trailing newlines", {"text": "a\n\n"}),
+        ("control characters", {"text": "nul\x00 bell\x07 del\x7f c1\x9b"}),
+        ("long line", {"text": "word " * 400}),
+        ("long word", {"text": long_word}),
+        ("django traceback", {"text": 'Traceback:\n  File "x.py", line 1\n\tboom()\n' * 20}),
+        # Addresses (2.10 "Envelope", "From", "To, Cc").
+        ("from display name", {"from": "Python Podcast <noreply@mg.python-podcast.de>"}),
+        ("to and cc", {"to": ["a@example.test", "B <b@example.test>"], "cc": ["c@example.test"]}),
+        ("bcc only", {"to": [], "bcc": ["secret@example.test", "secret2@example.test"]}),
+        (
+            "envelope order and dedup",
+            {
+                "to": ["a@example.test", "A <a@example.test>", "Info@example.test"],
+                "cc": ["info@example.test", "b@example.test"],
+                "bcc": ["a@example.test", "c@example.test", "b@example.test"],
+            },
+        ),
+        ("local part case kept", {"to": ["Some.User@Example.TEST", "some.user@example.test"]}),
+        (
+            "idn as a-labels",
+            {
+                "from": "Jörg <sender@wersdörfer.de>",
+                "to": ["to@wersdörfer.de"],
+                "cc": ["Cc <cc@bü.test>"],
+                "bcc": ["bcc@WERSDÖRFER.de"],
+                "headers": [["Reply-To", "reply@wersdörfer.de"]],
+            },
+        ),
+        ("eai to", {"to": ["jörg@example.test"]}),
+        ("eai cc", {"cc": ["jörg@example.test"]}),
+        ("eai bcc", {"bcc": ["jörg@example.test"]}),
+        ("eai reply-to", {"headers": [["Reply-To", "jörg@example.test"]]}),
+        ("invalid to", {"to": ["not an address"]}),
+        ("invalid cc", {"cc": ["a@x.test, b@x.test"]}),
+        ("invalid bcc", {"bcc": ["bad@bad domain"]}),
+        ("rust-stricter to", {"to": ["a . b@example.test"]}),
+        ("encoded local part", {"to": [f"X <{jorg_q}@x.de>"], "bcc": [f"{jorg_q}@x.de"]}),
+        # Display names (2.10 "Incoming RFC 2047 encoded words"; S2 open point 4).
+        (
+            "display names",
+            {
+                "to": [
+                    "Jane (c) <a@x.de>",
+                    "(c) <b@x.de>",
+                    "a@x.de (Kommentar)",
+                    '"Doe, Jane" <d@x.de>',
+                    "O'Brien <o@x.de>",
+                    '"Jane \\"Q\\" Doe" <q@x.de>',
+                    '"a\\\\b" <s@x.de>',
+                    '"  " <w@x.de>',
+                    '"a  b" <ws@x.de>',
+                ]
+            },
+        ),
+        (
+            "non-ascii display names",
+            {
+                "to": [
+                    "Jörg <j@x.de>",
+                    '"Jörg, M." <k@x.de>',
+                    '"Jörg   Müller " <m@x.de>',
+                    '" Jörg\tM" <t@x.de>',
+                    "Ελένη <e@x.de>",
+                ]
+            },
+        ),
+        ("encoded display name", {"from": f"{jorg_q} <a@x.de>", "to": [f"{jorg_q} <b@x.de>"]}),
+        ("quoted encoded display name", {"to": [f'"{jorg_q}" <b@x.de>']}),
+        ("latin-1 encoded display name", {"to": ["=?iso-8859-1?q?J=F6rg?= <b@x.de>"]}),
+        ("encoded control in display name", {"to": ["=?utf-8?B?AQ==?= <b@x.de>"]}),
+        ("encoded comma in display name", {"to": ["=?utf-8?q?Doe=2C_Jane?= <b@x.de>"]}),
+        ("encoded non-ascii comma", {"to": ["=?utf-8?q?Doe=2C_J=C3=B6rg?= <b@x.de>"]}),
+        ("word with encoded text", {"to": [f"x{jorg_q} <b@x.de>"]}),
+        (
+            "long display name",
+            {"to": [f"{long_word} <b@x.de>"], "cc": [f'"{long_word}." <c@x.de>']},
+        ),
+        ("long non-ascii display name", {"to": ["Jörg " * 60 + "<b@x.de>"]}),
+        ("mixed display name", {"to": [f"Jörg {jorg_q} <b@x.de>"]}),
+        ("mixed from display name", {"from": f"Jörg {jorg_q} <b@x.de>"}),
+        ("unknown charset in to", {"to": ["=?bogus?q?abc?= <b@x.de>"]}),
+        ("unknown charset in from", {"from": "=?bogus?q?abc?= <a@x.de>"}),
+        ("nested encoded word", {"subject": "=?utf-8?q?=3D=3Futf-8=3Fq=3Fhello=3F=3D?="}),
+        ("encoded leading space", {"subject": "=?utf-8?q?_a?="}),
+        ("encoded trailing space in to", {"to": ["=?utf-8?q?a_?= <b@x.de>"]}),
+        ("broken base64 subject", {"subject": "=?utf-8?b?YQ*?="}),
+        (
+            "long encoded words",
+            {
+                "from": f"{anymail_long} <a@x.de>",
+                "to": [f"{anymail_long} <b@x.de>"],
+                "subject": f"Re: {anymail_long}",
+                "headers": [["X-Long", anymail_long], ["Reply-To", f"{anymail_long} <r@x.de>"]],
+            },
+        ),
+        ("long glued encoded word", {"subject": "x" + anymail_long}),
+        # D-16 and the field table of 2.10.
+        ("crlf in to", {"to": [f"{crlf_b} <b@x.de>"]}),
+        ("crlf in cc", {"cc": [f"{crlf_b} <c@x.de>"]}),
+        ("crlf q in to", {"to": ["=?utf-8?q?a=0Ab?= <b@x.de>"]}),
+        ("crlf quoted in to", {"to": [f'"a {crlf_b}" <b@x.de>']}),
+        ("crlf utf-7 in to", {"to": ["=?utf-7?q?+AA0-?= <b@x.de>"]}),
+        ("crlf in to with invalid cc", {"to": [f"{crlf_b} <b@x.de>"], "cc": ["bad@bad domain"]}),
+        ("crlf in from", {"from": f"{crlf_b} <a@x.de>"}),
+        ("crlf in bcc", {"bcc": [f"{crlf_b} <z@x.de>"]}),
+        ("crlf in reply-to", {"headers": [["Reply-To", f"{crlf_b} <r@x.de>"]]}),
+        ("crlf in subject", {"subject": crlf_b}),
+        ("crlf in custom header", {"headers": [["X-Note", crlf_b]]}),
+        ("control in subject", {"subject": "=?utf-8?B?AQ==?= x"}),
+        # Subject and custom headers (2.10 "Subject", "other h:* headers").
+        ("empty subject", {"subject": ""}),
+        ("german subject", {"subject": "Grüße — Ihre Bestellung"}),
+        ("encoded subject", {"subject": f"Re: {jorg_q} und {jorg_q}"}),
+        ("long subject", {"subject": "Error: " + "lorem ipsum " * 80}),
+        ("long word subject", {"subject": long_word}),
+        ("long non-ascii subject", {"subject": "ä" + long_word}),
+        ("mixed subject", {"subject": f"Grüße {jorg_q}"}),
+        ("question mark subject", {"subject": "1+1=? Äh"}),
+        (
+            "custom headers",
+            {
+                "headers": [
+                    ["X-Mailer", "Anymail"],
+                    ["Auto-Submitted", "auto-generated"],
+                    ["X-Note", "  leading space"],
+                    ["X-Umlaut", " Grüße "],
+                    ["X-Encoded", f"{jorg_q} x"],
+                    ["X-A", "one"],
+                    ["x-a", "two"],
+                    ["X-Tab", "a\tb"],
+                    ["X-Empty", ""],
+                ]
+            },
+        ),
+        (
+            "threading headers",
+            {"headers": [["In-Reply-To", "<a@b.test>"], ["References", "<a@b.test> <c@d.test>"]]},
+        ),
+        ("garbage in-reply-to", {"headers": [["In-Reply-To", "garbage no brackets"]]}),
+        ("unclosed in-reply-to", {"headers": [["In-Reply-To", "<a@b.test"]]}),
+        ("comma references", {"headers": [["References", "<a@b.test>,<c@d.test>"]]}),
+        ("spaced references", {"headers": [["References", " <a@b.test>  <c.d@e.test>"]]}),
+        ("non-ascii references", {"headers": [["References", "<jörg@example.test>"]]}),
+        ("encoded in-reply-to", {"headers": [["In-Reply-To", jorg_q]]}),
+        ("ascii encoded references", {"headers": [["References", "=?utf-8?q?abc?="]]}),
+        (
+            "duplicate in-reply-to",
+            {"headers": [["In-Reply-To", "<a@b>"], ["in-reply-to", "<c@d>"]]},
+        ),
+        ("duplicate references", {"headers": [["References", "<a@b>"], ["REFERENCES", "<c@d>"]]}),
+        ("orig-date", {"headers": [["Orig-Date", "Mon, 1 Jan 2024 10:00:00 +0000"]]}),
+        ("long header name", {"headers": [["X-" + "a" * 80, "v"]]}),
+        ("long word header", {"headers": [["X-Long", long_word]]}),
+        ("mixed custom header", {"headers": [["X-Mixed", f"Grüße {jorg_q}"]]}),
+        # Reply-To (2.10 "Reply-To list").
+        ("reply-to", {"headers": [["Reply-To", "ops@example.test"]]}),
+        ("reply-to lowercase name", {"headers": [["reply-to", "Ops <ops@example.test>"]]}),
+        (
+            "reply-to list",
+            {"headers": [["Reply-To", '"Doe, Jane" <jane@example.test>, b@x.de, Jörg <j@x.de>']]},
+        ),
+        ("reply-to invalid", {"headers": [["Reply-To", "a@x.de, bad@bad domain"]]}),
+        ("reply-to case variants", {"headers": [["Reply-To", "a@x.de"], ["reply-to", "b@x.de"]]}),
+        # Attachments (2.10 "Attachments").
+        ("attachment", {"attachments": [_upload("hello.txt", "text/plain", b"hello attachment")]}),
+        (
+            "attachments",
+            {
+                "attachments": [
+                    _upload("a.pdf", "application/pdf", b"%PDF-1.4\n%\xe2\xe3"),
+                    _upload("Rechnung März.pdf", "Application/PDF; name=x", b"%PDF"),
+                    _upload("", "", b"\x00\x01\x02"),
+                    _upload("data.csv", "text/csv", b"a;b\nc;d\n"),
+                ]
+            },
+        ),
+        (
+            "container types",
+            {
+                "attachments": [
+                    _upload("a.eml", "message/rfc822", b"Subject: x\r\n\r\nhi"),
+                    _upload("b.bin", "multipart/mixed", b"payload"),
+                    _upload("c.bin", "Multipart/Related", b"payload"),
+                ]
+            },
+        ),
+        (
+            "broken types",
+            {
+                "attachments": [
+                    _upload("a.bin", "a b/c", b"1"),
+                    _upload("b.bin", "image/png/x", b"2"),
+                    _upload("c.bin", "/x", b"3"),
+                    _upload("d.bin", "image/", b"4"),
+                    _upload("e.bin", "tä/x", b"5"),
+                ]
+            },
+        ),
+        (
+            "attachment filenames",
+            {
+                "attachments": [
+                    _upload("a\x01b.txt", "text/plain", b"1"),
+                    _upload("a\tb.txt", "text/plain", b"2"),
+                    _upload('a"b\\c.txt', "text/plain", b"3"),
+                    _upload("a;b c.txt", "text/plain", b"4"),
+                    _upload("x" * 100 + ".txt", "text/plain", b"5"),
+                    _upload("ö" * 40 + ".txt", "text/plain", b"6"),
+                    _upload("a\u2028b\x85.txt", "text/plain", b"7"),
+                    _upload("y" * 1100 + ".txt", "image/" + "y" * 200, b"8"),
+                ]
+            },
+        ),
+        ("attachment filename lf", {"attachments": [_upload("a\nb.txt", "text/plain", b"1")]}),
+        ("attachment filename ff", {"attachments": [_upload("a\x0cb.txt", "text/plain", b"1")]}),
+        ("non-ascii filename ff", {"attachments": [_upload("é\x0cb.txt", "text/plain", b"1")]}),
+        (
+            "long inline name",
+            {"html": "<p>x</p>", "inline": [_upload("y" * 1100 + ".png", "image/png", PNG)]},
+        ),
+        # Inline parts (2.10 "Inline parts"; test_mime_build.py).
+        (
+            "inline with html",
+            {"html": '<img src="cid:logo.png">', "inline": [_upload("logo.png", "image/png", PNG)]},
+        ),
+        (
+            "inline and attachment",
+            {
+                "html": '<img src="cid:logo.png">',
+                "inline": [_upload("logo.png", "image/png", PNG)],
+                "attachments": [_upload("a.pdf", "application/pdf", b"%PDF")],
+            },
+        ),
+        (
+            "inline html only",
+            {"text": None, "html": "<img>", "inline": [_upload("logo.png", "image/png", PNG)]},
+        ),
+        (
+            "inline with amp",
+            {
+                "html": "<p>x</p>",
+                "amp_html": "<html amp4email></html>",
+                "inline": [_upload("logo.png", "image/png", PNG)],
+            },
+        ),
+        ("inline text only", {"inline": [_upload("logo.png", "image/png", PNG)]}),
+        (
+            "inline text only with attachment",
+            {
+                "amp_html": "<html amp4email>",
+                "inline": [_upload("a.png", "image/png", PNG), _upload("b.png", "image/png", PNG)],
+                "attachments": [_upload("c.txt", "text/plain", b"c")],
+            },
+        ),
+        (
+            "inline container type",
+            {"html": "<p>x</p>", "inline": [_upload("x.eml", "message/rfc822", b"hi")]},
+        ),
+        ("inline default name", {"html": "<p>x</p>", "inline": [_upload("", "image/png", PNG)]}),
+        (
+            "inline names",
+            {
+                "html": "<p>x</p>",
+                "inline": [
+                    _upload("bild-ö.png", "image/png", PNG),
+                    _upload("my logo.png", "image/png", PNG),
+                    _upload('a"b(c).png', "image/png", PNG),
+                ],
+            },
+        ),
+    ]
+    for name in [
+        "a\r\nb.png",
+        "<logo.png>",
+        "<logo.png",
+        "logo.png>",
+        "\tlogo.png",
+        " logo.png",
+        "a\x7f.png",
+        "logo.png\u3000",
+        "a\u2028b.png",
+        "a\x85b.png",
+    ]:
+        cases.append(
+            (
+                f"malformed inline {name!r}",
+                {"html": "<p>x</p>", "inline": [_upload(name, "image/png", PNG)]},
+            )
+        )
+    return cases
+
+
+def _mime_input(overrides: dict[str, Any]) -> dict[str, Any]:
+    case: dict[str, Any] = {
+        "from": MIME_FROM,
+        "to": ["bob@example.test"],
+        "cc": [],
+        "bcc": [],
+        "subject": "hi",
+        "text": "hello",
+        "html": None,
+        "amp_html": None,
+        "headers": [],
+        "attachments": [],
+        "inline": [],
+    }
+    case.update(overrides)
+    return case
+
+
+def _attachment(upload: dict[str, str]) -> Attachment:
+    # The form layer's defaults (routes.py `_read_upload`).
+    return Attachment(
+        filename=upload["filename"] or "attachment",
+        content_type=upload["content_type"] or "application/octet-stream",
+        data=base64.b64decode(upload["data"]),
+    )
+
+
+def _defects(message: EmailMessage) -> list[str]:
+    """Parser defects of the message, its headers and its parts. A part
+    records transfer-encoding defects only when it is decoded."""
+    found: set[str] = set()
+    for part in message.walk():
+        if not part.is_multipart():
+            part.get_payload(decode=True)
+        found.update(type(d).__name__ for d in part.defects)
+        for name, _ in part.raw_items():
+            try:
+                found.update(type(d).__name__ for d in part[name].defects)
+            except ValueError:
+                found.add("ValueError")
+    return sorted(found)
+
+
+def _addresses(header: Any) -> list[list[str]]:
+    return [[a.display_name, a.addr_spec] for a in header.addresses]
+
+
+def _semantic_node(part: EmailMessage) -> dict[str, Any]:
+    node: dict[str, Any] = {"type": part.get_content_type()}
+    if part.is_multipart():
+        node["parts"] = [_semantic_node(p) for p in part.iter_parts()]  # type: ignore[arg-type]
+        return node
+    disposition = part.get_content_disposition()
+    if disposition is not None:
+        node["disposition"] = disposition
+        node["filename"] = part.get_filename()
+    if part["Content-ID"] is not None:
+        node["content_id"] = str(part["Content-ID"])
+    if node["type"].startswith("text/") and disposition is None:
+        node["charset"] = part.get_content_charset()
+        text = part.get_content().replace("\r\n", "\n")
+        node["text"] = text.removesuffix("\n")
+    else:
+        payload = part.get_payload(decode=True)
+        assert isinstance(payload, bytes)
+        node["data"] = base64.b64encode(payload).decode()
+    return node
+
+
+def semantic_message(raw: bytes) -> dict[str, Any]:
+    """What a receiver's parser (``email``, ``policy.default``) reads from
+    ``raw``: headers (decoded, sorted, without per-message and structural
+    ones) and the MIME tree with decoded bodies (line endings normalised,
+    one trailing newline dropped)."""
+    message = email.message_from_bytes(raw, policy=email.policy.default)
+    assert isinstance(message, EmailMessage)
+    headers: list[list[Any]] = []
+    for name, value in message.raw_items():
+        key = name.lower()
+        if key in _MIME_SKIPPED:
+            continue
+        try:
+            parsed = message.policy.header_fetch_parse(name, value)
+            decoded: Any = _addresses(parsed) if key in _ADDRESS_HEADERS else str(parsed)
+        except ValueError:
+            # The registry refuses a display name with CR/LF (From, 200);
+            # compare the decoded text instead.
+            decoded = [
+                "unparsable",
+                str(email.header.make_header(email.header.decode_header(value))),
+            ]
+        headers.append([key, decoded])
+    headers.sort(key=json.dumps)
+    return {"headers": headers, "body": _semantic_node(message)}
+
+
+def python_message(case: dict[str, Any]) -> tuple[bytes, list[str]] | None:
+    """Python's message for a ``mime.json`` input as smtplib writes it, and
+    the envelope; None when ``build_message`` refuses it (400)."""
+    payload = MessageInput(
+        from_address=case["from"],
+        to=case["to"],
+        cc=case["cc"],
+        bcc=case["bcc"],
+        subject=case["subject"],
+        text=case["text"],
+        html=case["html"],
+        amp_html=case["amp_html"],
+        custom_headers=dict(case["headers"]),
+        attachments=[_attachment(u) for u in case["attachments"]],
+        inline=[_attachment(u) for u in case["inline"]],
+        public_host=MIME_HOST,
+    )
+    try:
+        message, message_id, envelope = build_message(payload)
+    except BadRequestError, HeaderInjectionError:
+        return None
+    assert message["Message-Id"] == message_id and message["Date"]
+    return message.as_bytes(policy=message.policy.clone(linesep="\r\n")), envelope
+
+
+def _python_mime(case: dict[str, Any]) -> dict[str, Any]:
+    built = python_message(case)
+    if built is None:
+        return {"status": 400}
+    raw, envelope = built
+    parsed = email.message_from_bytes(raw, policy=email.policy.default)
+    assert isinstance(parsed, EmailMessage)
+    return {
+        "status": 200,
+        "envelope": envelope,
+        "message": semantic_message(raw),
+        "defects": _defects(parsed),
+    }
+
+
+# The Rust rules of rust/src/mime.rs that differ from Python (D-21), mirrored
+# to derive the Rust expectation.
+
+_SPECIALS = set('()<>@,:;."[]\\')
+_ASCII_CHARSETS = {"utf_8", "utf8", "us_ascii", "ascii", "latin_1", "latin1", "l1"}
+_ASCII_CHARSETS |= {f"iso_8859_{n}" for n in range(1, 17)} | {f"iso8859_{n}" for n in range(1, 17)}
+_ASCII_CHARSETS |= {f"windows_{n}" for n in range(1250, 1259)} | {
+    f"cp{n}" for n in range(1250, 1259)
+}
+_TOKEN = set("!#$%&'*+-.^_`|~") | set(string.ascii_letters + string.digits)
+
+
+def _rust_plain(value: str, reserve: int) -> bool:
+    if not all(c == "\t" or " " <= c <= "~" for c in value):
+        return False
+    runs = re.findall(r" *[^ ]*", value)
+    return all(reserve + len(run) <= 998 for run in runs)
+
+
+def _rust_encoded_words(value: str) -> list[tuple[int, int, str, str, str]]:
+    """(start, end, charset, cte, text) of ``encoded_words``."""
+    marks = [i for i, c in enumerate(value) if c == "?"]
+    words = []
+    for k, q0 in enumerate(marks):
+        if q0 == 0 or value[q0 - 1] != "=" or k + 3 >= len(marks):
+            continue
+        q1, q2, q3 = marks[k + 1 : k + 4]
+        if value[q3 + 1 : q3 + 2] == "=" and value[q1 + 1 : q2] in ("b", "B", "q", "Q"):
+            cte = value[q1 + 1 : q2].lower()
+            words.append((q0 - 1, q3 + 2, value[q0 + 1 : q1], cte, value[q2 + 1 : q3]))
+    return words
+
+
+def _rust_decode_word(charset: str, cte: str, text: str) -> bytes | None:
+    """``decode_word``: the bytes, or None (charset outside the set, base64
+    needing repair)."""
+    if re.sub(r"[^a-z0-9.]", "_", charset.partition("*")[0].lower()) not in _ASCII_CHARSETS:
+        return None
+    if cte == "q":
+        return re.sub(
+            rb"=([a-fA-F0-9]{2})",
+            lambda m: bytes.fromhex(m.group(1).decode()),
+            text.replace("_", " ").encode(),
+        )
+    digits = text.rstrip("=")
+    if not re.fullmatch(r"[A-Za-z0-9+/]*", digits) or len(digits) % 4 == 1:
+        return None
+    return base64.b64decode(digits + "=" * (-len(digits) % 4))
+
+
+def _rust_may_break_line(value: str) -> bool:
+    for _, _, charset, cte, text in _rust_encoded_words(value):
+        decoded = _rust_decode_word(charset, cte, text)
+        if decoded is None or b"\r" in decoded or b"\n" in decoded:
+            return True
+    return False
+
+
+def _rust_forwardable(value: str, phrase: bool, quoted: bool) -> bool:
+    """``forwardable`` accepts the value."""
+    for start, end, charset, cte, text in _rust_encoded_words(value):
+        decoded = _rust_decode_word(charset, cte, text)
+        if decoded is None or b"=?" in decoded or decoded[:1] in (b" ", b"\t"):
+            return False
+        if phrase and decoded.isascii() and set(decoded.decode()) & _SPECIALS:
+            return False
+        if decoded[-1:] in (b" ", b"\t"):
+            return False
+        if end - start <= 75:
+            continue
+        delimited = (start == 0 or value[start - 1] in " \t") and (
+            end == len(value) or value[end] in " \t"
+        )
+        utf8 = re.sub(r"[^a-z0-9.]", "_", charset.partition("*")[0].lower()) in ("utf_8", "utf8")
+        try:
+            if utf8:
+                decoded.decode("utf-8")
+        except UnicodeDecodeError:
+            return False
+        if quoted or not delimited or len(charset) + 7 > 71:
+            return False
+    return True
+
+
+def _rust_display_ok(mailbox: Mailbox, header: str) -> bool:
+    display, addr_spec, _ = mailbox
+    if _rust_encoded_words(addr_spec.rpartition("@")[0]):
+        return False
+    if not display:
+        return True
+    quoted = bool(_SPECIALS & set(display))
+    shown = display
+    if quoted:
+        shown = '"' + display.replace("\\", "\\\\").replace('"', '\\"') + '"'
+    if _rust_plain(shown, len(header) + 2 + 260):
+        return _rust_forwardable(display, True, quoted)
+    return not _rust_encoded_words(display)
+
+
+def _rust_unstructured_ok(name: str, value: str) -> bool:
+    if _rust_plain(value, len(name) + 2):
+        return _rust_forwardable(value, False, False)
+    return not _rust_encoded_words(value)
+
+
+_DOT_ATOM = re.compile(r"[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+(\.[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+)*")
+
+
+def _rust_message_ids(value: str) -> bool:
+    """``is_message_id_list``."""
+    ids = value.replace("\t", " ").split()
+    for msg_id in ids:
+        left, at, right = msg_id.removeprefix("<").removesuffix(">").partition("@")
+        well_formed = msg_id.startswith("<") and msg_id.endswith(">") and at
+        if not (well_formed and _DOT_ATOM.fullmatch(left) and _DOT_ATOM.fullmatch(right)):
+            return False
+    return bool(ids)
+
+
+_LINE_BOUNDARIES = set("\n\r\x0b\x0c\x1c\x1d\x1e")
+
+
+def _rust_mime_status(case: dict[str, Any]) -> int:
+    """The status of ``mime::build_message``."""
+    if not (case["text"] or case["html"]):
+        return 400
+    mailboxes = []
+    for field in ("to", "cc", "bcc"):
+        for value in case[field]:
+            mailbox = rust_mailbox(value)
+            if mailbox is None:
+                return 400
+            if field != "bcc":
+                mailboxes.append(("To", mailbox))
+    if any(_rust_may_break_line(v) for v in case["to"] + case["cc"]):
+        return 400
+    sender = rust_mailbox(case["from"])
+    assert sender is not None
+    mailboxes.append(("From", sender))
+    if not _rust_unstructured_ok("Subject", case["subject"]):
+        return 400
+    unique: set[str] = set()
+    for name, value in case["headers"]:
+        lower = name.lower()
+        if lower == "orig-date" or len(name) > 76:
+            return 400
+        if lower in ("reply-to", "in-reply-to", "references"):
+            if lower in unique:
+                return 400
+            unique.add(lower)
+        if lower in ("in-reply-to", "references") and (
+            not _rust_message_ids(value) or _rust_encoded_words(value)
+        ):
+            return 400
+        if lower == "reply-to":
+            listed = rust_mailbox_list(value)
+            if listed is None or _rust_may_break_line(value):
+                return 400
+            mailboxes.extend(("Reply-To", m) for m in listed)
+        elif not _rust_unstructured_ok(name, value):
+            return 400
+    if not all(_rust_display_ok(m, header) for header, m in mailboxes):
+        return 400
+    for upload in case["inline"]:
+        name = upload["filename"] or "attachment"
+        if name.strip() != name or any(c in "<>" or c < " " or c == "\x7f" for c in name):
+            return 400
+        if set(name) & {"\x85", "\u2028", "\u2029"}:
+            return 400
+        if not _rust_unstructured_ok("Content-ID", f"<{name}>"):
+            return 400
+    for upload in case["attachments"]:
+        if upload["filename"].isascii() and set(upload["filename"]) & _LINE_BOUNDARIES:
+            return 400
+    return 200
+
+
+def _rust_content_types(node: dict[str, Any], uploads: list[dict[str, str]]) -> None:
+    """Rewrite the leaves whose upload type is not ``token/token`` (D-21).
+    Uploads appear in tree order: inline parts, then attachments."""
+    for part in node.get("parts", []):
+        _rust_content_types(part, uploads)
+    if "disposition" in node:
+        raw = uploads.pop(0)["content_type"]
+        main, _, rest = raw.partition("/")
+        main, sub = main.strip().lower(), rest.split(";", 1)[0].strip().lower()
+        tokens = all(0 < len(t) <= 127 and set(t) <= _TOKEN for t in (main, sub))
+        if not tokens:
+            node["type"] = "application/octet-stream"
+
+
+def build_mime() -> dict[str, Any]:
+    cases = []
+    for name, overrides in _mime_cases():
+        case = _mime_input(overrides)
+        python = _python_mime(case)
+        status = _rust_mime_status(case)
+        # Fail closed: every Python 400 is a Rust 400.
+        assert python["status"] in (200, 400), (name, python)
+        assert status == 400 or python["status"] == 200, name
+        expected = copy.deepcopy(python) if status == python["status"] else {"status": status}
+        if status == 200:
+            assert isinstance(expected["message"], dict)
+            uploads = case["inline"] + case["attachments"]
+            _rust_content_types(expected["message"]["body"], list(uploads))
+        entry: dict[str, Any] = {"name": name, "input": case, "expected": expected}
+        if expected != python:
+            entry["python"] = python
+            rust_stricter_address = python["status"] == 200 and any(
+                rust_mailbox(v) is None for v in case["to"]
+            )
+            entry["divergence"] = "D-11" if rust_stricter_address else "D-21"
+        cases.append(entry)
+    return {
+        "source": (
+            "mailgun_relay.mime_build.build_message, serialised as smtplib does, "
+            "parsed with email.policy.default"
+        ),
+        "public_host": MIME_HOST,
+        "cases": cases,
+    }
+
+
 # ------------------------------------------------------------------ driver
 
 GENERATORS: dict[str, Callable[[], Mapping[str, Any]]] = {
@@ -2279,6 +2992,7 @@ GENERATORS: dict[str, Callable[[], Mapping[str, Any]]] = {
     "domain.json": build_domain,
     "form_decoding.json": build_form_decoding,
     "headers.json": build_headers,
+    "mime.json": build_mime,
     "policy.json": build_policy,
 }
 

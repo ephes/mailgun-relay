@@ -14,9 +14,10 @@ and S2c (the token policy); all three are merged, so S2 is done (report
 `handoff/s2-result.md`). S3 is split by size into S3a (subject and header
 validation), S3b (form parsing), S3c (pipeline and route) and S3d (the
 remaining route tests); all four are merged, so S3 is done (report
-`handoff/s3-result.md`). S4 runs in parallel and is split by size into S4a
-(message construction, `src/mime.rs`) and S4b (the semantic MIME fixture
-from the Python oracle).
+`handoff/s3-result.md`). S4 is split by size into S4a (message
+construction, `src/mime.rs`) and S4b (the semantic MIME fixture from the
+Python oracle); both are merged, so S4 is done (report
+`handoff/s4-result.md`). S5 is next.
 
 This document is the contract for re-implementing the FastAPI service in
 `src/mailgun_relay` (1,744 lines, `origin/main` `13e274f`, run on macmini as
@@ -825,7 +826,7 @@ changed lines per slice excluding generated fixtures.
 | S1b | Spike: lettre and the live SMTP server | throwaway branch: lettre connection API can send MAIL + individual RCPT + DATA with partial refusal and expose reply codes; addresses the corpus accepts round-trip through lettre `Address`; feature names; **read-only** EHLO on macmini (`openssl s_client -starttls smtp`, EHLO, QUIT): `AUTH` mechanisms after STARTTLS, `SMTPUTF8`, `SIZE`. Result recorded in this plan. | – (parallel to S1). **Status: done, GO with conditions (`rust/spike-s1b` @ `78f3254`)** |
 | S2 | Auth and policy (security boundary) | Split by size: **S2a** `auth.rs`, `auth.json`, `domain.json` (runtime `normalize_domain`), Python fix of the auth 500 (2.3 step 2); **S2b** `address.rs`, `address.json`, the D-15 check; **S2c** `policy.rs`, `policy.json`, production shapes. Scope: `auth.rs`, `domain.rs`, `address.rs`, `policy.rs`; fixtures `auth.json`, `domain.json`, `address.json` (corpus), `policy.json`; Rust counterparts of `test_auth.py`, `test_policy.py`, the address parts of `test_headers.py`; Python tests added for every corpus case that pins a new boundary decision; config loader rejects allowlist entries with a non-ASCII local part (D-17; implemented with the secrets loader in S1c); the D-15 validity check of `ENVELOPE_SENDER` (S1 applies only the IDN/EAI rule; `config_env.json` then marks the invalid senders D-15) | S1, S0-py merged (the oracle must already carry the Q1/Q2 behaviour). **Status: S2a, S2b and S2c merged; done** |
 | S3 | Request parsing and pipeline | `form.rs` (both encodings, limits), `pipeline.rs` (2.3 steps 1–9 with a stub submitter), header/subject validation, error mapping, response JSON, `event=request` record; fixtures `headers.json`; counterparts of `test_messages_endpoint.py` (non-SMTP), `test_headers.py`, `test_body_limit.py` | S2. **Status: split by size into S3a (`headers.rs`, `headers.json`; merged), S3b (`form.rs`, `form_decoding.json`; merged), S3c (`pipeline.rs`, the route, the request record, a step-9 stub in `mime.rs`, the core endpoint tests; merged) and S3d (the remaining endpoint tests: limits, body reading, decision order, records, route, production shapes, panics; merged). Done**. Interfaces for the later slices: S4 replaces the stub behind `mime::build(MessageInput) -> Result<BuiltMessage, InvalidMessage>` (`InvalidMessage` is the 400 of step 9; `BuiltMessage` carries `message_id`, `envelope`, `formatted`); S5 implements `pipeline::Submitter::submit(BuiltMessage) -> Result<Vec<Refusal>, SubmitError>` (refused recipients with their codes; `Temporary` 503, `Permanent` 502). Until S5 the binary's submitter answers every message with 503, so no build claims a message as queued that was not sent |
-| S4 | MIME construction | `mime.rs` with lettre builder (2.10), envelope and de-duplication, Message-Id/Date, inline/related/mixed, container downgrade, Reply-To; IDN as A-labels, EAI rejected (Q2); semantic tests by parsing the output; counterparts of `test_mime_build.py` | S2 (parallel to S3). **Status: split by size into S4a (`mime.rs`, S3's step-9 stub replaced behind its interface (2.10), D-21, the Python fix of non-ASCII message-id headers; lettre with the `builder` feature only, `deny.toml` gains 0BSD for its `quoted_printable`) and S4b (`mime.json`, `check_mime.py`)** |
+| S4 | MIME construction | `mime.rs` with lettre builder (2.10), envelope and de-duplication, Message-Id/Date, inline/related/mixed, container downgrade, Reply-To; IDN as A-labels, EAI rejected (Q2); semantic tests by parsing the output; counterparts of `test_mime_build.py` | S2 (parallel to S3). **Status: split by size into S4a (`mime.rs`, S3's step-9 stub replaced behind its interface (2.10), D-21, the Python fix of non-ASCII message-id headers; lettre with the `builder` feature only, `deny.toml` gains 0BSD for its `quoted_printable`) and S4b (`mime.json`, `check_mime.py`, the CI step); both merged. Done** |
 | S5 | SMTP submission | `smtp.rs` on lettre's connection API: STARTTLS with system roots + CA file, AUTH, per-recipient RCPT, partial refusal, classification of 2.4, QUIT/close cleanup records, concurrency semaphore, per-operation timeout, `recipients_refused` and `smtp_cleanup_failed` records; scripted fake SMTP server tests mirroring `test_smtp_submission.py`, `test_smtp_outcomes.py`, `test_nonblocking_submit.py`; the S1b conditions (see "S1b result") | S1b, S3, S4 |
 | S6 | Parity harness | `rust/parity/` (7.4): fake SMTP with STARTTLS/AUTH, case corpus, runner for both implementations, semantic MIME comparison, CI job `parity`; process-level tests of the binary | S5 |
 | S7 | Release pipeline | `.github/workflows/rust-release.yml`, `scripts/release_checks.py` + tests (adapted from nyxmon), first tag `rs-v0.2.0` after S6 | S6 (tag) |
@@ -968,10 +969,20 @@ stable inputs). Rust loads them with `include_str!`.
 | `form_decoding.json` | Starlette `FormParser` / `MultiPartParser` decoding (`unquote_plus(x.decode("latin-1"))`, `_user_safe_decode`) | `Content-Type` × raw body × parser limits → ordered items (texts; files with filename, content type, bytes) or 400/413, exactly as `request.form(...)` with the route's mapping: decoding, request charsets (D-9 marked), framing, part headers, limits, truncation at every byte; the oracle runs each body in one piece and in four chunkings, a chunking-dependent decision is marked D-20 (S3b) |
 | `config_env.json` | `config.Settings` + the `__main__` reads | env set → settings or start failure (D-7 marked) |
 | `config_secrets.json` | `config.load_secrets` | YAML text × file mode → policies or failure (D-5, D-6 marked) |
+| `mime.json` | `mime_build.build_message` with the form layer's upload defaults, serialised as `smtplib` writes it and parsed with `email` (`policy.default`) | message input → 400, or the envelope, the semantic view of the message (`semantic_message`: decoded headers without Message-Id/Date/MIME structure headers, sorted; the MIME tree with types, dispositions, filenames, Content-IDs, decoded text and data) and Python's own parser defects (S4b: 124 cases, every row of 2.10; D-11/D-21 marked) |
 
 Only decisions and normalised values are stored, never message texts
 (free). Divergent cases carry `"divergence": "D-n"` and the expected Rust
 result, so the table in section 3 and the fixtures cannot drift apart.
+`mime.json` is the exception: its semantic view holds decoded message text,
+the oracle for "arrives semantically the same" (2.10). The Rust test
+`mime::tests::mime_fixture` builds every case, checks status, envelope and
+RFC conformance and compares a `mail-parser` reading with the stored view
+(whitespace-tolerant); with `MIME_FIXTURE_DUMP=<dir>` it writes the messages
+and `rust/fixtures/check_mime.py <dir>` reads them with Python's parser and
+compares exactly (semantic view, 7-bit, CRLF only, lines ≤ 998, encoded
+words ≤ 75, no parser defects beyond Python's own). The CI `rust` job runs
+both.
 
 Drift guard: `tests/test_rust_fixtures.py` regenerates in memory and asserts
 equality with the committed files, so a Python behaviour change cannot merge
@@ -1010,7 +1021,8 @@ started in CI via `uv run`):
   present, the content-type tree, decoded bodies (line endings normalised, one
   trailing newline tolerated), parts (disposition, filename, Content-ID,
   content type, sha256); for the Rust message additionally no parser defects,
-  CRLF only, lines ≤ 998; the `event=request` record (`token_label`,
+  CRLF only, lines ≤ 998 (the normalisation is `generate.py`
+  `semantic_message`, shared with `check_mime.py`, S4b); the `event=request` record (`token_label`,
   `result`, `status_code`).
 - Masks nothing else; error texts and non-contract headers are not compared.
 - Cases expected to differ carry `divergence: D-n` and the Rust expectation.

@@ -71,6 +71,8 @@ def _cases(generator: ModuleType, name: str) -> list[dict[str, object]]:
         ("domain.json", 100, {"D-10"}),
         ("auth.json", 60, set()),
         ("policy.json", 100, {"D-10", "D-11"}),
+        # S4: every row of PLAN.md 2.10 and test_mime_build.py.
+        ("mime.json", 100, {"D-11", "D-21"}),
     ],
 )
 def test_corpus_sizes_and_divergence_labels(
@@ -99,3 +101,47 @@ def test_rust_address_decisions_never_widen_python(generator: ModuleType) -> Non
             assert python["parse_header_address_list"] == [
                 [display, addr_spec] for display, addr_spec, _ in expected["mailbox_list"]
             ]
+
+
+def test_rust_mime_decisions_never_widen_python(generator: ModuleType) -> None:
+    """Fail closed (D-11, D-21): every input Python's ``build_message``
+    refuses, the Rust port refuses."""
+    for case in _cases(generator, "mime.json"):
+        expected = case["expected"]
+        python = case.get("python", expected)
+        assert isinstance(expected, dict) and isinstance(python, dict)
+        if python["status"] == 400:
+            assert expected["status"] == 400, case["name"]
+
+
+def test_check_mime_flags_broken_messages(generator: ModuleType) -> None:
+    """``check_mime.py`` accepts Python's own message and catches a bare LF,
+    a long line and a changed header."""
+    spec = importlib.util.spec_from_file_location(
+        "rust_check_mime", GENERATOR_PATH.with_name("check_mime.py")
+    )
+    assert spec is not None and spec.loader is not None
+    check_mime = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(check_mime)
+    [case] = [c for c in _cases(generator, "mime.json") if c["name"] == "text and html"]
+    built = generator.python_message(case["input"])
+    assert built is not None
+    raw: bytes = built[0]
+    assert check_mime.check_message(generator, raw, case) == []
+    bare_lf = raw.replace(b"hello\r\n", b"hello\n", 1)
+    assert "bare CR or LF" in " ".join(check_mime.check_message(generator, bare_lf, case))
+    long_line = raw.replace(b"Subject: hi", b"Subject: " + b"x" * 1000, 1)
+    problems = check_mime.check_message(generator, long_line, case)
+    assert any("line of" in p for p in problems)
+    assert any("semantic view differs" in p for p in problems)
+    # A transfer-encoding defect shows only when the payload is decoded.
+    [case] = [c for c in _cases(generator, "mime.json") if c["name"] == "attachment"]
+    built = generator.python_message(case["input"])
+    assert built is not None
+    raw = built[0]
+    assert check_mime.check_message(generator, raw, case) == []
+    payload = b"aGVsbG8gYXR0YWNobWVudA=="
+    assert payload in raw
+    broken = raw.replace(payload, b"!" + payload, 1)
+    problems = check_mime.check_message(generator, broken, case)
+    assert problems == ["parser defects ['InvalidBase64CharactersDefect']"], problems

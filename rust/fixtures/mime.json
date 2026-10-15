@@ -1,0 +1,7167 @@
+{
+ "cases": [
+  {
+   "expected": {
+    "defects": [],
+    "envelope": [
+     "bob@example.test"
+    ],
+    "message": {
+     "body": {
+      "charset": "utf-8",
+      "text": "hello",
+      "type": "text/plain"
+     },
+     "headers": [
+      [
+       "from",
+       [
+        [
+         "Alice",
+         "alice@example.test"
+        ]
+       ]
+      ],
+      [
+       "subject",
+       "hi"
+      ],
+      [
+       "to",
+       [
+        [
+         "",
+         "bob@example.test"
+        ]
+       ]
+      ]
+     ]
+    },
+    "status": 200
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [],
+    "bcc": [],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [],
+    "html": null,
+    "inline": [],
+    "subject": "hi",
+    "text": "hello",
+    "to": [
+     "bob@example.test"
+    ]
+   },
+   "name": "text only"
+  },
+  {
+   "expected": {
+    "defects": [],
+    "envelope": [
+     "bob@example.test"
+    ],
+    "message": {
+     "body": {
+      "charset": "utf-8",
+      "text": "<p>hi</p>",
+      "type": "text/html"
+     },
+     "headers": [
+      [
+       "from",
+       [
+        [
+         "Alice",
+         "alice@example.test"
+        ]
+       ]
+      ],
+      [
+       "subject",
+       "hi"
+      ],
+      [
+       "to",
+       [
+        [
+         "",
+         "bob@example.test"
+        ]
+       ]
+      ]
+     ]
+    },
+    "status": 200
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [],
+    "bcc": [],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [],
+    "html": "<p>hi</p>",
+    "inline": [],
+    "subject": "hi",
+    "text": null,
+    "to": [
+     "bob@example.test"
+    ]
+   },
+   "name": "html only"
+  },
+  {
+   "expected": {
+    "defects": [],
+    "envelope": [
+     "bob@example.test"
+    ],
+    "message": {
+     "body": {
+      "parts": [
+       {
+        "charset": "utf-8",
+        "text": "hello",
+        "type": "text/plain"
+       },
+       {
+        "charset": "utf-8",
+        "text": "<p>hi</p>",
+        "type": "text/html"
+       }
+      ],
+      "type": "multipart/alternative"
+     },
+     "headers": [
+      [
+       "from",
+       [
+        [
+         "Alice",
+         "alice@example.test"
+        ]
+       ]
+      ],
+      [
+       "subject",
+       "hi"
+      ],
+      [
+       "to",
+       [
+        [
+         "",
+         "bob@example.test"
+        ]
+       ]
+      ]
+     ]
+    },
+    "status": 200
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [],
+    "bcc": [],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [],
+    "html": "<p>hi</p>",
+    "inline": [],
+    "subject": "hi",
+    "text": "hello",
+    "to": [
+     "bob@example.test"
+    ]
+   },
+   "name": "text and html"
+  },
+  {
+   "expected": {
+    "defects": [],
+    "envelope": [
+     "bob@example.test"
+    ],
+    "message": {
+     "body": {
+      "parts": [
+       {
+        "charset": "utf-8",
+        "text": "hello",
+        "type": "text/plain"
+       },
+       {
+        "charset": "utf-8",
+        "text": "<p>hi</p>",
+        "type": "text/html"
+       },
+       {
+        "charset": "utf-8",
+        "text": "<html amp4email></html>",
+        "type": "text/x-amp-html"
+       }
+      ],
+      "type": "multipart/alternative"
+     },
+     "headers": [
+      [
+       "from",
+       [
+        [
+         "Alice",
+         "alice@example.test"
+        ]
+       ]
+      ],
+      [
+       "subject",
+       "hi"
+      ],
+      [
+       "to",
+       [
+        [
+         "",
+         "bob@example.test"
+        ]
+       ]
+      ]
+     ]
+    },
+    "status": 200
+   },
+   "input": {
+    "amp_html": "<html amp4email></html>",
+    "attachments": [],
+    "bcc": [],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [],
+    "html": "<p>hi</p>",
+    "inline": [],
+    "subject": "hi",
+    "text": "hello",
+    "to": [
+     "bob@example.test"
+    ]
+   },
+   "name": "text, html and amp"
+  },
+  {
+   "expected": {
+    "defects": [],
+    "envelope": [
+     "bob@example.test"
+    ],
+    "message": {
+     "body": {
+      "parts": [
+       {
+        "charset": "utf-8",
+        "text": "hello",
+        "type": "text/plain"
+       },
+       {
+        "charset": "utf-8",
+        "text": "<html amp4email></html>",
+        "type": "text/x-amp-html"
+       }
+      ],
+      "type": "multipart/alternative"
+     },
+     "headers": [
+      [
+       "from",
+       [
+        [
+         "Alice",
+         "alice@example.test"
+        ]
+       ]
+      ],
+      [
+       "subject",
+       "hi"
+      ],
+      [
+       "to",
+       [
+        [
+         "",
+         "bob@example.test"
+        ]
+       ]
+      ]
+     ]
+    },
+    "status": 200
+   },
+   "input": {
+    "amp_html": "<html amp4email></html>",
+    "attachments": [],
+    "bcc": [],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [],
+    "html": null,
+    "inline": [],
+    "subject": "hi",
+    "text": "hello",
+    "to": [
+     "bob@example.test"
+    ]
+   },
+   "name": "text and amp"
+  },
+  {
+   "expected": {
+    "defects": [],
+    "envelope": [
+     "bob@example.test"
+    ],
+    "message": {
+     "body": {
+      "parts": [
+       {
+        "charset": "utf-8",
+        "text": "<p>x</p>",
+        "type": "text/html"
+       },
+       {
+        "charset": "utf-8",
+        "text": "<html amp4email>",
+        "type": "text/x-amp-html"
+       }
+      ],
+      "type": "multipart/alternative"
+     },
+     "headers": [
+      [
+       "from",
+       [
+        [
+         "Alice",
+         "alice@example.test"
+        ]
+       ]
+      ],
+      [
+       "subject",
+       "hi"
+      ],
+      [
+       "to",
+       [
+        [
+         "",
+         "bob@example.test"
+        ]
+       ]
+      ]
+     ]
+    },
+    "status": 200
+   },
+   "input": {
+    "amp_html": "<html amp4email>",
+    "attachments": [],
+    "bcc": [],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [],
+    "html": "<p>x</p>",
+    "inline": [],
+    "subject": "hi",
+    "text": null,
+    "to": [
+     "bob@example.test"
+    ]
+   },
+   "name": "html and amp"
+  },
+  {
+   "expected": {
+    "defects": [],
+    "envelope": [
+     "bob@example.test"
+    ],
+    "message": {
+     "body": {
+      "charset": "utf-8",
+      "text": "<p>hi</p>",
+      "type": "text/html"
+     },
+     "headers": [
+      [
+       "from",
+       [
+        [
+         "Alice",
+         "alice@example.test"
+        ]
+       ]
+      ],
+      [
+       "subject",
+       "hi"
+      ],
+      [
+       "to",
+       [
+        [
+         "",
+         "bob@example.test"
+        ]
+       ]
+      ]
+     ]
+    },
+    "status": 200
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [],
+    "bcc": [],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [],
+    "html": "<p>hi</p>",
+    "inline": [],
+    "subject": "hi",
+    "text": "",
+    "to": [
+     "bob@example.test"
+    ]
+   },
+   "name": "empty text with html"
+  },
+  {
+   "expected": {
+    "status": 400
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [],
+    "bcc": [],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [],
+    "html": null,
+    "inline": [],
+    "subject": "hi",
+    "text": "",
+    "to": [
+     "bob@example.test"
+    ]
+   },
+   "name": "empty text"
+  },
+  {
+   "expected": {
+    "status": 400
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [],
+    "bcc": [],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [],
+    "html": "",
+    "inline": [],
+    "subject": "hi",
+    "text": null,
+    "to": [
+     "bob@example.test"
+    ]
+   },
+   "name": "empty html"
+  },
+  {
+   "expected": {
+    "status": 400
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [],
+    "bcc": [],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [],
+    "html": "",
+    "inline": [],
+    "subject": "hi",
+    "text": "",
+    "to": [
+     "bob@example.test"
+    ]
+   },
+   "name": "empty text and html"
+  },
+  {
+   "expected": {
+    "status": 400
+   },
+   "input": {
+    "amp_html": "a",
+    "attachments": [],
+    "bcc": [],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [],
+    "html": null,
+    "inline": [],
+    "subject": "hi",
+    "text": "",
+    "to": [
+     "bob@example.test"
+    ]
+   },
+   "name": "empty text with amp"
+  },
+  {
+   "expected": {
+    "defects": [],
+    "envelope": [
+     "bob@example.test"
+    ],
+    "message": {
+     "body": {
+      "charset": "utf-8",
+      "text": "hello",
+      "type": "text/plain"
+     },
+     "headers": [
+      [
+       "from",
+       [
+        [
+         "Alice",
+         "alice@example.test"
+        ]
+       ]
+      ],
+      [
+       "subject",
+       "hi"
+      ],
+      [
+       "to",
+       [
+        [
+         "",
+         "bob@example.test"
+        ]
+       ]
+      ]
+     ]
+    },
+    "status": 200
+   },
+   "input": {
+    "amp_html": "",
+    "attachments": [],
+    "bcc": [],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [],
+    "html": null,
+    "inline": [],
+    "subject": "hi",
+    "text": "hello",
+    "to": [
+     "bob@example.test"
+    ]
+   },
+   "name": "empty amp is dropped"
+  },
+  {
+   "expected": {
+    "defects": [],
+    "envelope": [
+     "bob@example.test"
+    ],
+    "message": {
+     "body": {
+      "charset": "utf-8",
+      "text": "Gr\u00fc\u00dfe aus K\u00f6ln \u2014 100 \u20ac\nZeile 2",
+      "type": "text/plain"
+     },
+     "headers": [
+      [
+       "from",
+       [
+        [
+         "Alice",
+         "alice@example.test"
+        ]
+       ]
+      ],
+      [
+       "subject",
+       "hi"
+      ],
+      [
+       "to",
+       [
+        [
+         "",
+         "bob@example.test"
+        ]
+       ]
+      ]
+     ]
+    },
+    "status": 200
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [],
+    "bcc": [],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [],
+    "html": null,
+    "inline": [],
+    "subject": "hi",
+    "text": "Gr\u00fc\u00dfe aus K\u00f6ln \u2014 100 \u20ac\nZeile 2",
+    "to": [
+     "bob@example.test"
+    ]
+   },
+   "name": "german text"
+  },
+  {
+   "expected": {
+    "defects": [],
+    "envelope": [
+     "bob@example.test"
+    ],
+    "message": {
+     "body": {
+      "charset": "utf-8",
+      "text": "a\nb\nc\nd\n\ne",
+      "type": "text/plain"
+     },
+     "headers": [
+      [
+       "from",
+       [
+        [
+         "Alice",
+         "alice@example.test"
+        ]
+       ]
+      ],
+      [
+       "subject",
+       "hi"
+      ],
+      [
+       "to",
+       [
+        [
+         "",
+         "bob@example.test"
+        ]
+       ]
+      ]
+     ]
+    },
+    "status": 200
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [],
+    "bcc": [],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [],
+    "html": null,
+    "inline": [],
+    "subject": "hi",
+    "text": "a\r\nb\rc\nd\n\ne",
+    "to": [
+     "bob@example.test"
+    ]
+   },
+   "name": "line endings"
+  },
+  {
+   "expected": {
+    "defects": [],
+    "envelope": [
+     "bob@example.test"
+    ],
+    "message": {
+     "body": {
+      "charset": "utf-8",
+      "text": "a\u000bb\fc\u001cd\u0085e\u2028f\u2029g",
+      "type": "text/plain"
+     },
+     "headers": [
+      [
+       "from",
+       [
+        [
+         "Alice",
+         "alice@example.test"
+        ]
+       ]
+      ],
+      [
+       "subject",
+       "hi"
+      ],
+      [
+       "to",
+       [
+        [
+         "",
+         "bob@example.test"
+        ]
+       ]
+      ]
+     ]
+    },
+    "status": 200
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [],
+    "bcc": [],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [],
+    "html": null,
+    "inline": [],
+    "subject": "hi",
+    "text": "a\u000bb\fc\u001cd\u0085e\u2028f\u2029g",
+    "to": [
+     "bob@example.test"
+    ]
+   },
+   "name": "other line separators"
+  },
+  {
+   "expected": {
+    "defects": [],
+    "envelope": [
+     "bob@example.test"
+    ],
+    "message": {
+     "body": {
+      "charset": "utf-8",
+      "text": "a\n",
+      "type": "text/plain"
+     },
+     "headers": [
+      [
+       "from",
+       [
+        [
+         "Alice",
+         "alice@example.test"
+        ]
+       ]
+      ],
+      [
+       "subject",
+       "hi"
+      ],
+      [
+       "to",
+       [
+        [
+         "",
+         "bob@example.test"
+        ]
+       ]
+      ]
+     ]
+    },
+    "status": 200
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [],
+    "bcc": [],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [],
+    "html": null,
+    "inline": [],
+    "subject": "hi",
+    "text": "a\n\n",
+    "to": [
+     "bob@example.test"
+    ]
+   },
+   "name": "trailing newlines"
+  },
+  {
+   "expected": {
+    "defects": [],
+    "envelope": [
+     "bob@example.test"
+    ],
+    "message": {
+     "body": {
+      "charset": "utf-8",
+      "text": "nul\u0000 bell\u0007 del\u007f c1\u009b",
+      "type": "text/plain"
+     },
+     "headers": [
+      [
+       "from",
+       [
+        [
+         "Alice",
+         "alice@example.test"
+        ]
+       ]
+      ],
+      [
+       "subject",
+       "hi"
+      ],
+      [
+       "to",
+       [
+        [
+         "",
+         "bob@example.test"
+        ]
+       ]
+      ]
+     ]
+    },
+    "status": 200
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [],
+    "bcc": [],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [],
+    "html": null,
+    "inline": [],
+    "subject": "hi",
+    "text": "nul\u0000 bell\u0007 del\u007f c1\u009b",
+    "to": [
+     "bob@example.test"
+    ]
+   },
+   "name": "control characters"
+  },
+  {
+   "expected": {
+    "defects": [],
+    "envelope": [
+     "bob@example.test"
+    ],
+    "message": {
+     "body": {
+      "charset": "utf-8",
+      "text": "word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word ",
+      "type": "text/plain"
+     },
+     "headers": [
+      [
+       "from",
+       [
+        [
+         "Alice",
+         "alice@example.test"
+        ]
+       ]
+      ],
+      [
+       "subject",
+       "hi"
+      ],
+      [
+       "to",
+       [
+        [
+         "",
+         "bob@example.test"
+        ]
+       ]
+      ]
+     ]
+    },
+    "status": 200
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [],
+    "bcc": [],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [],
+    "html": null,
+    "inline": [],
+    "subject": "hi",
+    "text": "word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word ",
+    "to": [
+     "bob@example.test"
+    ]
+   },
+   "name": "long line"
+  },
+  {
+   "expected": {
+    "defects": [],
+    "envelope": [
+     "bob@example.test"
+    ],
+    "message": {
+     "body": {
+      "charset": "utf-8",
+      "text": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "type": "text/plain"
+     },
+     "headers": [
+      [
+       "from",
+       [
+        [
+         "Alice",
+         "alice@example.test"
+        ]
+       ]
+      ],
+      [
+       "subject",
+       "hi"
+      ],
+      [
+       "to",
+       [
+        [
+         "",
+         "bob@example.test"
+        ]
+       ]
+      ]
+     ]
+    },
+    "status": 200
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [],
+    "bcc": [],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [],
+    "html": null,
+    "inline": [],
+    "subject": "hi",
+    "text": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "to": [
+     "bob@example.test"
+    ]
+   },
+   "name": "long word"
+  },
+  {
+   "expected": {
+    "defects": [],
+    "envelope": [
+     "bob@example.test"
+    ],
+    "message": {
+     "body": {
+      "charset": "utf-8",
+      "text": "Traceback:\n  File \"x.py\", line 1\n\tboom()\nTraceback:\n  File \"x.py\", line 1\n\tboom()\nTraceback:\n  File \"x.py\", line 1\n\tboom()\nTraceback:\n  File \"x.py\", line 1\n\tboom()\nTraceback:\n  File \"x.py\", line 1\n\tboom()\nTraceback:\n  File \"x.py\", line 1\n\tboom()\nTraceback:\n  File \"x.py\", line 1\n\tboom()\nTraceback:\n  File \"x.py\", line 1\n\tboom()\nTraceback:\n  File \"x.py\", line 1\n\tboom()\nTraceback:\n  File \"x.py\", line 1\n\tboom()\nTraceback:\n  File \"x.py\", line 1\n\tboom()\nTraceback:\n  File \"x.py\", line 1\n\tboom()\nTraceback:\n  File \"x.py\", line 1\n\tboom()\nTraceback:\n  File \"x.py\", line 1\n\tboom()\nTraceback:\n  File \"x.py\", line 1\n\tboom()\nTraceback:\n  File \"x.py\", line 1\n\tboom()\nTraceback:\n  File \"x.py\", line 1\n\tboom()\nTraceback:\n  File \"x.py\", line 1\n\tboom()\nTraceback:\n  File \"x.py\", line 1\n\tboom()\nTraceback:\n  File \"x.py\", line 1\n\tboom()",
+      "type": "text/plain"
+     },
+     "headers": [
+      [
+       "from",
+       [
+        [
+         "Alice",
+         "alice@example.test"
+        ]
+       ]
+      ],
+      [
+       "subject",
+       "hi"
+      ],
+      [
+       "to",
+       [
+        [
+         "",
+         "bob@example.test"
+        ]
+       ]
+      ]
+     ]
+    },
+    "status": 200
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [],
+    "bcc": [],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [],
+    "html": null,
+    "inline": [],
+    "subject": "hi",
+    "text": "Traceback:\n  File \"x.py\", line 1\n\tboom()\nTraceback:\n  File \"x.py\", line 1\n\tboom()\nTraceback:\n  File \"x.py\", line 1\n\tboom()\nTraceback:\n  File \"x.py\", line 1\n\tboom()\nTraceback:\n  File \"x.py\", line 1\n\tboom()\nTraceback:\n  File \"x.py\", line 1\n\tboom()\nTraceback:\n  File \"x.py\", line 1\n\tboom()\nTraceback:\n  File \"x.py\", line 1\n\tboom()\nTraceback:\n  File \"x.py\", line 1\n\tboom()\nTraceback:\n  File \"x.py\", line 1\n\tboom()\nTraceback:\n  File \"x.py\", line 1\n\tboom()\nTraceback:\n  File \"x.py\", line 1\n\tboom()\nTraceback:\n  File \"x.py\", line 1\n\tboom()\nTraceback:\n  File \"x.py\", line 1\n\tboom()\nTraceback:\n  File \"x.py\", line 1\n\tboom()\nTraceback:\n  File \"x.py\", line 1\n\tboom()\nTraceback:\n  File \"x.py\", line 1\n\tboom()\nTraceback:\n  File \"x.py\", line 1\n\tboom()\nTraceback:\n  File \"x.py\", line 1\n\tboom()\nTraceback:\n  File \"x.py\", line 1\n\tboom()\n",
+    "to": [
+     "bob@example.test"
+    ]
+   },
+   "name": "django traceback"
+  },
+  {
+   "expected": {
+    "defects": [],
+    "envelope": [
+     "bob@example.test"
+    ],
+    "message": {
+     "body": {
+      "charset": "utf-8",
+      "text": "hello",
+      "type": "text/plain"
+     },
+     "headers": [
+      [
+       "from",
+       [
+        [
+         "Python Podcast",
+         "noreply@mg.python-podcast.de"
+        ]
+       ]
+      ],
+      [
+       "subject",
+       "hi"
+      ],
+      [
+       "to",
+       [
+        [
+         "",
+         "bob@example.test"
+        ]
+       ]
+      ]
+     ]
+    },
+    "status": 200
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [],
+    "bcc": [],
+    "cc": [],
+    "from": "Python Podcast <noreply@mg.python-podcast.de>",
+    "headers": [],
+    "html": null,
+    "inline": [],
+    "subject": "hi",
+    "text": "hello",
+    "to": [
+     "bob@example.test"
+    ]
+   },
+   "name": "from display name"
+  },
+  {
+   "expected": {
+    "defects": [],
+    "envelope": [
+     "a@example.test",
+     "b@example.test",
+     "c@example.test"
+    ],
+    "message": {
+     "body": {
+      "charset": "utf-8",
+      "text": "hello",
+      "type": "text/plain"
+     },
+     "headers": [
+      [
+       "cc",
+       [
+        [
+         "",
+         "c@example.test"
+        ]
+       ]
+      ],
+      [
+       "from",
+       [
+        [
+         "Alice",
+         "alice@example.test"
+        ]
+       ]
+      ],
+      [
+       "subject",
+       "hi"
+      ],
+      [
+       "to",
+       [
+        [
+         "",
+         "a@example.test"
+        ],
+        [
+         "B",
+         "b@example.test"
+        ]
+       ]
+      ]
+     ]
+    },
+    "status": 200
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [],
+    "bcc": [],
+    "cc": [
+     "c@example.test"
+    ],
+    "from": "Alice <alice@example.test>",
+    "headers": [],
+    "html": null,
+    "inline": [],
+    "subject": "hi",
+    "text": "hello",
+    "to": [
+     "a@example.test",
+     "B <b@example.test>"
+    ]
+   },
+   "name": "to and cc"
+  },
+  {
+   "expected": {
+    "defects": [],
+    "envelope": [
+     "secret@example.test",
+     "secret2@example.test"
+    ],
+    "message": {
+     "body": {
+      "charset": "utf-8",
+      "text": "hello",
+      "type": "text/plain"
+     },
+     "headers": [
+      [
+       "from",
+       [
+        [
+         "Alice",
+         "alice@example.test"
+        ]
+       ]
+      ],
+      [
+       "subject",
+       "hi"
+      ]
+     ]
+    },
+    "status": 200
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [],
+    "bcc": [
+     "secret@example.test",
+     "secret2@example.test"
+    ],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [],
+    "html": null,
+    "inline": [],
+    "subject": "hi",
+    "text": "hello",
+    "to": []
+   },
+   "name": "bcc only"
+  },
+  {
+   "expected": {
+    "defects": [],
+    "envelope": [
+     "a@example.test",
+     "info@example.test",
+     "b@example.test",
+     "c@example.test"
+    ],
+    "message": {
+     "body": {
+      "charset": "utf-8",
+      "text": "hello",
+      "type": "text/plain"
+     },
+     "headers": [
+      [
+       "cc",
+       [
+        [
+         "",
+         "info@example.test"
+        ],
+        [
+         "",
+         "b@example.test"
+        ]
+       ]
+      ],
+      [
+       "from",
+       [
+        [
+         "Alice",
+         "alice@example.test"
+        ]
+       ]
+      ],
+      [
+       "subject",
+       "hi"
+      ],
+      [
+       "to",
+       [
+        [
+         "",
+         "a@example.test"
+        ],
+        [
+         "A",
+         "a@example.test"
+        ],
+        [
+         "",
+         "info@example.test"
+        ]
+       ]
+      ]
+     ]
+    },
+    "status": 200
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [],
+    "bcc": [
+     "a@example.test",
+     "c@example.test",
+     "b@example.test"
+    ],
+    "cc": [
+     "info@example.test",
+     "b@example.test"
+    ],
+    "from": "Alice <alice@example.test>",
+    "headers": [],
+    "html": null,
+    "inline": [],
+    "subject": "hi",
+    "text": "hello",
+    "to": [
+     "a@example.test",
+     "A <a@example.test>",
+     "Info@example.test"
+    ]
+   },
+   "name": "envelope order and dedup"
+  },
+  {
+   "expected": {
+    "defects": [],
+    "envelope": [
+     "Some.User@example.test",
+     "some.user@example.test"
+    ],
+    "message": {
+     "body": {
+      "charset": "utf-8",
+      "text": "hello",
+      "type": "text/plain"
+     },
+     "headers": [
+      [
+       "from",
+       [
+        [
+         "Alice",
+         "alice@example.test"
+        ]
+       ]
+      ],
+      [
+       "subject",
+       "hi"
+      ],
+      [
+       "to",
+       [
+        [
+         "",
+         "Some.User@example.test"
+        ],
+        [
+         "",
+         "some.user@example.test"
+        ]
+       ]
+      ]
+     ]
+    },
+    "status": 200
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [],
+    "bcc": [],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [],
+    "html": null,
+    "inline": [],
+    "subject": "hi",
+    "text": "hello",
+    "to": [
+     "Some.User@Example.TEST",
+     "some.user@example.test"
+    ]
+   },
+   "name": "local part case kept"
+  },
+  {
+   "expected": {
+    "defects": [],
+    "envelope": [
+     "to@xn--wersdrfer-47a.de",
+     "cc@xn--b-eha.test",
+     "bcc@xn--wersdrfer-47a.de"
+    ],
+    "message": {
+     "body": {
+      "charset": "utf-8",
+      "text": "hello",
+      "type": "text/plain"
+     },
+     "headers": [
+      [
+       "cc",
+       [
+        [
+         "Cc",
+         "cc@xn--b-eha.test"
+        ]
+       ]
+      ],
+      [
+       "from",
+       [
+        [
+         "J\u00f6rg",
+         "sender@xn--wersdrfer-47a.de"
+        ]
+       ]
+      ],
+      [
+       "reply-to",
+       [
+        [
+         "",
+         "reply@xn--wersdrfer-47a.de"
+        ]
+       ]
+      ],
+      [
+       "subject",
+       "hi"
+      ],
+      [
+       "to",
+       [
+        [
+         "",
+         "to@xn--wersdrfer-47a.de"
+        ]
+       ]
+      ]
+     ]
+    },
+    "status": 200
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [],
+    "bcc": [
+     "bcc@WERSD\u00d6RFER.de"
+    ],
+    "cc": [
+     "Cc <cc@b\u00fc.test>"
+    ],
+    "from": "J\u00f6rg <sender@wersd\u00f6rfer.de>",
+    "headers": [
+     [
+      "Reply-To",
+      "reply@wersd\u00f6rfer.de"
+     ]
+    ],
+    "html": null,
+    "inline": [],
+    "subject": "hi",
+    "text": "hello",
+    "to": [
+     "to@wersd\u00f6rfer.de"
+    ]
+   },
+   "name": "idn as a-labels"
+  },
+  {
+   "expected": {
+    "status": 400
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [],
+    "bcc": [],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [],
+    "html": null,
+    "inline": [],
+    "subject": "hi",
+    "text": "hello",
+    "to": [
+     "j\u00f6rg@example.test"
+    ]
+   },
+   "name": "eai to"
+  },
+  {
+   "expected": {
+    "status": 400
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [],
+    "bcc": [],
+    "cc": [
+     "j\u00f6rg@example.test"
+    ],
+    "from": "Alice <alice@example.test>",
+    "headers": [],
+    "html": null,
+    "inline": [],
+    "subject": "hi",
+    "text": "hello",
+    "to": [
+     "bob@example.test"
+    ]
+   },
+   "name": "eai cc"
+  },
+  {
+   "expected": {
+    "status": 400
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [],
+    "bcc": [
+     "j\u00f6rg@example.test"
+    ],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [],
+    "html": null,
+    "inline": [],
+    "subject": "hi",
+    "text": "hello",
+    "to": [
+     "bob@example.test"
+    ]
+   },
+   "name": "eai bcc"
+  },
+  {
+   "expected": {
+    "status": 400
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [],
+    "bcc": [],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [
+     [
+      "Reply-To",
+      "j\u00f6rg@example.test"
+     ]
+    ],
+    "html": null,
+    "inline": [],
+    "subject": "hi",
+    "text": "hello",
+    "to": [
+     "bob@example.test"
+    ]
+   },
+   "name": "eai reply-to"
+  },
+  {
+   "expected": {
+    "status": 400
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [],
+    "bcc": [],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [],
+    "html": null,
+    "inline": [],
+    "subject": "hi",
+    "text": "hello",
+    "to": [
+     "not an address"
+    ]
+   },
+   "name": "invalid to"
+  },
+  {
+   "expected": {
+    "status": 400
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [],
+    "bcc": [],
+    "cc": [
+     "a@x.test, b@x.test"
+    ],
+    "from": "Alice <alice@example.test>",
+    "headers": [],
+    "html": null,
+    "inline": [],
+    "subject": "hi",
+    "text": "hello",
+    "to": [
+     "bob@example.test"
+    ]
+   },
+   "name": "invalid cc"
+  },
+  {
+   "expected": {
+    "status": 400
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [],
+    "bcc": [
+     "bad@bad domain"
+    ],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [],
+    "html": null,
+    "inline": [],
+    "subject": "hi",
+    "text": "hello",
+    "to": [
+     "bob@example.test"
+    ]
+   },
+   "name": "invalid bcc"
+  },
+  {
+   "divergence": "D-11",
+   "expected": {
+    "status": 400
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [],
+    "bcc": [],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [],
+    "html": null,
+    "inline": [],
+    "subject": "hi",
+    "text": "hello",
+    "to": [
+     "a . b@example.test"
+    ]
+   },
+   "name": "rust-stricter to",
+   "python": {
+    "defects": [],
+    "envelope": [
+     "a.b@example.test"
+    ],
+    "message": {
+     "body": {
+      "charset": "utf-8",
+      "text": "hello",
+      "type": "text/plain"
+     },
+     "headers": [
+      [
+       "from",
+       [
+        [
+         "Alice",
+         "alice@example.test"
+        ]
+       ]
+      ],
+      [
+       "subject",
+       "hi"
+      ],
+      [
+       "to",
+       [
+        [
+         "",
+         "a.b@example.test"
+        ]
+       ]
+      ]
+     ]
+    },
+    "status": 200
+   }
+  },
+  {
+   "divergence": "D-21",
+   "expected": {
+    "status": 400
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [],
+    "bcc": [
+     "=?utf-8?q?J=C3=B6rg?=@x.de"
+    ],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [],
+    "html": null,
+    "inline": [],
+    "subject": "hi",
+    "text": "hello",
+    "to": [
+     "X <=?utf-8?q?J=C3=B6rg?=@x.de>"
+    ]
+   },
+   "name": "encoded local part",
+   "python": {
+    "defects": [
+     "InvalidHeaderDefect",
+     "NonASCIILocalPartDefect"
+    ],
+    "envelope": [
+     "=?utf-8?q?J=C3=B6rg?=@x.de"
+    ],
+    "message": {
+     "body": {
+      "charset": "utf-8",
+      "text": "hello",
+      "type": "text/plain"
+     },
+     "headers": [
+      [
+       "from",
+       [
+        [
+         "Alice",
+         "alice@example.test"
+        ]
+       ]
+      ],
+      [
+       "subject",
+       "hi"
+      ],
+      [
+       "to",
+       [
+        [
+         "X",
+         "J\u00f6rg@x.de"
+        ]
+       ]
+      ]
+     ]
+    },
+    "status": 200
+   }
+  },
+  {
+   "expected": {
+    "defects": [],
+    "envelope": [
+     "a@x.de",
+     "b@x.de",
+     "d@x.de",
+     "o@x.de",
+     "q@x.de",
+     "s@x.de",
+     "w@x.de",
+     "ws@x.de"
+    ],
+    "message": {
+     "body": {
+      "charset": "utf-8",
+      "text": "hello",
+      "type": "text/plain"
+     },
+     "headers": [
+      [
+       "from",
+       [
+        [
+         "Alice",
+         "alice@example.test"
+        ]
+       ]
+      ],
+      [
+       "subject",
+       "hi"
+      ],
+      [
+       "to",
+       [
+        [
+         "Jane (c)",
+         "a@x.de"
+        ],
+        [
+         " (c)",
+         "b@x.de"
+        ],
+        [
+         "Kommentar",
+         "a@x.de"
+        ],
+        [
+         "Doe, Jane",
+         "d@x.de"
+        ],
+        [
+         "O'Brien",
+         "o@x.de"
+        ],
+        [
+         "Jane \"Q\" Doe",
+         "q@x.de"
+        ],
+        [
+         "a\\b",
+         "s@x.de"
+        ],
+        [
+         "",
+         "w@x.de"
+        ],
+        [
+         "a b",
+         "ws@x.de"
+        ]
+       ]
+      ]
+     ]
+    },
+    "status": 200
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [],
+    "bcc": [],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [],
+    "html": null,
+    "inline": [],
+    "subject": "hi",
+    "text": "hello",
+    "to": [
+     "Jane (c) <a@x.de>",
+     "(c) <b@x.de>",
+     "a@x.de (Kommentar)",
+     "\"Doe, Jane\" <d@x.de>",
+     "O'Brien <o@x.de>",
+     "\"Jane \\\"Q\\\" Doe\" <q@x.de>",
+     "\"a\\\\b\" <s@x.de>",
+     "\"  \" <w@x.de>",
+     "\"a  b\" <ws@x.de>"
+    ]
+   },
+   "name": "display names"
+  },
+  {
+   "expected": {
+    "defects": [],
+    "envelope": [
+     "j@x.de",
+     "k@x.de",
+     "m@x.de",
+     "t@x.de",
+     "e@x.de"
+    ],
+    "message": {
+     "body": {
+      "charset": "utf-8",
+      "text": "hello",
+      "type": "text/plain"
+     },
+     "headers": [
+      [
+       "from",
+       [
+        [
+         "Alice",
+         "alice@example.test"
+        ]
+       ]
+      ],
+      [
+       "subject",
+       "hi"
+      ],
+      [
+       "to",
+       [
+        [
+         "J\u00f6rg",
+         "j@x.de"
+        ],
+        [
+         "J\u00f6rg, M.",
+         "k@x.de"
+        ],
+        [
+         "J\u00f6rg M\u00fcller",
+         "m@x.de"
+        ],
+        [
+         "J\u00f6rg M",
+         "t@x.de"
+        ],
+        [
+         "\u0395\u03bb\u03ad\u03bd\u03b7",
+         "e@x.de"
+        ]
+       ]
+      ]
+     ]
+    },
+    "status": 200
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [],
+    "bcc": [],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [],
+    "html": null,
+    "inline": [],
+    "subject": "hi",
+    "text": "hello",
+    "to": [
+     "J\u00f6rg <j@x.de>",
+     "\"J\u00f6rg, M.\" <k@x.de>",
+     "\"J\u00f6rg   M\u00fcller \" <m@x.de>",
+     "\" J\u00f6rg\tM\" <t@x.de>",
+     "\u0395\u03bb\u03ad\u03bd\u03b7 <e@x.de>"
+    ]
+   },
+   "name": "non-ascii display names"
+  },
+  {
+   "expected": {
+    "defects": [],
+    "envelope": [
+     "b@x.de"
+    ],
+    "message": {
+     "body": {
+      "charset": "utf-8",
+      "text": "hello",
+      "type": "text/plain"
+     },
+     "headers": [
+      [
+       "from",
+       [
+        [
+         "J\u00f6rg",
+         "a@x.de"
+        ]
+       ]
+      ],
+      [
+       "subject",
+       "hi"
+      ],
+      [
+       "to",
+       [
+        [
+         "J\u00f6rg",
+         "b@x.de"
+        ]
+       ]
+      ]
+     ]
+    },
+    "status": 200
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [],
+    "bcc": [],
+    "cc": [],
+    "from": "=?utf-8?q?J=C3=B6rg?= <a@x.de>",
+    "headers": [],
+    "html": null,
+    "inline": [],
+    "subject": "hi",
+    "text": "hello",
+    "to": [
+     "=?utf-8?q?J=C3=B6rg?= <b@x.de>"
+    ]
+   },
+   "name": "encoded display name"
+  },
+  {
+   "expected": {
+    "defects": [],
+    "envelope": [
+     "b@x.de"
+    ],
+    "message": {
+     "body": {
+      "charset": "utf-8",
+      "text": "hello",
+      "type": "text/plain"
+     },
+     "headers": [
+      [
+       "from",
+       [
+        [
+         "Alice",
+         "alice@example.test"
+        ]
+       ]
+      ],
+      [
+       "subject",
+       "hi"
+      ],
+      [
+       "to",
+       [
+        [
+         "J\u00f6rg",
+         "b@x.de"
+        ]
+       ]
+      ]
+     ]
+    },
+    "status": 200
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [],
+    "bcc": [],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [],
+    "html": null,
+    "inline": [],
+    "subject": "hi",
+    "text": "hello",
+    "to": [
+     "\"=?utf-8?q?J=C3=B6rg?=\" <b@x.de>"
+    ]
+   },
+   "name": "quoted encoded display name"
+  },
+  {
+   "expected": {
+    "defects": [],
+    "envelope": [
+     "b@x.de"
+    ],
+    "message": {
+     "body": {
+      "charset": "utf-8",
+      "text": "hello",
+      "type": "text/plain"
+     },
+     "headers": [
+      [
+       "from",
+       [
+        [
+         "Alice",
+         "alice@example.test"
+        ]
+       ]
+      ],
+      [
+       "subject",
+       "hi"
+      ],
+      [
+       "to",
+       [
+        [
+         "J\u00f6rg",
+         "b@x.de"
+        ]
+       ]
+      ]
+     ]
+    },
+    "status": 200
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [],
+    "bcc": [],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [],
+    "html": null,
+    "inline": [],
+    "subject": "hi",
+    "text": "hello",
+    "to": [
+     "=?iso-8859-1?q?J=F6rg?= <b@x.de>"
+    ]
+   },
+   "name": "latin-1 encoded display name"
+  },
+  {
+   "expected": {
+    "defects": [
+     "NonPrintableDefect"
+    ],
+    "envelope": [
+     "b@x.de"
+    ],
+    "message": {
+     "body": {
+      "charset": "utf-8",
+      "text": "hello",
+      "type": "text/plain"
+     },
+     "headers": [
+      [
+       "from",
+       [
+        [
+         "Alice",
+         "alice@example.test"
+        ]
+       ]
+      ],
+      [
+       "subject",
+       "hi"
+      ],
+      [
+       "to",
+       [
+        [
+         "\u0001",
+         "b@x.de"
+        ]
+       ]
+      ]
+     ]
+    },
+    "status": 200
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [],
+    "bcc": [],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [],
+    "html": null,
+    "inline": [],
+    "subject": "hi",
+    "text": "hello",
+    "to": [
+     "=?utf-8?B?AQ==?= <b@x.de>"
+    ]
+   },
+   "name": "encoded control in display name"
+  },
+  {
+   "divergence": "D-21",
+   "expected": {
+    "status": 400
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [],
+    "bcc": [],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [],
+    "html": null,
+    "inline": [],
+    "subject": "hi",
+    "text": "hello",
+    "to": [
+     "=?utf-8?q?Doe=2C_Jane?= <b@x.de>"
+    ]
+   },
+   "name": "encoded comma in display name",
+   "python": {
+    "defects": [
+     "InvalidHeaderDefect"
+    ],
+    "envelope": [
+     "b@x.de"
+    ],
+    "message": {
+     "body": {
+      "charset": "utf-8",
+      "text": "hello",
+      "type": "text/plain"
+     },
+     "headers": [
+      [
+       "from",
+       [
+        [
+         "Alice",
+         "alice@example.test"
+        ]
+       ]
+      ],
+      [
+       "subject",
+       "hi"
+      ],
+      [
+       "to",
+       [
+        [
+         "",
+         "Doe"
+        ],
+        [
+         "Jane",
+         "b@x.de"
+        ]
+       ]
+      ]
+     ]
+    },
+    "status": 200
+   }
+  },
+  {
+   "expected": {
+    "defects": [],
+    "envelope": [
+     "b@x.de"
+    ],
+    "message": {
+     "body": {
+      "charset": "utf-8",
+      "text": "hello",
+      "type": "text/plain"
+     },
+     "headers": [
+      [
+       "from",
+       [
+        [
+         "Alice",
+         "alice@example.test"
+        ]
+       ]
+      ],
+      [
+       "subject",
+       "hi"
+      ],
+      [
+       "to",
+       [
+        [
+         "Doe, J\u00f6rg",
+         "b@x.de"
+        ]
+       ]
+      ]
+     ]
+    },
+    "status": 200
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [],
+    "bcc": [],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [],
+    "html": null,
+    "inline": [],
+    "subject": "hi",
+    "text": "hello",
+    "to": [
+     "=?utf-8?q?Doe=2C_J=C3=B6rg?= <b@x.de>"
+    ]
+   },
+   "name": "encoded non-ascii comma"
+  },
+  {
+   "expected": {
+    "defects": [],
+    "envelope": [
+     "b@x.de"
+    ],
+    "message": {
+     "body": {
+      "charset": "utf-8",
+      "text": "hello",
+      "type": "text/plain"
+     },
+     "headers": [
+      [
+       "from",
+       [
+        [
+         "Alice",
+         "alice@example.test"
+        ]
+       ]
+      ],
+      [
+       "subject",
+       "hi"
+      ],
+      [
+       "to",
+       [
+        [
+         "x=?utf-8?q?J=C3=B6rg?=",
+         "b@x.de"
+        ]
+       ]
+      ]
+     ]
+    },
+    "status": 200
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [],
+    "bcc": [],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [],
+    "html": null,
+    "inline": [],
+    "subject": "hi",
+    "text": "hello",
+    "to": [
+     "x=?utf-8?q?J=C3=B6rg?= <b@x.de>"
+    ]
+   },
+   "name": "word with encoded text"
+  },
+  {
+   "expected": {
+    "defects": [],
+    "envelope": [
+     "b@x.de",
+     "c@x.de"
+    ],
+    "message": {
+     "body": {
+      "charset": "utf-8",
+      "text": "hello",
+      "type": "text/plain"
+     },
+     "headers": [
+      [
+       "cc",
+       [
+        [
+         "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.",
+         "c@x.de"
+        ]
+       ]
+      ],
+      [
+       "from",
+       [
+        [
+         "Alice",
+         "alice@example.test"
+        ]
+       ]
+      ],
+      [
+       "subject",
+       "hi"
+      ],
+      [
+       "to",
+       [
+        [
+         "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+         "b@x.de"
+        ]
+       ]
+      ]
+     ]
+    },
+    "status": 200
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [],
+    "bcc": [],
+    "cc": [
+     "\"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.\" <c@x.de>"
+    ],
+    "from": "Alice <alice@example.test>",
+    "headers": [],
+    "html": null,
+    "inline": [],
+    "subject": "hi",
+    "text": "hello",
+    "to": [
+     "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx <b@x.de>"
+    ]
+   },
+   "name": "long display name"
+  },
+  {
+   "expected": {
+    "defects": [],
+    "envelope": [
+     "b@x.de"
+    ],
+    "message": {
+     "body": {
+      "charset": "utf-8",
+      "text": "hello",
+      "type": "text/plain"
+     },
+     "headers": [
+      [
+       "from",
+       [
+        [
+         "Alice",
+         "alice@example.test"
+        ]
+       ]
+      ],
+      [
+       "subject",
+       "hi"
+      ],
+      [
+       "to",
+       [
+        [
+         "J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg",
+         "b@x.de"
+        ]
+       ]
+      ]
+     ]
+    },
+    "status": 200
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [],
+    "bcc": [],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [],
+    "html": null,
+    "inline": [],
+    "subject": "hi",
+    "text": "hello",
+    "to": [
+     "J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg J\u00f6rg <b@x.de>"
+    ]
+   },
+   "name": "long non-ascii display name"
+  },
+  {
+   "divergence": "D-21",
+   "expected": {
+    "status": 400
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [],
+    "bcc": [],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [],
+    "html": null,
+    "inline": [],
+    "subject": "hi",
+    "text": "hello",
+    "to": [
+     "J\u00f6rg =?utf-8?q?J=C3=B6rg?= <b@x.de>"
+    ]
+   },
+   "name": "mixed display name",
+   "python": {
+    "defects": [],
+    "envelope": [
+     "b@x.de"
+    ],
+    "message": {
+     "body": {
+      "charset": "utf-8",
+      "text": "hello",
+      "type": "text/plain"
+     },
+     "headers": [
+      [
+       "from",
+       [
+        [
+         "Alice",
+         "alice@example.test"
+        ]
+       ]
+      ],
+      [
+       "subject",
+       "hi"
+      ],
+      [
+       "to",
+       [
+        [
+         "J\u00f6rg J\u00f6rg",
+         "b@x.de"
+        ]
+       ]
+      ]
+     ]
+    },
+    "status": 200
+   }
+  },
+  {
+   "divergence": "D-21",
+   "expected": {
+    "status": 400
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [],
+    "bcc": [],
+    "cc": [],
+    "from": "J\u00f6rg =?utf-8?q?J=C3=B6rg?= <b@x.de>",
+    "headers": [],
+    "html": null,
+    "inline": [],
+    "subject": "hi",
+    "text": "hello",
+    "to": [
+     "bob@example.test"
+    ]
+   },
+   "name": "mixed from display name",
+   "python": {
+    "defects": [],
+    "envelope": [
+     "bob@example.test"
+    ],
+    "message": {
+     "body": {
+      "charset": "utf-8",
+      "text": "hello",
+      "type": "text/plain"
+     },
+     "headers": [
+      [
+       "from",
+       [
+        [
+         "J\u00f6rg J\u00f6rg",
+         "b@x.de"
+        ]
+       ]
+      ],
+      [
+       "subject",
+       "hi"
+      ],
+      [
+       "to",
+       [
+        [
+         "",
+         "bob@example.test"
+        ]
+       ]
+      ]
+     ]
+    },
+    "status": 200
+   }
+  },
+  {
+   "divergence": "D-21",
+   "expected": {
+    "status": 400
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [],
+    "bcc": [],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [],
+    "html": null,
+    "inline": [],
+    "subject": "hi",
+    "text": "hello",
+    "to": [
+     "=?bogus?q?abc?= <b@x.de>"
+    ]
+   },
+   "name": "unknown charset in to",
+   "python": {
+    "defects": [],
+    "envelope": [
+     "b@x.de"
+    ],
+    "message": {
+     "body": {
+      "charset": "utf-8",
+      "text": "hello",
+      "type": "text/plain"
+     },
+     "headers": [
+      [
+       "from",
+       [
+        [
+         "Alice",
+         "alice@example.test"
+        ]
+       ]
+      ],
+      [
+       "subject",
+       "hi"
+      ],
+      [
+       "to",
+       [
+        [
+         "abc",
+         "b@x.de"
+        ]
+       ]
+      ]
+     ]
+    },
+    "status": 200
+   }
+  },
+  {
+   "divergence": "D-21",
+   "expected": {
+    "status": 400
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [],
+    "bcc": [],
+    "cc": [],
+    "from": "=?bogus?q?abc?= <a@x.de>",
+    "headers": [],
+    "html": null,
+    "inline": [],
+    "subject": "hi",
+    "text": "hello",
+    "to": [
+     "bob@example.test"
+    ]
+   },
+   "name": "unknown charset in from",
+   "python": {
+    "defects": [],
+    "envelope": [
+     "bob@example.test"
+    ],
+    "message": {
+     "body": {
+      "charset": "utf-8",
+      "text": "hello",
+      "type": "text/plain"
+     },
+     "headers": [
+      [
+       "from",
+       [
+        [
+         "abc",
+         "a@x.de"
+        ]
+       ]
+      ],
+      [
+       "subject",
+       "hi"
+      ],
+      [
+       "to",
+       [
+        [
+         "",
+         "bob@example.test"
+        ]
+       ]
+      ]
+     ]
+    },
+    "status": 200
+   }
+  },
+  {
+   "divergence": "D-21",
+   "expected": {
+    "status": 400
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [],
+    "bcc": [],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [],
+    "html": null,
+    "inline": [],
+    "subject": "=?utf-8?q?=3D=3Futf-8=3Fq=3Fhello=3F=3D?=",
+    "text": "hello",
+    "to": [
+     "bob@example.test"
+    ]
+   },
+   "name": "nested encoded word",
+   "python": {
+    "defects": [],
+    "envelope": [
+     "bob@example.test"
+    ],
+    "message": {
+     "body": {
+      "charset": "utf-8",
+      "text": "hello",
+      "type": "text/plain"
+     },
+     "headers": [
+      [
+       "from",
+       [
+        [
+         "Alice",
+         "alice@example.test"
+        ]
+       ]
+      ],
+      [
+       "subject",
+       "hello"
+      ],
+      [
+       "to",
+       [
+        [
+         "",
+         "bob@example.test"
+        ]
+       ]
+      ]
+     ]
+    },
+    "status": 200
+   }
+  },
+  {
+   "divergence": "D-21",
+   "expected": {
+    "status": 400
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [],
+    "bcc": [],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [],
+    "html": null,
+    "inline": [],
+    "subject": "=?utf-8?q?_a?=",
+    "text": "hello",
+    "to": [
+     "bob@example.test"
+    ]
+   },
+   "name": "encoded leading space",
+   "python": {
+    "defects": [],
+    "envelope": [
+     "bob@example.test"
+    ],
+    "message": {
+     "body": {
+      "charset": "utf-8",
+      "text": "hello",
+      "type": "text/plain"
+     },
+     "headers": [
+      [
+       "from",
+       [
+        [
+         "Alice",
+         "alice@example.test"
+        ]
+       ]
+      ],
+      [
+       "subject",
+       "a"
+      ],
+      [
+       "to",
+       [
+        [
+         "",
+         "bob@example.test"
+        ]
+       ]
+      ]
+     ]
+    },
+    "status": 200
+   }
+  },
+  {
+   "divergence": "D-21",
+   "expected": {
+    "status": 400
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [],
+    "bcc": [],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [],
+    "html": null,
+    "inline": [],
+    "subject": "hi",
+    "text": "hello",
+    "to": [
+     "=?utf-8?q?a_?= <b@x.de>"
+    ]
+   },
+   "name": "encoded trailing space in to",
+   "python": {
+    "defects": [],
+    "envelope": [
+     "b@x.de"
+    ],
+    "message": {
+     "body": {
+      "charset": "utf-8",
+      "text": "hello",
+      "type": "text/plain"
+     },
+     "headers": [
+      [
+       "from",
+       [
+        [
+         "Alice",
+         "alice@example.test"
+        ]
+       ]
+      ],
+      [
+       "subject",
+       "hi"
+      ],
+      [
+       "to",
+       [
+        [
+         "a",
+         "b@x.de"
+        ]
+       ]
+      ]
+     ]
+    },
+    "status": 200
+   }
+  },
+  {
+   "divergence": "D-21",
+   "expected": {
+    "status": 400
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [],
+    "bcc": [],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [],
+    "html": null,
+    "inline": [],
+    "subject": "=?utf-8?b?YQ*?=",
+    "text": "hello",
+    "to": [
+     "bob@example.test"
+    ]
+   },
+   "name": "broken base64 subject",
+   "python": {
+    "defects": [],
+    "envelope": [
+     "bob@example.test"
+    ],
+    "message": {
+     "body": {
+      "charset": "utf-8",
+      "text": "hello",
+      "type": "text/plain"
+     },
+     "headers": [
+      [
+       "from",
+       [
+        [
+         "Alice",
+         "alice@example.test"
+        ]
+       ]
+      ],
+      [
+       "subject",
+       "a"
+      ],
+      [
+       "to",
+       [
+        [
+         "",
+         "bob@example.test"
+        ]
+       ]
+      ]
+     ]
+    },
+    "status": 200
+   }
+  },
+  {
+   "expected": {
+    "defects": [],
+    "envelope": [
+     "b@x.de"
+    ],
+    "message": {
+     "body": {
+      "charset": "utf-8",
+      "text": "hello",
+      "type": "text/plain"
+     },
+     "headers": [
+      [
+       "from",
+       [
+        [
+         "Benachrichtigungen f\u00fcr J\u00f6rg M\u00fcller aus K\u00f6ln am Rhein",
+         "a@x.de"
+        ]
+       ]
+      ],
+      [
+       "reply-to",
+       [
+        [
+         "Benachrichtigungen f\u00fcr J\u00f6rg M\u00fcller aus K\u00f6ln am Rhein",
+         "r@x.de"
+        ]
+       ]
+      ],
+      [
+       "subject",
+       "Re: Benachrichtigungen f\u00fcr J\u00f6rg M\u00fcller aus K\u00f6ln am Rhein"
+      ],
+      [
+       "to",
+       [
+        [
+         "Benachrichtigungen f\u00fcr J\u00f6rg M\u00fcller aus K\u00f6ln am Rhein",
+         "b@x.de"
+        ]
+       ]
+      ],
+      [
+       "x-long",
+       "Benachrichtigungen f\u00fcr J\u00f6rg M\u00fcller aus K\u00f6ln am Rhein"
+      ]
+     ]
+    },
+    "status": 200
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [],
+    "bcc": [],
+    "cc": [],
+    "from": "=?utf-8?b?QmVuYWNocmljaHRpZ3VuZ2VuIGbDvHIgSsO2cmcgTcO8bGxlciBhdXMgS8O2bG4gYW0gUmhlaW4=?= <a@x.de>",
+    "headers": [
+     [
+      "X-Long",
+      "=?utf-8?b?QmVuYWNocmljaHRpZ3VuZ2VuIGbDvHIgSsO2cmcgTcO8bGxlciBhdXMgS8O2bG4gYW0gUmhlaW4=?="
+     ],
+     [
+      "Reply-To",
+      "=?utf-8?b?QmVuYWNocmljaHRpZ3VuZ2VuIGbDvHIgSsO2cmcgTcO8bGxlciBhdXMgS8O2bG4gYW0gUmhlaW4=?= <r@x.de>"
+     ]
+    ],
+    "html": null,
+    "inline": [],
+    "subject": "Re: =?utf-8?b?QmVuYWNocmljaHRpZ3VuZ2VuIGbDvHIgSsO2cmcgTcO8bGxlciBhdXMgS8O2bG4gYW0gUmhlaW4=?=",
+    "text": "hello",
+    "to": [
+     "=?utf-8?b?QmVuYWNocmljaHRpZ3VuZ2VuIGbDvHIgSsO2cmcgTcO8bGxlciBhdXMgS8O2bG4gYW0gUmhlaW4=?= <b@x.de>"
+    ]
+   },
+   "name": "long encoded words"
+  },
+  {
+   "divergence": "D-21",
+   "expected": {
+    "status": 400
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [],
+    "bcc": [],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [],
+    "html": null,
+    "inline": [],
+    "subject": "x=?utf-8?b?QmVuYWNocmljaHRpZ3VuZ2VuIGbDvHIgSsO2cmcgTcO8bGxlciBhdXMgS8O2bG4gYW0gUmhlaW4=?=",
+    "text": "hello",
+    "to": [
+     "bob@example.test"
+    ]
+   },
+   "name": "long glued encoded word",
+   "python": {
+    "defects": [],
+    "envelope": [
+     "bob@example.test"
+    ],
+    "message": {
+     "body": {
+      "charset": "utf-8",
+      "text": "hello",
+      "type": "text/plain"
+     },
+     "headers": [
+      [
+       "from",
+       [
+        [
+         "Alice",
+         "alice@example.test"
+        ]
+       ]
+      ],
+      [
+       "subject",
+       "xBenachrichtigungen f\u00fcr J\u00f6rg M\u00fcller aus K\u00f6ln am Rhein"
+      ],
+      [
+       "to",
+       [
+        [
+         "",
+         "bob@example.test"
+        ]
+       ]
+      ]
+     ]
+    },
+    "status": 200
+   }
+  },
+  {
+   "expected": {
+    "status": 400
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [],
+    "bcc": [],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [],
+    "html": null,
+    "inline": [],
+    "subject": "hi",
+    "text": "hello",
+    "to": [
+     "=?utf-8?B?YQ0KYg==?= <b@x.de>"
+    ]
+   },
+   "name": "crlf in to"
+  },
+  {
+   "expected": {
+    "status": 400
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [],
+    "bcc": [],
+    "cc": [
+     "=?utf-8?B?YQ0KYg==?= <c@x.de>"
+    ],
+    "from": "Alice <alice@example.test>",
+    "headers": [],
+    "html": null,
+    "inline": [],
+    "subject": "hi",
+    "text": "hello",
+    "to": [
+     "bob@example.test"
+    ]
+   },
+   "name": "crlf in cc"
+  },
+  {
+   "expected": {
+    "status": 400
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [],
+    "bcc": [],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [],
+    "html": null,
+    "inline": [],
+    "subject": "hi",
+    "text": "hello",
+    "to": [
+     "=?utf-8?q?a=0Ab?= <b@x.de>"
+    ]
+   },
+   "name": "crlf q in to"
+  },
+  {
+   "expected": {
+    "status": 400
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [],
+    "bcc": [],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [],
+    "html": null,
+    "inline": [],
+    "subject": "hi",
+    "text": "hello",
+    "to": [
+     "\"a =?utf-8?B?YQ0KYg==?=\" <b@x.de>"
+    ]
+   },
+   "name": "crlf quoted in to"
+  },
+  {
+   "expected": {
+    "status": 400
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [],
+    "bcc": [],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [],
+    "html": null,
+    "inline": [],
+    "subject": "hi",
+    "text": "hello",
+    "to": [
+     "=?utf-7?q?+AA0-?= <b@x.de>"
+    ]
+   },
+   "name": "crlf utf-7 in to"
+  },
+  {
+   "expected": {
+    "status": 400
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [],
+    "bcc": [],
+    "cc": [
+     "bad@bad domain"
+    ],
+    "from": "Alice <alice@example.test>",
+    "headers": [],
+    "html": null,
+    "inline": [],
+    "subject": "hi",
+    "text": "hello",
+    "to": [
+     "=?utf-8?B?YQ0KYg==?= <b@x.de>"
+    ]
+   },
+   "name": "crlf in to with invalid cc"
+  },
+  {
+   "expected": {
+    "defects": [
+     "ValueError"
+    ],
+    "envelope": [
+     "bob@example.test"
+    ],
+    "message": {
+     "body": {
+      "charset": "utf-8",
+      "text": "hello",
+      "type": "text/plain"
+     },
+     "headers": [
+      [
+       "from",
+       [
+        "unparsable",
+        "a\r\nb <a@x.de>"
+       ]
+      ],
+      [
+       "subject",
+       "hi"
+      ],
+      [
+       "to",
+       [
+        [
+         "",
+         "bob@example.test"
+        ]
+       ]
+      ]
+     ]
+    },
+    "status": 200
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [],
+    "bcc": [],
+    "cc": [],
+    "from": "=?utf-8?B?YQ0KYg==?= <a@x.de>",
+    "headers": [],
+    "html": null,
+    "inline": [],
+    "subject": "hi",
+    "text": "hello",
+    "to": [
+     "bob@example.test"
+    ]
+   },
+   "name": "crlf in from"
+  },
+  {
+   "expected": {
+    "defects": [],
+    "envelope": [
+     "bob@example.test",
+     "z@x.de"
+    ],
+    "message": {
+     "body": {
+      "charset": "utf-8",
+      "text": "hello",
+      "type": "text/plain"
+     },
+     "headers": [
+      [
+       "from",
+       [
+        [
+         "Alice",
+         "alice@example.test"
+        ]
+       ]
+      ],
+      [
+       "subject",
+       "hi"
+      ],
+      [
+       "to",
+       [
+        [
+         "",
+         "bob@example.test"
+        ]
+       ]
+      ]
+     ]
+    },
+    "status": 200
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [],
+    "bcc": [
+     "=?utf-8?B?YQ0KYg==?= <z@x.de>"
+    ],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [],
+    "html": null,
+    "inline": [],
+    "subject": "hi",
+    "text": "hello",
+    "to": [
+     "bob@example.test"
+    ]
+   },
+   "name": "crlf in bcc"
+  },
+  {
+   "expected": {
+    "status": 400
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [],
+    "bcc": [],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [
+     [
+      "Reply-To",
+      "=?utf-8?B?YQ0KYg==?= <r@x.de>"
+     ]
+    ],
+    "html": null,
+    "inline": [],
+    "subject": "hi",
+    "text": "hello",
+    "to": [
+     "bob@example.test"
+    ]
+   },
+   "name": "crlf in reply-to"
+  },
+  {
+   "expected": {
+    "defects": [],
+    "envelope": [
+     "bob@example.test"
+    ],
+    "message": {
+     "body": {
+      "charset": "utf-8",
+      "text": "hello",
+      "type": "text/plain"
+     },
+     "headers": [
+      [
+       "from",
+       [
+        [
+         "Alice",
+         "alice@example.test"
+        ]
+       ]
+      ],
+      [
+       "subject",
+       "a\r\nb"
+      ],
+      [
+       "to",
+       [
+        [
+         "",
+         "bob@example.test"
+        ]
+       ]
+      ]
+     ]
+    },
+    "status": 200
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [],
+    "bcc": [],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [],
+    "html": null,
+    "inline": [],
+    "subject": "=?utf-8?B?YQ0KYg==?=",
+    "text": "hello",
+    "to": [
+     "bob@example.test"
+    ]
+   },
+   "name": "crlf in subject"
+  },
+  {
+   "expected": {
+    "defects": [],
+    "envelope": [
+     "bob@example.test"
+    ],
+    "message": {
+     "body": {
+      "charset": "utf-8",
+      "text": "hello",
+      "type": "text/plain"
+     },
+     "headers": [
+      [
+       "from",
+       [
+        [
+         "Alice",
+         "alice@example.test"
+        ]
+       ]
+      ],
+      [
+       "subject",
+       "hi"
+      ],
+      [
+       "to",
+       [
+        [
+         "",
+         "bob@example.test"
+        ]
+       ]
+      ],
+      [
+       "x-note",
+       "a\r\nb"
+      ]
+     ]
+    },
+    "status": 200
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [],
+    "bcc": [],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [
+     [
+      "X-Note",
+      "=?utf-8?B?YQ0KYg==?="
+     ]
+    ],
+    "html": null,
+    "inline": [],
+    "subject": "hi",
+    "text": "hello",
+    "to": [
+     "bob@example.test"
+    ]
+   },
+   "name": "crlf in custom header"
+  },
+  {
+   "expected": {
+    "defects": [],
+    "envelope": [
+     "bob@example.test"
+    ],
+    "message": {
+     "body": {
+      "charset": "utf-8",
+      "text": "hello",
+      "type": "text/plain"
+     },
+     "headers": [
+      [
+       "from",
+       [
+        [
+         "Alice",
+         "alice@example.test"
+        ]
+       ]
+      ],
+      [
+       "subject",
+       "\u0001 x"
+      ],
+      [
+       "to",
+       [
+        [
+         "",
+         "bob@example.test"
+        ]
+       ]
+      ]
+     ]
+    },
+    "status": 200
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [],
+    "bcc": [],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [],
+    "html": null,
+    "inline": [],
+    "subject": "=?utf-8?B?AQ==?= x",
+    "text": "hello",
+    "to": [
+     "bob@example.test"
+    ]
+   },
+   "name": "control in subject"
+  },
+  {
+   "expected": {
+    "defects": [],
+    "envelope": [
+     "bob@example.test"
+    ],
+    "message": {
+     "body": {
+      "charset": "utf-8",
+      "text": "hello",
+      "type": "text/plain"
+     },
+     "headers": [
+      [
+       "from",
+       [
+        [
+         "Alice",
+         "alice@example.test"
+        ]
+       ]
+      ],
+      [
+       "subject",
+       ""
+      ],
+      [
+       "to",
+       [
+        [
+         "",
+         "bob@example.test"
+        ]
+       ]
+      ]
+     ]
+    },
+    "status": 200
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [],
+    "bcc": [],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [],
+    "html": null,
+    "inline": [],
+    "subject": "",
+    "text": "hello",
+    "to": [
+     "bob@example.test"
+    ]
+   },
+   "name": "empty subject"
+  },
+  {
+   "expected": {
+    "defects": [],
+    "envelope": [
+     "bob@example.test"
+    ],
+    "message": {
+     "body": {
+      "charset": "utf-8",
+      "text": "hello",
+      "type": "text/plain"
+     },
+     "headers": [
+      [
+       "from",
+       [
+        [
+         "Alice",
+         "alice@example.test"
+        ]
+       ]
+      ],
+      [
+       "subject",
+       "Gr\u00fc\u00dfe \u2014 Ihre Bestellung"
+      ],
+      [
+       "to",
+       [
+        [
+         "",
+         "bob@example.test"
+        ]
+       ]
+      ]
+     ]
+    },
+    "status": 200
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [],
+    "bcc": [],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [],
+    "html": null,
+    "inline": [],
+    "subject": "Gr\u00fc\u00dfe \u2014 Ihre Bestellung",
+    "text": "hello",
+    "to": [
+     "bob@example.test"
+    ]
+   },
+   "name": "german subject"
+  },
+  {
+   "expected": {
+    "defects": [],
+    "envelope": [
+     "bob@example.test"
+    ],
+    "message": {
+     "body": {
+      "charset": "utf-8",
+      "text": "hello",
+      "type": "text/plain"
+     },
+     "headers": [
+      [
+       "from",
+       [
+        [
+         "Alice",
+         "alice@example.test"
+        ]
+       ]
+      ],
+      [
+       "subject",
+       "Re: J\u00f6rg und J\u00f6rg"
+      ],
+      [
+       "to",
+       [
+        [
+         "",
+         "bob@example.test"
+        ]
+       ]
+      ]
+     ]
+    },
+    "status": 200
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [],
+    "bcc": [],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [],
+    "html": null,
+    "inline": [],
+    "subject": "Re: =?utf-8?q?J=C3=B6rg?= und =?utf-8?q?J=C3=B6rg?=",
+    "text": "hello",
+    "to": [
+     "bob@example.test"
+    ]
+   },
+   "name": "encoded subject"
+  },
+  {
+   "expected": {
+    "defects": [],
+    "envelope": [
+     "bob@example.test"
+    ],
+    "message": {
+     "body": {
+      "charset": "utf-8",
+      "text": "hello",
+      "type": "text/plain"
+     },
+     "headers": [
+      [
+       "from",
+       [
+        [
+         "Alice",
+         "alice@example.test"
+        ]
+       ]
+      ],
+      [
+       "subject",
+       "Error: lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum "
+      ],
+      [
+       "to",
+       [
+        [
+         "",
+         "bob@example.test"
+        ]
+       ]
+      ]
+     ]
+    },
+    "status": 200
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [],
+    "bcc": [],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [],
+    "html": null,
+    "inline": [],
+    "subject": "Error: lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum ",
+    "text": "hello",
+    "to": [
+     "bob@example.test"
+    ]
+   },
+   "name": "long subject"
+  },
+  {
+   "expected": {
+    "defects": [],
+    "envelope": [
+     "bob@example.test"
+    ],
+    "message": {
+     "body": {
+      "charset": "utf-8",
+      "text": "hello",
+      "type": "text/plain"
+     },
+     "headers": [
+      [
+       "from",
+       [
+        [
+         "Alice",
+         "alice@example.test"
+        ]
+       ]
+      ],
+      [
+       "subject",
+       "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+      ],
+      [
+       "to",
+       [
+        [
+         "",
+         "bob@example.test"
+        ]
+       ]
+      ]
+     ]
+    },
+    "status": 200
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [],
+    "bcc": [],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [],
+    "html": null,
+    "inline": [],
+    "subject": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "text": "hello",
+    "to": [
+     "bob@example.test"
+    ]
+   },
+   "name": "long word subject"
+  },
+  {
+   "expected": {
+    "defects": [],
+    "envelope": [
+     "bob@example.test"
+    ],
+    "message": {
+     "body": {
+      "charset": "utf-8",
+      "text": "hello",
+      "type": "text/plain"
+     },
+     "headers": [
+      [
+       "from",
+       [
+        [
+         "Alice",
+         "alice@example.test"
+        ]
+       ]
+      ],
+      [
+       "subject",
+       "\u00e4xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+      ],
+      [
+       "to",
+       [
+        [
+         "",
+         "bob@example.test"
+        ]
+       ]
+      ]
+     ]
+    },
+    "status": 200
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [],
+    "bcc": [],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [],
+    "html": null,
+    "inline": [],
+    "subject": "\u00e4xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "text": "hello",
+    "to": [
+     "bob@example.test"
+    ]
+   },
+   "name": "long non-ascii subject"
+  },
+  {
+   "divergence": "D-21",
+   "expected": {
+    "status": 400
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [],
+    "bcc": [],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [],
+    "html": null,
+    "inline": [],
+    "subject": "Gr\u00fc\u00dfe =?utf-8?q?J=C3=B6rg?=",
+    "text": "hello",
+    "to": [
+     "bob@example.test"
+    ]
+   },
+   "name": "mixed subject",
+   "python": {
+    "defects": [],
+    "envelope": [
+     "bob@example.test"
+    ],
+    "message": {
+     "body": {
+      "charset": "utf-8",
+      "text": "hello",
+      "type": "text/plain"
+     },
+     "headers": [
+      [
+       "from",
+       [
+        [
+         "Alice",
+         "alice@example.test"
+        ]
+       ]
+      ],
+      [
+       "subject",
+       "Gr\u00fc\u00dfe J\u00f6rg"
+      ],
+      [
+       "to",
+       [
+        [
+         "",
+         "bob@example.test"
+        ]
+       ]
+      ]
+     ]
+    },
+    "status": 200
+   }
+  },
+  {
+   "expected": {
+    "defects": [],
+    "envelope": [
+     "bob@example.test"
+    ],
+    "message": {
+     "body": {
+      "charset": "utf-8",
+      "text": "hello",
+      "type": "text/plain"
+     },
+     "headers": [
+      [
+       "from",
+       [
+        [
+         "Alice",
+         "alice@example.test"
+        ]
+       ]
+      ],
+      [
+       "subject",
+       "1+1=? \u00c4h"
+      ],
+      [
+       "to",
+       [
+        [
+         "",
+         "bob@example.test"
+        ]
+       ]
+      ]
+     ]
+    },
+    "status": 200
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [],
+    "bcc": [],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [],
+    "html": null,
+    "inline": [],
+    "subject": "1+1=? \u00c4h",
+    "text": "hello",
+    "to": [
+     "bob@example.test"
+    ]
+   },
+   "name": "question mark subject"
+  },
+  {
+   "expected": {
+    "defects": [],
+    "envelope": [
+     "bob@example.test"
+    ],
+    "message": {
+     "body": {
+      "charset": "utf-8",
+      "text": "hello",
+      "type": "text/plain"
+     },
+     "headers": [
+      [
+       "auto-submitted",
+       "auto-generated"
+      ],
+      [
+       "from",
+       [
+        [
+         "Alice",
+         "alice@example.test"
+        ]
+       ]
+      ],
+      [
+       "subject",
+       "hi"
+      ],
+      [
+       "to",
+       [
+        [
+         "",
+         "bob@example.test"
+        ]
+       ]
+      ],
+      [
+       "x-a",
+       "one"
+      ],
+      [
+       "x-a",
+       "two"
+      ],
+      [
+       "x-empty",
+       ""
+      ],
+      [
+       "x-encoded",
+       "J\u00f6rg x"
+      ],
+      [
+       "x-mailer",
+       "Anymail"
+      ],
+      [
+       "x-note",
+       "leading space"
+      ],
+      [
+       "x-tab",
+       "a\tb"
+      ],
+      [
+       "x-umlaut",
+       "Gr\u00fc\u00dfe "
+      ]
+     ]
+    },
+    "status": 200
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [],
+    "bcc": [],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [
+     [
+      "X-Mailer",
+      "Anymail"
+     ],
+     [
+      "Auto-Submitted",
+      "auto-generated"
+     ],
+     [
+      "X-Note",
+      "  leading space"
+     ],
+     [
+      "X-Umlaut",
+      " Gr\u00fc\u00dfe "
+     ],
+     [
+      "X-Encoded",
+      "=?utf-8?q?J=C3=B6rg?= x"
+     ],
+     [
+      "X-A",
+      "one"
+     ],
+     [
+      "x-a",
+      "two"
+     ],
+     [
+      "X-Tab",
+      "a\tb"
+     ],
+     [
+      "X-Empty",
+      ""
+     ]
+    ],
+    "html": null,
+    "inline": [],
+    "subject": "hi",
+    "text": "hello",
+    "to": [
+     "bob@example.test"
+    ]
+   },
+   "name": "custom headers"
+  },
+  {
+   "expected": {
+    "defects": [],
+    "envelope": [
+     "bob@example.test"
+    ],
+    "message": {
+     "body": {
+      "charset": "utf-8",
+      "text": "hello",
+      "type": "text/plain"
+     },
+     "headers": [
+      [
+       "from",
+       [
+        [
+         "Alice",
+         "alice@example.test"
+        ]
+       ]
+      ],
+      [
+       "in-reply-to",
+       "<a@b.test>"
+      ],
+      [
+       "references",
+       "<a@b.test> <c@d.test>"
+      ],
+      [
+       "subject",
+       "hi"
+      ],
+      [
+       "to",
+       [
+        [
+         "",
+         "bob@example.test"
+        ]
+       ]
+      ]
+     ]
+    },
+    "status": 200
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [],
+    "bcc": [],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [
+     [
+      "In-Reply-To",
+      "<a@b.test>"
+     ],
+     [
+      "References",
+      "<a@b.test> <c@d.test>"
+     ]
+    ],
+    "html": null,
+    "inline": [],
+    "subject": "hi",
+    "text": "hello",
+    "to": [
+     "bob@example.test"
+    ]
+   },
+   "name": "threading headers"
+  },
+  {
+   "divergence": "D-21",
+   "expected": {
+    "status": 400
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [],
+    "bcc": [],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [
+     [
+      "In-Reply-To",
+      "garbage no brackets"
+     ]
+    ],
+    "html": null,
+    "inline": [],
+    "subject": "hi",
+    "text": "hello",
+    "to": [
+     "bob@example.test"
+    ]
+   },
+   "name": "garbage in-reply-to",
+   "python": {
+    "defects": [
+     "InvalidHeaderDefect"
+    ],
+    "envelope": [
+     "bob@example.test"
+    ],
+    "message": {
+     "body": {
+      "charset": "utf-8",
+      "text": "hello",
+      "type": "text/plain"
+     },
+     "headers": [
+      [
+       "from",
+       [
+        [
+         "Alice",
+         "alice@example.test"
+        ]
+       ]
+      ],
+      [
+       "in-reply-to",
+       "garbage no brackets"
+      ],
+      [
+       "subject",
+       "hi"
+      ],
+      [
+       "to",
+       [
+        [
+         "",
+         "bob@example.test"
+        ]
+       ]
+      ]
+     ]
+    },
+    "status": 200
+   }
+  },
+  {
+   "divergence": "D-21",
+   "expected": {
+    "status": 400
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [],
+    "bcc": [],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [
+     [
+      "In-Reply-To",
+      "<a@b.test"
+     ]
+    ],
+    "html": null,
+    "inline": [],
+    "subject": "hi",
+    "text": "hello",
+    "to": [
+     "bob@example.test"
+    ]
+   },
+   "name": "unclosed in-reply-to",
+   "python": {
+    "defects": [],
+    "envelope": [
+     "bob@example.test"
+    ],
+    "message": {
+     "body": {
+      "charset": "utf-8",
+      "text": "hello",
+      "type": "text/plain"
+     },
+     "headers": [
+      [
+       "from",
+       [
+        [
+         "Alice",
+         "alice@example.test"
+        ]
+       ]
+      ],
+      [
+       "in-reply-to",
+       "<a@b.test>"
+      ],
+      [
+       "subject",
+       "hi"
+      ],
+      [
+       "to",
+       [
+        [
+         "",
+         "bob@example.test"
+        ]
+       ]
+      ]
+     ]
+    },
+    "status": 200
+   }
+  },
+  {
+   "divergence": "D-21",
+   "expected": {
+    "status": 400
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [],
+    "bcc": [],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [
+     [
+      "References",
+      "<a@b.test>,<c@d.test>"
+     ]
+    ],
+    "html": null,
+    "inline": [],
+    "subject": "hi",
+    "text": "hello",
+    "to": [
+     "bob@example.test"
+    ]
+   },
+   "name": "comma references",
+   "python": {
+    "defects": [],
+    "envelope": [
+     "bob@example.test"
+    ],
+    "message": {
+     "body": {
+      "charset": "utf-8",
+      "text": "hello",
+      "type": "text/plain"
+     },
+     "headers": [
+      [
+       "from",
+       [
+        [
+         "Alice",
+         "alice@example.test"
+        ]
+       ]
+      ],
+      [
+       "references",
+       "<a@b.test> <c@d.test>"
+      ],
+      [
+       "subject",
+       "hi"
+      ],
+      [
+       "to",
+       [
+        [
+         "",
+         "bob@example.test"
+        ]
+       ]
+      ]
+     ]
+    },
+    "status": 200
+   }
+  },
+  {
+   "expected": {
+    "defects": [],
+    "envelope": [
+     "bob@example.test"
+    ],
+    "message": {
+     "body": {
+      "charset": "utf-8",
+      "text": "hello",
+      "type": "text/plain"
+     },
+     "headers": [
+      [
+       "from",
+       [
+        [
+         "Alice",
+         "alice@example.test"
+        ]
+       ]
+      ],
+      [
+       "references",
+       "<a@b.test>  <c.d@e.test>"
+      ],
+      [
+       "subject",
+       "hi"
+      ],
+      [
+       "to",
+       [
+        [
+         "",
+         "bob@example.test"
+        ]
+       ]
+      ]
+     ]
+    },
+    "status": 200
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [],
+    "bcc": [],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [
+     [
+      "References",
+      " <a@b.test>  <c.d@e.test>"
+     ]
+    ],
+    "html": null,
+    "inline": [],
+    "subject": "hi",
+    "text": "hello",
+    "to": [
+     "bob@example.test"
+    ]
+   },
+   "name": "spaced references"
+  },
+  {
+   "expected": {
+    "status": 400
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [],
+    "bcc": [],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [
+     [
+      "References",
+      "<j\u00f6rg@example.test>"
+     ]
+    ],
+    "html": null,
+    "inline": [],
+    "subject": "hi",
+    "text": "hello",
+    "to": [
+     "bob@example.test"
+    ]
+   },
+   "name": "non-ascii references"
+  },
+  {
+   "expected": {
+    "status": 400
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [],
+    "bcc": [],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [
+     [
+      "In-Reply-To",
+      "=?utf-8?q?J=C3=B6rg?="
+     ]
+    ],
+    "html": null,
+    "inline": [],
+    "subject": "hi",
+    "text": "hello",
+    "to": [
+     "bob@example.test"
+    ]
+   },
+   "name": "encoded in-reply-to"
+  },
+  {
+   "divergence": "D-21",
+   "expected": {
+    "status": 400
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [],
+    "bcc": [],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [
+     [
+      "References",
+      "=?utf-8?q?abc?="
+     ]
+    ],
+    "html": null,
+    "inline": [],
+    "subject": "hi",
+    "text": "hello",
+    "to": [
+     "bob@example.test"
+    ]
+   },
+   "name": "ascii encoded references",
+   "python": {
+    "defects": [
+     "InvalidHeaderDefect"
+    ],
+    "envelope": [
+     "bob@example.test"
+    ],
+    "message": {
+     "body": {
+      "charset": "utf-8",
+      "text": "hello",
+      "type": "text/plain"
+     },
+     "headers": [
+      [
+       "from",
+       [
+        [
+         "Alice",
+         "alice@example.test"
+        ]
+       ]
+      ],
+      [
+       "references",
+       "abc"
+      ],
+      [
+       "subject",
+       "hi"
+      ],
+      [
+       "to",
+       [
+        [
+         "",
+         "bob@example.test"
+        ]
+       ]
+      ]
+     ]
+    },
+    "status": 200
+   }
+  },
+  {
+   "expected": {
+    "status": 400
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [],
+    "bcc": [],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [
+     [
+      "In-Reply-To",
+      "<a@b>"
+     ],
+     [
+      "in-reply-to",
+      "<c@d>"
+     ]
+    ],
+    "html": null,
+    "inline": [],
+    "subject": "hi",
+    "text": "hello",
+    "to": [
+     "bob@example.test"
+    ]
+   },
+   "name": "duplicate in-reply-to"
+  },
+  {
+   "expected": {
+    "status": 400
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [],
+    "bcc": [],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [
+     [
+      "References",
+      "<a@b>"
+     ],
+     [
+      "REFERENCES",
+      "<c@d>"
+     ]
+    ],
+    "html": null,
+    "inline": [],
+    "subject": "hi",
+    "text": "hello",
+    "to": [
+     "bob@example.test"
+    ]
+   },
+   "name": "duplicate references"
+  },
+  {
+   "divergence": "D-21",
+   "expected": {
+    "status": 400
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [],
+    "bcc": [],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [
+     [
+      "Orig-Date",
+      "Mon, 1 Jan 2024 10:00:00 +0000"
+     ]
+    ],
+    "html": null,
+    "inline": [],
+    "subject": "hi",
+    "text": "hello",
+    "to": [
+     "bob@example.test"
+    ]
+   },
+   "name": "orig-date",
+   "python": {
+    "defects": [],
+    "envelope": [
+     "bob@example.test"
+    ],
+    "message": {
+     "body": {
+      "charset": "utf-8",
+      "text": "hello",
+      "type": "text/plain"
+     },
+     "headers": [
+      [
+       "from",
+       [
+        [
+         "Alice",
+         "alice@example.test"
+        ]
+       ]
+      ],
+      [
+       "orig-date",
+       "Mon, 01 Jan 2024 10:00:00 +0000"
+      ],
+      [
+       "subject",
+       "hi"
+      ],
+      [
+       "to",
+       [
+        [
+         "",
+         "bob@example.test"
+        ]
+       ]
+      ]
+     ]
+    },
+    "status": 200
+   }
+  },
+  {
+   "divergence": "D-21",
+   "expected": {
+    "status": 400
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [],
+    "bcc": [],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [
+     [
+      "X-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "v"
+     ]
+    ],
+    "html": null,
+    "inline": [],
+    "subject": "hi",
+    "text": "hello",
+    "to": [
+     "bob@example.test"
+    ]
+   },
+   "name": "long header name",
+   "python": {
+    "defects": [],
+    "envelope": [
+     "bob@example.test"
+    ],
+    "message": {
+     "body": {
+      "charset": "utf-8",
+      "text": "hello",
+      "type": "text/plain"
+     },
+     "headers": [
+      [
+       "from",
+       [
+        [
+         "Alice",
+         "alice@example.test"
+        ]
+       ]
+      ],
+      [
+       "subject",
+       "hi"
+      ],
+      [
+       "to",
+       [
+        [
+         "",
+         "bob@example.test"
+        ]
+       ]
+      ],
+      [
+       "x-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+       "v"
+      ]
+     ]
+    },
+    "status": 200
+   }
+  },
+  {
+   "expected": {
+    "defects": [],
+    "envelope": [
+     "bob@example.test"
+    ],
+    "message": {
+     "body": {
+      "charset": "utf-8",
+      "text": "hello",
+      "type": "text/plain"
+     },
+     "headers": [
+      [
+       "from",
+       [
+        [
+         "Alice",
+         "alice@example.test"
+        ]
+       ]
+      ],
+      [
+       "subject",
+       "hi"
+      ],
+      [
+       "to",
+       [
+        [
+         "",
+         "bob@example.test"
+        ]
+       ]
+      ],
+      [
+       "x-long",
+       "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+      ]
+     ]
+    },
+    "status": 200
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [],
+    "bcc": [],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [
+     [
+      "X-Long",
+      "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+     ]
+    ],
+    "html": null,
+    "inline": [],
+    "subject": "hi",
+    "text": "hello",
+    "to": [
+     "bob@example.test"
+    ]
+   },
+   "name": "long word header"
+  },
+  {
+   "divergence": "D-21",
+   "expected": {
+    "status": 400
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [],
+    "bcc": [],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [
+     [
+      "X-Mixed",
+      "Gr\u00fc\u00dfe =?utf-8?q?J=C3=B6rg?="
+     ]
+    ],
+    "html": null,
+    "inline": [],
+    "subject": "hi",
+    "text": "hello",
+    "to": [
+     "bob@example.test"
+    ]
+   },
+   "name": "mixed custom header",
+   "python": {
+    "defects": [],
+    "envelope": [
+     "bob@example.test"
+    ],
+    "message": {
+     "body": {
+      "charset": "utf-8",
+      "text": "hello",
+      "type": "text/plain"
+     },
+     "headers": [
+      [
+       "from",
+       [
+        [
+         "Alice",
+         "alice@example.test"
+        ]
+       ]
+      ],
+      [
+       "subject",
+       "hi"
+      ],
+      [
+       "to",
+       [
+        [
+         "",
+         "bob@example.test"
+        ]
+       ]
+      ],
+      [
+       "x-mixed",
+       "Gr\u00fc\u00dfe J\u00f6rg"
+      ]
+     ]
+    },
+    "status": 200
+   }
+  },
+  {
+   "expected": {
+    "defects": [],
+    "envelope": [
+     "bob@example.test"
+    ],
+    "message": {
+     "body": {
+      "charset": "utf-8",
+      "text": "hello",
+      "type": "text/plain"
+     },
+     "headers": [
+      [
+       "from",
+       [
+        [
+         "Alice",
+         "alice@example.test"
+        ]
+       ]
+      ],
+      [
+       "reply-to",
+       [
+        [
+         "",
+         "ops@example.test"
+        ]
+       ]
+      ],
+      [
+       "subject",
+       "hi"
+      ],
+      [
+       "to",
+       [
+        [
+         "",
+         "bob@example.test"
+        ]
+       ]
+      ]
+     ]
+    },
+    "status": 200
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [],
+    "bcc": [],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [
+     [
+      "Reply-To",
+      "ops@example.test"
+     ]
+    ],
+    "html": null,
+    "inline": [],
+    "subject": "hi",
+    "text": "hello",
+    "to": [
+     "bob@example.test"
+    ]
+   },
+   "name": "reply-to"
+  },
+  {
+   "expected": {
+    "defects": [],
+    "envelope": [
+     "bob@example.test"
+    ],
+    "message": {
+     "body": {
+      "charset": "utf-8",
+      "text": "hello",
+      "type": "text/plain"
+     },
+     "headers": [
+      [
+       "from",
+       [
+        [
+         "Alice",
+         "alice@example.test"
+        ]
+       ]
+      ],
+      [
+       "reply-to",
+       [
+        [
+         "Ops",
+         "ops@example.test"
+        ]
+       ]
+      ],
+      [
+       "subject",
+       "hi"
+      ],
+      [
+       "to",
+       [
+        [
+         "",
+         "bob@example.test"
+        ]
+       ]
+      ]
+     ]
+    },
+    "status": 200
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [],
+    "bcc": [],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [
+     [
+      "reply-to",
+      "Ops <ops@example.test>"
+     ]
+    ],
+    "html": null,
+    "inline": [],
+    "subject": "hi",
+    "text": "hello",
+    "to": [
+     "bob@example.test"
+    ]
+   },
+   "name": "reply-to lowercase name"
+  },
+  {
+   "expected": {
+    "defects": [],
+    "envelope": [
+     "bob@example.test"
+    ],
+    "message": {
+     "body": {
+      "charset": "utf-8",
+      "text": "hello",
+      "type": "text/plain"
+     },
+     "headers": [
+      [
+       "from",
+       [
+        [
+         "Alice",
+         "alice@example.test"
+        ]
+       ]
+      ],
+      [
+       "reply-to",
+       [
+        [
+         "Doe, Jane",
+         "jane@example.test"
+        ],
+        [
+         "",
+         "b@x.de"
+        ],
+        [
+         "J\u00f6rg",
+         "j@x.de"
+        ]
+       ]
+      ],
+      [
+       "subject",
+       "hi"
+      ],
+      [
+       "to",
+       [
+        [
+         "",
+         "bob@example.test"
+        ]
+       ]
+      ]
+     ]
+    },
+    "status": 200
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [],
+    "bcc": [],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [
+     [
+      "Reply-To",
+      "\"Doe, Jane\" <jane@example.test>, b@x.de, J\u00f6rg <j@x.de>"
+     ]
+    ],
+    "html": null,
+    "inline": [],
+    "subject": "hi",
+    "text": "hello",
+    "to": [
+     "bob@example.test"
+    ]
+   },
+   "name": "reply-to list"
+  },
+  {
+   "expected": {
+    "status": 400
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [],
+    "bcc": [],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [
+     [
+      "Reply-To",
+      "a@x.de, bad@bad domain"
+     ]
+    ],
+    "html": null,
+    "inline": [],
+    "subject": "hi",
+    "text": "hello",
+    "to": [
+     "bob@example.test"
+    ]
+   },
+   "name": "reply-to invalid"
+  },
+  {
+   "expected": {
+    "status": 400
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [],
+    "bcc": [],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [
+     [
+      "Reply-To",
+      "a@x.de"
+     ],
+     [
+      "reply-to",
+      "b@x.de"
+     ]
+    ],
+    "html": null,
+    "inline": [],
+    "subject": "hi",
+    "text": "hello",
+    "to": [
+     "bob@example.test"
+    ]
+   },
+   "name": "reply-to case variants"
+  },
+  {
+   "expected": {
+    "defects": [],
+    "envelope": [
+     "bob@example.test"
+    ],
+    "message": {
+     "body": {
+      "parts": [
+       {
+        "charset": "utf-8",
+        "text": "hello",
+        "type": "text/plain"
+       },
+       {
+        "data": "aGVsbG8gYXR0YWNobWVudA==",
+        "disposition": "attachment",
+        "filename": "hello.txt",
+        "type": "text/plain"
+       }
+      ],
+      "type": "multipart/mixed"
+     },
+     "headers": [
+      [
+       "from",
+       [
+        [
+         "Alice",
+         "alice@example.test"
+        ]
+       ]
+      ],
+      [
+       "subject",
+       "hi"
+      ],
+      [
+       "to",
+       [
+        [
+         "",
+         "bob@example.test"
+        ]
+       ]
+      ]
+     ]
+    },
+    "status": 200
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [
+     {
+      "content_type": "text/plain",
+      "data": "aGVsbG8gYXR0YWNobWVudA==",
+      "filename": "hello.txt"
+     }
+    ],
+    "bcc": [],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [],
+    "html": null,
+    "inline": [],
+    "subject": "hi",
+    "text": "hello",
+    "to": [
+     "bob@example.test"
+    ]
+   },
+   "name": "attachment"
+  },
+  {
+   "expected": {
+    "defects": [],
+    "envelope": [
+     "bob@example.test"
+    ],
+    "message": {
+     "body": {
+      "parts": [
+       {
+        "charset": "utf-8",
+        "text": "hello",
+        "type": "text/plain"
+       },
+       {
+        "data": "JVBERi0xLjQKJeLj",
+        "disposition": "attachment",
+        "filename": "a.pdf",
+        "type": "application/pdf"
+       },
+       {
+        "data": "JVBERg==",
+        "disposition": "attachment",
+        "filename": "Rechnung M\u00e4rz.pdf",
+        "type": "application/pdf"
+       },
+       {
+        "data": "AAEC",
+        "disposition": "attachment",
+        "filename": "attachment",
+        "type": "application/octet-stream"
+       },
+       {
+        "data": "YTtiCmM7ZAo=",
+        "disposition": "attachment",
+        "filename": "data.csv",
+        "type": "text/csv"
+       }
+      ],
+      "type": "multipart/mixed"
+     },
+     "headers": [
+      [
+       "from",
+       [
+        [
+         "Alice",
+         "alice@example.test"
+        ]
+       ]
+      ],
+      [
+       "subject",
+       "hi"
+      ],
+      [
+       "to",
+       [
+        [
+         "",
+         "bob@example.test"
+        ]
+       ]
+      ]
+     ]
+    },
+    "status": 200
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [
+     {
+      "content_type": "application/pdf",
+      "data": "JVBERi0xLjQKJeLj",
+      "filename": "a.pdf"
+     },
+     {
+      "content_type": "Application/PDF; name=x",
+      "data": "JVBERg==",
+      "filename": "Rechnung M\u00e4rz.pdf"
+     },
+     {
+      "content_type": "",
+      "data": "AAEC",
+      "filename": ""
+     },
+     {
+      "content_type": "text/csv",
+      "data": "YTtiCmM7ZAo=",
+      "filename": "data.csv"
+     }
+    ],
+    "bcc": [],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [],
+    "html": null,
+    "inline": [],
+    "subject": "hi",
+    "text": "hello",
+    "to": [
+     "bob@example.test"
+    ]
+   },
+   "name": "attachments"
+  },
+  {
+   "expected": {
+    "defects": [],
+    "envelope": [
+     "bob@example.test"
+    ],
+    "message": {
+     "body": {
+      "parts": [
+       {
+        "charset": "utf-8",
+        "text": "hello",
+        "type": "text/plain"
+       },
+       {
+        "data": "U3ViamVjdDogeA0KDQpoaQ==",
+        "disposition": "attachment",
+        "filename": "a.eml",
+        "type": "application/octet-stream"
+       },
+       {
+        "data": "cGF5bG9hZA==",
+        "disposition": "attachment",
+        "filename": "b.bin",
+        "type": "application/octet-stream"
+       },
+       {
+        "data": "cGF5bG9hZA==",
+        "disposition": "attachment",
+        "filename": "c.bin",
+        "type": "application/octet-stream"
+       }
+      ],
+      "type": "multipart/mixed"
+     },
+     "headers": [
+      [
+       "from",
+       [
+        [
+         "Alice",
+         "alice@example.test"
+        ]
+       ]
+      ],
+      [
+       "subject",
+       "hi"
+      ],
+      [
+       "to",
+       [
+        [
+         "",
+         "bob@example.test"
+        ]
+       ]
+      ]
+     ]
+    },
+    "status": 200
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [
+     {
+      "content_type": "message/rfc822",
+      "data": "U3ViamVjdDogeA0KDQpoaQ==",
+      "filename": "a.eml"
+     },
+     {
+      "content_type": "multipart/mixed",
+      "data": "cGF5bG9hZA==",
+      "filename": "b.bin"
+     },
+     {
+      "content_type": "Multipart/Related",
+      "data": "cGF5bG9hZA==",
+      "filename": "c.bin"
+     }
+    ],
+    "bcc": [],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [],
+    "html": null,
+    "inline": [],
+    "subject": "hi",
+    "text": "hello",
+    "to": [
+     "bob@example.test"
+    ]
+   },
+   "name": "container types"
+  },
+  {
+   "divergence": "D-21",
+   "expected": {
+    "defects": [
+     "InvalidHeaderDefect"
+    ],
+    "envelope": [
+     "bob@example.test"
+    ],
+    "message": {
+     "body": {
+      "parts": [
+       {
+        "charset": "utf-8",
+        "text": "hello",
+        "type": "text/plain"
+       },
+       {
+        "data": "MQ==",
+        "disposition": "attachment",
+        "filename": "a.bin",
+        "type": "application/octet-stream"
+       },
+       {
+        "data": "Mg==",
+        "disposition": "attachment",
+        "filename": "b.bin",
+        "type": "application/octet-stream"
+       },
+       {
+        "data": "Mw==",
+        "disposition": "attachment",
+        "filename": "c.bin",
+        "type": "application/octet-stream"
+       },
+       {
+        "data": "NA==",
+        "disposition": "attachment",
+        "filename": "d.bin",
+        "type": "application/octet-stream"
+       },
+       {
+        "data": "NQ==",
+        "disposition": "attachment",
+        "filename": "e.bin",
+        "type": "application/octet-stream"
+       }
+      ],
+      "type": "multipart/mixed"
+     },
+     "headers": [
+      [
+       "from",
+       [
+        [
+         "Alice",
+         "alice@example.test"
+        ]
+       ]
+      ],
+      [
+       "subject",
+       "hi"
+      ],
+      [
+       "to",
+       [
+        [
+         "",
+         "bob@example.test"
+        ]
+       ]
+      ]
+     ]
+    },
+    "status": 200
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [
+     {
+      "content_type": "a b/c",
+      "data": "MQ==",
+      "filename": "a.bin"
+     },
+     {
+      "content_type": "image/png/x",
+      "data": "Mg==",
+      "filename": "b.bin"
+     },
+     {
+      "content_type": "/x",
+      "data": "Mw==",
+      "filename": "c.bin"
+     },
+     {
+      "content_type": "image/",
+      "data": "NA==",
+      "filename": "d.bin"
+     },
+     {
+      "content_type": "t\u00e4/x",
+      "data": "NQ==",
+      "filename": "e.bin"
+     }
+    ],
+    "bcc": [],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [],
+    "html": null,
+    "inline": [],
+    "subject": "hi",
+    "text": "hello",
+    "to": [
+     "bob@example.test"
+    ]
+   },
+   "name": "broken types",
+   "python": {
+    "defects": [
+     "InvalidHeaderDefect"
+    ],
+    "envelope": [
+     "bob@example.test"
+    ],
+    "message": {
+     "body": {
+      "parts": [
+       {
+        "charset": "utf-8",
+        "text": "hello",
+        "type": "text/plain"
+       },
+       {
+        "data": "MQ==",
+        "disposition": "attachment",
+        "filename": "a.bin",
+        "type": "a b/c"
+       },
+       {
+        "data": "Mg==",
+        "disposition": "attachment",
+        "filename": "b.bin",
+        "type": "text/plain"
+       },
+       {
+        "data": "Mw==",
+        "disposition": "attachment",
+        "filename": "c.bin",
+        "type": "application/octet-stream"
+       },
+       {
+        "data": "NA==",
+        "disposition": "attachment",
+        "filename": "d.bin",
+        "type": "application/octet-stream"
+       },
+       {
+        "data": "NQ==",
+        "disposition": "attachment",
+        "filename": "e.bin",
+        "type": "t\u00e4/x"
+       }
+      ],
+      "type": "multipart/mixed"
+     },
+     "headers": [
+      [
+       "from",
+       [
+        [
+         "Alice",
+         "alice@example.test"
+        ]
+       ]
+      ],
+      [
+       "subject",
+       "hi"
+      ],
+      [
+       "to",
+       [
+        [
+         "",
+         "bob@example.test"
+        ]
+       ]
+      ]
+     ]
+    },
+    "status": 200
+   }
+  },
+  {
+   "divergence": "D-21",
+   "expected": {
+    "defects": [
+     "NonPrintableDefect"
+    ],
+    "envelope": [
+     "bob@example.test"
+    ],
+    "message": {
+     "body": {
+      "parts": [
+       {
+        "charset": "utf-8",
+        "text": "hello",
+        "type": "text/plain"
+       },
+       {
+        "data": "MQ==",
+        "disposition": "attachment",
+        "filename": "a\u0001b.txt",
+        "type": "text/plain"
+       },
+       {
+        "data": "Mg==",
+        "disposition": "attachment",
+        "filename": "a\tb.txt",
+        "type": "text/plain"
+       },
+       {
+        "data": "Mw==",
+        "disposition": "attachment",
+        "filename": "a\"b\\c.txt",
+        "type": "text/plain"
+       },
+       {
+        "data": "NA==",
+        "disposition": "attachment",
+        "filename": "a;b c.txt",
+        "type": "text/plain"
+       },
+       {
+        "data": "NQ==",
+        "disposition": "attachment",
+        "filename": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.txt",
+        "type": "text/plain"
+       },
+       {
+        "data": "Ng==",
+        "disposition": "attachment",
+        "filename": "\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6.txt",
+        "type": "text/plain"
+       },
+       {
+        "data": "Nw==",
+        "disposition": "attachment",
+        "filename": "a\u2028b\u0085.txt",
+        "type": "text/plain"
+       },
+       {
+        "data": "OA==",
+        "disposition": "attachment",
+        "filename": "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy.txt",
+        "type": "application/octet-stream"
+       }
+      ],
+      "type": "multipart/mixed"
+     },
+     "headers": [
+      [
+       "from",
+       [
+        [
+         "Alice",
+         "alice@example.test"
+        ]
+       ]
+      ],
+      [
+       "subject",
+       "hi"
+      ],
+      [
+       "to",
+       [
+        [
+         "",
+         "bob@example.test"
+        ]
+       ]
+      ]
+     ]
+    },
+    "status": 200
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [
+     {
+      "content_type": "text/plain",
+      "data": "MQ==",
+      "filename": "a\u0001b.txt"
+     },
+     {
+      "content_type": "text/plain",
+      "data": "Mg==",
+      "filename": "a\tb.txt"
+     },
+     {
+      "content_type": "text/plain",
+      "data": "Mw==",
+      "filename": "a\"b\\c.txt"
+     },
+     {
+      "content_type": "text/plain",
+      "data": "NA==",
+      "filename": "a;b c.txt"
+     },
+     {
+      "content_type": "text/plain",
+      "data": "NQ==",
+      "filename": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.txt"
+     },
+     {
+      "content_type": "text/plain",
+      "data": "Ng==",
+      "filename": "\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6.txt"
+     },
+     {
+      "content_type": "text/plain",
+      "data": "Nw==",
+      "filename": "a\u2028b\u0085.txt"
+     },
+     {
+      "content_type": "image/yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy",
+      "data": "OA==",
+      "filename": "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy.txt"
+     }
+    ],
+    "bcc": [],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [],
+    "html": null,
+    "inline": [],
+    "subject": "hi",
+    "text": "hello",
+    "to": [
+     "bob@example.test"
+    ]
+   },
+   "name": "attachment filenames",
+   "python": {
+    "defects": [
+     "NonPrintableDefect"
+    ],
+    "envelope": [
+     "bob@example.test"
+    ],
+    "message": {
+     "body": {
+      "parts": [
+       {
+        "charset": "utf-8",
+        "text": "hello",
+        "type": "text/plain"
+       },
+       {
+        "data": "MQ==",
+        "disposition": "attachment",
+        "filename": "a\u0001b.txt",
+        "type": "text/plain"
+       },
+       {
+        "data": "Mg==",
+        "disposition": "attachment",
+        "filename": "a\tb.txt",
+        "type": "text/plain"
+       },
+       {
+        "data": "Mw==",
+        "disposition": "attachment",
+        "filename": "a\"b\\c.txt",
+        "type": "text/plain"
+       },
+       {
+        "data": "NA==",
+        "disposition": "attachment",
+        "filename": "a;b c.txt",
+        "type": "text/plain"
+       },
+       {
+        "data": "NQ==",
+        "disposition": "attachment",
+        "filename": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.txt",
+        "type": "text/plain"
+       },
+       {
+        "data": "Ng==",
+        "disposition": "attachment",
+        "filename": "\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6.txt",
+        "type": "text/plain"
+       },
+       {
+        "data": "Nw==",
+        "disposition": "attachment",
+        "filename": "a\u2028b\u0085.txt",
+        "type": "text/plain"
+       },
+       {
+        "data": "OA==",
+        "disposition": "attachment",
+        "filename": "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy.txt",
+        "type": "image/yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"
+       }
+      ],
+      "type": "multipart/mixed"
+     },
+     "headers": [
+      [
+       "from",
+       [
+        [
+         "Alice",
+         "alice@example.test"
+        ]
+       ]
+      ],
+      [
+       "subject",
+       "hi"
+      ],
+      [
+       "to",
+       [
+        [
+         "",
+         "bob@example.test"
+        ]
+       ]
+      ]
+     ]
+    },
+    "status": 200
+   }
+  },
+  {
+   "expected": {
+    "status": 400
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [
+     {
+      "content_type": "text/plain",
+      "data": "MQ==",
+      "filename": "a\nb.txt"
+     }
+    ],
+    "bcc": [],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [],
+    "html": null,
+    "inline": [],
+    "subject": "hi",
+    "text": "hello",
+    "to": [
+     "bob@example.test"
+    ]
+   },
+   "name": "attachment filename lf"
+  },
+  {
+   "expected": {
+    "status": 400
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [
+     {
+      "content_type": "text/plain",
+      "data": "MQ==",
+      "filename": "a\fb.txt"
+     }
+    ],
+    "bcc": [],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [],
+    "html": null,
+    "inline": [],
+    "subject": "hi",
+    "text": "hello",
+    "to": [
+     "bob@example.test"
+    ]
+   },
+   "name": "attachment filename ff"
+  },
+  {
+   "expected": {
+    "defects": [],
+    "envelope": [
+     "bob@example.test"
+    ],
+    "message": {
+     "body": {
+      "parts": [
+       {
+        "charset": "utf-8",
+        "text": "hello",
+        "type": "text/plain"
+       },
+       {
+        "data": "MQ==",
+        "disposition": "attachment",
+        "filename": "\u00e9\fb.txt",
+        "type": "text/plain"
+       }
+      ],
+      "type": "multipart/mixed"
+     },
+     "headers": [
+      [
+       "from",
+       [
+        [
+         "Alice",
+         "alice@example.test"
+        ]
+       ]
+      ],
+      [
+       "subject",
+       "hi"
+      ],
+      [
+       "to",
+       [
+        [
+         "",
+         "bob@example.test"
+        ]
+       ]
+      ]
+     ]
+    },
+    "status": 200
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [
+     {
+      "content_type": "text/plain",
+      "data": "MQ==",
+      "filename": "\u00e9\fb.txt"
+     }
+    ],
+    "bcc": [],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [],
+    "html": null,
+    "inline": [],
+    "subject": "hi",
+    "text": "hello",
+    "to": [
+     "bob@example.test"
+    ]
+   },
+   "name": "non-ascii filename ff"
+  },
+  {
+   "expected": {
+    "defects": [],
+    "envelope": [
+     "bob@example.test"
+    ],
+    "message": {
+     "body": {
+      "parts": [
+       {
+        "charset": "utf-8",
+        "text": "hello",
+        "type": "text/plain"
+       },
+       {
+        "parts": [
+         {
+          "charset": "utf-8",
+          "text": "<p>x</p>",
+          "type": "text/html"
+         },
+         {
+          "content_id": "<yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy.png>",
+          "data": "iVBORw0KGgoAAAANSUhEUg==",
+          "disposition": "inline",
+          "filename": "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy.png",
+          "type": "image/png"
+         }
+        ],
+        "type": "multipart/related"
+       }
+      ],
+      "type": "multipart/alternative"
+     },
+     "headers": [
+      [
+       "from",
+       [
+        [
+         "Alice",
+         "alice@example.test"
+        ]
+       ]
+      ],
+      [
+       "subject",
+       "hi"
+      ],
+      [
+       "to",
+       [
+        [
+         "",
+         "bob@example.test"
+        ]
+       ]
+      ]
+     ]
+    },
+    "status": 200
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [],
+    "bcc": [],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [],
+    "html": "<p>x</p>",
+    "inline": [
+     {
+      "content_type": "image/png",
+      "data": "iVBORw0KGgoAAAANSUhEUg==",
+      "filename": "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy.png"
+     }
+    ],
+    "subject": "hi",
+    "text": "hello",
+    "to": [
+     "bob@example.test"
+    ]
+   },
+   "name": "long inline name"
+  },
+  {
+   "expected": {
+    "defects": [],
+    "envelope": [
+     "bob@example.test"
+    ],
+    "message": {
+     "body": {
+      "parts": [
+       {
+        "charset": "utf-8",
+        "text": "hello",
+        "type": "text/plain"
+       },
+       {
+        "parts": [
+         {
+          "charset": "utf-8",
+          "text": "<img src=\"cid:logo.png\">",
+          "type": "text/html"
+         },
+         {
+          "content_id": "<logo.png>",
+          "data": "iVBORw0KGgoAAAANSUhEUg==",
+          "disposition": "inline",
+          "filename": "logo.png",
+          "type": "image/png"
+         }
+        ],
+        "type": "multipart/related"
+       }
+      ],
+      "type": "multipart/alternative"
+     },
+     "headers": [
+      [
+       "from",
+       [
+        [
+         "Alice",
+         "alice@example.test"
+        ]
+       ]
+      ],
+      [
+       "subject",
+       "hi"
+      ],
+      [
+       "to",
+       [
+        [
+         "",
+         "bob@example.test"
+        ]
+       ]
+      ]
+     ]
+    },
+    "status": 200
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [],
+    "bcc": [],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [],
+    "html": "<img src=\"cid:logo.png\">",
+    "inline": [
+     {
+      "content_type": "image/png",
+      "data": "iVBORw0KGgoAAAANSUhEUg==",
+      "filename": "logo.png"
+     }
+    ],
+    "subject": "hi",
+    "text": "hello",
+    "to": [
+     "bob@example.test"
+    ]
+   },
+   "name": "inline with html"
+  },
+  {
+   "expected": {
+    "defects": [],
+    "envelope": [
+     "bob@example.test"
+    ],
+    "message": {
+     "body": {
+      "parts": [
+       {
+        "parts": [
+         {
+          "charset": "utf-8",
+          "text": "hello",
+          "type": "text/plain"
+         },
+         {
+          "parts": [
+           {
+            "charset": "utf-8",
+            "text": "<img src=\"cid:logo.png\">",
+            "type": "text/html"
+           },
+           {
+            "content_id": "<logo.png>",
+            "data": "iVBORw0KGgoAAAANSUhEUg==",
+            "disposition": "inline",
+            "filename": "logo.png",
+            "type": "image/png"
+           }
+          ],
+          "type": "multipart/related"
+         }
+        ],
+        "type": "multipart/alternative"
+       },
+       {
+        "data": "JVBERg==",
+        "disposition": "attachment",
+        "filename": "a.pdf",
+        "type": "application/pdf"
+       }
+      ],
+      "type": "multipart/mixed"
+     },
+     "headers": [
+      [
+       "from",
+       [
+        [
+         "Alice",
+         "alice@example.test"
+        ]
+       ]
+      ],
+      [
+       "subject",
+       "hi"
+      ],
+      [
+       "to",
+       [
+        [
+         "",
+         "bob@example.test"
+        ]
+       ]
+      ]
+     ]
+    },
+    "status": 200
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [
+     {
+      "content_type": "application/pdf",
+      "data": "JVBERg==",
+      "filename": "a.pdf"
+     }
+    ],
+    "bcc": [],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [],
+    "html": "<img src=\"cid:logo.png\">",
+    "inline": [
+     {
+      "content_type": "image/png",
+      "data": "iVBORw0KGgoAAAANSUhEUg==",
+      "filename": "logo.png"
+     }
+    ],
+    "subject": "hi",
+    "text": "hello",
+    "to": [
+     "bob@example.test"
+    ]
+   },
+   "name": "inline and attachment"
+  },
+  {
+   "expected": {
+    "defects": [],
+    "envelope": [
+     "bob@example.test"
+    ],
+    "message": {
+     "body": {
+      "parts": [
+       {
+        "charset": "utf-8",
+        "text": "<img>",
+        "type": "text/html"
+       },
+       {
+        "content_id": "<logo.png>",
+        "data": "iVBORw0KGgoAAAANSUhEUg==",
+        "disposition": "inline",
+        "filename": "logo.png",
+        "type": "image/png"
+       }
+      ],
+      "type": "multipart/related"
+     },
+     "headers": [
+      [
+       "from",
+       [
+        [
+         "Alice",
+         "alice@example.test"
+        ]
+       ]
+      ],
+      [
+       "subject",
+       "hi"
+      ],
+      [
+       "to",
+       [
+        [
+         "",
+         "bob@example.test"
+        ]
+       ]
+      ]
+     ]
+    },
+    "status": 200
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [],
+    "bcc": [],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [],
+    "html": "<img>",
+    "inline": [
+     {
+      "content_type": "image/png",
+      "data": "iVBORw0KGgoAAAANSUhEUg==",
+      "filename": "logo.png"
+     }
+    ],
+    "subject": "hi",
+    "text": null,
+    "to": [
+     "bob@example.test"
+    ]
+   },
+   "name": "inline html only"
+  },
+  {
+   "expected": {
+    "defects": [],
+    "envelope": [
+     "bob@example.test"
+    ],
+    "message": {
+     "body": {
+      "parts": [
+       {
+        "charset": "utf-8",
+        "text": "hello",
+        "type": "text/plain"
+       },
+       {
+        "parts": [
+         {
+          "charset": "utf-8",
+          "text": "<p>x</p>",
+          "type": "text/html"
+         },
+         {
+          "content_id": "<logo.png>",
+          "data": "iVBORw0KGgoAAAANSUhEUg==",
+          "disposition": "inline",
+          "filename": "logo.png",
+          "type": "image/png"
+         }
+        ],
+        "type": "multipart/related"
+       },
+       {
+        "charset": "utf-8",
+        "text": "<html amp4email></html>",
+        "type": "text/x-amp-html"
+       }
+      ],
+      "type": "multipart/alternative"
+     },
+     "headers": [
+      [
+       "from",
+       [
+        [
+         "Alice",
+         "alice@example.test"
+        ]
+       ]
+      ],
+      [
+       "subject",
+       "hi"
+      ],
+      [
+       "to",
+       [
+        [
+         "",
+         "bob@example.test"
+        ]
+       ]
+      ]
+     ]
+    },
+    "status": 200
+   },
+   "input": {
+    "amp_html": "<html amp4email></html>",
+    "attachments": [],
+    "bcc": [],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [],
+    "html": "<p>x</p>",
+    "inline": [
+     {
+      "content_type": "image/png",
+      "data": "iVBORw0KGgoAAAANSUhEUg==",
+      "filename": "logo.png"
+     }
+    ],
+    "subject": "hi",
+    "text": "hello",
+    "to": [
+     "bob@example.test"
+    ]
+   },
+   "name": "inline with amp"
+  },
+  {
+   "expected": {
+    "defects": [],
+    "envelope": [
+     "bob@example.test"
+    ],
+    "message": {
+     "body": {
+      "parts": [
+       {
+        "charset": "utf-8",
+        "text": "hello",
+        "type": "text/plain"
+       },
+       {
+        "content_id": "<logo.png>",
+        "data": "iVBORw0KGgoAAAANSUhEUg==",
+        "disposition": "inline",
+        "filename": "logo.png",
+        "type": "image/png"
+       }
+      ],
+      "type": "multipart/mixed"
+     },
+     "headers": [
+      [
+       "from",
+       [
+        [
+         "Alice",
+         "alice@example.test"
+        ]
+       ]
+      ],
+      [
+       "subject",
+       "hi"
+      ],
+      [
+       "to",
+       [
+        [
+         "",
+         "bob@example.test"
+        ]
+       ]
+      ]
+     ]
+    },
+    "status": 200
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [],
+    "bcc": [],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [],
+    "html": null,
+    "inline": [
+     {
+      "content_type": "image/png",
+      "data": "iVBORw0KGgoAAAANSUhEUg==",
+      "filename": "logo.png"
+     }
+    ],
+    "subject": "hi",
+    "text": "hello",
+    "to": [
+     "bob@example.test"
+    ]
+   },
+   "name": "inline text only"
+  },
+  {
+   "expected": {
+    "defects": [],
+    "envelope": [
+     "bob@example.test"
+    ],
+    "message": {
+     "body": {
+      "parts": [
+       {
+        "parts": [
+         {
+          "charset": "utf-8",
+          "text": "hello",
+          "type": "text/plain"
+         },
+         {
+          "charset": "utf-8",
+          "text": "<html amp4email>",
+          "type": "text/x-amp-html"
+         }
+        ],
+        "type": "multipart/alternative"
+       },
+       {
+        "content_id": "<a.png>",
+        "data": "iVBORw0KGgoAAAANSUhEUg==",
+        "disposition": "inline",
+        "filename": "a.png",
+        "type": "image/png"
+       },
+       {
+        "content_id": "<b.png>",
+        "data": "iVBORw0KGgoAAAANSUhEUg==",
+        "disposition": "inline",
+        "filename": "b.png",
+        "type": "image/png"
+       },
+       {
+        "data": "Yw==",
+        "disposition": "attachment",
+        "filename": "c.txt",
+        "type": "text/plain"
+       }
+      ],
+      "type": "multipart/mixed"
+     },
+     "headers": [
+      [
+       "from",
+       [
+        [
+         "Alice",
+         "alice@example.test"
+        ]
+       ]
+      ],
+      [
+       "subject",
+       "hi"
+      ],
+      [
+       "to",
+       [
+        [
+         "",
+         "bob@example.test"
+        ]
+       ]
+      ]
+     ]
+    },
+    "status": 200
+   },
+   "input": {
+    "amp_html": "<html amp4email>",
+    "attachments": [
+     {
+      "content_type": "text/plain",
+      "data": "Yw==",
+      "filename": "c.txt"
+     }
+    ],
+    "bcc": [],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [],
+    "html": null,
+    "inline": [
+     {
+      "content_type": "image/png",
+      "data": "iVBORw0KGgoAAAANSUhEUg==",
+      "filename": "a.png"
+     },
+     {
+      "content_type": "image/png",
+      "data": "iVBORw0KGgoAAAANSUhEUg==",
+      "filename": "b.png"
+     }
+    ],
+    "subject": "hi",
+    "text": "hello",
+    "to": [
+     "bob@example.test"
+    ]
+   },
+   "name": "inline text only with attachment"
+  },
+  {
+   "expected": {
+    "defects": [],
+    "envelope": [
+     "bob@example.test"
+    ],
+    "message": {
+     "body": {
+      "parts": [
+       {
+        "charset": "utf-8",
+        "text": "hello",
+        "type": "text/plain"
+       },
+       {
+        "parts": [
+         {
+          "charset": "utf-8",
+          "text": "<p>x</p>",
+          "type": "text/html"
+         },
+         {
+          "content_id": "<x.eml>",
+          "data": "aGk=",
+          "disposition": "inline",
+          "filename": "x.eml",
+          "type": "application/octet-stream"
+         }
+        ],
+        "type": "multipart/related"
+       }
+      ],
+      "type": "multipart/alternative"
+     },
+     "headers": [
+      [
+       "from",
+       [
+        [
+         "Alice",
+         "alice@example.test"
+        ]
+       ]
+      ],
+      [
+       "subject",
+       "hi"
+      ],
+      [
+       "to",
+       [
+        [
+         "",
+         "bob@example.test"
+        ]
+       ]
+      ]
+     ]
+    },
+    "status": 200
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [],
+    "bcc": [],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [],
+    "html": "<p>x</p>",
+    "inline": [
+     {
+      "content_type": "message/rfc822",
+      "data": "aGk=",
+      "filename": "x.eml"
+     }
+    ],
+    "subject": "hi",
+    "text": "hello",
+    "to": [
+     "bob@example.test"
+    ]
+   },
+   "name": "inline container type"
+  },
+  {
+   "expected": {
+    "defects": [],
+    "envelope": [
+     "bob@example.test"
+    ],
+    "message": {
+     "body": {
+      "parts": [
+       {
+        "charset": "utf-8",
+        "text": "hello",
+        "type": "text/plain"
+       },
+       {
+        "parts": [
+         {
+          "charset": "utf-8",
+          "text": "<p>x</p>",
+          "type": "text/html"
+         },
+         {
+          "content_id": "<attachment>",
+          "data": "iVBORw0KGgoAAAANSUhEUg==",
+          "disposition": "inline",
+          "filename": "attachment",
+          "type": "image/png"
+         }
+        ],
+        "type": "multipart/related"
+       }
+      ],
+      "type": "multipart/alternative"
+     },
+     "headers": [
+      [
+       "from",
+       [
+        [
+         "Alice",
+         "alice@example.test"
+        ]
+       ]
+      ],
+      [
+       "subject",
+       "hi"
+      ],
+      [
+       "to",
+       [
+        [
+         "",
+         "bob@example.test"
+        ]
+       ]
+      ]
+     ]
+    },
+    "status": 200
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [],
+    "bcc": [],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [],
+    "html": "<p>x</p>",
+    "inline": [
+     {
+      "content_type": "image/png",
+      "data": "iVBORw0KGgoAAAANSUhEUg==",
+      "filename": ""
+     }
+    ],
+    "subject": "hi",
+    "text": "hello",
+    "to": [
+     "bob@example.test"
+    ]
+   },
+   "name": "inline default name"
+  },
+  {
+   "expected": {
+    "defects": [],
+    "envelope": [
+     "bob@example.test"
+    ],
+    "message": {
+     "body": {
+      "parts": [
+       {
+        "charset": "utf-8",
+        "text": "hello",
+        "type": "text/plain"
+       },
+       {
+        "parts": [
+         {
+          "charset": "utf-8",
+          "text": "<p>x</p>",
+          "type": "text/html"
+         },
+         {
+          "content_id": "<bild-\u00f6.png>",
+          "data": "iVBORw0KGgoAAAANSUhEUg==",
+          "disposition": "inline",
+          "filename": "bild-\u00f6.png",
+          "type": "image/png"
+         },
+         {
+          "content_id": "<my logo.png>",
+          "data": "iVBORw0KGgoAAAANSUhEUg==",
+          "disposition": "inline",
+          "filename": "my logo.png",
+          "type": "image/png"
+         },
+         {
+          "content_id": "<a\"b(c).png>",
+          "data": "iVBORw0KGgoAAAANSUhEUg==",
+          "disposition": "inline",
+          "filename": "a\"b(c).png",
+          "type": "image/png"
+         }
+        ],
+        "type": "multipart/related"
+       }
+      ],
+      "type": "multipart/alternative"
+     },
+     "headers": [
+      [
+       "from",
+       [
+        [
+         "Alice",
+         "alice@example.test"
+        ]
+       ]
+      ],
+      [
+       "subject",
+       "hi"
+      ],
+      [
+       "to",
+       [
+        [
+         "",
+         "bob@example.test"
+        ]
+       ]
+      ]
+     ]
+    },
+    "status": 200
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [],
+    "bcc": [],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [],
+    "html": "<p>x</p>",
+    "inline": [
+     {
+      "content_type": "image/png",
+      "data": "iVBORw0KGgoAAAANSUhEUg==",
+      "filename": "bild-\u00f6.png"
+     },
+     {
+      "content_type": "image/png",
+      "data": "iVBORw0KGgoAAAANSUhEUg==",
+      "filename": "my logo.png"
+     },
+     {
+      "content_type": "image/png",
+      "data": "iVBORw0KGgoAAAANSUhEUg==",
+      "filename": "a\"b(c).png"
+     }
+    ],
+    "subject": "hi",
+    "text": "hello",
+    "to": [
+     "bob@example.test"
+    ]
+   },
+   "name": "inline names"
+  },
+  {
+   "expected": {
+    "status": 400
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [],
+    "bcc": [],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [],
+    "html": "<p>x</p>",
+    "inline": [
+     {
+      "content_type": "image/png",
+      "data": "iVBORw0KGgoAAAANSUhEUg==",
+      "filename": "a\r\nb.png"
+     }
+    ],
+    "subject": "hi",
+    "text": "hello",
+    "to": [
+     "bob@example.test"
+    ]
+   },
+   "name": "malformed inline 'a\\r\\nb.png'"
+  },
+  {
+   "expected": {
+    "status": 400
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [],
+    "bcc": [],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [],
+    "html": "<p>x</p>",
+    "inline": [
+     {
+      "content_type": "image/png",
+      "data": "iVBORw0KGgoAAAANSUhEUg==",
+      "filename": "<logo.png>"
+     }
+    ],
+    "subject": "hi",
+    "text": "hello",
+    "to": [
+     "bob@example.test"
+    ]
+   },
+   "name": "malformed inline '<logo.png>'"
+  },
+  {
+   "expected": {
+    "status": 400
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [],
+    "bcc": [],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [],
+    "html": "<p>x</p>",
+    "inline": [
+     {
+      "content_type": "image/png",
+      "data": "iVBORw0KGgoAAAANSUhEUg==",
+      "filename": "<logo.png"
+     }
+    ],
+    "subject": "hi",
+    "text": "hello",
+    "to": [
+     "bob@example.test"
+    ]
+   },
+   "name": "malformed inline '<logo.png'"
+  },
+  {
+   "expected": {
+    "status": 400
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [],
+    "bcc": [],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [],
+    "html": "<p>x</p>",
+    "inline": [
+     {
+      "content_type": "image/png",
+      "data": "iVBORw0KGgoAAAANSUhEUg==",
+      "filename": "logo.png>"
+     }
+    ],
+    "subject": "hi",
+    "text": "hello",
+    "to": [
+     "bob@example.test"
+    ]
+   },
+   "name": "malformed inline 'logo.png>'"
+  },
+  {
+   "expected": {
+    "status": 400
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [],
+    "bcc": [],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [],
+    "html": "<p>x</p>",
+    "inline": [
+     {
+      "content_type": "image/png",
+      "data": "iVBORw0KGgoAAAANSUhEUg==",
+      "filename": "\tlogo.png"
+     }
+    ],
+    "subject": "hi",
+    "text": "hello",
+    "to": [
+     "bob@example.test"
+    ]
+   },
+   "name": "malformed inline '\\tlogo.png'"
+  },
+  {
+   "expected": {
+    "status": 400
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [],
+    "bcc": [],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [],
+    "html": "<p>x</p>",
+    "inline": [
+     {
+      "content_type": "image/png",
+      "data": "iVBORw0KGgoAAAANSUhEUg==",
+      "filename": " logo.png"
+     }
+    ],
+    "subject": "hi",
+    "text": "hello",
+    "to": [
+     "bob@example.test"
+    ]
+   },
+   "name": "malformed inline ' logo.png'"
+  },
+  {
+   "expected": {
+    "status": 400
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [],
+    "bcc": [],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [],
+    "html": "<p>x</p>",
+    "inline": [
+     {
+      "content_type": "image/png",
+      "data": "iVBORw0KGgoAAAANSUhEUg==",
+      "filename": "a\u007f.png"
+     }
+    ],
+    "subject": "hi",
+    "text": "hello",
+    "to": [
+     "bob@example.test"
+    ]
+   },
+   "name": "malformed inline 'a\\x7f.png'"
+  },
+  {
+   "expected": {
+    "status": 400
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [],
+    "bcc": [],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [],
+    "html": "<p>x</p>",
+    "inline": [
+     {
+      "content_type": "image/png",
+      "data": "iVBORw0KGgoAAAANSUhEUg==",
+      "filename": "logo.png\u3000"
+     }
+    ],
+    "subject": "hi",
+    "text": "hello",
+    "to": [
+     "bob@example.test"
+    ]
+   },
+   "name": "malformed inline 'logo.png\\u3000'"
+  },
+  {
+   "expected": {
+    "status": 400
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [],
+    "bcc": [],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [],
+    "html": "<p>x</p>",
+    "inline": [
+     {
+      "content_type": "image/png",
+      "data": "iVBORw0KGgoAAAANSUhEUg==",
+      "filename": "a\u2028b.png"
+     }
+    ],
+    "subject": "hi",
+    "text": "hello",
+    "to": [
+     "bob@example.test"
+    ]
+   },
+   "name": "malformed inline 'a\\u2028b.png'"
+  },
+  {
+   "expected": {
+    "status": 400
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [],
+    "bcc": [],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [],
+    "html": "<p>x</p>",
+    "inline": [
+     {
+      "content_type": "image/png",
+      "data": "iVBORw0KGgoAAAANSUhEUg==",
+      "filename": "a\u0085b.png"
+     }
+    ],
+    "subject": "hi",
+    "text": "hello",
+    "to": [
+     "bob@example.test"
+    ]
+   },
+   "name": "malformed inline 'a\\x85b.png'"
+  }
+ ],
+ "public_host": "relay.example.test",
+ "source": "mailgun_relay.mime_build.build_message, serialised as smtplib does, parsed with email.policy.default"
+}

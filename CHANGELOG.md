@@ -4,6 +4,17 @@ All notable changes to mailgun-relay are documented here.
 
 ## Unreleased
 
+### Rust port: semantic MIME fixture (slice S4b)
+
+- `rust/fixtures/mime.json` (124 cases from the Python oracle) holds what a
+  receiver's parser reads from the message Python builds for each input:
+  decoded headers, the MIME tree, decoded bodies, attachments and inline
+  parts, the envelope, or the 400. The Rust tests build every case and
+  compare; `rust/fixtures/check_mime.py` reads the Rust messages with
+  Python's parser and checks that they arrive the same, 7-bit, CRLF only,
+  lines of at most 998 octets, encoded words of at most 75 characters and
+  no parser defects beyond Python's own. CI runs both in the `rust` job.
+
 ### Rust port: message construction (slice S4a)
 
 - `rust/src/mime.rs` builds the message with lettre as the Python service
