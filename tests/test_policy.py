@@ -190,7 +190,84 @@ def test_idn_from_domain_is_compared_as_a_label() -> None:
         enforce_policy(p, path_domain="xn--wersdrfer-47a.de", from_address="a@wersdoerfer.de")
 
 
-# Path-domain decisions the Rust port reproduces (rust/fixtures/domain.json).
+# Production policy shapes (fix-403-diagnosis 1.3, after the 403 fix; no
+# tokens) and boundary decisions the Rust port reproduces
+# (rust/fixtures/domain.json, address.json, policy.json).
+
+_HOMEPAGE = _policy(
+    mailgun_domains={"mg.wersdoerfer.de"},
+    allowed_from_domains={"wersdoerfer.de"},
+    allowed_from_addresses={"jochen-homepage@wersdoerfer.de", "jochen-django@wersdoerfer.de"},
+)
+_PODCAST = _policy(
+    mailgun_domains={"mg.python-podcast.de"},
+    allowed_from_domains={"mg.python-podcast.de", "wersdoerfer.de"},
+    allowed_from_addresses={"noreply@mg.python-podcast.de", "jochen-django@wersdoerfer.de"},
+)
+
+
+@pytest.mark.parametrize(
+    ("policy", "path", "sender"),
+    [
+        (_HOMEPAGE, "mg.wersdoerfer.de", "Homepage <jochen-homepage@wersdoerfer.de>"),
+        (_HOMEPAGE, "MG.WERSDOERFER.DE", "jochen-django@wersdoerfer.de"),
+        (_HOMEPAGE, "mg.wersdoerfer.de", "Jochen-Django@WERSDOERFER.DE"),
+        (_PODCAST, "mg.python-podcast.de", "Python Podcast <noreply@mg.python-podcast.de>"),
+        # Cross-domain: the path domain and the from domain differ.
+        (_PODCAST, "mg.python-podcast.de", "jochen-django@wersdoerfer.de"),
+    ],
+)
+def test_production_shapes_accept(policy: TokenPolicy, path: str, sender: str) -> None:
+    enforce_policy(policy, path_domain=path, from_address=sender)
+
+
+@pytest.mark.parametrize(
+    ("policy", "path", "sender", "message"),
+    [
+        (_HOMEPAGE, "mg.python-podcast.de", "jochen-django@wersdoerfer.de", "path domain"),
+        (_HOMEPAGE, "wersdoerfer.de", "jochen-django@wersdoerfer.de", "path domain"),
+        (_HOMEPAGE, "mg.wersdoerfer.de.", "jochen-django@wersdoerfer.de", "path domain"),
+        (_HOMEPAGE, "mg.wersdoerfer.de", "noreply@mg.python-podcast.de", "from domain"),
+        (_HOMEPAGE, "mg.wersdoerfer.de", "x@mg.wersdoerfer.de", "from domain"),
+        (_HOMEPAGE, "mg.wersdoerfer.de", "someone-else@wersdoerfer.de", "from address"),
+        (_PODCAST, "mg.python-podcast.de", "jochen-homepage@wersdoerfer.de", "from address"),
+    ],
+)
+def test_production_shapes_refuse(
+    policy: TokenPolicy, path: str, sender: str, message: str
+) -> None:
+    with pytest.raises(PolicyError) as caught:
+        enforce_policy(policy, path_domain=path, from_address=sender)
+    assert type(caught.value) is PolicyError
+    assert f"token not allowed for {message} " in str(caught.value)
+
+
+def test_idn_allowlist_matches_both_label_forms() -> None:
+    p = _policy(
+        mailgun_domains={normalize_domain("mg.wersdörfer.de")},
+        allowed_from_domains={normalize_domain("wersdörfer.de")},
+        allowed_from_addresses={normalize_address("Jochen@Wersdörfer.de")},
+    )
+    for path in ("mg.wersdörfer.de", "MG.XN--WERSDRFER-47A.DE"):
+        for sender in ("jochen@wersdörfer.de", "Jochen <JOCHEN@xn--wersdrfer-47a.de>"):
+            enforce_policy(p, path_domain=path, from_address=sender)
+    with pytest.raises(PolicyError):
+        enforce_policy(p, path_domain="mg.wersdörfer.de", from_address="jochen@wersdoerfer.de")
+
+
+def test_ggs_default_sender_is_a_bad_request() -> None:
+    with pytest.raises(InvalidAddressError):
+        enforce_policy(
+            _HOMEPAGE, path_domain="mg.wersdoerfer.de", from_address="webmaster@localhost"
+        )
+
+
+def test_quote_in_address_is_rendered_by_repr() -> None:
+    with pytest.raises(PolicyError) as caught:
+        enforce_policy(
+            _HOMEPAGE, path_domain="mg.wersdoerfer.de", from_address="o'brien@wersdoerfer.de"
+        )
+    assert str(caught.value) == 'token not allowed for from address "o\'brien@wersdoerfer.de"'
 
 
 @pytest.mark.parametrize(
@@ -212,3 +289,14 @@ def test_normalize_domain_boundaries(value: str, a_label: str) -> None:
 def test_normalize_domain_refuses(value: str) -> None:
     with pytest.raises(InvalidAddressError):
         normalize_domain(value)
+
+
+@pytest.mark.parametrize(
+    "sender",
+    ["a . b@wersdoerfer.de", "Jane <jochen-django@wersdoerfer.de", "grp: x@wersdoerfer.de;"],
+)
+def test_lax_python_forms_still_pass_the_strict_parse(sender: str) -> None:
+    """Python's parser accepts these; the Rust port refuses them (PLAN.md D-11,
+    fail closed). Pinned so a change on either side shows in review."""
+    domain_only = _policy(mailgun_domains={"w.de"}, allowed_from_domains={"wersdoerfer.de"})
+    enforce_policy(domain_only, path_domain="w.de", from_address=sender)

@@ -49,6 +49,8 @@ from mailgun_relay.headers import (
 )
 from mailgun_relay.policy import (
     InvalidAddressError,
+    PolicyError,
+    enforce_policy,
     normalize_address,
     normalize_domain,
     parse_email_strict,
@@ -1383,6 +1385,158 @@ def build_address() -> dict[str, Any]:
     }
 
 
+# ------------------------------------------------------------------ policy
+
+POLICIES = [
+    # Production shapes after the 403 fix (fix-403-diagnosis.md 1.3).
+    (
+        "homepage-production",
+        ["mg.wersdoerfer.de"],
+        ["wersdoerfer.de"],
+        ["jochen-homepage@wersdoerfer.de", "jochen-django@wersdoerfer.de"],
+    ),
+    (
+        "python-podcast-production",
+        ["mg.python-podcast.de"],
+        ["mg.python-podcast.de", "wersdoerfer.de"],
+        ["noreply@mg.python-podcast.de", "jochen-django@wersdoerfer.de"],
+    ),
+    (
+        "registry-staging",
+        ["mg.staging.django-cast.com"],
+        ["email.mg.staging.django-cast.com"],
+        ["noreply@email.mg.staging.django-cast.com"],
+    ),
+    ("domain-only", ["mg.wersdoerfer.de"], ["wersdoerfer.de"], None),
+    (
+        "idn",
+        ["mg.wersdörfer.de"],
+        ["wersdörfer.de", "WERSDOERFER.de"],
+        ["Jochen@Wersdörfer.de", "o'brien@wersdoerfer.de"],
+    ),
+]
+
+POLICY_PATHS = [
+    "mg.wersdoerfer.de",
+    "MG.WERSDOERFER.DE",
+    " mg.wersdoerfer.de ",
+    "mg.wersdoerfer.de.",
+    "wersdoerfer.de",
+    "mg.python-podcast.de",
+    "mg.staging.django-cast.com",
+    "mg.wersdörfer.de",
+    "mg.xn--wersdrfer-47a.de",
+    "evil.test",
+    "a_b.de",
+    "",
+    "☃.de",
+]
+
+POLICY_FROMS = [
+    "Homepage <jochen-homepage@wersdoerfer.de>",
+    "jochen-homepage@wersdoerfer.de",
+    "Jochen-Homepage@WERSDOERFER.DE",
+    "jochen-django@wersdoerfer.de",
+    "Python Podcast <noreply@mg.python-podcast.de>",
+    "noreply@mg.python-podcast.de",
+    "noreply@email.mg.staging.django-cast.com",
+    "webmaster@localhost",
+    "someone-else@wersdoerfer.de",
+    "x@evil.test",
+    "x@mg.wersdoerfer.de",
+    "jochen@wersdörfer.de",
+    "Jochen <JOCHEN@xn--wersdrfer-47a.de>",
+    "jochen@wersdoerfer.de",
+    "O'Brien <o'brien@wersdoerfer.de>",
+    "jörg@wersdoerfer.de",
+    "not-an-email",
+    "ok@wersdoerfer.de\nBcc: evil@wersdoerfer.de",
+    "a . b@wersdoerfer.de",
+    "Jane <jochen-django@wersdoerfer.de",
+    "jochen-django@wersdoerfer.de, x@evil.test",
+    "",
+]
+
+
+def _token_policy(entry: tuple[str, list[str], list[str], list[str] | None]) -> TokenPolicy:
+    label, mailgun, from_domains, addresses = entry
+    return TokenPolicy(
+        label=label,
+        token_sha256="0" * 64,
+        mailgun_domains=frozenset(normalize_domain(d) for d in mailgun),
+        allowed_from_domains=frozenset(normalize_domain(d) for d in from_domains),
+        allowed_from_addresses=(
+            None if addresses is None else frozenset(normalize_address(a) for a in addresses)
+        ),
+    )
+
+
+def _python_policy(policy: TokenPolicy, path: str, sender: str) -> dict[str, Any]:
+    try:
+        enforce_policy(policy, path_domain=path, from_address=sender)
+    except InvalidAddressError:
+        return {"status": 400, "detail": None}
+    except PolicyError as exc:
+        return {"status": 403, "detail": str(exc)}
+    return {"status": 200, "detail": parse_email_strict(sender)[0]}
+
+
+def _rust_policy(policy: TokenPolicy, path: str, sender: str) -> dict[str, Any]:
+    """``policy::enforce_policy``: Python's order with the D-10 path
+    domains and the mailbox decisions of the Rust grammar (D-11)."""
+    normalized = D10_PATH_DOMAINS.get(path, _python_domain(path))
+    if normalized is None:
+        return {"status": 400, "detail": None}
+    if normalized not in policy.mailgun_domains:
+        return {"status": 403, "detail": f"token not allowed for path domain {normalized!r}"}
+    mailbox = rust_mailbox(sender)
+    if mailbox is None:
+        return {"status": 400, "detail": None}
+    address = mailbox[2]
+    domain = address.rpartition("@")[2]
+    if domain not in policy.allowed_from_domains:
+        return {"status": 403, "detail": f"token not allowed for from domain {domain!r}"}
+    allowed = policy.allowed_from_addresses
+    if allowed is not None and address not in allowed:
+        return {"status": 403, "detail": f"token not allowed for from address {address!r}"}
+    return {"status": 200, "detail": address}
+
+
+def build_policy() -> dict[str, Any]:
+    policies = [_token_policy(entry) for entry in POLICIES]
+    cases = []
+    for policy in policies:
+        for path in POLICY_PATHS:
+            for sender in POLICY_FROMS:
+                python = _python_policy(policy, path, sender)
+                expected = _rust_policy(policy, path, sender)
+                case: dict[str, Any] = {
+                    "policy": policy.label,
+                    "path": path,
+                    "from": sender,
+                    "expected": expected,
+                }
+                if expected != python:
+                    case["python"] = python
+                    case["divergence"] = "D-10" if path in D10_PATH_DOMAINS else "D-11"
+                cases.append(case)
+    return {
+        "source": "mailgun_relay.policy.enforce_policy (detail: 403 message or policy address)",
+        "policies": [
+            {
+                "label": p.label,
+                "mailgun_domains": sorted(p.mailgun_domains),
+                "allowed_from_domains": sorted(p.allowed_from_domains),
+                "allowed_from_addresses": (
+                    None if p.allowed_from_addresses is None else sorted(p.allowed_from_addresses)
+                ),
+            }
+            for p in policies
+        ],
+        "cases": cases,
+    }
+
+
 # ------------------------------------------------------------------ driver
 
 GENERATORS: dict[str, Callable[[], Mapping[str, Any]]] = {
@@ -1391,6 +1545,7 @@ GENERATORS: dict[str, Callable[[], Mapping[str, Any]]] = {
     "config_env.json": build_config_env,
     "config_secrets.json": build_config_secrets,
     "domain.json": build_domain,
+    "policy.json": build_policy,
 }
 
 

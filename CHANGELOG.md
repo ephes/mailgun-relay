@@ -4,6 +4,19 @@ All notable changes to mailgun-relay are documented here.
 
 ## Unreleased
 
+### Rust port: the token policy (slice S2c)
+
+- `rust/src/policy.rs` enforces the token policy in Python's order and with
+  Python's statuses: path domain invalid 400, not allowed 403; `from`
+  invalid 400; from domain or address not allowed 403, with the 403 texts
+  kept verbatim. It returns the parsed `from` mailbox for the headers. Not
+  wired to a route yet (S3).
+- `policy.json` (1,430 cases from the Python oracle) runs the production
+  policy shapes (homepage with its two senders, python-podcast with a
+  second from domain, registry, a domain-only token, an IDN allowlist)
+  against production-like paths and senders; Python tests pin the same
+  shapes. This completes S2.
+
 ### Rust port: addresses and the envelope sender (slice S2b)
 
 - `rust/src/address.rs` parses `from`/`to`/`cc`/`bcc` values and Reply-To

@@ -13,6 +13,8 @@ mod config;
 mod domain;
 mod http;
 mod log;
+#[cfg_attr(not(test), expect(dead_code, reason = "used by the pipeline slice S3"))]
+mod policy;
 mod pystr;
 mod secrets;
 mod yaml;

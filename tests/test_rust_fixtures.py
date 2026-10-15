@@ -70,6 +70,7 @@ def _cases(generator: ModuleType, name: str) -> list[dict[str, object]]:
         ("address.json", 400, {"D-10", "D-11", "D-17", "D-11,D-10"}),
         ("domain.json", 100, {"D-10"}),
         ("auth.json", 60, set()),
+        ("policy.json", 100, {"D-10", "D-11"}),
     ],
 )
 def test_corpus_sizes_and_divergence_labels(
