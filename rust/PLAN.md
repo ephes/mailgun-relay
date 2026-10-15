@@ -620,6 +620,10 @@ where Python starts), never the reverse.
 | D-17 | `allowed_from_addresses` entries with a non-ASCII (EAI) local part load fine (`normalize_address` only lowercases the local part), but since S0-py an EAI `from` is always 400 before the allowlist check, so such an entry can never match. Python stays unchanged. | The Rust config loader rejects such an entry and the start fails (`--check-config` reports it before any switch). Fail closed under Q4; the production policy contains no such entry today. Pinned in `config_secrets.json`. | Decided 2026-10-15 (coordinator, under Q4); implemented with the secrets loader (S1c) |
 | D-18 | pydantic accepts any integer size, any float (`inf`, `nan`, negatives) and any string; Python then fails per request or binds every interface: with `SMTP_PORT` outside 0–65535 every submission fails (`getaddrinfo` error → 503), a non-finite, negative or too large (from about 9.2e9 s) `SMTP_TIMEOUT_S` makes every submission raise `ValueError`/`OverflowError` (502), `BIND_HOST=""` binds all interfaces, huge integers are kept. | Startup failure for: empty `BIND_HOST`; `SMTP_PORT` outside 0–65535; integer settings outside 64-bit; `SMTP_TIMEOUT_S` not finite or outside 0–1e9 s; `SMTP_MAX_CONCURRENCY` above 2^32−1; a value that is not valid UTF-8. Pinned by `config_env.json`. | Q4 (fail closed), added in S1 |
 
+Python 500s on client input fixed in Python by the same rule as D-1 and
+D-16 (Q1), so no divergence remains: a non-ASCII character in the Basic
+credentials → 401 at the auth step (S2a; 2.3 step 2).
+
 Not divergences, recorded so nobody "fixes" them: empty subject accepted;
 recipient limit counted before de-duplication; header name case variants are
 separate headers; partial refusal is 200 by default; `/health` has no
@@ -1211,7 +1215,11 @@ The owner answered the questions of `handoff/p2-owner-questions.md` on
 
 - **Q1** Python 500s on client input (D-1 empty `text`/`html` without another
   body, D-16 CR/LF decoded from a To/Cc display name): **400** at the same
-  position of the decision order; Python gets the same fix (S0-py).
+  position of the decision order; Python gets the same fix (S0-py). Same
+  rule, coordinator decision 2026-10-15: a non-ASCII character in the Basic
+  credentials (Python 500 from an uncaught `ValueError`) is **401** at the
+  auth step (2.3 step 2); Python fixed in S2a, deployed with the next relay
+  deploy.
 - **Q2** IDN/EAI addresses (D-2, security-relevant, externally triggerable):
   **IDN as A-labels** in headers and envelope, no SMTPUTF8; **EAI local parts
   → 400** (fail closed); fixed in Python first (S0-py, own deploy).

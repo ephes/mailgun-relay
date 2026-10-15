@@ -36,7 +36,8 @@ All notable changes to mailgun-relay are documented here.
 
 ### Authentication: malformed non-ASCII credentials are 401 (slice S2a)
 
-- `Authorization: Basic …` whose credentials contain a non-ASCII character
+- Behaviour change for clients: 500 → 401.
+  `Authorization: Basic …` whose credentials contain a non-ASCII character
   (a header byte ≥ 0x80) now answers 401 `Unauthorized` like every other
   malformed credential. It answered 500 before: `base64.b64decode` raised a
   plain `ValueError` that the auth check did not catch. No request that
