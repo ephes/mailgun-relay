@@ -55,7 +55,7 @@ and fixture cases generated from the fixed Python.
 
 | Python test | Rust counterpart | Status |
 | --- | --- | --- |
-| `test_body_limit.py` (declared, streamed, within limit) | unit + harness | pending (S3) |
+| `test_body_limit.py` (declared, streamed, within limit) | unit `pipeline::tests::body_reading` (declared length over the limit: the layer's 413 before auth and without a record; a chunked body counted while read: 413 with a record) and `http::tests::declared_length_over_the_limit_is_413_everywhere`; harness | done (S3d); harness pending (S6) |
 | `test_body_limit.py::test_invalid_or_negative_content_length_rejected` | harness against real uvicorn (D-12) | pending (S6) |
 | `test_body_limit.py::test_non_http_scope_passes_through` | n/a: ASGI lifespan scope has no Rust equivalent | n/a |
 | `test_headers.py::test_validate_subject_*`, `::test_custom_headers_*` | unit `headers::tests::python_header_tests` + fixture `headers.json` (196 subjects, 100 header lists, 168 control-character probes; D-19 marked) via `headers::tests::headers_fixture` | done (S3a) |
@@ -63,10 +63,11 @@ and fixture cases generated from the fixed Python.
 | `test_messages_endpoint.py::test_happy_path_returns_queued`, `::test_auth_*` | units `pipeline::tests::happy_path_in_both_encodings`, `::authentication_failures_are_401_with_realm` (response shape, realm, record) | done (S3c); harness pending (S6) |
 | `test_messages_endpoint.py` 400 cases (`o:`, `v:`, `template`, `recipient-variables`, subject CRLF, `h:Bcc`, no recipients, no body, malformed from/to/Reply-To, injected CRLF) and the S0-py `text=""` cases (D-1) | unit `pipeline::tests::field_rules_are_400` (both encodings, plus `t:`, unknown fields, two `from`, EAI addresses, Reply-To case variants, D-19) | done (S3c); harness pending (S6) |
 | `test_messages_endpoint.py` policy cases (path/from domain/from address, cross-domain, parent domain, foreign token) | unit `pipeline::tests::policy_decisions` (both encodings, 403 texts) | done (S3c); harness pending (S6) |
-| `test_messages_endpoint.py` 413 cases (attachments too big/too many/flood, inline counting, huge text), malformed inline filename | unit `pipeline::tests` | pending (S3d) |
+| `test_messages_endpoint.py` 413 cases (attachments too big/too many/flood, inline counting, huge text), malformed inline filename | units `pipeline::tests::limits_are_413` (also the aggregate of decoded texts, recipients and Starlette's field cap at N and N+1), `::inline_filenames` | done (S3d); harness pending (S6) |
 | `test_messages_endpoint.py::test_smtp_*`, `::test_partial_refusal_*` (route side: status, records, `FAIL_ON_PARTIAL_REFUSAL`) | unit `pipeline::tests::submission_outcomes` with a recording submitter | done (S3c); SMTP side S5, harness S6 |
-| `test_messages_endpoint.py::test_path_domain_logged_as_punycode`, `::test_log_redacts_token_and_smtp_password` | unit (captured log lines) | pending (S3) |
-| new: decision-order multi-fault cases, both encodings, limits at N and N+1, `text=""` (D-1) | harness | pending (S6) |
+| `test_messages_endpoint.py::test_path_domain_logged_as_punycode`, `::test_log_redacts_token_and_smtp_password` | unit `pipeline::tests::records_follow_the_information_boundary` (captured log lines; also the 320-character `from` cap and the configured level) | done (S3d) |
+| new: decision-order multi-fault cases (foreign path domain + `o:tag` → 400, oversized attachment before `o:tag` → 413 and after it → 400, bad auth + malformed multipart → 401, policy before subject/headers/recipients, recipient count before addresses, D-1 after the policy), both encodings | unit `pipeline::tests::decision_order` | done (S3d); harness pending (S6) |
+| new: route matching (405 with `allow: POST`, 307, `%2F` and other paths 404, `$` before a final newline), production client shapes (Anymail urlencoded, the recorder's multipart in all 24 field orders), envelope order and de-duplication, a panic is a 500 with one record | units `pipeline::tests::route_matching`, `::production_shapes`, `::envelope_order_and_deduplication`, `::panics_are_500_with_a_record` | done (S3d) |
 
 ## Message construction (S4)
 

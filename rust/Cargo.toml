@@ -24,6 +24,7 @@ tokio = { version = "1", features = ["rt", "net", "time", "signal", "sync", "mac
 yaml-rust2 = { version = "0.13", default-features = false }
 
 [dev-dependencies]
+futures-util = { version = "0.3", default-features = false }
 tempfile = "3"
 tower = { version = "0.5", default-features = false, features = ["util"] }
 

@@ -6,8 +6,7 @@ exactly, what may differ (section 3), the slices and the switch of
 production. [`TESTMAP.md`](TESTMAP.md) maps every Python test to its Rust
 counterpart.
 
-**Status: slices S1 and S2 of PLAN.md section 6 are done**; S3 (S3a–S3c
-merged) adds subject and header validation, form parsing and
+**Status: slices S1, S2 and S3 of PLAN.md section 6 are done**; S3 adds subject and header validation, form parsing and
 `POST /v3/{domain}/messages` with every decision of the Python route. The
 binary loads and validates the configuration, answers `GET /health`, the
 404/405/307 fallbacks and the 413 body-limit layer, and logs the startup

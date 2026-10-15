@@ -440,6 +440,7 @@ version = "0.2.0"
 dependencies = [
  "axum",
  "base64",
+ "futures-util",
  "getrandom",
  "http-body-util",
  "idna",

@@ -4,6 +4,16 @@ All notable changes to mailgun-relay are documented here.
 
 ## Unreleased
 
+### Rust port: route tests (slice S3d)
+
+- The remaining Rust counterparts of `test_messages_endpoint.py` (without
+  SMTP) and `test_body_limit.py`: the 413 limits at N and N+1, body reading
+  (non-form content types, malformed multipart, a chunked body over the
+  limit), multi-fault cases for the decision order in both encodings,
+  records and their information boundary, route matching, the production
+  client shapes (Anymail urlencoded, the recorder's multipart in every field
+  order) and a panicking request (500, one record). This completes S3.
+
 ### Rust port: the messages route (slice S3c)
 
 - `POST /v3/{domain}/messages` exists in the Rust binary
