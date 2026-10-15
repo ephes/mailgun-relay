@@ -1,10 +1,11 @@
-//! Domain normalisation (PLAN.md 2.6, D-10).
+//! Domain and allowlist-address normalisation (PLAN.md 2.6, D-10, D-17).
 //!
-//! S1 needs the configuration side: `relay:policy.py` `normalize_domain` as
-//! `relay:config.py` applies it to `ENVELOPE_SENDER` (and, from S1c, to the
-//! secrets file). Configuration never accepts more than Python, so configured
-//! domains are restricted to a Latin character set (D-10). S2 pins the
-//! runtime normalisation against the `domain.json` corpus.
+//! S1 needs the configuration side: `relay:policy.py` `normalize_domain` and
+//! `normalize_address` as `relay:config.py` applies them to the secrets file
+//! and to `ENVELOPE_SENDER`. Configuration never accepts more than Python, so
+//! configured domains are restricted to a Latin character set (D-10) and
+//! configured addresses to ASCII local parts (D-17). S2 pins the runtime
+//! normalisation against the `domain.json` corpus.
 
 use idna::uts46::{AsciiDenyList, DnsLength, Hyphens, Uts46};
 
@@ -12,6 +13,8 @@ use crate::pystr::py_strip;
 
 /// `normalize_domain`: `strip().lower()`, UTS46 non-transitional mapping,
 /// IDNA validity checks and DNS lengths (root dot allowed); the A-label.
+/// Errors here and below never contain the value: in the secrets file it
+/// may be a YAML alias of the password.
 pub fn normalize_domain(value: &str) -> Result<String, String> {
     let lowered = py_strip(value).to_lowercase();
     if lowered.is_empty() {
@@ -25,7 +28,7 @@ pub fn normalize_domain(value: &str) -> Result<String, String> {
             DnsLength::VerifyAllowRootDot,
         )
         .map(|ascii| ascii.into_owned())
-        .map_err(|_| format!("invalid domain: {value:?}"))
+        .map_err(|_| "invalid domain".to_owned())
 }
 
 /// Code points a configured domain may contain after `strip().lower()`
@@ -42,13 +45,12 @@ fn is_config_domain_char(c: char) -> bool {
 }
 
 /// A domain from the configuration: the D-10 character set, then
-/// [`normalize_domain`].
-/// The set applies to the input and to the Unicode form of the result, so
+/// [`normalize_domain`]. The set applies to the input and to the Unicode form of the result, so
 /// neither a mapping (`ŀ` → `l·`) nor an A-label input (`xn--n3h`) can
 /// bring in a character outside it.
 pub fn normalize_config_domain(value: &str) -> Result<String, String> {
     let outside =
-        || format!("domain {value:?} contains characters outside the supported set (PLAN.md D-10)");
+        || "domain contains characters outside the supported set (PLAN.md D-10)".to_owned();
     if !py_strip(value)
         .to_lowercase()
         .chars()
@@ -62,6 +64,29 @@ pub fn normalize_config_domain(value: &str) -> Result<String, String> {
         return Err(outside());
     }
     Ok(ascii)
+}
+
+/// `normalize_address` for `allowed_from_addresses`: strip, split at the last
+/// `@`, local part lowercased, domain normalised. A non-ASCII local part can
+/// never match a sender (Q2), so it fails the load (D-17).
+pub fn normalize_config_address(value: &str) -> Result<String, String> {
+    let stripped = py_strip(value);
+    let Some((local, domain)) = stripped.rsplit_once('@') else {
+        return Err("address missing '@'".to_owned());
+    };
+    if local.is_empty() {
+        return Err("address missing local part".to_owned());
+    }
+    if !local.is_ascii() {
+        return Err(
+            "address has a non-ASCII local part, which never matches (PLAN.md D-17)".to_owned(),
+        );
+    }
+    Ok(format!(
+        "{}@{}",
+        local.to_ascii_lowercase(),
+        normalize_config_domain(domain)?
+    ))
 }
 
 #[cfg(test)]
@@ -90,5 +115,15 @@ mod tests {
             assert!(normalize_config_domain(bad).is_err(), "{bad:?}");
         }
         assert_eq!(normalize_domain("ⅻ.de").unwrap(), "xii.de");
+    }
+
+    #[test]
+    fn config_addresses() {
+        let ok = |v: &str| normalize_config_address(v).unwrap();
+        assert_eq!(ok(" Info@WERSDÖRFER.de"), "info@xn--wersdrfer-47a.de");
+        assert_eq!(ok("a@b@c.de"), "a@b@c.de");
+        for bad in ["a.de", "@a.de", "a@", "jörg@a.de", "a@xn--n3h.de"] {
+            assert!(normalize_config_address(bad).is_err(), "{bad:?}");
+        }
     }
 }

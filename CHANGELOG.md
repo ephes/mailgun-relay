@@ -4,6 +4,22 @@ All notable changes to mailgun-relay are documented here.
 
 ## Unreleased
 
+### Rust port: secrets file (slice S1c)
+
+- The Rust binary loads the secrets YAML as the Python service does (same
+  schema, placeholders, duplicate labels, IDN domains as A-labels, the mode
+  check before reading) with the YAML 1.1 types of PyYAML's `safe_load`
+  (`yes`, `0777`, `2026-10-15` are never strings). `--check-config` now
+  validates the environment and the secrets file.
+- Fail closed where Python would start (`rust/PLAN.md` D-5, D-6, D-10, D-17):
+  a non-string `token_sha256`, merge keys, tags other than `!!str`,
+  directives, recursive aliases, deep nesting, empty plain keys, TAB and
+  NEL/LS/PS characters, domains outside the Latin set (also after IDNA
+  mapping), and non-ASCII local parts in `allowed_from_addresses`. Error
+  messages name fields by position and never repeat a configured value.
+- `rust/fixtures/config_secrets.json` (130 documents from the Python oracle)
+  pins the decisions. The Python service is unchanged.
+
 ### Rust port: skeleton and environment settings (slice S1a)
 
 - The repository is now MIT-licensed (`LICENSE`).

@@ -6,9 +6,9 @@ exactly, what may differ (section 3), the slices and the switch of
 production. [`TESTMAP.md`](TESTMAP.md) maps every Python test to its Rust
 counterpart.
 
-**Status: slice S1a of PLAN.md section 6** (S1 is split into S1a, S1c and
+**Status: slice S1c of PLAN.md section 6** (S1 is split into S1a, S1c and
 S1d by size). The binary loads and validates the `MAILGUN_RELAY_*`
-environment. The secrets file (S1c), serving `/health` with the startup record
+environment and the secrets file. Serving `/health` with the startup record
 (S1d) and `POST /v3/{domain}/messages` (S2–S5) follow; nothing deploys this
 code until the role is switched (PLAN.md section 9).
 
@@ -32,19 +32,26 @@ build embeds the git commit (`MAILGUN_RELAY_GIT_COMMIT`, else
 ## Run
 
 ```bash
-mailgun-relay --check-config   # load the environment, bind nothing; exit 0 or 1
+mailgun-relay --check-config   # load env + secrets, bind nothing; exit 0 or 1
 mailgun-relay --version        # mailgun-relay 0.2.0 (<commit>)
 ```
 
 Unknown arguments exit 2. The configuration interface is the Python one
-(PLAN.md 2.7): `MAILGUN_RELAY_*` variables with the same names, defaults and
-validation. The Rust port is stricter in a few exotic cases and fails at
-start where Python would start (fail closed, PLAN.md section 3):
+(PLAN.md 2.7, 2.8): `MAILGUN_RELAY_*` variables with the same names, defaults
+and validation, and the same secrets YAML (no world access, no group write or
+execute: `0640`, `0600`, `0400` pass). The Rust port is stricter in a few
+exotic cases and fails at start where Python would start (fail closed,
+PLAN.md section 3):
 
+- an unquoted all-digit or boolean `token_sha256` (D-5); merge keys, tags
+  other than `!!str`, `%YAML`/`%TAG` directives, recursive aliases, nesting
+  deeper than 64 levels, empty plain mapping keys, TAB characters and the
+  YAML 1.1 line breaks NEL/LS/PS anywhere in the file (D-6);
 - a variable set under several case variants of its name, the exact
   upper-case name included (D-7);
-- a non-ASCII `ENVELOPE_SENDER` whose domain is outside ASCII and the Latin
-  letter blocks (D-10);
+- configured domains (secrets file, non-ASCII `ENVELOPE_SENDER`) outside
+  ASCII and the Latin letter blocks, also after IDNA mapping (D-10);
+- a non-ASCII local part in `allowed_from_addresses` (D-17);
 - an empty `BIND_HOST`, `SMTP_PORT` outside 0–65535, integers outside 64 bits,
   `SMTP_TIMEOUT_S` not finite or outside 0–1e9 s, `SMTP_MAX_CONCURRENCY`
   above 2^32−1, a value that is not UTF-8 (D-18).
@@ -72,7 +79,9 @@ differs from a fresh render.
 Cargo.toml  Cargo.lock  rust-toolchain.toml  deny.toml  build.rs
 src/main.rs     argv
 src/config.rs   MAILGUN_RELAY_* settings
-src/domain.rs   domain normalisation of the configuration
+src/secrets.rs  secrets file (mode check, schema)
+src/yaml.rs     YAML 1.1 subset of PyYAML safe_load
+src/domain.rs   domain/address normalisation of the configuration
 src/pystr.rs    Python str.strip() semantics
 tests/binary.rs process-level tests of the built binary
 fixtures/       generator + generated JSON

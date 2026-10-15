@@ -10,9 +10,12 @@ publish = false
 
 [dependencies]
 idna = "1"
+regex = { version = "1", default-features = false, features = ["std"] }
+yaml-rust2 = { version = "0.13", default-features = false }
 
 [dev-dependencies]
 serde_json = "1"
+tempfile = "3"
 
 [lints.rust]
 unsafe_code = "forbid"
