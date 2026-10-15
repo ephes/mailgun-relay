@@ -4,7 +4,7 @@
 //!
 //! Step 1 (a declared `Content-Length` over the limit) is the layer in
 //! [`crate::http`]. Message construction is [`crate::mime`] (step 9), the
-//! submission a [`Submitter`] (step 10, slice S5).
+//! submission a [`Submitter`] (step 10, [`crate::smtp`]).
 
 use std::future::Future;
 use std::pin::Pin;
@@ -61,10 +61,6 @@ pub struct Refusal {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SubmitError {
     Temporary,
-    #[cfg_attr(
-        not(test),
-        expect(dead_code, reason = "returned by the SMTP submitter, slice S5")
-    )]
     Permanent,
 }
 
@@ -72,20 +68,9 @@ pub type Submission<'a> =
     Pin<Box<dyn Future<Output = Result<Vec<Refusal>, SubmitError>> + Send + 'a>>;
 
 /// Step 10: hand a built message to the SMTP backend; the refused
-/// recipients on success. Slice S5 provides the SMTP implementation.
+/// recipients on success ([`crate::smtp::SmtpSubmitter`]).
 pub trait Submitter: Send + Sync {
     fn submit(&self, message: BuiltMessage) -> Submission<'_>;
-}
-
-/// The submitter until slice S5 exists: every submission is a temporary
-/// failure (503), so a build of this slice can never claim a message as
-/// queued that was not sent.
-pub struct Unavailable;
-
-impl Submitter for Unavailable {
-    fn submit(&self, _message: BuiltMessage) -> Submission<'_> {
-        Box::pin(async { Err(SubmitError::Temporary) })
-    }
 }
 
 /// What the route needs: the settings, the token policies, the logger and

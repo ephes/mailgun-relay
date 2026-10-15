@@ -4,6 +4,21 @@ All notable changes to mailgun-relay are documented here.
 
 ## Unreleased
 
+### Rust port: SMTP submission (slice S5a)
+
+- `rust/src/smtp.rs` submits the built message with lettre's
+  connection-level API, so the Rust binary now delivers: STARTTLS with
+  chain and hostname verification against the system roots plus
+  `SMTP_CA_FILE`, AUTH PLAIN or LOGIN (never without TLS), one `RCPT` per
+  recipient, so a partly refused message reaches the others as in Python,
+  and the statuses of PLAN.md 2.4 (a reply code decides 503 or 502, every
+  failure without one is 503). `QUIT` failures never change the outcome
+  and are logged as `smtp_cleanup_failed`; no `QUIT` after 421 or a lost
+  connection. The timeout applies per socket operation.
+- The Rust port reads `SMTP_CA_FILE` at start; an unusable file stops the
+  start and `--check-config` (PLAN.md D-22, fail closed). Python reads it
+  per message and answers 503.
+
 ### Custom header names with a final newline are 400 (D-19)
 
 - Behaviour change for clients: 200 → 400. An `h:*` field whose header

@@ -6,14 +6,19 @@ exactly, what may differ (section 3), the slices and the switch of
 production. [`TESTMAP.md`](TESTMAP.md) maps every Python test to its Rust
 counterpart.
 
-**Status: slices S1, S2 and S3 of PLAN.md section 6 are done**; S3 adds subject and header validation, form parsing and
+**Status: slices S1 to S4 of PLAN.md section 6 are done, S5a is merged**;
+S3 adds subject and header validation, form parsing and
 `POST /v3/{domain}/messages` with every decision of the Python route. The
 binary loads and validates the configuration, answers `GET /health`, the
 404/405/307 fallbacks and the 413 body-limit layer, and logs the startup
 record and one record per message request. S4 builds the message
-(`src/mime.rs`); SMTP submission comes with S5: until then every accepted
-message is answered with 503 and nothing is sent. Nothing deploys this code
-until the role is switched (PLAN.md section 9).
+(`src/mime.rs`); S5a submits it over SMTP (`src/smtp.rs`, lettre's
+connection API): STARTTLS with chain and hostname verification against the
+system roots plus `SMTP_CA_FILE`, AUTH PLAIN or LOGIN, one `RCPT` per
+recipient (a partly refused message is delivered to the others), and the
+status mapping of PLAN.md 2.4. The concurrency cap and the shutdown
+tracking of submissions follow with S5b. Nothing deploys this code until
+the role is switched (PLAN.md section 9).
 
 ## Build and check
 
@@ -59,14 +64,21 @@ PLAN.md section 3):
 - a non-ASCII local part in `allowed_from_addresses` (D-17);
 - an empty `BIND_HOST`, `SMTP_PORT` outside 0–65535, integers outside 64 bits,
   `SMTP_TIMEOUT_S` not finite or outside 0–1e9 s, `SMTP_MAX_CONCURRENCY`
-  above 2^32−1, a value that is not UTF-8 (D-18).
+  above 2^32−1, a value that is not UTF-8 (D-18);
+- an `SMTP_CA_FILE` that is missing, unreadable, holds no PEM certificate
+  or a certificate rustls cannot use, also with `SMTP_STARTTLS` off (D-22;
+  Python reads the file per message and answers 503).
 
 Run `--check-config` against the production files before any switch.
 
 Logs are one JSON object per line on stdout. Every start writes
 `{"ts":…,"level":"INFO","logger":"mailgun_relay.service","event":"startup",…}`
 with the fields of the Python record plus `"impl":"rust"`; `ts` is UTC
-(D-13). `/health` and the fallbacks log nothing. SIGTERM and SIGINT stop the
+(D-13). Each message request writes one `event=request` record; a partly
+refused message adds a `recipients_refused` WARNING (domains and codes
+only), a `QUIT` that is not answered with 221 an `smtp_cleanup_failed`
+WARNING (the outcome stays). `/health` and the fallbacks log nothing.
+SIGTERM and SIGINT stop the
 server after in-flight requests (exit 0); a configuration or bind failure
 exits 1.
 

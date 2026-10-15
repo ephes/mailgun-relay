@@ -945,13 +945,6 @@ async fn submission_outcomes() {
         assert_eq!(record["refused_count"], 3);
         assert_eq!(record["status_code"], if strict { 502 } else { 200 });
     }
-    // The submitter of this slice never claims a message as queued.
-    let reply = Unavailable.submit(BuiltMessage {
-        message_id: String::new(),
-        envelope: Vec::new(),
-        formatted: Vec::new(),
-    });
-    assert_eq!(reply.await, Err(SubmitError::Temporary));
 }
 
 #[tokio::test]
@@ -993,7 +986,7 @@ async fn records_follow_the_information_boundary() {
         settings: settings(),
         tokens: tokens(),
         logger,
-        submitter: Box::new(Unavailable),
+        submitter: Box::new(Panicking),
     };
     let state = Arc::new(AppState {
         relay: Arc::new(quiet),

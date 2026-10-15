@@ -24,7 +24,6 @@ const FORBIDDEN_MODE_BITS: u32 = 0o037;
 
 pub struct SmtpCredentials {
     pub username: String,
-    #[cfg_attr(not(test), expect(dead_code, reason = "used by the SMTP slice S5"))]
     pub password: String,
 }
 
@@ -58,7 +57,6 @@ impl fmt::Debug for TokenPolicy {
 
 #[derive(Debug)]
 pub struct Secrets {
-    #[cfg_attr(not(test), expect(dead_code, reason = "used by the SMTP slice S5"))]
     pub smtp: SmtpCredentials,
     pub tokens: Vec<TokenPolicy>,
 }

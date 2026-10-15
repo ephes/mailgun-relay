@@ -18,6 +18,7 @@ mod pipeline;
 mod policy;
 mod pystr;
 mod secrets;
+mod smtp;
 mod yaml;
 
 use std::net::SocketAddr;
@@ -34,6 +35,7 @@ use tokio::signal::unix::{Signal, SignalKind, signal};
 use crate::config::{ConfigError, Level, Settings};
 use crate::log::{Logger, SERVICE_LOGGER};
 use crate::secrets::Secrets;
+use crate::smtp::{SmtpConfig, SmtpSubmitter};
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 const COMMIT: &str = env!("MAILGUN_RELAY_GIT_COMMIT");
@@ -47,7 +49,7 @@ fn main() -> ExitCode {
             ExitCode::SUCCESS
         }
         [arg] if arg == "--check-config" => match load_config() {
-            Ok((settings, secrets)) => {
+            Ok((settings, secrets, _)) => {
                 // Counts only: through a YAML alias a label may hold a secret.
                 println!(
                     "mailgun-relay: configuration OK (bind {}:{}, log level {}, {} token(s))",
@@ -67,11 +69,13 @@ fn main() -> ExitCode {
     }
 }
 
-/// The environment, then the secrets file it names (`relay:app.py`).
-fn load_config() -> Result<(Settings, Secrets), ConfigError> {
+/// The environment, then the secrets file it names (`relay:app.py`), then
+/// the SMTP settings with the TLS roots and `SMTP_CA_FILE`.
+fn load_config() -> Result<(Settings, Secrets, SmtpConfig), ConfigError> {
     let settings = Settings::from_env(std::env::vars_os())?;
     let secrets = secrets::load(Path::new(&settings.secrets_path))?;
-    Ok((settings, secrets))
+    let smtp = SmtpConfig::load(&settings, &secrets.smtp)?;
+    Ok((settings, secrets, smtp))
 }
 
 fn config_failure(error: &ConfigError) -> ExitCode {
@@ -80,7 +84,7 @@ fn config_failure(error: &ConfigError) -> ExitCode {
 }
 
 fn serve() -> ExitCode {
-    let (settings, secrets) = match load_config() {
+    let (settings, secrets, smtp) = match load_config() {
         Ok(loaded) => loaded,
         Err(error) => return config_failure(&error),
     };
@@ -90,7 +94,7 @@ fn serve() -> ExitCode {
         .thread_keep_alive(Duration::from_secs(10))
         .build();
     let result = match runtime {
-        Ok(runtime) => runtime.block_on(run(settings, secrets)),
+        Ok(runtime) => runtime.block_on(run(settings, secrets, smtp)),
         Err(error) => Err(format!("cannot start the runtime: {error}")),
     };
     match result {
@@ -102,7 +106,7 @@ fn serve() -> ExitCode {
     }
 }
 
-async fn run(settings: Settings, secrets: Secrets) -> Result<(), String> {
+async fn run(settings: Settings, secrets: Secrets, smtp: SmtpConfig) -> Result<(), String> {
     let bind = format!("{}:{}", settings.bind_host, settings.bind_port);
     let listeners = bind_all(&settings.bind_host, settings.bind_port)
         .await
@@ -117,7 +121,7 @@ async fn run(settings: Settings, secrets: Secrets) -> Result<(), String> {
             settings,
             tokens: secrets.tokens,
             logger,
-            submitter: Box::new(pipeline::Unavailable),
+            submitter: Box::new(SmtpSubmitter::new(smtp, logger)),
         }),
     });
     let (stop, stopped) = tokio::sync::watch::channel(false);

@@ -85,12 +85,14 @@ and fixture cases generated from the fixed Python.
 
 | Python test | Rust counterpart | Status |
 | --- | --- | --- |
-| `test_smtp_submission.py` (happy path, partial refusal, all refused, DATA 4xx/5xx, auth, verifying TLS, no cleartext auth, connection refused, timeout) | unit `smtp::tests` against the scripted fake server | pending (S5) |
+| `test_smtp_submission.py` (happy path, partial refusal, all refused, DATA 4xx/5xx, auth, verifying TLS, no cleartext auth, connection refused, timeout) | unit `smtp::tests::python_smtp_submission_tests`, `::every_row_of_the_outcome_table`, `::tls_with_the_ca_file` against the scripted fake server (`tests/support/fake_smtp.rs`) | done (S5a) |
 | `test_smtp_submission.py::test_no_auth_without_credentials_skips_login` | n/a: the secrets schema always provides credentials; covered by `test_refuses_cleartext_auth_without_tls` counterpart | n/a |
-| `test_smtp_outcomes.py` (code matrix through submit and endpoint, all-refused mixtures, QUIT/close failures, already closed connection) | unit + harness (fake SMTP scripts) | pending (S5/S6) |
+| `test_smtp_outcomes.py::test_refusal_codes_through_submit_and_endpoint`, `::test_all_refused_classifies_every_reply` (submit side) | unit `smtp::tests::every_row_of_the_outcome_table`; fixture (Python's `submit` per scenario) and endpoint side pending | done (S5a); pending (S5b) |
+| `test_smtp_outcomes.py::test_quit_failure_preserves_endpoint_outcome` (submit side), `::test_data_failure_is_not_hidden_by_quit_failure`, `::test_already_closed_send_failure_does_not_warn_about_cleanup`, `::test_cleanup_reply_and_close_errors_preserve_acceptance` (reply case) | unit `smtp::tests::cleanup_never_changes_the_outcome` (QUIT 500 or closed after acceptance, also with a partial refusal; DATA 451 + QUIT 500; no QUIT and no record after 421, a disconnect or a timeout; QUIT after refusals before the transaction) | done (S5a) |
+| `test_smtp_outcomes.py::test_cleanup_reply_and_close_errors_preserve_acceptance` (close case) | n/a: dropping the connection closes the socket and cannot fail | n/a |
 | `test_messages_endpoint.py::test_smtp_*`, `::test_partial_refusal_*`, `::test_full_acceptance_logs_zero_refusals`, `::test_strict_mode_full_acceptance_still_200` | harness | pending (S6) |
-| `test_nonblocking_submit.py` (health responsive, cap queues, mapping from the task) | unit with a stalled fake server | pending (S5) |
-| new: TLS certificate/hostname failure → 503, wrong CA file, D-3 classes | unit | pending (S5) |
+| `test_nonblocking_submit.py` (health responsive, cap queues, mapping from the task) | unit with a stalled submitter | pending (S5b) |
+| new: TLS certificate/hostname failure → 503, `SMTP_CA_FILE` read at start (D-22), D-3 classes, exact positive codes, ASCII envelope, dot-stuffing across the 64 KiB pieces | units `smtp::tests::tls_with_the_ca_file`, `::every_row_of_the_outcome_table`, `::envelope_and_reply_codes`, `::long_messages_survive_chunking` | done (S5a) |
 
 ## Not ported
 
