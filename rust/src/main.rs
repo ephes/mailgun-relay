@@ -15,6 +15,11 @@ mod domain;
     not(test),
     expect(dead_code, reason = "used by the pipeline slice S3c")
 )]
+mod form;
+#[cfg_attr(
+    not(test),
+    expect(dead_code, reason = "used by the pipeline slice S3c")
+)]
 mod headers;
 mod http;
 mod log;

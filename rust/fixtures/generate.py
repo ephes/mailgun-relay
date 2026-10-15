@@ -21,7 +21,9 @@ Each slice adds its builders to ``GENERATORS``.
 from __future__ import annotations
 
 import argparse
+import asyncio
 import base64
+import gc
 import hashlib
 import json
 import logging
@@ -29,7 +31,9 @@ import os
 import random
 import sys
 import tempfile
-from collections.abc import Callable, Mapping
+import urllib.parse
+import warnings
+from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 from typing import Any
 from unittest import mock
@@ -38,8 +42,11 @@ import idna
 import uvicorn.config
 import yaml
 from email_validator import EmailNotValidError, validate_email
+from python_multipart.multipart import parse_options_header
+from starlette.requests import Request
 
 from mailgun_relay import headers as headers_module
+from mailgun_relay import routes
 from mailgun_relay.auth import AuthError, authenticate
 from mailgun_relay.config import Settings, TokenPolicy, load_secrets
 from mailgun_relay.headers import (
@@ -1712,6 +1719,556 @@ def build_headers() -> dict[str, Any]:
     }
 
 
+# ----------------------------------------------------------- form_decoding
+
+FORM_LIMITS = {"max_files": 4, "max_fields": 110, "max_part_size": 1_048_576}
+URLENCODED = b"application/x-www-form-urlencoded"
+BOUNDARY = "b0und4ry"
+MULTIPART = f"multipart/form-data; boundary={BOUNDARY}".encode()
+
+
+def _disposition(name: str, filename: str | None = None) -> str:
+    value = f'Content-Disposition: form-data; name="{name}"'
+    return value if filename is None else f'{value}; filename="{filename}"'
+
+
+def _multipart(
+    parts: Sequence[tuple[str, bytes | str]], *, boundary: str = BOUNDARY, tail: bytes = b"--\r\n"
+) -> bytes:
+    """``--boundary CRLF headers CRLF CRLF data CRLF`` per part, then the
+    closing delimiter (``tail`` after the last ``--boundary``)."""
+    body = b""
+    for headers, data in parts:
+        raw = data.encode() if isinstance(data, str) else data
+        body += f"--{boundary}\r\n{headers}\r\n\r\n".encode("latin-1") + raw + b"\r\n"
+    return body + f"--{boundary}".encode() + tail
+
+
+RECORDER_FIELDS = [
+    ("from", "Recorder <recorder@wersdoerfer.de>"),
+    ("to", "jochen@wersdoerfer.de"),
+    ("subject", "Dein Anmeldelink"),
+    ("text", "Hallo,\n\nhier ist dein Link: https://example.test/x?y=1&z=2\n"),
+]
+
+
+def _form_cases() -> list[tuple[str, bytes | None, bytes, dict[str, int]]]:
+    """(name, Content-Type, body, limits); limits default to FORM_LIMITS."""
+    tight = {"max_files": 1, "max_fields": 3, "max_part_size": 8}
+    anymail = urllib.parse.urlencode(
+        [
+            ("from", "Homepage <jochen-homepage@wersdoerfer.de>"),
+            ("to", "admin@wersdoerfer.de"),
+            ("to", "Jörg Ö <joerg@example.org>"),
+            ("subject", "[Django] ERROR: Fehler bei /über/"),
+            ("h:Auto-Submitted", "auto-generated"),
+            ("text", 'Traceback (most recent call last):\n  File "x", line 1\n'),
+            ("html", "<p>Grüße &amp; mehr</p>"),
+        ]
+    ).encode()
+    cases: list[tuple[str, bytes | None, bytes, dict[str, int]]] = [
+        ("urlencoded anymail", URLENCODED, anymail, FORM_LIMITS),
+        ("urlencoded empty body", URLENCODED, b"", FORM_LIMITS),
+        ("urlencoded separators only", URLENCODED, b"&&&", FORM_LIMITS),
+        ("urlencoded name only", URLENCODED, b"a", FORM_LIMITS),
+        ("urlencoded empty value", URLENCODED, b"a=", FORM_LIMITS),
+        ("urlencoded empty name", URLENCODED, b"=b", FORM_LIMITS),
+        ("urlencoded equals only", URLENCODED, b"=", FORM_LIMITS),
+        ("urlencoded value with equals", URLENCODED, b"a=b=c", FORM_LIMITS),
+        ("urlencoded stray separators", URLENCODED, b"&a=1&&b=2&", FORM_LIMITS),
+        ("urlencoded semicolon is data", URLENCODED, b"a=1;b=2", FORM_LIMITS),
+        ("urlencoded plus and space", URLENCODED, b"a+b=c+d%20e", FORM_LIMITS),
+        ("urlencoded plus escaped", URLENCODED, b"a=%2B", FORM_LIMITS),
+        ("urlencoded bad escapes", URLENCODED, b"a=%zz%4%%41", FORM_LIMITS),
+        ("urlencoded utf-8 escapes", URLENCODED, b"a=%C3%A4%E2%82%AC%F0%9F%98%80", FORM_LIMITS),
+        ("urlencoded lower-case escapes", URLENCODED, b"a=%c3%a4", FORM_LIMITS),
+        ("urlencoded truncated utf-8", URLENCODED, b"a=%C3&b=%E2%82", FORM_LIMITS),
+        ("urlencoded invalid utf-8", URLENCODED, b"a=%FF%FE%80%C0%AF", FORM_LIMITS),
+        ("urlencoded overlong and surrogate", URLENCODED, b"a=%F0%80%80%ED%A0%80", FORM_LIMITS),
+        ("urlencoded raw utf-8 bytes", URLENCODED, "a=jörg".encode(), FORM_LIMITS),
+        ("urlencoded raw latin-1 byte", URLENCODED, b"a=j\xf6rg", FORM_LIMITS),
+        ("urlencoded raw byte splits escapes", URLENCODED, b"a=%C3\xe4%A4", FORM_LIMITS),
+        ("urlencoded raw byte next to escape", URLENCODED, b"a=\xc3%A4", FORM_LIMITS),
+        ("urlencoded escaped name", URLENCODED, b"h%3AReply-To=x&%66rom=y", FORM_LIMITS),
+        ("urlencoded control escapes", URLENCODED, b"subject=a%0D%0Ab%00", FORM_LIMITS),
+        ("urlencoded fields at limit", URLENCODED, b"a&b&c", tight),
+        ("urlencoded fields over limit", URLENCODED, b"a&b&c&d", tight),
+        ("urlencoded empty fields do not count", URLENCODED, b"a&&b&&c&&", tight),
+        ("urlencoded field at size limit", URLENCODED, b"abc=12345", tight),
+        ("urlencoded field over size limit", URLENCODED, b"abc=123456", tight),
+        ("urlencoded name over size limit", URLENCODED, b"abcdefghi", tight),
+        (
+            "urlencoded empty name and value, zero size",
+            URLENCODED,
+            b"=",
+            {**tight, "max_part_size": 0},
+        ),
+        ("urlencoded with charset", URLENCODED + b"; charset=utf-8", b"a=1", FORM_LIMITS),
+        ("urlencoded upper case", b"APPLICATION/X-WWW-FORM-URLENCODED", b"a=1", FORM_LIMITS),
+        ("urlencoded padded", b"  application/x-www-form-urlencoded\t", b"a=1", FORM_LIMITS),
+        (
+            "urlencoded upper case with parameter",
+            b"Application/x-www-form-urlencoded; charset=utf-8",
+            b"a=1",
+            FORM_LIMITS,
+        ),
+        ("urlencoded trailing semicolon", URLENCODED + b";", b"a=1", FORM_LIMITS),
+        ("no content type", None, b"a=1", FORM_LIMITS),
+        ("empty content type", b"", b"a=1", FORM_LIMITS),
+        ("text/plain", b"text/plain", b"a=1", FORM_LIMITS),
+        ("json", b"application/json", b'{"a": 1}', FORM_LIMITS),
+    ]
+
+    def mp(
+        name: str,
+        body: bytes,
+        *,
+        content_type: bytes = MULTIPART,
+        limits: dict[str, int] = FORM_LIMITS,
+    ) -> None:
+        cases.append((f"multipart {name}", content_type, body, limits))
+
+    recorder = _multipart([(_disposition(k), v) for k, v in RECORDER_FIELDS])
+    mp("recorder", recorder)
+    mp(
+        "recorder reversed",
+        _multipart([(_disposition(k), v) for k, v in reversed(RECORDER_FIELDS)]),
+    )
+    go_boundary = "3d6b6a416f9b5d7f2b8e0c4a1f2e9d8c7b6a5f4e3d2c1b0a9f8e7d6c5b4a"
+    mp(
+        "go boundary",
+        _multipart([(_disposition(k), v) for k, v in RECORDER_FIELDS], boundary=go_boundary),
+        content_type=f"multipart/form-data; boundary={go_boundary}".encode(),
+    )
+    anymail_files = _multipart(
+        [
+            (_disposition("from"), "Homepage <jochen-homepage@wersdoerfer.de>"),
+            (_disposition("to"), "admin@wersdoerfer.de"),
+            (_disposition("subject"), "Bericht"),
+            (_disposition("text"), "Anbei."),
+            (
+                _disposition("attachment", "bericht.pdf") + "\r\nContent-Type: application/pdf",
+                b"%PDF-1.4\r\n\x00\xff\r\n--b0und4",
+            ),
+            (_disposition("inline", "logo.png") + "\r\nContent-Type: image/png", b"\x89PNG\r\n"),
+        ]
+    )
+    mp("anymail with files", anymail_files)
+    mp("empty body", b"")
+    mp("closing delimiter only", b"--b0und4ry--\r\n")
+    mp("closing delimiter without crlf", b"--b0und4ry--")
+    mp("epilogue ignored", recorder + b"garbage\r\n--b0und4ry\r\nX: y\r\n")
+    mp("leading crlf", b"\r\n" + recorder)
+    mp("leading lf and text without dash", b"\nignored text\r\n" + recorder)
+    mp("leading crlf, dash too early", b"\r\n-x" + recorder)
+    mp("leading cr and lf mixed", b"\r\n\n\r" + recorder)
+    mp("leading crlf only", b"\r\n\r\n")
+    mp("leading crlf and text, no dash", b"\r\ntext")
+    mp("preamble text", b"preamble\r\n" + recorder)
+    mp("no leading dash at all", b"\r\n\r\n")
+    mp("wrong boundary", recorder.replace(b"b0und4ry", b"b0und4rx", 1))
+    mp("transport padding after boundary", recorder.replace(b"b0und4ry\r\n", b"b0und4ry \r\n", 1))
+    mp("cr without lf after boundary", recorder.replace(b"b0und4ry\r\n", b"b0und4ry\rx", 1))
+    mp("single dash after first boundary", b"--b0und4ry-x")
+    mp(
+        "delimiter look-alikes are data",
+        _multipart(
+            [
+                (
+                    _disposition("text"),
+                    "a\r\n--b0und4ryX\r\n--b0und4ry-x\r\n--b0und4ry\rx\r\n--b0und4r\r\nz",
+                )
+            ]
+        ),
+    )
+    mp(
+        "delimiter look-alike before real one",
+        _multipart([(_disposition("text"), "a\r\n--b0und4ry\r\r\n--b0und4ry-\r\n--b0und4ry\rq")]),
+    )
+    mp("empty part data", _multipart([(_disposition("text"), "")]))
+    mp("binary part data", _multipart([(_disposition("text"), b"\x00\x01\r\n\r")]))
+    # A body cut at every position (PLAN.md 2.3 step 3): the completed parts
+    # are the form.
+    whole = _multipart(
+        [
+            (_disposition("from"), "a@b.de"),
+            (_disposition("attachment", "f.txt") + "\r\nContent-Type: text/plain", "xy"),
+        ]
+    )
+    for cut in range(len(whole)):
+        mp(f"truncated to {cut} bytes", whole[:cut])
+    mp("truncated inside the first boundary", b"--b0und")
+    mp("truncated after the first boundary", b"--b0und4ry")
+    mp("truncated after first boundary cr", b"--b0und4ry\r")
+    mp("truncated in header name", b"--b0und4ry\r\nContent-Dispo")
+    mp("truncated after header colon", b"--b0und4ry\r\nContent-Disposition:")
+    mp("truncated after header spaces", b"--b0und4ry\r\nContent-Disposition:   ")
+    mp("truncated header value", b'--b0und4ry\r\nContent-Disposition: form-data; name="a"')
+    mp("truncated after header cr", b'--b0und4ry\r\nContent-Disposition: form-data; name="a"\r')
+    mp("truncated before data", b'--b0und4ry\r\nContent-Disposition: form-data; name="a"\r\n\r\n')
+    mp(
+        "truncated header cr in second part",
+        _multipart([(_disposition("a"), "1")], tail=b"\r\nContent-Disposition: x\r"),
+    )
+    mp(
+        "missing name after truncation point",
+        _multipart([(_disposition("a"), "1")], tail=b"\r\nX: y\r\n\r\n"),
+    )
+    # Part headers.
+    mp("no content disposition", _multipart([("Content-Type: text/plain", "x")]))
+    mp("no headers at all", b"--b0und4ry\r\n\r\nx\r\n--b0und4ry--\r\n")
+    mp("disposition without parameters", _multipart([("Content-Disposition: form-data", "x")]))
+    mp("empty disposition", _multipart([("Content-Disposition:", "x")]))
+    mp("name without value", _multipart([("Content-Disposition: form-data; name", "x")]))
+    mp("unquoted name", _multipart([("Content-Disposition: form-data; name=to", "x@y.de")]))
+    mp(
+        "upper-case keys",
+        _multipart([('content-disposition: form-data; NAME="to"; FileName="F"', "x")]),
+    )
+    mp(
+        "spaces around equals",
+        _multipart([('Content-Disposition: form-data ;  name  =  "to" ', "x")]),
+    )
+    mp(
+        "quoted semicolon in name",
+        _multipart([('Content-Disposition: form-data; name="a;b"', "x")]),
+    )
+    mp(
+        "escaped quotes in name",
+        _multipart([('Content-Disposition: form-data; name="a\\"b\\\\c"', "x")]),
+    )
+    mp(
+        "unbalanced quote",
+        _multipart([('Content-Disposition: form-data; name="a; filename=x', "x")]),
+    )
+    mp("extended name only", _multipart([("Content-Disposition: form-data; name*=utf-8''to", "x")]))
+    mp(
+        "extended filename ignored",
+        _multipart(
+            [("Content-Disposition: form-data; name=\"attachment\"; filename*=utf-8''a.txt", "x")]
+        ),
+    )
+    mp("empty filename is a file", _multipart([(_disposition("attachment", ""), "x")]))
+    mp("ie6 drive path", _multipart([(_disposition("attachment", "C:\\dir\\a.txt"), "x")]))
+    mp("ie6 unc path", _multipart([(_disposition("attachment", "\\\\server\\share\\a.txt"), "x")]))
+    mp("backslash in plain filename", _multipart([(_disposition("attachment", "a\\b.txt"), "x")]))
+    mp(
+        "last disposition wins",
+        _multipart([(_disposition("to") + "\r\n" + _disposition("from"), "x@y.de")]),
+    )
+    mp(
+        "first content type wins",
+        _multipart(
+            [
+                (
+                    _disposition("attachment", "a")
+                    + "\r\nContent-Type: text/plain\r\ncontent-type: image/png",
+                    "x",
+                )
+            ]
+        ),
+    )
+    mp(
+        "empty content type",
+        _multipart([(_disposition("attachment", "a") + "\r\nContent-Type:", "x")]),
+    )
+    mp(
+        "content type with parameters",
+        _multipart(
+            [
+                (
+                    _disposition("attachment", "a")
+                    + "\r\nContent-Type: Text/HTML; charset=latin-1",
+                    "x",
+                )
+            ]
+        ),
+    )
+    mp(
+        "header value keeps tabs and trailing space",
+        _multipart([(_disposition("attachment", "a") + "\r\nContent-Type:\t text/plain \t", "x")]),
+    )
+    mp("header name with space", _multipart([('Content Disposition: form-data; name="a"', "x")]))
+    mp("header without colon", _multipart([(_disposition("a") + "\r\nNoColon", "x")]))
+    mp("header with empty name", _multipart([(_disposition("a") + "\r\n: x", "x")]))
+    mp("header name with non-token", _multipart([(_disposition("a") + "\r\nX(y): z", "x")]))
+    mp(
+        "header line ending in lf only",
+        b'--b0und4ry\r\nContent-Disposition: form-data; name="a"\n\r\nx\r\n--b0und4ry--\r\n',
+    )
+    mp(
+        "cr without lf after header",
+        b'--b0und4ry\r\nContent-Disposition: form-data; name="a"\rx\r\n\r\nx\r\n--b0und4ry--\r\n',
+    )
+    mp(
+        "cr without lf ending headers",
+        b'--b0und4ry\r\nContent-Disposition: form-data; name="a"\r\n\rx\r\n--b0und4ry--\r\n',
+    )
+    mp(
+        "lf inside header value",
+        b'--b0und4ry\r\nContent-Disposition: form-data; name="a"\nX: y\r\n\r\n'
+        b"x\r\n--b0und4ry--\r\n",
+    )
+    eight = "\r\n".join([_disposition("a")] + [f"X-{n}: y" for n in range(7)])
+    mp("eight headers", _multipart([(eight, "x")]))
+    mp("nine headers", _multipart([(eight + "\r\nX-8: y", "x")]))
+    filler = 4224 - len(_disposition("a") + "; x=")
+    mp("header at size limit", _multipart([(_disposition("a") + "; x=" + "y" * filler, "x")]))
+    mp(
+        "header over size limit",
+        _multipart([(_disposition("a") + "; x=" + "y" * (filler + 1), "x")]),
+    )
+    mp("header name over size limit", b"--b0und4ry\r\n" + b"X" * 4300)
+    mp("header spaces over size limit", b"--b0und4ry\r\nX:" + b" " * 4300)
+    # Charsets.
+    latin = _multipart(
+        [(_disposition("subject"), "Grüße".encode("latin-1")), (_disposition("text"), "Grüße")]
+    )
+    for charset in [
+        "utf-8",
+        "UTF-8",
+        "utf8",
+        "utf_8",
+        "latin-1",
+        "Latin1",
+        "iso-8859-1",
+        "ISO8859-1",
+        "iso_8859_1",
+        "l1",
+        "ascii",
+        "us-ascii",
+        '"utf-8"',
+        "cp1252",
+        "utf-16",
+        "",
+        "iso-8859-15",
+        "koi8-r",
+        "unknown-codec",
+    ]:
+        mp(f"charset {charset}", latin, content_type=MULTIPART + f"; charset={charset}".encode())
+    mp("charset key upper case", latin, content_type=MULTIPART + b"; CHARSET=latin-1")
+    mp(
+        "non-utf-8 name and filename",
+        _multipart([('Content-Disposition: form-data; name="t\xe4"; filename="\xe4.txt"', "x")]),
+    )
+    mp(
+        "utf-8 name and filename",
+        _multipart([(_disposition("tö", "ä.txt").encode().decode("latin-1"), "x")]),
+    )
+    # Content type of the request.
+    mp("no boundary", recorder, content_type=b"multipart/form-data")
+    mp("no boundary with parameter", recorder, content_type=b"multipart/form-data; charset=utf-8")
+    mp(
+        "empty boundary",
+        b"--\r\n" + _disposition("a").encode() + b"\r\n\r\nx\r\n----\r\n",
+        content_type=b"multipart/form-data; boundary=",
+    )
+    mp(
+        "quoted boundary",
+        recorder,
+        content_type=f'multipart/form-data; boundary="{BOUNDARY}"'.encode(),
+    )
+    mp(
+        "boundary key upper case",
+        recorder,
+        content_type=f"multipart/form-data; BOUNDARY={BOUNDARY}".encode(),
+    )
+    mp(
+        "last boundary wins",
+        recorder,
+        content_type=f"multipart/form-data; boundary=zzz; boundary={BOUNDARY}".encode(),
+    )
+    b256 = "b" * 256
+    mp(
+        "boundary of 256",
+        _multipart([(_disposition("a"), "x")], boundary=b256),
+        content_type=f"multipart/form-data; boundary={b256}".encode(),
+    )
+    mp(
+        "boundary of 257",
+        _multipart([(_disposition("a"), "x")], boundary=b256 + "b"),
+        content_type=f"multipart/form-data; boundary={b256}b".encode(),
+    )
+    mp(
+        "upper-case type with parameter",
+        recorder,
+        content_type=f"Multipart/Form-Data; boundary={BOUNDARY}".encode(),
+    )
+    mp(
+        "padded type with parameter",
+        recorder,
+        content_type=f"  multipart/form-data ; boundary={BOUNDARY}".encode(),
+    )
+    mp("upper-case type without parameter", recorder, content_type=b"MULTIPART/FORM-DATA")
+    # Limits.
+    files = [(_disposition("attachment", "a"), "1"), (_disposition("inline", "b"), "2")]
+    mp("files at limit", _multipart(files[:1]), limits=tight)
+    mp("files over limit", _multipart(files), limits=tight)
+    fields3 = [(_disposition(n), "1") for n in "abc"]
+    mp("fields at limit", _multipart(fields3), limits=tight)
+    mp("fields over limit", _multipart([*fields3, (_disposition("d"), "1")]), limits=tight)
+    mp("files do not count as fields", _multipart(fields3 + files[:1]), limits=tight)
+    mp("part at size limit", _multipart([(_disposition("a"), "12345678")]), limits=tight)
+    mp("part over size limit", _multipart([(_disposition("a"), "123456789")]), limits=tight)
+    mp(
+        "file has no part size limit",
+        _multipart([(_disposition("attachment", "a"), "123456789")]),
+        limits=tight,
+    )
+    mp("missing name before file limit", _multipart([*files[:1], ("X: y", "1")]), limits=tight)
+    mp(
+        "file limit before framing error",
+        _multipart(files) + b"--b0und4ry\r\nbad header\r\n",
+        limits=tight,
+    )
+    mp(
+        "framing error before file limit",
+        b"--b0und4ry\r\nbad header\r\n" + _multipart(files),
+        limits=tight,
+    )
+    mp(
+        "empty field, zero size",
+        _multipart([(_disposition("a"), "")]),
+        limits={**tight, "max_part_size": 0},
+    )
+    return cases
+
+
+async def _starlette_form(
+    content_type: bytes | None, chunks: list[bytes], limits: dict[str, int]
+) -> dict[str, Any]:
+    """``request.form(...)`` as ``post_messages`` calls it, with its mapping
+    of parser errors to 413 (limit markers) and 400; the body arrives in
+    ``chunks``, as uvicorn delivers what each socket read returned."""
+    headers = [] if content_type is None else [(b"content-type", content_type)]
+    pending = list(chunks) or [b""]
+
+    async def receive() -> dict[str, Any]:
+        if not pending:
+            return {"type": "http.disconnect"}
+        chunk = pending.pop(0)
+        return {"type": "http.request", "body": chunk, "more_body": bool(pending)}
+
+    scope = {"type": "http", "method": "POST", "path": "/", "headers": headers, "app": None}
+    request = Request(scope, receive)
+    try:
+        form = await request.form(**limits)
+    except Exception as exc:  # mirrors routes.py
+        detail = getattr(exc, "detail", "") or str(exc)
+        too_large = any(marker in detail for marker in routes._MULTIPART_LIMIT_MARKERS)
+        return {"status": 413 if too_large else 400}
+    items: list[Any] = []
+    for name, value in form.multi_items():
+        if isinstance(value, str):
+            items.append([name, {"text": value}])
+        else:
+            data = await value.read()
+            file = {
+                "filename": value.filename,
+                "content_type": value.content_type,
+                "data": data.decode("latin-1"),
+            }
+            items.append([name, {"file": file}])
+    await form.close()
+    return {"items": items}
+
+
+RUST_CHARSETS = {
+    "utf-8",
+    "utf8",
+    "utf_8",
+    "latin-1",
+    "latin1",
+    "iso-8859-1",
+    "iso8859-1",
+    "iso_8859_1",
+    "l1",
+    "ascii",
+    "us-ascii",
+}
+
+
+def _chunkings(body: bytes) -> list[list[bytes]]:
+    """The body in one piece, split after its first byte, in halves, and in
+    pieces of 3 and of 1 byte."""
+
+    def pieces(size: int) -> list[bytes]:
+        return [body[i : i + size] for i in range(0, len(body), size)]
+
+    half = len(body) // 2
+    return [[body], [body[:1], body[1:]], [body[:half], body[half:]], pieces(3), pieces(1)]
+
+
+def _rust_form(
+    content_type: bytes | None, python: list[dict[str, Any]]
+) -> tuple[dict[str, Any], str | None]:
+    """``form::encoding`` + ``form::parse`` and the divergence label: a
+    declared multipart charset outside the implemented set is a 400 (D-9); a
+    body Python decides differently depending on how it is chunked is a 400,
+    a decision Python also makes (D-20); otherwise Python's result."""
+    essence, params = parse_options_header(content_type)
+    charset = params.get(b"charset")
+    if (
+        essence == b"multipart/form-data"
+        and charset is not None
+        and charset.decode("latin-1").lower() not in RUST_CHARSETS
+    ):
+        return {"status": 400}, "D-9"
+    if any(result != python[0] for result in python):
+        assert {"status": 400} in python, python
+        return {"status": 400}, "D-20"
+    return python[0], None
+
+
+def build_form_decoding() -> dict[str, Any]:
+    cases = []
+    parser_log = logging.getLogger("python_multipart")
+    level = parser_log.level
+    parser_log.setLevel(logging.CRITICAL)  # the parser warns about each refused body
+    try:
+        with warnings.catch_warnings():
+            # Starlette never closes the spooled file of a part that a
+            # truncated body leaves unfinished; collect those here.
+            warnings.simplefilter("ignore", ResourceWarning)
+            results = [
+                (
+                    name,
+                    content_type,
+                    body,
+                    limits,
+                    [
+                        asyncio.run(_starlette_form(content_type, chunks, limits))
+                        for chunks in _chunkings(body)
+                    ],
+                )
+                for name, content_type, body, limits in _form_cases()
+            ]
+            gc.collect()
+    finally:
+        parser_log.setLevel(level)
+    for name, content_type, body, limits, python in results:
+        expected, divergence = _rust_form(content_type, python)
+        case: dict[str, Any] = {
+            "name": name,
+            "content_type": None if content_type is None else content_type.decode("latin-1"),
+            "body": body.decode("latin-1"),
+            "limits": limits,
+            "expected": expected,
+        }
+        if divergence is not None and expected != python[0]:
+            case["python"] = python[0]
+            case["divergence"] = divergence
+        cases.append(case)
+    return {
+        "source": (
+            "starlette Request.form (FormParser, MultiPartParser over python-multipart) as "
+            "mailgun_relay.routes.post_messages calls it, the body delivered in one piece and "
+            "in several chunkings; python: the one-piece result; bytes as their latin-1 decoding"
+        ),
+        "cases": cases,
+    }
+
+
 # ------------------------------------------------------------------ driver
 
 GENERATORS: dict[str, Callable[[], Mapping[str, Any]]] = {
@@ -1720,6 +2277,7 @@ GENERATORS: dict[str, Callable[[], Mapping[str, Any]]] = {
     "config_env.json": build_config_env,
     "config_secrets.json": build_config_secrets,
     "domain.json": build_domain,
+    "form_decoding.json": build_form_decoding,
     "headers.json": build_headers,
     "policy.json": build_policy,
 }

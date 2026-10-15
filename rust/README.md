@@ -8,7 +8,7 @@ counterpart.
 
 **Status: slice S1 of PLAN.md section 6 is done** (merged as S1a, S1c and
 S1d); S2 is done (authentication, addresses, the token policy) and S3a
-adds subject and header validation; none of it is wired to a route yet. The
+adds subject and header validation, S3b form parsing; none of it is wired to a route yet. The
 binary
 loads and validates the configuration, answers `GET /health`, the
 404/405/307 fallbacks and the 413 body-limit layer, and logs the startup

@@ -4,6 +4,24 @@ All notable changes to mailgun-relay are documented here.
 
 ## Unreleased
 
+### Rust port: form parsing (slice S3b)
+
+- `rust/src/form.rs` parses request bodies as the Python service does:
+  urlencoded with Starlette's decoding (latin-1, then `unquote_plus`) and
+  multipart with python-multipart's framing (strict first boundary, token
+  header names, at most 8 headers of 4,224 bytes per part, a truncated body
+  keeps the completed parts), the request charset, and the 413 limits for
+  files, fields and part size. It is its own parser rather than `multer`,
+  which would accept bodies Python refuses (`rust/PLAN.md` section 5).
+  Where Python's decision depends on how the body arrives in chunks (bytes
+  other than CR/LF before the first boundary; a chunked body over the size
+  limit that is also malformed), Rust refuses (D-20). Not wired to a route
+  yet (S3c).
+- New fixture from the Python oracle: `form_decoding.json` (the real
+  `request.form(...)` with the route's 400/413 mapping on 350 bodies, each
+  delivered in one piece and in four chunkings, among them a body cut at
+  every byte).
+
 ### Rust port: subject and header validation (slice S3a)
 
 - `rust/src/headers.rs` validates the subject and the `h:*` headers as the

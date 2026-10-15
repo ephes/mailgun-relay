@@ -1,0 +1,6611 @@
+{
+ "cases": [
+  {
+   "body": "from=Homepage+%3Cjochen-homepage%40wersdoerfer.de%3E&to=admin%40wersdoerfer.de&to=J%C3%B6rg+%C3%96+%3Cjoerg%40example.org%3E&subject=%5BDjango%5D+ERROR%3A+Fehler+bei+%2F%C3%BCber%2F&h%3AAuto-Submitted=auto-generated&text=Traceback+%28most+recent+call+last%29%3A%0A++File+%22x%22%2C+line+1%0A&html=%3Cp%3EGr%C3%BC%C3%9Fe+%26amp%3B+mehr%3C%2Fp%3E",
+   "content_type": "application/x-www-form-urlencoded",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "Homepage <jochen-homepage@wersdoerfer.de>"
+      }
+     ],
+     [
+      "to",
+      {
+       "text": "admin@wersdoerfer.de"
+      }
+     ],
+     [
+      "to",
+      {
+       "text": "J\u00f6rg \u00d6 <joerg@example.org>"
+      }
+     ],
+     [
+      "subject",
+      {
+       "text": "[Django] ERROR: Fehler bei /\u00fcber/"
+      }
+     ],
+     [
+      "h:Auto-Submitted",
+      {
+       "text": "auto-generated"
+      }
+     ],
+     [
+      "text",
+      {
+       "text": "Traceback (most recent call last):\n  File \"x\", line 1\n"
+      }
+     ],
+     [
+      "html",
+      {
+       "text": "<p>Gr\u00fc\u00dfe &amp; mehr</p>"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "urlencoded anymail"
+  },
+  {
+   "body": "",
+   "content_type": "application/x-www-form-urlencoded",
+   "expected": {
+    "items": []
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "urlencoded empty body"
+  },
+  {
+   "body": "&&&",
+   "content_type": "application/x-www-form-urlencoded",
+   "expected": {
+    "items": []
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "urlencoded separators only"
+  },
+  {
+   "body": "a",
+   "content_type": "application/x-www-form-urlencoded",
+   "expected": {
+    "items": [
+     [
+      "a",
+      {
+       "text": ""
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "urlencoded name only"
+  },
+  {
+   "body": "a=",
+   "content_type": "application/x-www-form-urlencoded",
+   "expected": {
+    "items": [
+     [
+      "a",
+      {
+       "text": ""
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "urlencoded empty value"
+  },
+  {
+   "body": "=b",
+   "content_type": "application/x-www-form-urlencoded",
+   "expected": {
+    "items": [
+     [
+      "",
+      {
+       "text": "b"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "urlencoded empty name"
+  },
+  {
+   "body": "=",
+   "content_type": "application/x-www-form-urlencoded",
+   "expected": {
+    "items": [
+     [
+      "",
+      {
+       "text": ""
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "urlencoded equals only"
+  },
+  {
+   "body": "a=b=c",
+   "content_type": "application/x-www-form-urlencoded",
+   "expected": {
+    "items": [
+     [
+      "a",
+      {
+       "text": "b=c"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "urlencoded value with equals"
+  },
+  {
+   "body": "&a=1&&b=2&",
+   "content_type": "application/x-www-form-urlencoded",
+   "expected": {
+    "items": [
+     [
+      "a",
+      {
+       "text": "1"
+      }
+     ],
+     [
+      "b",
+      {
+       "text": "2"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "urlencoded stray separators"
+  },
+  {
+   "body": "a=1;b=2",
+   "content_type": "application/x-www-form-urlencoded",
+   "expected": {
+    "items": [
+     [
+      "a",
+      {
+       "text": "1;b=2"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "urlencoded semicolon is data"
+  },
+  {
+   "body": "a+b=c+d%20e",
+   "content_type": "application/x-www-form-urlencoded",
+   "expected": {
+    "items": [
+     [
+      "a b",
+      {
+       "text": "c d e"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "urlencoded plus and space"
+  },
+  {
+   "body": "a=%2B",
+   "content_type": "application/x-www-form-urlencoded",
+   "expected": {
+    "items": [
+     [
+      "a",
+      {
+       "text": "+"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "urlencoded plus escaped"
+  },
+  {
+   "body": "a=%zz%4%%41",
+   "content_type": "application/x-www-form-urlencoded",
+   "expected": {
+    "items": [
+     [
+      "a",
+      {
+       "text": "%zz%4%A"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "urlencoded bad escapes"
+  },
+  {
+   "body": "a=%C3%A4%E2%82%AC%F0%9F%98%80",
+   "content_type": "application/x-www-form-urlencoded",
+   "expected": {
+    "items": [
+     [
+      "a",
+      {
+       "text": "\u00e4\u20ac\ud83d\ude00"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "urlencoded utf-8 escapes"
+  },
+  {
+   "body": "a=%c3%a4",
+   "content_type": "application/x-www-form-urlencoded",
+   "expected": {
+    "items": [
+     [
+      "a",
+      {
+       "text": "\u00e4"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "urlencoded lower-case escapes"
+  },
+  {
+   "body": "a=%C3&b=%E2%82",
+   "content_type": "application/x-www-form-urlencoded",
+   "expected": {
+    "items": [
+     [
+      "a",
+      {
+       "text": "\ufffd"
+      }
+     ],
+     [
+      "b",
+      {
+       "text": "\ufffd"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "urlencoded truncated utf-8"
+  },
+  {
+   "body": "a=%FF%FE%80%C0%AF",
+   "content_type": "application/x-www-form-urlencoded",
+   "expected": {
+    "items": [
+     [
+      "a",
+      {
+       "text": "\ufffd\ufffd\ufffd\ufffd\ufffd"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "urlencoded invalid utf-8"
+  },
+  {
+   "body": "a=%F0%80%80%ED%A0%80",
+   "content_type": "application/x-www-form-urlencoded",
+   "expected": {
+    "items": [
+     [
+      "a",
+      {
+       "text": "\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "urlencoded overlong and surrogate"
+  },
+  {
+   "body": "a=j\u00c3\u00b6rg",
+   "content_type": "application/x-www-form-urlencoded",
+   "expected": {
+    "items": [
+     [
+      "a",
+      {
+       "text": "j\u00c3\u00b6rg"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "urlencoded raw utf-8 bytes"
+  },
+  {
+   "body": "a=j\u00f6rg",
+   "content_type": "application/x-www-form-urlencoded",
+   "expected": {
+    "items": [
+     [
+      "a",
+      {
+       "text": "j\u00f6rg"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "urlencoded raw latin-1 byte"
+  },
+  {
+   "body": "a=%C3\u00e4%A4",
+   "content_type": "application/x-www-form-urlencoded",
+   "expected": {
+    "items": [
+     [
+      "a",
+      {
+       "text": "\ufffd\u00e4\ufffd"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "urlencoded raw byte splits escapes"
+  },
+  {
+   "body": "a=\u00c3%A4",
+   "content_type": "application/x-www-form-urlencoded",
+   "expected": {
+    "items": [
+     [
+      "a",
+      {
+       "text": "\u00c3\ufffd"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "urlencoded raw byte next to escape"
+  },
+  {
+   "body": "h%3AReply-To=x&%66rom=y",
+   "content_type": "application/x-www-form-urlencoded",
+   "expected": {
+    "items": [
+     [
+      "h:Reply-To",
+      {
+       "text": "x"
+      }
+     ],
+     [
+      "from",
+      {
+       "text": "y"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "urlencoded escaped name"
+  },
+  {
+   "body": "subject=a%0D%0Ab%00",
+   "content_type": "application/x-www-form-urlencoded",
+   "expected": {
+    "items": [
+     [
+      "subject",
+      {
+       "text": "a\r\nb\u0000"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "urlencoded control escapes"
+  },
+  {
+   "body": "a&b&c",
+   "content_type": "application/x-www-form-urlencoded",
+   "expected": {
+    "items": [
+     [
+      "a",
+      {
+       "text": ""
+      }
+     ],
+     [
+      "b",
+      {
+       "text": ""
+      }
+     ],
+     [
+      "c",
+      {
+       "text": ""
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 3,
+    "max_files": 1,
+    "max_part_size": 8
+   },
+   "name": "urlencoded fields at limit"
+  },
+  {
+   "body": "a&b&c&d",
+   "content_type": "application/x-www-form-urlencoded",
+   "expected": {
+    "status": 413
+   },
+   "limits": {
+    "max_fields": 3,
+    "max_files": 1,
+    "max_part_size": 8
+   },
+   "name": "urlencoded fields over limit"
+  },
+  {
+   "body": "a&&b&&c&&",
+   "content_type": "application/x-www-form-urlencoded",
+   "expected": {
+    "items": [
+     [
+      "a",
+      {
+       "text": ""
+      }
+     ],
+     [
+      "b",
+      {
+       "text": ""
+      }
+     ],
+     [
+      "c",
+      {
+       "text": ""
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 3,
+    "max_files": 1,
+    "max_part_size": 8
+   },
+   "name": "urlencoded empty fields do not count"
+  },
+  {
+   "body": "abc=12345",
+   "content_type": "application/x-www-form-urlencoded",
+   "expected": {
+    "items": [
+     [
+      "abc",
+      {
+       "text": "12345"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 3,
+    "max_files": 1,
+    "max_part_size": 8
+   },
+   "name": "urlencoded field at size limit"
+  },
+  {
+   "body": "abc=123456",
+   "content_type": "application/x-www-form-urlencoded",
+   "expected": {
+    "status": 413
+   },
+   "limits": {
+    "max_fields": 3,
+    "max_files": 1,
+    "max_part_size": 8
+   },
+   "name": "urlencoded field over size limit"
+  },
+  {
+   "body": "abcdefghi",
+   "content_type": "application/x-www-form-urlencoded",
+   "expected": {
+    "status": 413
+   },
+   "limits": {
+    "max_fields": 3,
+    "max_files": 1,
+    "max_part_size": 8
+   },
+   "name": "urlencoded name over size limit"
+  },
+  {
+   "body": "=",
+   "content_type": "application/x-www-form-urlencoded",
+   "expected": {
+    "items": [
+     [
+      "",
+      {
+       "text": ""
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 3,
+    "max_files": 1,
+    "max_part_size": 0
+   },
+   "name": "urlencoded empty name and value, zero size"
+  },
+  {
+   "body": "a=1",
+   "content_type": "application/x-www-form-urlencoded; charset=utf-8",
+   "expected": {
+    "items": [
+     [
+      "a",
+      {
+       "text": "1"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "urlencoded with charset"
+  },
+  {
+   "body": "a=1",
+   "content_type": "APPLICATION/X-WWW-FORM-URLENCODED",
+   "expected": {
+    "items": [
+     [
+      "a",
+      {
+       "text": "1"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "urlencoded upper case"
+  },
+  {
+   "body": "a=1",
+   "content_type": "  application/x-www-form-urlencoded\t",
+   "expected": {
+    "items": [
+     [
+      "a",
+      {
+       "text": "1"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "urlencoded padded"
+  },
+  {
+   "body": "a=1",
+   "content_type": "Application/x-www-form-urlencoded; charset=utf-8",
+   "expected": {
+    "items": []
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "urlencoded upper case with parameter"
+  },
+  {
+   "body": "a=1",
+   "content_type": "application/x-www-form-urlencoded;",
+   "expected": {
+    "items": [
+     [
+      "a",
+      {
+       "text": "1"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "urlencoded trailing semicolon"
+  },
+  {
+   "body": "a=1",
+   "content_type": null,
+   "expected": {
+    "items": []
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "no content type"
+  },
+  {
+   "body": "a=1",
+   "content_type": "",
+   "expected": {
+    "items": []
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "empty content type"
+  },
+  {
+   "body": "a=1",
+   "content_type": "text/plain",
+   "expected": {
+    "items": []
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "text/plain"
+  },
+  {
+   "body": "{\"a\": 1}",
+   "content_type": "application/json",
+   "expected": {
+    "items": []
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "json"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\nRecorder <recorder@wersdoerfer.de>\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"to\"\r\n\r\njochen@wersdoerfer.de\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"subject\"\r\n\r\nDein Anmeldelink\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"text\"\r\n\r\nHallo,\n\nhier ist dein Link: https://example.test/x?y=1&z=2\n\r\n--b0und4ry--\r\n",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "Recorder <recorder@wersdoerfer.de>"
+      }
+     ],
+     [
+      "to",
+      {
+       "text": "jochen@wersdoerfer.de"
+      }
+     ],
+     [
+      "subject",
+      {
+       "text": "Dein Anmeldelink"
+      }
+     ],
+     [
+      "text",
+      {
+       "text": "Hallo,\n\nhier ist dein Link: https://example.test/x?y=1&z=2\n"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart recorder"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"text\"\r\n\r\nHallo,\n\nhier ist dein Link: https://example.test/x?y=1&z=2\n\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"subject\"\r\n\r\nDein Anmeldelink\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"to\"\r\n\r\njochen@wersdoerfer.de\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\nRecorder <recorder@wersdoerfer.de>\r\n--b0und4ry--\r\n",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "text",
+      {
+       "text": "Hallo,\n\nhier ist dein Link: https://example.test/x?y=1&z=2\n"
+      }
+     ],
+     [
+      "subject",
+      {
+       "text": "Dein Anmeldelink"
+      }
+     ],
+     [
+      "to",
+      {
+       "text": "jochen@wersdoerfer.de"
+      }
+     ],
+     [
+      "from",
+      {
+       "text": "Recorder <recorder@wersdoerfer.de>"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart recorder reversed"
+  },
+  {
+   "body": "--3d6b6a416f9b5d7f2b8e0c4a1f2e9d8c7b6a5f4e3d2c1b0a9f8e7d6c5b4a\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\nRecorder <recorder@wersdoerfer.de>\r\n--3d6b6a416f9b5d7f2b8e0c4a1f2e9d8c7b6a5f4e3d2c1b0a9f8e7d6c5b4a\r\nContent-Disposition: form-data; name=\"to\"\r\n\r\njochen@wersdoerfer.de\r\n--3d6b6a416f9b5d7f2b8e0c4a1f2e9d8c7b6a5f4e3d2c1b0a9f8e7d6c5b4a\r\nContent-Disposition: form-data; name=\"subject\"\r\n\r\nDein Anmeldelink\r\n--3d6b6a416f9b5d7f2b8e0c4a1f2e9d8c7b6a5f4e3d2c1b0a9f8e7d6c5b4a\r\nContent-Disposition: form-data; name=\"text\"\r\n\r\nHallo,\n\nhier ist dein Link: https://example.test/x?y=1&z=2\n\r\n--3d6b6a416f9b5d7f2b8e0c4a1f2e9d8c7b6a5f4e3d2c1b0a9f8e7d6c5b4a--\r\n",
+   "content_type": "multipart/form-data; boundary=3d6b6a416f9b5d7f2b8e0c4a1f2e9d8c7b6a5f4e3d2c1b0a9f8e7d6c5b4a",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "Recorder <recorder@wersdoerfer.de>"
+      }
+     ],
+     [
+      "to",
+      {
+       "text": "jochen@wersdoerfer.de"
+      }
+     ],
+     [
+      "subject",
+      {
+       "text": "Dein Anmeldelink"
+      }
+     ],
+     [
+      "text",
+      {
+       "text": "Hallo,\n\nhier ist dein Link: https://example.test/x?y=1&z=2\n"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart go boundary"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\nHomepage <jochen-homepage@wersdoerfer.de>\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"to\"\r\n\r\nadmin@wersdoerfer.de\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"subject\"\r\n\r\nBericht\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"text\"\r\n\r\nAnbei.\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"attachment\"; filename=\"bericht.pdf\"\r\nContent-Type: application/pdf\r\n\r\n%PDF-1.4\r\n\u0000\u00ff\r\n--b0und4\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"inline\"; filename=\"logo.png\"\r\nContent-Type: image/png\r\n\r\n\u0089PNG\r\n\r\n--b0und4ry--\r\n",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "Homepage <jochen-homepage@wersdoerfer.de>"
+      }
+     ],
+     [
+      "to",
+      {
+       "text": "admin@wersdoerfer.de"
+      }
+     ],
+     [
+      "subject",
+      {
+       "text": "Bericht"
+      }
+     ],
+     [
+      "text",
+      {
+       "text": "Anbei."
+      }
+     ],
+     [
+      "attachment",
+      {
+       "file": {
+        "content_type": "application/pdf",
+        "data": "%PDF-1.4\r\n\u0000\u00ff\r\n--b0und4",
+        "filename": "bericht.pdf"
+       }
+      }
+     ],
+     [
+      "inline",
+      {
+       "file": {
+        "content_type": "image/png",
+        "data": "\u0089PNG\r\n",
+        "filename": "logo.png"
+       }
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart anymail with files"
+  },
+  {
+   "body": "",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": []
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart empty body"
+  },
+  {
+   "body": "--b0und4ry--\r\n",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": []
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart closing delimiter only"
+  },
+  {
+   "body": "--b0und4ry--",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": []
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart closing delimiter without crlf"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\nRecorder <recorder@wersdoerfer.de>\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"to\"\r\n\r\njochen@wersdoerfer.de\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"subject\"\r\n\r\nDein Anmeldelink\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"text\"\r\n\r\nHallo,\n\nhier ist dein Link: https://example.test/x?y=1&z=2\n\r\n--b0und4ry--\r\ngarbage\r\n--b0und4ry\r\nX: y\r\n",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "Recorder <recorder@wersdoerfer.de>"
+      }
+     ],
+     [
+      "to",
+      {
+       "text": "jochen@wersdoerfer.de"
+      }
+     ],
+     [
+      "subject",
+      {
+       "text": "Dein Anmeldelink"
+      }
+     ],
+     [
+      "text",
+      {
+       "text": "Hallo,\n\nhier ist dein Link: https://example.test/x?y=1&z=2\n"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart epilogue ignored"
+  },
+  {
+   "body": "\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\nRecorder <recorder@wersdoerfer.de>\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"to\"\r\n\r\njochen@wersdoerfer.de\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"subject\"\r\n\r\nDein Anmeldelink\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"text\"\r\n\r\nHallo,\n\nhier ist dein Link: https://example.test/x?y=1&z=2\n\r\n--b0und4ry--\r\n",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "Recorder <recorder@wersdoerfer.de>"
+      }
+     ],
+     [
+      "to",
+      {
+       "text": "jochen@wersdoerfer.de"
+      }
+     ],
+     [
+      "subject",
+      {
+       "text": "Dein Anmeldelink"
+      }
+     ],
+     [
+      "text",
+      {
+       "text": "Hallo,\n\nhier ist dein Link: https://example.test/x?y=1&z=2\n"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart leading crlf"
+  },
+  {
+   "body": "\nignored text\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\nRecorder <recorder@wersdoerfer.de>\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"to\"\r\n\r\njochen@wersdoerfer.de\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"subject\"\r\n\r\nDein Anmeldelink\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"text\"\r\n\r\nHallo,\n\nhier ist dein Link: https://example.test/x?y=1&z=2\n\r\n--b0und4ry--\r\n",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "divergence": "D-20",
+   "expected": {
+    "status": 400
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart leading lf and text without dash",
+   "python": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "Recorder <recorder@wersdoerfer.de>"
+      }
+     ],
+     [
+      "to",
+      {
+       "text": "jochen@wersdoerfer.de"
+      }
+     ],
+     [
+      "subject",
+      {
+       "text": "Dein Anmeldelink"
+      }
+     ],
+     [
+      "text",
+      {
+       "text": "Hallo,\n\nhier ist dein Link: https://example.test/x?y=1&z=2\n"
+      }
+     ]
+    ]
+   }
+  },
+  {
+   "body": "\r\n-x--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\nRecorder <recorder@wersdoerfer.de>\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"to\"\r\n\r\njochen@wersdoerfer.de\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"subject\"\r\n\r\nDein Anmeldelink\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"text\"\r\n\r\nHallo,\n\nhier ist dein Link: https://example.test/x?y=1&z=2\n\r\n--b0und4ry--\r\n",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "status": 400
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart leading crlf, dash too early"
+  },
+  {
+   "body": "\r\n\n\r--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\nRecorder <recorder@wersdoerfer.de>\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"to\"\r\n\r\njochen@wersdoerfer.de\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"subject\"\r\n\r\nDein Anmeldelink\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"text\"\r\n\r\nHallo,\n\nhier ist dein Link: https://example.test/x?y=1&z=2\n\r\n--b0und4ry--\r\n",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "Recorder <recorder@wersdoerfer.de>"
+      }
+     ],
+     [
+      "to",
+      {
+       "text": "jochen@wersdoerfer.de"
+      }
+     ],
+     [
+      "subject",
+      {
+       "text": "Dein Anmeldelink"
+      }
+     ],
+     [
+      "text",
+      {
+       "text": "Hallo,\n\nhier ist dein Link: https://example.test/x?y=1&z=2\n"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart leading cr and lf mixed"
+  },
+  {
+   "body": "\r\n\r\n",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": []
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart leading crlf only"
+  },
+  {
+   "body": "\r\ntext",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "divergence": "D-20",
+   "expected": {
+    "status": 400
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart leading crlf and text, no dash",
+   "python": {
+    "items": []
+   }
+  },
+  {
+   "body": "preamble\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\nRecorder <recorder@wersdoerfer.de>\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"to\"\r\n\r\njochen@wersdoerfer.de\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"subject\"\r\n\r\nDein Anmeldelink\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"text\"\r\n\r\nHallo,\n\nhier ist dein Link: https://example.test/x?y=1&z=2\n\r\n--b0und4ry--\r\n",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "status": 400
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart preamble text"
+  },
+  {
+   "body": "\r\n\r\n",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": []
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart no leading dash at all"
+  },
+  {
+   "body": "--b0und4rx\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\nRecorder <recorder@wersdoerfer.de>\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"to\"\r\n\r\njochen@wersdoerfer.de\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"subject\"\r\n\r\nDein Anmeldelink\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"text\"\r\n\r\nHallo,\n\nhier ist dein Link: https://example.test/x?y=1&z=2\n\r\n--b0und4ry--\r\n",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "status": 400
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart wrong boundary"
+  },
+  {
+   "body": "--b0und4ry \r\nContent-Disposition: form-data; name=\"from\"\r\n\r\nRecorder <recorder@wersdoerfer.de>\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"to\"\r\n\r\njochen@wersdoerfer.de\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"subject\"\r\n\r\nDein Anmeldelink\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"text\"\r\n\r\nHallo,\n\nhier ist dein Link: https://example.test/x?y=1&z=2\n\r\n--b0und4ry--\r\n",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "status": 400
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart transport padding after boundary"
+  },
+  {
+   "body": "--b0und4ry\rxContent-Disposition: form-data; name=\"from\"\r\n\r\nRecorder <recorder@wersdoerfer.de>\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"to\"\r\n\r\njochen@wersdoerfer.de\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"subject\"\r\n\r\nDein Anmeldelink\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"text\"\r\n\r\nHallo,\n\nhier ist dein Link: https://example.test/x?y=1&z=2\n\r\n--b0und4ry--\r\n",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "status": 400
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart cr without lf after boundary"
+  },
+  {
+   "body": "--b0und4ry-x",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "status": 400
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart single dash after first boundary"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"text\"\r\n\r\na\r\n--b0und4ryX\r\n--b0und4ry-x\r\n--b0und4ry\rx\r\n--b0und4r\r\nz\r\n--b0und4ry--\r\n",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "text",
+      {
+       "text": "a\r\n--b0und4ryX\r\n--b0und4ry-x\r\n--b0und4ry\rx\r\n--b0und4r\r\nz"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart delimiter look-alikes are data"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"text\"\r\n\r\na\r\n--b0und4ry\r\r\n--b0und4ry-\r\n--b0und4ry\rq\r\n--b0und4ry--\r\n",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "text",
+      {
+       "text": "a\r\n--b0und4ry\r\r\n--b0und4ry-\r\n--b0und4ry\rq"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart delimiter look-alike before real one"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"text\"\r\n\r\n\r\n--b0und4ry--\r\n",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "text",
+      {
+       "text": ""
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart empty part data"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"text\"\r\n\r\n\u0000\u0001\r\n\r\r\n--b0und4ry--\r\n",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "text",
+      {
+       "text": "\u0000\u0001\r\n\r"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart binary part data"
+  },
+  {
+   "body": "",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": []
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 0 bytes"
+  },
+  {
+   "body": "-",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": []
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 1 bytes"
+  },
+  {
+   "body": "--",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": []
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 2 bytes"
+  },
+  {
+   "body": "--b",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": []
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 3 bytes"
+  },
+  {
+   "body": "--b0",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": []
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 4 bytes"
+  },
+  {
+   "body": "--b0u",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": []
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 5 bytes"
+  },
+  {
+   "body": "--b0un",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": []
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 6 bytes"
+  },
+  {
+   "body": "--b0und",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": []
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 7 bytes"
+  },
+  {
+   "body": "--b0und4",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": []
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 8 bytes"
+  },
+  {
+   "body": "--b0und4r",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": []
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 9 bytes"
+  },
+  {
+   "body": "--b0und4ry",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": []
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 10 bytes"
+  },
+  {
+   "body": "--b0und4ry\r",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": []
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 11 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\n",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": []
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 12 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nC",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": []
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 13 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nCo",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": []
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 14 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nCon",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": []
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 15 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nCont",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": []
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 16 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nConte",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": []
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 17 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nConten",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": []
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 18 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": []
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 19 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": []
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 20 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-D",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": []
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 21 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Di",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": []
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 22 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Dis",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": []
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 23 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disp",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": []
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 24 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Dispo",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": []
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 25 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Dispos",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": []
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 26 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposi",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": []
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 27 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposit",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": []
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 28 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Dispositi",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": []
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 29 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Dispositio",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": []
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 30 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": []
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 31 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition:",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": []
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 32 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: ",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": []
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 33 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: f",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": []
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 34 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: fo",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": []
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 35 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: for",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": []
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 36 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": []
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 37 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": []
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 38 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-d",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": []
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 39 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-da",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": []
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 40 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-dat",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": []
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 41 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": []
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 42 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data;",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": []
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 43 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; ",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": []
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 44 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; n",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": []
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 45 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; na",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": []
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 46 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; nam",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": []
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 47 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": []
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 48 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": []
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 49 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": []
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 50 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"f",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": []
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 51 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"fr",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": []
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 52 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"fro",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": []
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 53 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": []
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 54 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": []
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 55 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": []
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 56 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": []
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 57 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": []
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 58 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\n",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": []
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 59 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": []
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 60 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": []
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 61 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": []
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 62 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": []
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 63 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.d",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": []
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 64 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": []
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 65 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": []
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 66 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": []
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 67 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n-",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": []
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 68 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": []
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 69 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": []
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 70 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": []
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 71 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0u",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": []
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 72 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0un",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": []
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 73 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": []
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 74 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": []
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 75 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4r",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": []
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 76 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": []
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 77 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": []
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 78 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\n",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 79 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nC",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 80 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nCo",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 81 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nCon",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 82 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nCont",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 83 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nConte",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 84 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nConten",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 85 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nContent",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 86 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nContent-",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 87 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nContent-D",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 88 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nContent-Di",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 89 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nContent-Dis",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 90 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nContent-Disp",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 91 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nContent-Dispo",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 92 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nContent-Dispos",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 93 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nContent-Disposi",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 94 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nContent-Disposit",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 95 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nContent-Dispositi",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 96 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nContent-Dispositio",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 97 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nContent-Disposition",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 98 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nContent-Disposition:",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 99 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nContent-Disposition: ",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 100 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nContent-Disposition: f",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 101 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nContent-Disposition: fo",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 102 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nContent-Disposition: for",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 103 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nContent-Disposition: form",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 104 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nContent-Disposition: form-",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 105 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nContent-Disposition: form-d",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 106 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nContent-Disposition: form-da",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 107 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nContent-Disposition: form-dat",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 108 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nContent-Disposition: form-data",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 109 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nContent-Disposition: form-data;",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 110 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nContent-Disposition: form-data; ",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 111 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nContent-Disposition: form-data; n",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 112 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nContent-Disposition: form-data; na",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 113 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nContent-Disposition: form-data; nam",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 114 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nContent-Disposition: form-data; name",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 115 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nContent-Disposition: form-data; name=",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 116 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 117 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"a",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 118 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"at",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 119 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"att",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 120 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"atta",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 121 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"attac",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 122 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"attach",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 123 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"attachm",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 124 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"attachme",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 125 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"attachmen",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 126 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"attachment",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 127 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"attachment\"",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 128 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"attachment\";",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 129 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"attachment\"; ",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 130 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"attachment\"; f",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 131 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"attachment\"; fi",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 132 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"attachment\"; fil",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 133 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"attachment\"; file",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 134 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"attachment\"; filen",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 135 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"attachment\"; filena",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 136 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"attachment\"; filenam",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 137 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"attachment\"; filename",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 138 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"attachment\"; filename=",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 139 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"attachment\"; filename=\"",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 140 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"attachment\"; filename=\"f",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 141 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"attachment\"; filename=\"f.",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 142 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"attachment\"; filename=\"f.t",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 143 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"attachment\"; filename=\"f.tx",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 144 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"attachment\"; filename=\"f.txt",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 145 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"attachment\"; filename=\"f.txt\"",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 146 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"attachment\"; filename=\"f.txt\"\r",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 147 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"attachment\"; filename=\"f.txt\"\r\n",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 148 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"attachment\"; filename=\"f.txt\"\r\nC",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 149 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"attachment\"; filename=\"f.txt\"\r\nCo",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 150 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"attachment\"; filename=\"f.txt\"\r\nCon",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 151 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"attachment\"; filename=\"f.txt\"\r\nCont",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 152 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"attachment\"; filename=\"f.txt\"\r\nConte",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 153 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"attachment\"; filename=\"f.txt\"\r\nConten",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 154 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"attachment\"; filename=\"f.txt\"\r\nContent",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 155 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"attachment\"; filename=\"f.txt\"\r\nContent-",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 156 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"attachment\"; filename=\"f.txt\"\r\nContent-T",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 157 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"attachment\"; filename=\"f.txt\"\r\nContent-Ty",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 158 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"attachment\"; filename=\"f.txt\"\r\nContent-Typ",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 159 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"attachment\"; filename=\"f.txt\"\r\nContent-Type",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 160 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"attachment\"; filename=\"f.txt\"\r\nContent-Type:",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 161 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"attachment\"; filename=\"f.txt\"\r\nContent-Type: ",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 162 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"attachment\"; filename=\"f.txt\"\r\nContent-Type: t",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 163 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"attachment\"; filename=\"f.txt\"\r\nContent-Type: te",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 164 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"attachment\"; filename=\"f.txt\"\r\nContent-Type: tex",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 165 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"attachment\"; filename=\"f.txt\"\r\nContent-Type: text",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 166 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"attachment\"; filename=\"f.txt\"\r\nContent-Type: text/",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 167 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"attachment\"; filename=\"f.txt\"\r\nContent-Type: text/p",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 168 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"attachment\"; filename=\"f.txt\"\r\nContent-Type: text/pl",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 169 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"attachment\"; filename=\"f.txt\"\r\nContent-Type: text/pla",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 170 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"attachment\"; filename=\"f.txt\"\r\nContent-Type: text/plai",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 171 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"attachment\"; filename=\"f.txt\"\r\nContent-Type: text/plain",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 172 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"attachment\"; filename=\"f.txt\"\r\nContent-Type: text/plain\r",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 173 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"attachment\"; filename=\"f.txt\"\r\nContent-Type: text/plain\r\n",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 174 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"attachment\"; filename=\"f.txt\"\r\nContent-Type: text/plain\r\n\r",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 175 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"attachment\"; filename=\"f.txt\"\r\nContent-Type: text/plain\r\n\r\n",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 176 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"attachment\"; filename=\"f.txt\"\r\nContent-Type: text/plain\r\n\r\nx",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 177 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"attachment\"; filename=\"f.txt\"\r\nContent-Type: text/plain\r\n\r\nxy",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 178 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"attachment\"; filename=\"f.txt\"\r\nContent-Type: text/plain\r\n\r\nxy\r",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 179 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"attachment\"; filename=\"f.txt\"\r\nContent-Type: text/plain\r\n\r\nxy\r\n",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 180 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"attachment\"; filename=\"f.txt\"\r\nContent-Type: text/plain\r\n\r\nxy\r\n-",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 181 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"attachment\"; filename=\"f.txt\"\r\nContent-Type: text/plain\r\n\r\nxy\r\n--",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 182 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"attachment\"; filename=\"f.txt\"\r\nContent-Type: text/plain\r\n\r\nxy\r\n--b",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 183 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"attachment\"; filename=\"f.txt\"\r\nContent-Type: text/plain\r\n\r\nxy\r\n--b0",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 184 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"attachment\"; filename=\"f.txt\"\r\nContent-Type: text/plain\r\n\r\nxy\r\n--b0u",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 185 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"attachment\"; filename=\"f.txt\"\r\nContent-Type: text/plain\r\n\r\nxy\r\n--b0un",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 186 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"attachment\"; filename=\"f.txt\"\r\nContent-Type: text/plain\r\n\r\nxy\r\n--b0und",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 187 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"attachment\"; filename=\"f.txt\"\r\nContent-Type: text/plain\r\n\r\nxy\r\n--b0und4",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 188 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"attachment\"; filename=\"f.txt\"\r\nContent-Type: text/plain\r\n\r\nxy\r\n--b0und4r",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 189 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"attachment\"; filename=\"f.txt\"\r\nContent-Type: text/plain\r\n\r\nxy\r\n--b0und4ry",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 190 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"attachment\"; filename=\"f.txt\"\r\nContent-Type: text/plain\r\n\r\nxy\r\n--b0und4ry-",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 191 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"attachment\"; filename=\"f.txt\"\r\nContent-Type: text/plain\r\n\r\nxy\r\n--b0und4ry--",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ],
+     [
+      "attachment",
+      {
+       "file": {
+        "content_type": "text/plain",
+        "data": "xy",
+        "filename": "f.txt"
+       }
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 192 bytes"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\na@b.de\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"attachment\"; filename=\"f.txt\"\r\nContent-Type: text/plain\r\n\r\nxy\r\n--b0und4ry--\r",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "a@b.de"
+      }
+     ],
+     [
+      "attachment",
+      {
+       "file": {
+        "content_type": "text/plain",
+        "data": "xy",
+        "filename": "f.txt"
+       }
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated to 193 bytes"
+  },
+  {
+   "body": "--b0und",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": []
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated inside the first boundary"
+  },
+  {
+   "body": "--b0und4ry",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": []
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated after the first boundary"
+  },
+  {
+   "body": "--b0und4ry\r",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": []
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated after first boundary cr"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Dispo",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": []
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated in header name"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition:",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": []
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated after header colon"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition:   ",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": []
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated after header spaces"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"a\"",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": []
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated header value"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"a\"\r",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": []
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated after header cr"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"a\"\r\n\r\n",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": []
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated before data"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"a\"\r\n\r\n1\r\n--b0und4ry\r\nContent-Disposition: x\r",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "a",
+      {
+       "text": "1"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart truncated header cr in second part"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"a\"\r\n\r\n1\r\n--b0und4ry\r\nX: y\r\n\r\n",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "status": 400
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart missing name after truncation point"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Type: text/plain\r\n\r\nx\r\n--b0und4ry--\r\n",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "status": 400
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart no content disposition"
+  },
+  {
+   "body": "--b0und4ry\r\n\r\nx\r\n--b0und4ry--\r\n",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "status": 400
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart no headers at all"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data\r\n\r\nx\r\n--b0und4ry--\r\n",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "status": 400
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart disposition without parameters"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition:\r\n\r\nx\r\n--b0und4ry--\r\n",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "status": 400
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart empty disposition"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name\r\n\r\nx\r\n--b0und4ry--\r\n",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "",
+      {
+       "text": "x"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart name without value"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=to\r\n\r\nx@y.de\r\n--b0und4ry--\r\n",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "to",
+      {
+       "text": "x@y.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart unquoted name"
+  },
+  {
+   "body": "--b0und4ry\r\ncontent-disposition: form-data; NAME=\"to\"; FileName=\"F\"\r\n\r\nx\r\n--b0und4ry--\r\n",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "to",
+      {
+       "file": {
+        "content_type": null,
+        "data": "x",
+        "filename": "F"
+       }
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart upper-case keys"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data ;  name  =  \"to\" \r\n\r\nx\r\n--b0und4ry--\r\n",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "to",
+      {
+       "text": "x"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart spaces around equals"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"a;b\"\r\n\r\nx\r\n--b0und4ry--\r\n",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "a;b",
+      {
+       "text": "x"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart quoted semicolon in name"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"a\\\"b\\\\c\"\r\n\r\nx\r\n--b0und4ry--\r\n",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "a\"b\\c",
+      {
+       "text": "x"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart escaped quotes in name"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"a; filename=x\r\n\r\nx\r\n--b0und4ry--\r\n",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "\"a; filename=x",
+      {
+       "text": "x"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart unbalanced quote"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name*=utf-8''to\r\n\r\nx\r\n--b0und4ry--\r\n",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "status": 400
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart extended name only"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"attachment\"; filename*=utf-8''a.txt\r\n\r\nx\r\n--b0und4ry--\r\n",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "attachment",
+      {
+       "text": "x"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart extended filename ignored"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"attachment\"; filename=\"\"\r\n\r\nx\r\n--b0und4ry--\r\n",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "attachment",
+      {
+       "file": {
+        "content_type": null,
+        "data": "x",
+        "filename": ""
+       }
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart empty filename is a file"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"attachment\"; filename=\"C:\\dir\\a.txt\"\r\n\r\nx\r\n--b0und4ry--\r\n",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "attachment",
+      {
+       "file": {
+        "content_type": null,
+        "data": "x",
+        "filename": "a.txt"
+       }
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart ie6 drive path"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"attachment\"; filename=\"\\\\server\\share\\a.txt\"\r\n\r\nx\r\n--b0und4ry--\r\n",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "attachment",
+      {
+       "file": {
+        "content_type": null,
+        "data": "x",
+        "filename": "\\server\\share\\a.txt"
+       }
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart ie6 unc path"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"attachment\"; filename=\"a\\b.txt\"\r\n\r\nx\r\n--b0und4ry--\r\n",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "attachment",
+      {
+       "file": {
+        "content_type": null,
+        "data": "x",
+        "filename": "a\\b.txt"
+       }
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart backslash in plain filename"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"to\"\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\nx@y.de\r\n--b0und4ry--\r\n",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "x@y.de"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart last disposition wins"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"attachment\"; filename=\"a\"\r\nContent-Type: text/plain\r\ncontent-type: image/png\r\n\r\nx\r\n--b0und4ry--\r\n",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "attachment",
+      {
+       "file": {
+        "content_type": "text/plain",
+        "data": "x",
+        "filename": "a"
+       }
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart first content type wins"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"attachment\"; filename=\"a\"\r\nContent-Type:\r\n\r\nx\r\n--b0und4ry--\r\n",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "attachment",
+      {
+       "file": {
+        "content_type": "",
+        "data": "x",
+        "filename": "a"
+       }
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart empty content type"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"attachment\"; filename=\"a\"\r\nContent-Type: Text/HTML; charset=latin-1\r\n\r\nx\r\n--b0und4ry--\r\n",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "attachment",
+      {
+       "file": {
+        "content_type": "Text/HTML; charset=latin-1",
+        "data": "x",
+        "filename": "a"
+       }
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart content type with parameters"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"attachment\"; filename=\"a\"\r\nContent-Type:\t text/plain \t\r\n\r\nx\r\n--b0und4ry--\r\n",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "attachment",
+      {
+       "file": {
+        "content_type": "\t text/plain \t",
+        "data": "x",
+        "filename": "a"
+       }
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart header value keeps tabs and trailing space"
+  },
+  {
+   "body": "--b0und4ry\r\nContent Disposition: form-data; name=\"a\"\r\n\r\nx\r\n--b0und4ry--\r\n",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "status": 400
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart header name with space"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"a\"\r\nNoColon\r\n\r\nx\r\n--b0und4ry--\r\n",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "status": 400
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart header without colon"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"a\"\r\n: x\r\n\r\nx\r\n--b0und4ry--\r\n",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "status": 400
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart header with empty name"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"a\"\r\nX(y): z\r\n\r\nx\r\n--b0und4ry--\r\n",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "status": 400
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart header name with non-token"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"a\"\n\r\nx\r\n--b0und4ry--\r\n",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "status": 400
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart header line ending in lf only"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"a\"\rx\r\n\r\nx\r\n--b0und4ry--\r\n",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "status": 400
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart cr without lf after header"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"a\"\r\n\rx\r\n--b0und4ry--\r\n",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "status": 400
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart cr without lf ending headers"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"a\"\nX: y\r\n\r\nx\r\n--b0und4ry--\r\n",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "\"a\"\nX: y",
+      {
+       "text": "x"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart lf inside header value"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"a\"\r\nX-0: y\r\nX-1: y\r\nX-2: y\r\nX-3: y\r\nX-4: y\r\nX-5: y\r\nX-6: y\r\n\r\nx\r\n--b0und4ry--\r\n",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "a",
+      {
+       "text": "x"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart eight headers"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"a\"\r\nX-0: y\r\nX-1: y\r\nX-2: y\r\nX-3: y\r\nX-4: y\r\nX-5: y\r\nX-6: y\r\nX-8: y\r\n\r\nx\r\n--b0und4ry--\r\n",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "status": 400
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart nine headers"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"a\"; x=yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy\r\n\r\nx\r\n--b0und4ry--\r\n",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "a",
+      {
+       "text": "x"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart header at size limit"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"a\"; x=yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy\r\n\r\nx\r\n--b0und4ry--\r\n",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "status": 400
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart header over size limit"
+  },
+  {
+   "body": "--b0und4ry\r\nXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "status": 400
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart header name over size limit"
+  },
+  {
+   "body": "--b0und4ry\r\nX:                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            ",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "status": 400
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart header spaces over size limit"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"subject\"\r\n\r\nGr\u00fc\u00dfe\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"text\"\r\n\r\nGr\u00c3\u00bc\u00c3\u009fe\r\n--b0und4ry--\r\n",
+   "content_type": "multipart/form-data; boundary=b0und4ry; charset=utf-8",
+   "expected": {
+    "items": [
+     [
+      "subject",
+      {
+       "text": "Gr\u00fc\u00dfe"
+      }
+     ],
+     [
+      "text",
+      {
+       "text": "Gr\u00fc\u00dfe"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart charset utf-8"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"subject\"\r\n\r\nGr\u00fc\u00dfe\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"text\"\r\n\r\nGr\u00c3\u00bc\u00c3\u009fe\r\n--b0und4ry--\r\n",
+   "content_type": "multipart/form-data; boundary=b0und4ry; charset=UTF-8",
+   "expected": {
+    "items": [
+     [
+      "subject",
+      {
+       "text": "Gr\u00fc\u00dfe"
+      }
+     ],
+     [
+      "text",
+      {
+       "text": "Gr\u00fc\u00dfe"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart charset UTF-8"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"subject\"\r\n\r\nGr\u00fc\u00dfe\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"text\"\r\n\r\nGr\u00c3\u00bc\u00c3\u009fe\r\n--b0und4ry--\r\n",
+   "content_type": "multipart/form-data; boundary=b0und4ry; charset=utf8",
+   "expected": {
+    "items": [
+     [
+      "subject",
+      {
+       "text": "Gr\u00fc\u00dfe"
+      }
+     ],
+     [
+      "text",
+      {
+       "text": "Gr\u00fc\u00dfe"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart charset utf8"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"subject\"\r\n\r\nGr\u00fc\u00dfe\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"text\"\r\n\r\nGr\u00c3\u00bc\u00c3\u009fe\r\n--b0und4ry--\r\n",
+   "content_type": "multipart/form-data; boundary=b0und4ry; charset=utf_8",
+   "expected": {
+    "items": [
+     [
+      "subject",
+      {
+       "text": "Gr\u00fc\u00dfe"
+      }
+     ],
+     [
+      "text",
+      {
+       "text": "Gr\u00fc\u00dfe"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart charset utf_8"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"subject\"\r\n\r\nGr\u00fc\u00dfe\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"text\"\r\n\r\nGr\u00c3\u00bc\u00c3\u009fe\r\n--b0und4ry--\r\n",
+   "content_type": "multipart/form-data; boundary=b0und4ry; charset=latin-1",
+   "expected": {
+    "items": [
+     [
+      "subject",
+      {
+       "text": "Gr\u00fc\u00dfe"
+      }
+     ],
+     [
+      "text",
+      {
+       "text": "Gr\u00c3\u00bc\u00c3\u009fe"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart charset latin-1"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"subject\"\r\n\r\nGr\u00fc\u00dfe\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"text\"\r\n\r\nGr\u00c3\u00bc\u00c3\u009fe\r\n--b0und4ry--\r\n",
+   "content_type": "multipart/form-data; boundary=b0und4ry; charset=Latin1",
+   "expected": {
+    "items": [
+     [
+      "subject",
+      {
+       "text": "Gr\u00fc\u00dfe"
+      }
+     ],
+     [
+      "text",
+      {
+       "text": "Gr\u00c3\u00bc\u00c3\u009fe"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart charset Latin1"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"subject\"\r\n\r\nGr\u00fc\u00dfe\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"text\"\r\n\r\nGr\u00c3\u00bc\u00c3\u009fe\r\n--b0und4ry--\r\n",
+   "content_type": "multipart/form-data; boundary=b0und4ry; charset=iso-8859-1",
+   "expected": {
+    "items": [
+     [
+      "subject",
+      {
+       "text": "Gr\u00fc\u00dfe"
+      }
+     ],
+     [
+      "text",
+      {
+       "text": "Gr\u00c3\u00bc\u00c3\u009fe"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart charset iso-8859-1"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"subject\"\r\n\r\nGr\u00fc\u00dfe\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"text\"\r\n\r\nGr\u00c3\u00bc\u00c3\u009fe\r\n--b0und4ry--\r\n",
+   "content_type": "multipart/form-data; boundary=b0und4ry; charset=ISO8859-1",
+   "expected": {
+    "items": [
+     [
+      "subject",
+      {
+       "text": "Gr\u00fc\u00dfe"
+      }
+     ],
+     [
+      "text",
+      {
+       "text": "Gr\u00c3\u00bc\u00c3\u009fe"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart charset ISO8859-1"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"subject\"\r\n\r\nGr\u00fc\u00dfe\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"text\"\r\n\r\nGr\u00c3\u00bc\u00c3\u009fe\r\n--b0und4ry--\r\n",
+   "content_type": "multipart/form-data; boundary=b0und4ry; charset=iso_8859_1",
+   "expected": {
+    "items": [
+     [
+      "subject",
+      {
+       "text": "Gr\u00fc\u00dfe"
+      }
+     ],
+     [
+      "text",
+      {
+       "text": "Gr\u00c3\u00bc\u00c3\u009fe"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart charset iso_8859_1"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"subject\"\r\n\r\nGr\u00fc\u00dfe\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"text\"\r\n\r\nGr\u00c3\u00bc\u00c3\u009fe\r\n--b0und4ry--\r\n",
+   "content_type": "multipart/form-data; boundary=b0und4ry; charset=l1",
+   "expected": {
+    "items": [
+     [
+      "subject",
+      {
+       "text": "Gr\u00fc\u00dfe"
+      }
+     ],
+     [
+      "text",
+      {
+       "text": "Gr\u00c3\u00bc\u00c3\u009fe"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart charset l1"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"subject\"\r\n\r\nGr\u00fc\u00dfe\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"text\"\r\n\r\nGr\u00c3\u00bc\u00c3\u009fe\r\n--b0und4ry--\r\n",
+   "content_type": "multipart/form-data; boundary=b0und4ry; charset=ascii",
+   "expected": {
+    "items": [
+     [
+      "subject",
+      {
+       "text": "Gr\u00fc\u00dfe"
+      }
+     ],
+     [
+      "text",
+      {
+       "text": "Gr\u00c3\u00bc\u00c3\u009fe"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart charset ascii"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"subject\"\r\n\r\nGr\u00fc\u00dfe\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"text\"\r\n\r\nGr\u00c3\u00bc\u00c3\u009fe\r\n--b0und4ry--\r\n",
+   "content_type": "multipart/form-data; boundary=b0und4ry; charset=us-ascii",
+   "expected": {
+    "items": [
+     [
+      "subject",
+      {
+       "text": "Gr\u00fc\u00dfe"
+      }
+     ],
+     [
+      "text",
+      {
+       "text": "Gr\u00c3\u00bc\u00c3\u009fe"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart charset us-ascii"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"subject\"\r\n\r\nGr\u00fc\u00dfe\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"text\"\r\n\r\nGr\u00c3\u00bc\u00c3\u009fe\r\n--b0und4ry--\r\n",
+   "content_type": "multipart/form-data; boundary=b0und4ry; charset=\"utf-8\"",
+   "expected": {
+    "items": [
+     [
+      "subject",
+      {
+       "text": "Gr\u00fc\u00dfe"
+      }
+     ],
+     [
+      "text",
+      {
+       "text": "Gr\u00fc\u00dfe"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart charset \"utf-8\""
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"subject\"\r\n\r\nGr\u00fc\u00dfe\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"text\"\r\n\r\nGr\u00c3\u00bc\u00c3\u009fe\r\n--b0und4ry--\r\n",
+   "content_type": "multipart/form-data; boundary=b0und4ry; charset=cp1252",
+   "divergence": "D-9",
+   "expected": {
+    "status": 400
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart charset cp1252",
+   "python": {
+    "items": [
+     [
+      "subject",
+      {
+       "text": "Gr\u00fc\u00dfe"
+      }
+     ],
+     [
+      "text",
+      {
+       "text": "Gr\u00c3\u00bc\u00c3\u0178e"
+      }
+     ]
+    ]
+   }
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"subject\"\r\n\r\nGr\u00fc\u00dfe\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"text\"\r\n\r\nGr\u00c3\u00bc\u00c3\u009fe\r\n--b0und4ry--\r\n",
+   "content_type": "multipart/form-data; boundary=b0und4ry; charset=utf-16",
+   "divergence": "D-9",
+   "expected": {
+    "status": 400
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart charset utf-16",
+   "python": {
+    "items": [
+     [
+      "subject",
+      {
+       "text": "Gr\u00fc\u00dfe"
+      }
+     ],
+     [
+      "\u6574\u7478",
+      {
+       "text": "Gr\u00c3\u00bc\u00c3\u009fe"
+      }
+     ]
+    ]
+   }
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"subject\"\r\n\r\nGr\u00fc\u00dfe\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"text\"\r\n\r\nGr\u00c3\u00bc\u00c3\u009fe\r\n--b0und4ry--\r\n",
+   "content_type": "multipart/form-data; boundary=b0und4ry; charset=",
+   "divergence": "D-9",
+   "expected": {
+    "status": 400
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart charset ",
+   "python": {
+    "items": [
+     [
+      "subject",
+      {
+       "text": "Gr\u00fc\u00dfe"
+      }
+     ],
+     [
+      "text",
+      {
+       "text": "Gr\u00c3\u00bc\u00c3\u009fe"
+      }
+     ]
+    ]
+   }
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"subject\"\r\n\r\nGr\u00fc\u00dfe\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"text\"\r\n\r\nGr\u00c3\u00bc\u00c3\u009fe\r\n--b0und4ry--\r\n",
+   "content_type": "multipart/form-data; boundary=b0und4ry; charset=iso-8859-15",
+   "divergence": "D-9",
+   "expected": {
+    "status": 400
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart charset iso-8859-15",
+   "python": {
+    "items": [
+     [
+      "subject",
+      {
+       "text": "Gr\u00fc\u00dfe"
+      }
+     ],
+     [
+      "text",
+      {
+       "text": "Gr\u00c3\u0152\u00c3\u009fe"
+      }
+     ]
+    ]
+   }
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"subject\"\r\n\r\nGr\u00fc\u00dfe\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"text\"\r\n\r\nGr\u00c3\u00bc\u00c3\u009fe\r\n--b0und4ry--\r\n",
+   "content_type": "multipart/form-data; boundary=b0und4ry; charset=koi8-r",
+   "divergence": "D-9",
+   "expected": {
+    "status": 400
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart charset koi8-r",
+   "python": {
+    "items": [
+     [
+      "subject",
+      {
+       "text": "Gr\u042d\u044ae"
+      }
+     ],
+     [
+      "text",
+      {
+       "text": "Gr\u0446\u256a\u0446\u00f7e"
+      }
+     ]
+    ]
+   }
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"subject\"\r\n\r\nGr\u00fc\u00dfe\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"text\"\r\n\r\nGr\u00c3\u00bc\u00c3\u009fe\r\n--b0und4ry--\r\n",
+   "content_type": "multipart/form-data; boundary=b0und4ry; charset=unknown-codec",
+   "divergence": "D-9",
+   "expected": {
+    "status": 400
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart charset unknown-codec",
+   "python": {
+    "items": [
+     [
+      "subject",
+      {
+       "text": "Gr\u00fc\u00dfe"
+      }
+     ],
+     [
+      "text",
+      {
+       "text": "Gr\u00c3\u00bc\u00c3\u009fe"
+      }
+     ]
+    ]
+   }
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"subject\"\r\n\r\nGr\u00fc\u00dfe\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"text\"\r\n\r\nGr\u00c3\u00bc\u00c3\u009fe\r\n--b0und4ry--\r\n",
+   "content_type": "multipart/form-data; boundary=b0und4ry; CHARSET=latin-1",
+   "expected": {
+    "items": [
+     [
+      "subject",
+      {
+       "text": "Gr\u00fc\u00dfe"
+      }
+     ],
+     [
+      "text",
+      {
+       "text": "Gr\u00c3\u00bc\u00c3\u009fe"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart charset key upper case"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"t\u00e4\"; filename=\"\u00e4.txt\"\r\n\r\nx\r\n--b0und4ry--\r\n",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "t\u00e4",
+      {
+       "file": {
+        "content_type": null,
+        "data": "x",
+        "filename": "\u00e4.txt"
+       }
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart non-utf-8 name and filename"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"t\u00c3\u00b6\"; filename=\"\u00c3\u00a4.txt\"\r\n\r\nx\r\n--b0und4ry--\r\n",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "t\u00f6",
+      {
+       "file": {
+        "content_type": null,
+        "data": "x",
+        "filename": "\u00e4.txt"
+       }
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart utf-8 name and filename"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\nRecorder <recorder@wersdoerfer.de>\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"to\"\r\n\r\njochen@wersdoerfer.de\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"subject\"\r\n\r\nDein Anmeldelink\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"text\"\r\n\r\nHallo,\n\nhier ist dein Link: https://example.test/x?y=1&z=2\n\r\n--b0und4ry--\r\n",
+   "content_type": "multipart/form-data",
+   "expected": {
+    "status": 400
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart no boundary"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\nRecorder <recorder@wersdoerfer.de>\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"to\"\r\n\r\njochen@wersdoerfer.de\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"subject\"\r\n\r\nDein Anmeldelink\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"text\"\r\n\r\nHallo,\n\nhier ist dein Link: https://example.test/x?y=1&z=2\n\r\n--b0und4ry--\r\n",
+   "content_type": "multipart/form-data; charset=utf-8",
+   "expected": {
+    "status": 400
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart no boundary with parameter"
+  },
+  {
+   "body": "--\r\nContent-Disposition: form-data; name=\"a\"\r\n\r\nx\r\n----\r\n",
+   "content_type": "multipart/form-data; boundary=",
+   "expected": {
+    "items": [
+     [
+      "a",
+      {
+       "text": "x"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart empty boundary"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\nRecorder <recorder@wersdoerfer.de>\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"to\"\r\n\r\njochen@wersdoerfer.de\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"subject\"\r\n\r\nDein Anmeldelink\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"text\"\r\n\r\nHallo,\n\nhier ist dein Link: https://example.test/x?y=1&z=2\n\r\n--b0und4ry--\r\n",
+   "content_type": "multipart/form-data; boundary=\"b0und4ry\"",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "Recorder <recorder@wersdoerfer.de>"
+      }
+     ],
+     [
+      "to",
+      {
+       "text": "jochen@wersdoerfer.de"
+      }
+     ],
+     [
+      "subject",
+      {
+       "text": "Dein Anmeldelink"
+      }
+     ],
+     [
+      "text",
+      {
+       "text": "Hallo,\n\nhier ist dein Link: https://example.test/x?y=1&z=2\n"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart quoted boundary"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\nRecorder <recorder@wersdoerfer.de>\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"to\"\r\n\r\njochen@wersdoerfer.de\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"subject\"\r\n\r\nDein Anmeldelink\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"text\"\r\n\r\nHallo,\n\nhier ist dein Link: https://example.test/x?y=1&z=2\n\r\n--b0und4ry--\r\n",
+   "content_type": "multipart/form-data; BOUNDARY=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "Recorder <recorder@wersdoerfer.de>"
+      }
+     ],
+     [
+      "to",
+      {
+       "text": "jochen@wersdoerfer.de"
+      }
+     ],
+     [
+      "subject",
+      {
+       "text": "Dein Anmeldelink"
+      }
+     ],
+     [
+      "text",
+      {
+       "text": "Hallo,\n\nhier ist dein Link: https://example.test/x?y=1&z=2\n"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart boundary key upper case"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\nRecorder <recorder@wersdoerfer.de>\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"to\"\r\n\r\njochen@wersdoerfer.de\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"subject\"\r\n\r\nDein Anmeldelink\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"text\"\r\n\r\nHallo,\n\nhier ist dein Link: https://example.test/x?y=1&z=2\n\r\n--b0und4ry--\r\n",
+   "content_type": "multipart/form-data; boundary=zzz; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "Recorder <recorder@wersdoerfer.de>"
+      }
+     ],
+     [
+      "to",
+      {
+       "text": "jochen@wersdoerfer.de"
+      }
+     ],
+     [
+      "subject",
+      {
+       "text": "Dein Anmeldelink"
+      }
+     ],
+     [
+      "text",
+      {
+       "text": "Hallo,\n\nhier ist dein Link: https://example.test/x?y=1&z=2\n"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart last boundary wins"
+  },
+  {
+   "body": "--bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\r\nContent-Disposition: form-data; name=\"a\"\r\n\r\nx\r\n--bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb--\r\n",
+   "content_type": "multipart/form-data; boundary=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+   "expected": {
+    "items": [
+     [
+      "a",
+      {
+       "text": "x"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart boundary of 256"
+  },
+  {
+   "body": "--bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\r\nContent-Disposition: form-data; name=\"a\"\r\n\r\nx\r\n--bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb--\r\n",
+   "content_type": "multipart/form-data; boundary=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+   "expected": {
+    "status": 400
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart boundary of 257"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\nRecorder <recorder@wersdoerfer.de>\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"to\"\r\n\r\njochen@wersdoerfer.de\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"subject\"\r\n\r\nDein Anmeldelink\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"text\"\r\n\r\nHallo,\n\nhier ist dein Link: https://example.test/x?y=1&z=2\n\r\n--b0und4ry--\r\n",
+   "content_type": "Multipart/Form-Data; boundary=b0und4ry",
+   "expected": {
+    "items": []
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart upper-case type with parameter"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\nRecorder <recorder@wersdoerfer.de>\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"to\"\r\n\r\njochen@wersdoerfer.de\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"subject\"\r\n\r\nDein Anmeldelink\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"text\"\r\n\r\nHallo,\n\nhier ist dein Link: https://example.test/x?y=1&z=2\n\r\n--b0und4ry--\r\n",
+   "content_type": "  multipart/form-data ; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "from",
+      {
+       "text": "Recorder <recorder@wersdoerfer.de>"
+      }
+     ],
+     [
+      "to",
+      {
+       "text": "jochen@wersdoerfer.de"
+      }
+     ],
+     [
+      "subject",
+      {
+       "text": "Dein Anmeldelink"
+      }
+     ],
+     [
+      "text",
+      {
+       "text": "Hallo,\n\nhier ist dein Link: https://example.test/x?y=1&z=2\n"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart padded type with parameter"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\nRecorder <recorder@wersdoerfer.de>\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"to\"\r\n\r\njochen@wersdoerfer.de\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"subject\"\r\n\r\nDein Anmeldelink\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"text\"\r\n\r\nHallo,\n\nhier ist dein Link: https://example.test/x?y=1&z=2\n\r\n--b0und4ry--\r\n",
+   "content_type": "MULTIPART/FORM-DATA",
+   "expected": {
+    "status": 400
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart upper-case type without parameter"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"attachment\"; filename=\"a\"\r\n\r\n1\r\n--b0und4ry--\r\n",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "attachment",
+      {
+       "file": {
+        "content_type": null,
+        "data": "1",
+        "filename": "a"
+       }
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 3,
+    "max_files": 1,
+    "max_part_size": 8
+   },
+   "name": "multipart files at limit"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"attachment\"; filename=\"a\"\r\n\r\n1\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"inline\"; filename=\"b\"\r\n\r\n2\r\n--b0und4ry--\r\n",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "status": 413
+   },
+   "limits": {
+    "max_fields": 3,
+    "max_files": 1,
+    "max_part_size": 8
+   },
+   "name": "multipart files over limit"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"a\"\r\n\r\n1\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"b\"\r\n\r\n1\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"c\"\r\n\r\n1\r\n--b0und4ry--\r\n",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "a",
+      {
+       "text": "1"
+      }
+     ],
+     [
+      "b",
+      {
+       "text": "1"
+      }
+     ],
+     [
+      "c",
+      {
+       "text": "1"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 3,
+    "max_files": 1,
+    "max_part_size": 8
+   },
+   "name": "multipart fields at limit"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"a\"\r\n\r\n1\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"b\"\r\n\r\n1\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"c\"\r\n\r\n1\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"d\"\r\n\r\n1\r\n--b0und4ry--\r\n",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "status": 413
+   },
+   "limits": {
+    "max_fields": 3,
+    "max_files": 1,
+    "max_part_size": 8
+   },
+   "name": "multipart fields over limit"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"a\"\r\n\r\n1\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"b\"\r\n\r\n1\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"c\"\r\n\r\n1\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"attachment\"; filename=\"a\"\r\n\r\n1\r\n--b0und4ry--\r\n",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "a",
+      {
+       "text": "1"
+      }
+     ],
+     [
+      "b",
+      {
+       "text": "1"
+      }
+     ],
+     [
+      "c",
+      {
+       "text": "1"
+      }
+     ],
+     [
+      "attachment",
+      {
+       "file": {
+        "content_type": null,
+        "data": "1",
+        "filename": "a"
+       }
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 3,
+    "max_files": 1,
+    "max_part_size": 8
+   },
+   "name": "multipart files do not count as fields"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"a\"\r\n\r\n12345678\r\n--b0und4ry--\r\n",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "a",
+      {
+       "text": "12345678"
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 3,
+    "max_files": 1,
+    "max_part_size": 8
+   },
+   "name": "multipart part at size limit"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"a\"\r\n\r\n123456789\r\n--b0und4ry--\r\n",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "status": 413
+   },
+   "limits": {
+    "max_fields": 3,
+    "max_files": 1,
+    "max_part_size": 8
+   },
+   "name": "multipart part over size limit"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"attachment\"; filename=\"a\"\r\n\r\n123456789\r\n--b0und4ry--\r\n",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "attachment",
+      {
+       "file": {
+        "content_type": null,
+        "data": "123456789",
+        "filename": "a"
+       }
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 3,
+    "max_files": 1,
+    "max_part_size": 8
+   },
+   "name": "multipart file has no part size limit"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"attachment\"; filename=\"a\"\r\n\r\n1\r\n--b0und4ry\r\nX: y\r\n\r\n1\r\n--b0und4ry--\r\n",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "status": 400
+   },
+   "limits": {
+    "max_fields": 3,
+    "max_files": 1,
+    "max_part_size": 8
+   },
+   "name": "multipart missing name before file limit"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"attachment\"; filename=\"a\"\r\n\r\n1\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"inline\"; filename=\"b\"\r\n\r\n2\r\n--b0und4ry--\r\n--b0und4ry\r\nbad header\r\n",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "status": 413
+   },
+   "limits": {
+    "max_fields": 3,
+    "max_files": 1,
+    "max_part_size": 8
+   },
+   "name": "multipart file limit before framing error"
+  },
+  {
+   "body": "--b0und4ry\r\nbad header\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"attachment\"; filename=\"a\"\r\n\r\n1\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"inline\"; filename=\"b\"\r\n\r\n2\r\n--b0und4ry--\r\n",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "status": 400
+   },
+   "limits": {
+    "max_fields": 3,
+    "max_files": 1,
+    "max_part_size": 8
+   },
+   "name": "multipart framing error before file limit"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"a\"\r\n\r\n\r\n--b0und4ry--\r\n",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "items": [
+     [
+      "a",
+      {
+       "text": ""
+      }
+     ]
+    ]
+   },
+   "limits": {
+    "max_fields": 3,
+    "max_files": 1,
+    "max_part_size": 0
+   },
+   "name": "multipart empty field, zero size"
+  }
+ ],
+ "source": "starlette Request.form (FormParser, MultiPartParser over python-multipart) as mailgun_relay.routes.post_messages calls it, the body delivered in one piece and in several chunkings; python: the one-piece result; bytes as their latin-1 decoding"
+}

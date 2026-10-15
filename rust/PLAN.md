@@ -12,7 +12,7 @@ S1 is done (report `handoff/s1-result.md`). S2 is split by size into S2a
 (authentication, path domains), S2b (addresses, `ENVELOPE_SENDER` validity)
 and S2c (the token policy); all three are merged, so S2 is done (report
 `handoff/s2-result.md`). S3 is split by size into S3a (subject and header
-validation; merged), S3b (form parsing) and S3c (pipeline and route); S4
+validation; merged), S3b (form parsing; merged) and S3c (pipeline and route); S4
 runs in parallel.
 
 This document is the contract for re-implementing the FastAPI service in
@@ -248,9 +248,15 @@ the contract. Each step names its Python source.
    parsed before any field is checked.
    - Streamed bytes beyond `max_body_bytes` → 413 (`request body exceeds N
      bytes`).
-   - Content type (essence, case-insensitive) `multipart/form-data` or
-     `application/x-www-form-urlencoded`; anything else, or none, gives an
-     empty form (→ 400 in step 4 for the missing `from`).
+   - Content type: the first `Content-Type` header as python-multipart's
+     `parse_options_header` reads it: without a `;` the whole value,
+     lowercased and stripped; with parameters the part before the first `;`,
+     stripped but **not lowercased** (`Multipart/Form-Data; boundary=x` is no
+     form). `multipart/form-data` or `application/x-www-form-urlencoded`;
+     anything else, or none, gives an empty form **without reading the body**
+     (→ 400 in step 4 for the missing `from`; a chunked body over the limit
+     is then never counted, so no 413). For multipart, a missing `boundary`
+     parameter or one longer than 256 bytes → 400 before the body is read.
    - Parser limits as Starlette is called: non-file fields
      `> max_recipients + 100` → 413; file parts `> max_attachments + 1` → 413;
      a non-file field value `> max_body_bytes` → 413.
@@ -260,11 +266,32 @@ the contract. Each step names its Python source.
      truncated trailing part) is not an error in Python: the completed parts
      are kept, the unfinished part is dropped, and the request continues
      (measured: 200 when the completed parts form a valid message). Rust keeps
-     that behaviour (multer's incomplete-stream error after the last complete
-     part is treated as end of form). The harness pins truncation at each
-     position (before the first boundary, in part headers, in part data,
-     before the closing boundary); any residual difference is Rust-stricter
-     (D-11 rule).
+     that behaviour; `form_decoding.json` cuts a two-part body at every byte.
+   - Multipart framing as python-multipart 0.0.31 does it (S3b,
+     `src/form.rs`, pinned by `form_decoding.json`): leading CR and LF bytes
+     are skipped (python-multipart skips from a leading CR or LF to the next
+     `-` of the chunk it received, so other bytes there pass or fail
+     depending on chunking; Rust refuses them, D-20), then `--boundary` must
+     follow directly (other preamble → 400) and end in CRLF (or `--`: an
+     empty form); part headers
+     are `token: value` lines (leading spaces skipped, the value up to CR,
+     CR must be followed by LF), at most 8 per part, at most 4,224 bytes per
+     line, a `:` without name → 400; the last `Content-Disposition` and the
+     first `Content-Type` of a part count; part data ends at the first
+     `CRLF--boundary` followed by CRLF or `--`, any other continuation is
+     data; everything after the closing delimiter is ignored. Name, filename
+     and charset come from `parse_options_header` (parameter keys
+     lowercased, keys with `*` ignored, one level of quotes removed, an IE6
+     path `C:\…` cut to its last component); a disposition without `name`
+     → 400; then the file or field count (413).
+   - Rust buffers the body (at most `max_body_bytes`) before parsing it;
+     Python parses chunk by chunk as the socket reads return. Where Python's
+     decision depends on that chunking, Rust takes the refusing one (D-20):
+     the preamble above, and a chunked body (no `Content-Length`) that
+     exceeds the limit **and** is malformed (Python 400 or 413, Rust always
+     413). `form_decoding.json` runs the oracle on each body in one piece and
+     in four chunkings (after the first byte, halves, 3-byte and 1-byte
+     pieces); every other case decides the same in all of them.
    - A multipart part is a file iff its `Content-Disposition` carries a
      `filename` parameter (also `filename=""`).
    - Decoding, reproduced exactly (pinned by `form_decoding.json`):
@@ -598,7 +625,7 @@ Everything that differs and is not listed here or in 2.12 is a bug. The
 owner decided every entry on 2026-10-15 (section 13). D-1, D-2 and D-16 are
 fixed in Python first (slice S0-py), so after S0-py they are no longer
 differences between the implementations: the oracle, the fixtures and the
-harness use the fixed Python. Entries D-5 to D-12, D-15 and D-17 to D-19 only
+harness use the fixed Python. Entries D-5 to D-12, D-15 and D-17 to D-20 only
 affect exotic input or configuration (Q4); their common rule is **fail closed**: where Rust
 and Python disagree, Rust may reject what Python accepts (or fail at start
 where Python starts), never the reverse.
@@ -624,6 +651,7 @@ where Python starts), never the reverse.
 | D-17 | `allowed_from_addresses` entries with a non-ASCII (EAI) local part load fine (`normalize_address` only lowercases the local part), but since S0-py an EAI `from` is always 400 before the allowlist check, so such an entry can never match. Python stays unchanged. | The Rust config loader rejects such an entry and the start fails (`--check-config` reports it before any switch). Fail closed under Q4; the production policy contains no such entry today. Pinned in `config_secrets.json`. | Decided 2026-10-15 (coordinator, under Q4); implemented with the secrets loader (S1c) |
 | D-18 | pydantic accepts any integer size, any float (`inf`, `nan`, negatives) and any string; Python then fails per request or binds every interface: with `SMTP_PORT` outside 0–65535 every submission fails (`getaddrinfo` error → 503), a non-finite, negative or too large (from about 9.2e9 s) `SMTP_TIMEOUT_S` makes every submission raise `ValueError`/`OverflowError` (502), `BIND_HOST=""` binds all interfaces, huge integers are kept. | Startup failure for: empty `BIND_HOST`; `SMTP_PORT` outside 0–65535; integer settings outside 64-bit; `SMTP_TIMEOUT_S` not finite or outside 0–1e9 s; `SMTP_MAX_CONCURRENCY` above 2^32−1; a value that is not valid UTF-8. Pinned by `config_env.json`. | Q4 (fail closed), added in S1 |
 | D-19 | A custom header name is checked with `re.match("^[A-Za-z][A-Za-z0-9-]*$")`, whose `$` also matches before a final newline: `h:X-Foo%0A` (also `h:Bcc%0A`, which then is no denylisted name) passes step 7, and the email package writes the name as an encoded word (`=?utf-8?q?X-Foo=0A?=: …`), 200. | The name must match the pattern in full: a final newline → **400** at step 7 (Rust-stricter). Pinned by `headers.json`. | Q4 (fail closed), added in S3a; coordinator to confirm |
+| D-20 | The form is parsed chunk by chunk as the body streams in, so some decisions depend on TCP segmentation: (a) a multipart body starting with CR or LF skips to the next `-` of the first chunk, so other bytes before the first boundary (`\ntext--boundary…`) are accepted when they arrive in one chunk with the boundary and refused (400) otherwise; (b) a chunked body (no `Content-Length`) over `max_body_bytes` that is also malformed answers 400 when the framing error arrives before the byte limit is crossed, else 413. | The body is buffered up to the limit and parsed whole, taking the refusing decision: (a) only CR and LF may precede the first boundary, anything else → **400**; (b) always **413**. Clients send `Content-Length` and no preamble (Anymail, recorder). | Q4 (fail closed), added in S3b; coordinator to confirm |
 
 Python 500s on client input fixed in Python by the same rule as D-1 and
 D-16 (Q1), so no divergence remains: a non-ASCII character in the Basic
@@ -675,7 +703,7 @@ re-implementation of Python libraries, no hand-rolled protocol code.
 | --- | --- | --- |
 | runtime | `tokio` (`rt`, `net`, `time`, `signal`, `sync`, `macros`, `io-util`), **current_thread** | One thread is enough for a few requests a week and keeps RSS low. CPU-heavy steps (MIME encoding of large attachments) run in `spawn_blocking` with `max_blocking_threads(2)`; idle blocking threads exit after 10 s. `getaddrinfo` also runs there. |
 | HTTP server | `axum` 0.8 (`default-features = false`, `http1`, `tokio`) on hyper 1 | No HTTP/2, no JSON/form extractors (bodies are parsed by our code). Body-limit layer via `middleware::from_fn`; one fallback handler routes on the decoded path as Starlette does (2.2) and answers 404/405/307. Graceful shutdown on SIGTERM/SIGINT; submissions run in tasks tracked by `tokio_util::task::TaskTracker` (`tokio-util`, `rt`) so a disconnected client neither cancels nor loses them. |
-| multipart | `multer` 3 with size constraints | Streams parts; we count fields/files ourselves (Starlette limits, 2.3 step 3). |
+| multipart | none (own parser of ~200 lines over the buffered body, S3b) | Changed from `multer` 3 in S3b: multer is laxer than python-multipart (any preamble before the first boundary, transport padding after a boundary, httparse's header rules with up to 32 headers) and stricter elsewhere (a delimiter followed by other bytes is an error, not data), so its decisions would widen what Python accepts and change statuses; httparse also trims header values, which makes the 4,224-byte line limit unreproducible on top of it. The framing of python-multipart 0.0.31 (2.3 step 3) is small, so it is implemented directly and pinned by `form_decoding.json`. |
 | urlencoded | none (own ~40-line splitter and decoder) | Python's exact decoding (latin-1, then `unquote_plus` semantics, 2.3 step 3) is a small rule; `form_urlencoded` decodes raw bytes as UTF-8, which would widen acceptance (review round 1). Pinned by `form_decoding.json`. |
 | JSON | `serde` (derive), `serde_json` | Responses and log records from structs; declaration order = field order. |
 | YAML | `yaml-rust2` 0.13 (`default-features = false`, event parser and scanner only) | Gives scalar style, tags and anchor names, which the YAML 1.1 subset of 2.8 needs. `serde_yaml` is archived and YAML 1.2. A small typed tree is built from events (`src/yaml.rs`, fail-closed details in D-6). |
@@ -734,7 +762,7 @@ changed lines per slice excluding generated fixtures.
 | S1 | Skeleton, config, `/health` | MIT `LICENSE` at the repository root (Q6); package, toolchain, `deny.toml`, CI `rust` job; env settings (2.7), secrets loader with YAML 1.1 subset and mode check (2.8); `--version`, `--check-config`; startup record; axum server, `/health`, 404/405/307 fallbacks, 413 layer, graceful shutdown; fixture generator skeleton + drift test; `rust/README.md`; `.gitignore`; ops-library: `rust/target/` rsync exclude | – **Status: split by size into S1a (plumbing, CI, `LICENSE`, env settings, `--version`/`--check-config`, fixture generator + drift test, `.gitignore`, ops-library exclude; merged), S1c (secrets loader, YAML subset, D-17; merged), S1d (server, `/health`, fallbacks, 413, startup record, graceful shutdown; merged); one review and merge each. Done** |
 | S1b | Spike: lettre and the live SMTP server | throwaway branch: lettre connection API can send MAIL + individual RCPT + DATA with partial refusal and expose reply codes; addresses the corpus accepts round-trip through lettre `Address`; feature names; **read-only** EHLO on macmini (`openssl s_client -starttls smtp`, EHLO, QUIT): `AUTH` mechanisms after STARTTLS, `SMTPUTF8`, `SIZE`. Result recorded in this plan. | – (parallel to S1). **Status: done, GO with conditions (`rust/spike-s1b` @ `78f3254`)** |
 | S2 | Auth and policy (security boundary) | Split by size: **S2a** `auth.rs`, `auth.json`, `domain.json` (runtime `normalize_domain`), Python fix of the auth 500 (2.3 step 2); **S2b** `address.rs`, `address.json`, the D-15 check; **S2c** `policy.rs`, `policy.json`, production shapes. Scope: `auth.rs`, `domain.rs`, `address.rs`, `policy.rs`; fixtures `auth.json`, `domain.json`, `address.json` (corpus), `policy.json`; Rust counterparts of `test_auth.py`, `test_policy.py`, the address parts of `test_headers.py`; Python tests added for every corpus case that pins a new boundary decision; config loader rejects allowlist entries with a non-ASCII local part (D-17; implemented with the secrets loader in S1c); the D-15 validity check of `ENVELOPE_SENDER` (S1 applies only the IDN/EAI rule; `config_env.json` then marks the invalid senders D-15) | S1, S0-py merged (the oracle must already carry the Q1/Q2 behaviour). **Status: S2a, S2b and S2c merged; done** |
-| S3 | Request parsing and pipeline | `form.rs` (both encodings, limits), `pipeline.rs` (2.3 steps 1–9 with a stub submitter), header/subject validation, error mapping, response JSON, `event=request` record; fixtures `headers.json`; counterparts of `test_messages_endpoint.py` (non-SMTP), `test_headers.py`, `test_body_limit.py` | S2. **Status: split by size into S3a (`headers.rs`, `headers.json`; merged), S3b (`form.rs`, `form_decoding.json`) and S3c (`pipeline.rs`, the route, the request record, the endpoint tests)** |
+| S3 | Request parsing and pipeline | `form.rs` (both encodings, limits), `pipeline.rs` (2.3 steps 1–9 with a stub submitter), header/subject validation, error mapping, response JSON, `event=request` record; fixtures `headers.json`; counterparts of `test_messages_endpoint.py` (non-SMTP), `test_headers.py`, `test_body_limit.py` | S2. **Status: split by size into S3a (`headers.rs`, `headers.json`; merged), S3b (`form.rs`, `form_decoding.json`; merged) and S3c (`pipeline.rs`, the route, the request record, the endpoint tests)** |
 | S4 | MIME construction | `mime.rs` with lettre builder (2.10), envelope and de-duplication, Message-Id/Date, inline/related/mixed, container downgrade, Reply-To; IDN as A-labels, EAI rejected (Q2); semantic tests by parsing the output; counterparts of `test_mime_build.py` | S2 (parallel to S3) |
 | S5 | SMTP submission | `smtp.rs` on lettre's connection API: STARTTLS with system roots + CA file, AUTH, per-recipient RCPT, partial refusal, classification of 2.4, QUIT/close cleanup records, concurrency semaphore, per-operation timeout, `recipients_refused` and `smtp_cleanup_failed` records; scripted fake SMTP server tests mirroring `test_smtp_submission.py`, `test_smtp_outcomes.py`, `test_nonblocking_submit.py`; the S1b conditions (see "S1b result") | S1b, S3, S4 |
 | S6 | Parity harness | `rust/parity/` (7.4): fake SMTP with STARTTLS/AUTH, case corpus, runner for both implementations, semantic MIME comparison, CI job `parity`; process-level tests of the binary | S5 |
@@ -875,7 +903,7 @@ stable inputs). Rust loads them with `include_str!`.
 | `address.json` | `policy.parse_email_strict`, `headers.parse_address_list`, `parse_header_address_list`, `policy.normalize_address` | input → accept/reject per function, normalised addr-spec (compared in A-label form), display name (exotic cases: decision only) |
 | `policy.json` | `policy.enforce_policy` | policy × path × from → ok / 400 / 403, with the 403 message or the policy address (S2c: 5 production-shaped policies × 13 paths × 22 senders, D-10/D-11 marked) |
 | `headers.json` | `headers.validate_subject`, `validate_custom_headers`, `contains_forbidden_control_chars` | value → stripped subject or error kind; header list → ok or error kind (D-19 marked); control character probes → bool |
-| `form_decoding.json` | Starlette `FormParser` / `MultiPartParser` decoding (`unquote_plus(x.decode("latin-1"))`, `_user_safe_decode`) | raw urlencoded bodies and multipart bodies × request charset → ordered items (D-9 marked) |
+| `form_decoding.json` | Starlette `FormParser` / `MultiPartParser` decoding (`unquote_plus(x.decode("latin-1"))`, `_user_safe_decode`) | `Content-Type` × raw body × parser limits → ordered items (texts; files with filename, content type, bytes) or 400/413, exactly as `request.form(...)` with the route's mapping: decoding, request charsets (D-9 marked), framing, part headers, limits, truncation at every byte; the oracle runs each body in one piece and in four chunkings, a chunking-dependent decision is marked D-20 (S3b) |
 | `config_env.json` | `config.Settings` + the `__main__` reads | env set → settings or start failure (D-7 marked) |
 | `config_secrets.json` | `config.load_secrets` | YAML text × file mode → policies or failure (D-5, D-6 marked) |
 
