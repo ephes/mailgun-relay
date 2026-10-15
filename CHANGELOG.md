@@ -4,6 +4,17 @@ All notable changes to mailgun-relay are documented here.
 
 ## Unreleased
 
+### Rust port plan
+
+- Added `rust/PLAN.md` and a `rust/TESTMAP.md` sketch: the plan for
+  re-implementing the relay as a small Rust binary in `rust/` and switching
+  production to it through the `mailgun_relay_deploy` role. It fixes the
+  compatibility scope (HTTP contract, policy and rejection decisions,
+  configuration and `/health` exact; MIME byte form and message texts free),
+  lists the intentional divergences that need owner decisions, and defines
+  slices, the Python-as-oracle fixtures, the parity harness, release, shadow
+  run, cutover and rollback. No runtime behaviour changes.
+
 ### Mailgun decommission status (re-established 2026-08-04)
 
 The 0.1.0 *Operator follow-ups* section claimed the commercial Mailgun API key
