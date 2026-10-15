@@ -9,6 +9,17 @@ Kinds: **unit** = Rust unit/integration test; **fixture** = case in
 `rust/fixtures/*.json` generated from Python; **harness** = case in
 `rust/parity/cases/` run against both implementations.
 
+## Python fix before the port (S0-py)
+
+New Python tests (Q1, Q2) land in S0-py; their Rust counterparts are harness
+and fixture cases generated from the fixed Python.
+
+| Python test (new in S0-py) | Rust counterpart | Status |
+| --- | --- | --- |
+| empty `text`/`html` without another body → 400; empty text + html → 200 html-only | harness + unit `pipeline::tests` | pending (S0-py, S3) |
+| encoded CR/LF in To/Cc display name → 400, multi-fault with invalid Cc | harness + unit `mime::tests` | pending (S0-py, S4) |
+| IDN recipients/from/Reply-To as A-labels, no SMTPUTF8; EAI local parts → 400 | fixture `address.json`, harness | pending (S0-py, S2/S4) |
+
 ## Auth, policy, addresses (S2)
 
 | Python test | Rust counterpart | Status |

@@ -11,8 +11,10 @@ All notable changes to mailgun-relay are documented here.
   production to it through the `mailgun_relay_deploy` role. It fixes the
   compatibility scope (HTTP contract, policy and rejection decisions,
   configuration and `/health` exact; MIME byte form and message texts free),
-  lists the intentional divergences that need owner decisions, and defines
-  slices, the Python-as-oracle fixtures, the parity harness, release, shadow
+  records the owner decisions of 2026-10-15 on the intentional divergences,
+  starts with a Python fix (400 instead of 500 for empty bodies and CR/LF in
+  To/Cc display names, IDN addresses as A-labels, non-ASCII local parts
+  rejected) and defines slices, the Python-as-oracle fixtures, the parity harness, release, shadow
   run, cutover and rollback. No runtime behaviour changes.
 
 ### Mailgun decommission status (re-established 2026-08-04)
