@@ -15,6 +15,8 @@ ignore = []
 [licenses]
 version = 2
 allow = [
+    # quoted_printable (through lettre, S4): public-domain equivalent.
+    "0BSD",
     "Apache-2.0",
     "BSD-3-Clause",
     "MIT",

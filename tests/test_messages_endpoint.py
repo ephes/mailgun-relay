@@ -245,6 +245,19 @@ def test_dangerous_h_bcc_returns_400(client: TestClient, auth: dict[str, str]) -
     assert r.status_code == 400
 
 
+def test_non_ascii_references_is_400_before_smtp(
+    client: TestClient, auth: dict[str, str], recording_smtp: RecordingSubmitter
+) -> None:
+    # smtplib could not serialise it and answered 502 after the SMTP login.
+    r = client.post(
+        "/v3/mg.wersdoerfer.de/messages",
+        headers=auth,
+        data=_with({"h:References": ["<jörg@wersdoerfer.de>"]}),
+    )
+    assert r.status_code == 400
+    assert recording_smtp.calls == []
+
+
 def test_reply_to_header_propagates(
     client: TestClient, auth: dict[str, str], recording_smtp: RecordingSubmitter
 ) -> None:

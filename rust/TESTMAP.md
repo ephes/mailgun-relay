@@ -17,7 +17,7 @@ and fixture cases generated from the fixed Python.
 | Python test (new in S0-py) | Rust counterpart | Status |
 | --- | --- | --- |
 | empty `text`/`html` without another body → 400; empty text + html → 200 html-only | harness + unit `pipeline::tests` | pending (S0-py, S3) |
-| encoded CR/LF in To/Cc display name → 400, multi-fault with invalid Cc | harness + unit `mime::tests` | pending (S0-py, S4) |
+| encoded CR/LF in To/Cc display name → 400, multi-fault with invalid Cc | unit `mime::tests::python_mime_build_tests`, `::line_break_detection_fails_closed`; harness | done (S4a); harness pending (S6) |
 | IDN recipients/from/Reply-To as A-labels, no SMTPUTF8; EAI local parts → 400 | fixture `address.json`, harness | pending (S0-py, S2/S4) |
 
 ## Auth, policy, addresses (S2)
@@ -73,10 +73,11 @@ and fixture cases generated from the fixed Python.
 
 | Python test | Rust counterpart | Status |
 | --- | --- | --- |
-| `test_mime_build.py` structure tests (text, html, alternative, Cc/Bcc, Reply-To, attachment, Message-Id, display name, inline related/mixed, amp, container downgrade, malformed inline names) | unit `mime::tests` parsing the produced message; harness semantic comparison | pending (S4) |
+| `test_mime_build.py` structure tests (text, html, alternative, Cc/Bcc, Reply-To, attachment, Message-Id, display name, inline related/mixed, amp, container downgrade, malformed inline names, empty bodies, CR/LF display names, IDN as A-labels, EAI in every field) | unit `mime::tests::python_mime_build_tests` (parses the produced message with `mail-parser`); harness semantic comparison | done (S4a); harness pending (S6) |
+| `test_mime_build.py` new in S4a (`test_non_ascii_message_id_header_is_rejected`, `test_ascii_message_id_headers_are_kept`), `test_messages_endpoint.py::test_non_ascii_references_is_400_before_smtp` | unit `mime::tests::exotic_headers` | done (S4a) |
 | `test_mime_build.py::test_inline_explicit_content_id_is_not_double_bracketed` | n/a: form uploads never carry an explicit Content-ID | n/a |
 | `test_messages_endpoint.py::test_bcc_only_envelope_not_in_headers`, `::test_cc_in_headers_and_envelope`, `::test_reply_to_*`, `::test_inline_upload_is_related_to_html_with_bracketed_content_id` | harness | pending (S6) |
-| new: IDN/EAI recipients (D-2), non-ASCII subject/body/filenames, RFC conformance of the output | unit + harness | pending (S4) |
+| new: IDN/EAI recipients (D-2), non-ASCII subject/body/filenames, RFC conformance of the output, display-name quoting (S2 open point 4), D-21 | units `mime::tests::display_names_are_quoted_like_python`, `::exotic_headers`, `::long_values_stay_conformant`, `::long_encoded_words_and_upload_headers`, `::upload_content_types`, `::message_id_is_32_hex_digits_at_the_public_host`; harness | done (S4a); harness pending (S6) |
 
 ## SMTP (S5)
 

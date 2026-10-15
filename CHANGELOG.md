@@ -4,6 +4,37 @@ All notable changes to mailgun-relay are documented here.
 
 ## Unreleased
 
+### Rust port: message construction (slice S4a)
+
+- `rust/src/mime.rs` builds the message with lettre as the Python service
+  does (PLAN.md 2.10): text, html and amp-html alternatives, inline parts
+  with the html part in `multipart/related` (or in `multipart/mixed`
+  without html), attachments, Reply-To lists, custom headers, Message-Id and
+  Date, Bcc in the envelope only, the envelope de-duplicated. IDN domains are
+  A-labels and EAI local parts are refused (Q2). Header values that are
+  printable ASCII are written as received, so encoded words arrive decoded
+  exactly as Python decodes them; other values become RFC 2047 encoded
+  words. The output is 7-bit, CRLF only, lines of at most 998 octets. It
+  replaces the step-9 stub of S3 behind the same interface; the SMTP
+  submitter follows in S5.
+- Exotic header input the Python service rewrites is refused with 400 by
+  the Rust port (PLAN.md D-21, fail closed): text that needs encoding mixed
+  with encoded words, encoded words Rust cannot check (other charsets than
+  UTF-8, ASCII and the ISO-8859/windows-125x families, broken base64) or
+  whose text Python would change (`=?` inside, whitespace at the ends, an
+  ASCII special like `,` in a display name), encoded words in local parts,
+  `h:In-Reply-To` and `h:References` that are not plain message-id lists,
+  `h:Orig-Date`, header names over 76 characters. Encoded words longer than
+  RFC 2047 allows are split; an ASCII attachment filename with a line break
+  is 400 as in Python.
+
+### Custom message-id headers: non-ASCII values are 400 (slice S4a)
+
+- `h:In-Reply-To` or `h:References` whose value is not ASCII after RFC 2047
+  decoding now answers 400 when the message is built. It answered 502 after
+  the SMTP login before: the message could not be serialised without
+  SMTPUTF8. No request that was delivered before is affected.
+
 ### Rust port: route tests (slice S3d)
 
 - The remaining Rust counterparts of `test_messages_endpoint.py` (without

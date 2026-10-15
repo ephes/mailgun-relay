@@ -40,6 +40,11 @@ class MessageInput:
 
 _OCTET_STREAM = ("application", "octet-stream")
 
+# Message-id headers the header registry parses (``ReferencesHeader``). It
+# decodes encoded words in them but cannot write a non-ASCII result back
+# without SMTPUTF8, so smtplib failed while serialising (502).
+_MESSAGE_ID_HEADERS = frozenset({"in-reply-to", "references"})
+
 # Uploaded bytes are always wrapped as a single leaf part. A declared
 # ``multipart/*`` or ``message/*`` type would produce a part with no boundary
 # or embedded message, which recipients cannot parse, so those are downgraded
@@ -150,6 +155,8 @@ def build_message(payload: MessageInput) -> tuple[EmailMessage, str, list[str]]:
                 msg["Reply-To"] = ", ".join(str(a) for a in reply_to)
             else:
                 msg[name] = value
+                if name.lower() in _MESSAGE_ID_HEADERS and not str(msg[name]).isascii():
+                    raise HeaderInjectionError(f"invalid header {name!r}: non-ASCII message id")
         except HeaderInjectionError:
             raise
         except ValueError as exc:

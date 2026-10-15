@@ -14,7 +14,9 @@ and S2c (the token policy); all three are merged, so S2 is done (report
 `handoff/s2-result.md`). S3 is split by size into S3a (subject and header
 validation), S3b (form parsing), S3c (pipeline and route) and S3d (the
 remaining route tests); all four are merged, so S3 is done (report
-`handoff/s3-result.md`). S4 runs in parallel.
+`handoff/s3-result.md`). S4 runs in parallel and is split by size into S4a
+(message construction, `src/mime.rs`) and S4b (the semantic MIME fixture
+from the Python oracle).
 
 This document is the contract for re-implementing the FastAPI service in
 `src/mailgun_relay` (1,744 lines, `origin/main` `13e274f`, run on macmini as
@@ -353,8 +355,20 @@ the contract. Each step names its Python source.
      (`Reply-To`, `In-Reply-To`, `References`, `Orig-Date`) → 400 (measured:
      `h:Reply-To` + `h:reply-to` → 400);
    - inline filename empty, with surrounding whitespace, `<`, `>`, or a
-     control character (`< 0x20`, `0x7f`) → 400;
-   - each `bcc` must be one valid address → 400.
+     control character (`< 0x20`, `0x7f`) → 400; an inline filename with
+     U+0085, U+2028 or U+2029, and an all-ASCII attachment filename with a
+     line boundary of `str.splitlines` (`\n \r \x0b \x0c \x1c-\x1e`) → 400
+     (the email package refuses them as header values; a non-ASCII attachment
+     filename is RFC 2231-encoded and passes; S4a);
+   - each `bcc` must be one valid address → 400;
+   - `h:In-Reply-To`/`h:References` whose value, after RFC 2047 decoding, is
+     not ASCII → 400. Python answered **502** before S4a: the header
+     registry decodes such a value but `smtplib` cannot serialise it, so the
+     submission failed after the SMTP login (verified against a real SMTP
+     server). S4a fixed Python to 400 at this position, as Q1 (coordinator
+     rule for client input that ends in a server error); Rust accepts only
+     a list of plain `<dot-atom@dot-atom>` ids there (D-21);
+   - the Rust-only refusals of D-21 (exotic header input).
    With the decided fixes for D-1 and D-16 (Q1, in Python via S0-py) all of
    these are 400, so their internal order does not change a status. The
    multi-fault case "To display name decoding to CR/LF plus an invalid Cc"
@@ -544,41 +558,76 @@ What must arrive the same (checked by the semantic comparison of 7.4):
   order; **no Bcc header**; **Subject** (stripped); **Reply-To** list;
   other `h:*` headers with name and value (unicode values encoded per
   RFC 2047); **Message-Id** equal to the response `id`; **Date** present.
-- **Incoming RFC 2047 encoded words are decoded**, as Python's header
-  registry does when it parses the assigned values: in display names
-  (`=?utf-8?q?J=C3=B6rg?= <a@example.com>` arrives as display name `Jörg`),
-  in the Subject and in unstructured `h:*` values. Rust decodes them (crate
-  `rfc2047-decoder`) before building the header.
-- **Explicit header encoding path.** lettre's ordinary constructors are not
-  relied on for decoded text: lettre 0.11.23 writes a decoded U+0001 in a
-  Subject raw and panics on a display name containing CR/LF (review round 2).
-  Rust therefore renders every header value whose (decoded) text contains
-  anything other than printable ASCII, space or TAB itself: UTF-8,
-  RFC 2047 B-encoding, encoded words ≤ 75 characters split on character
-  boundaries, display names rendered as an encoded-word phrase in front of
-  `<addr-spec>`; the result is inserted with lettre's pre-encoded header
-  value API. Printable-ASCII values go through lettre normally (quoted where
-  the display name needs it). The control-character check of 2.6 still runs
-  on the raw input, as in Python. Decoded control characters keep Python's
-  **field-specific statuses** (measured on `13e274f`, review round 3):
+- **Incoming RFC 2047 encoded words arrive decoded.** Python's header
+  registry decodes them when it parses an assigned value and re-encodes the
+  result: in display names (`=?utf-8?q?J=C3=B6rg?= <a@example.com>` arrives
+  as display name `Jörg`), in the Subject and in unstructured `h:*` values.
+- **Header rendering (S4a, `src/mime.rs`).** Rust reaches the same decoded
+  text without decoding. A value that is printable ASCII (TAB allowed) and
+  fits the line limit is written **as received**; display names are quoted
+  exactly as Python's `Address.__str__` quotes them before its registry
+  parses that string (quoted when they hold one of `()<>@,:;."[]\`). A
+  receiver's parser therefore reads what Python's registry read. Any other
+  value is written as RFC 2047 B-encoded words of its text (UTF-8, encoded
+  words ≤ 75 characters split on character boundaries, by `email-encoding`,
+  lettre's encoder) and inserted with lettre's pre-encoded header value API;
+  for a display name that text is what Python's parser reads from the
+  `str(Address)` form (quoted: exact; unquoted: whitespace runs collapsed,
+  ends stripped), for an unstructured value its leading whitespace is
+  dropped as a parser drops it after the colon. A value that needs encoding
+  **and** holds an encoded word is refused (D-21): encoding would turn the
+  word into literal text where Python decodes it. In a forwarded value every
+  encoded word must be one whose decoding Rust can check (charset in the
+  ASCII-compatible set below, base64 that needs no repair) and whose text
+  survives Python's re-encoding unchanged (no `=?` inside: Python writes
+  that text raw and it is decoded twice; no leading or trailing whitespace:
+  Python's output drops or collapses it; in a display name no ASCII text
+  holding one of the specials above: Python writes it raw and reads a
+  different address list, `Doe, Jane` becomes two addresses); otherwise 400
+  (D-21). An encoded
+  word longer than RFC 2047's 75 characters (Anymail's `formataddr` writes a
+  long non-ASCII display name as one) is split into base64 words of whole
+  characters when whitespace delimits it outside a quoted string, and
+  refused otherwise. An encoded word in a local part is refused (Python
+  decodes it in the header but not in the envelope). The Content-ID of an
+  inline part follows the same rules as an unstructured value. lettre's mailbox and text
+  constructors are not used for these values (lettre 0.11.23 writes a
+  decoded U+0001 in a Subject raw and panics on a display name containing
+  CR/LF, review round 2), so the crate `rfc2047-decoder` is not needed. The
+  control-character check of 2.6 still runs on the raw input, as in Python.
+  Decoded control characters keep Python's **field-specific statuses**
+  (measured on `13e274f`, review round 3):
 
   | Decoded content | From | To / Cc | Bcc | Reply-To | Subject, `h:*` |
   | --- | --- | --- | --- | --- | --- |
   | CR/LF (`=?utf-8?B?YQ0KYg==?=`) in display name or value | 200 | **400** (D-16; Python before S0-py: 500) | 200 (not in headers) | 400 | 200 |
   | other control, e.g. `\x01` | 200 | 200 | 200 | 200 | 200 |
 
-  Python writes `\x01` raw into the header (not RFC-conformant); Rust emits
-  an encoded word instead, which is the same decoded text (MIME, free). S4
-  tests every cell with the Python status, no raw control character in the
-  Rust output, and decoded text equal to Python's. A panic anywhere in message construction is a bug, not a
-  500 path (the handler catches it only as a last resort).
+  For To, Cc and Reply-To Rust scans the raw value for every
+  `=?charset?b|q?text?=` (the shape Python's `get_encoded_word` decodes,
+  wherever it occurs) and answers 400 when one decodes to CR or LF, when its
+  charset is not one whose decoder maps only the bytes 0x0D and 0x0A to CR
+  and LF (UTF-8, US-ASCII, ISO-8859-1 to -16, windows-1250 to -1258 and
+  their Python spellings), or when its base64 text would need repair: a
+  superset of Python's 400 (fail closed; Python also decodes `utf-7`, where
+  `+AA0-` is a CR). Python writes `\x01` raw into the header (not
+  RFC-conformant); Rust forwards the client's encoded word, which is the
+  same decoded text (MIME, free). S4 tests every cell with the Python
+  status, no raw control character in the Rust output, and decoded text
+  equal to Python's. A panic anywhere in message construction is a bug, not
+  a 500 path (the handler catches it only as a last resort).
 - **Bodies**: only text → `text/plain`; only html → `text/html`; both →
   `multipart/alternative` [plain, html]; `amp-html` adds `text/x-amp-html` as
   the last alternative. Charset UTF-8. Decoded content equal up to line-ending
-  normalisation and one trailing newline.
-- **Attachments**: filename (RFC 2231 for non-ASCII), decoded bytes, content
-  type reduced to `main/sub`; `multipart/*`, `message/*`, empty or broken
-  types become `application/octet-stream`; filename defaults to `attachment`.
+  normalisation and one trailing newline. Rust stores a text as Python's
+  `set_content` does (CRLF, CR and LF become CRLF, a final line break is
+  added; other characters are kept) and chooses 7bit, quoted-printable or
+  base64 (lettre); a control character other than TAB forces base64.
+- **Attachments**: filename (RFC 2231 for non-ASCII), decoded bytes (always
+  base64), content type reduced to `main/sub`; `multipart/*`, `message/*`,
+  empty or broken types become `application/octet-stream` (broken: main or
+  sub type not an RFC 7230 token; Python passes those on raw, D-21);
+  filename defaults to `attachment`.
 - **Inline parts**: `Content-ID: <filename>`, `Content-Disposition: inline`
   with filename; with HTML they sit with the HTML part in
   `multipart/related` inside the alternative; without HTML in the top-level
@@ -588,6 +637,17 @@ What must arrive the same (checked by the semantic comparison of 7.4):
   by Python's `email` parser (`policy=default`).
 - Message-Id form stays `<32 hex@PUBLIC_HOST>` (free, kept for log
   correlation).
+- **Interface pipeline → MIME** (defined by S3c, implemented by S4a).
+  `mime::build(MessageInput) -> Result<BuiltMessage, InvalidMessage>` runs
+  step 9 completely, in `spawn_blocking`. `MessageInput` holds the `from`
+  mailbox `enforce_policy` returned, the raw `to`/`cc`/`bcc` values in form
+  order, the validated subject (step 6), `text`/`html`/`amp-html` as
+  received, the validated `h:*` headers in map order (names without `h:`),
+  the uploads (filename and content type with the form layer's defaults,
+  the data) and `PUBLIC_HOST`. `BuiltMessage` holds the Message-Id
+  (`<32 hex@PUBLIC_HOST>`, the response `id`), the `RCPT TO` list
+  (`envelope`) and the message bytes (`formatted`); `InvalidMessage` is
+  always 400.
 
 ### 2.11 Logging (minimum contract, section 4)
 
@@ -653,6 +713,7 @@ where Python starts), never the reverse.
 | D-18 | pydantic accepts any integer size, any float (`inf`, `nan`, negatives) and any string; Python then fails per request or binds every interface: with `SMTP_PORT` outside 0–65535 every submission fails (`getaddrinfo` error → 503), a non-finite, negative or too large (from about 9.2e9 s) `SMTP_TIMEOUT_S` makes every submission raise `ValueError`/`OverflowError` (502), `BIND_HOST=""` binds all interfaces, huge integers are kept. | Startup failure for: empty `BIND_HOST`; `SMTP_PORT` outside 0–65535; integer settings outside 64-bit; `SMTP_TIMEOUT_S` not finite or outside 0–1e9 s; `SMTP_MAX_CONCURRENCY` above 2^32−1; a value that is not valid UTF-8. Pinned by `config_env.json`. | Q4 (fail closed), added in S1 |
 | D-19 | A custom header name is checked with `re.match("^[A-Za-z][A-Za-z0-9-]*$")`, whose `$` also matches before a final newline: `h:X-Foo%0A` (also `h:Bcc%0A`, which then is no denylisted name) passes step 7, and the email package writes the name as an encoded word (`=?utf-8?q?X-Foo=0A?=: …`), 200. | The name must match the pattern in full: a final newline → **400** at step 7 (Rust-stricter). Pinned by `headers.json`. | Q4 (fail closed), added in S3a; coordinator to confirm |
 | D-20 | The form is parsed chunk by chunk as the body streams in, so some decisions depend on TCP segmentation: (a) a multipart body starting with CR or LF skips to the next `-` of the first chunk, so other bytes before the first boundary (`\ntext--boundary…`) are accepted when they arrive in one chunk with the boundary and refused (400) otherwise; (b) a chunked body (no `Content-Length`) over `max_body_bytes` that is also malformed answers 400 when the framing error arrives before the byte limit is crossed, else 413. | The body is buffered up to the limit and parsed whole, taking the refusing decision: (a) only CR and LF may precede the first boundary, anything else → **400**; (b) always **413**. Clients send `Content-Length` and no preamble (Anymail, recorder). | Q4 (fail closed), added in S3b; coordinator to confirm |
+| D-21 | Python's header registry decodes encoded words in every header value and re-encodes them, whatever the surrounding text; it decodes any charset Python has a codec for; `h:Orig-Date` is a date header (a parseable date is rewritten, any other value is sent as an empty header); header names have no length limit; an attachment content type that is not `token/token` (`a b/c`, `image/png/x`) is passed on raw with a header defect. | Rust refuses with **400** at step 9 (fail closed, exotic input; no client sends these): a display name, Subject, `h:*` value or inline Content-ID that needs encoding (non-ASCII, or a word too long for a line) and also holds an encoded word; in a forwarded value an encoded word whose charset is outside the ASCII-compatible set of 2.10, whose base64 needs repair, whose text holds `=?` or starts or ends with whitespace (in a display name also ASCII text with a special such as `,`), or that is longer than 75 characters without whitespace around it (or inside a quoted string); an encoded word in an address local part; an `h:In-Reply-To`/`h:References` value that is not a list of `<dot-atom@dot-atom>` ids (Python repairs `<a@b`, `<a@b>,<c@d>` and passes other forms with defects); `h:Orig-Date`; an `h:*` name longer than 76 characters (lettre's limit). A broken attachment content type (not two RFC 7230 tokens of at most 127 characters) becomes `application/octet-stream` (RFC-conformant, same data and filename). | Coordinator rule Q4 (fail closed), added in S4a |
 
 Python 500s on client input fixed in Python by the same rule as D-1 and
 D-16 (Q1), so no divergence remains: a non-ASCII character in the Basic
@@ -714,12 +775,12 @@ re-implementation of Python libraries, no hand-rolled protocol code.
 | auth | `base64` 0.22 (custom engine, 2.3), `sha2`, `subtle` (constant-time equality) | |
 | IDNA | `idna` 1 (UTS46 non-transitional, STD3 deny list, hyphen and DNS-length checks, root dot allowed) | Residual: D-10. |
 | Unicode | `unicode-normalization` (NFC for local parts) | |
-| RFC 2047 | `rfc2047-decoder` | decoding of incoming encoded words (2.10); encoding is lettre's |
+| RFC 2047 | `email-encoding` 0.4 (lettre's encoder, used directly) | encoded words for header text that is not printable ASCII (2.10). No decoder: printable values are forwarded as received, and the CR/LF check of D-16 scans encoded words itself (S4a); `rfc2047-decoder` would add a parser-combinator stack (`chumsky`, `stacker` with a C build step, `encoding_rs`) for a decision Python's codecs make differently anyway |
 | patterns | `regex` (`std` only) | YAML 1.1 implicit-type table and Starlette's host pattern; all patterns are ASCII. Env parsing, header-name and control-character checks are plain code. |
-| randomness | `getrandom` | 128-bit hex for `request_id` and Message-Id. |
+| randomness | `getrandom` 0.4 | 128-bit hex for `request_id` and Message-Id (`pipeline::random_hex`). |
 | logging | none (own ~60-line JSON line writer on stdout, flush per record) | `tracing-subscriber`'s JSON layout does not give these field names without a custom formatter; a direct writer is smaller. UTC timestamp formatting is ~15 lines (no time crate). |
 | CLI | none (three flags, manual argv) | |
-| tests | `tempfile`, `rcgen` (test CA/certs), `tokio` test utilities; a scripted fake SMTP server in the tests | |
+| tests | `tempfile`, `rcgen` (test CA/certs), `tokio` test utilities; a scripted fake SMTP server in the tests; `mail-parser` 0.11 reads the built messages in the MIME tests (S4) | |
 
 Build profile: `opt-level = "s"`, decided by measurement in S1 (Linux
 aarch64 container, glibc, release build of S1: 1.58 MB and 2.6 MiB idle RSS
@@ -764,7 +825,7 @@ changed lines per slice excluding generated fixtures.
 | S1b | Spike: lettre and the live SMTP server | throwaway branch: lettre connection API can send MAIL + individual RCPT + DATA with partial refusal and expose reply codes; addresses the corpus accepts round-trip through lettre `Address`; feature names; **read-only** EHLO on macmini (`openssl s_client -starttls smtp`, EHLO, QUIT): `AUTH` mechanisms after STARTTLS, `SMTPUTF8`, `SIZE`. Result recorded in this plan. | – (parallel to S1). **Status: done, GO with conditions (`rust/spike-s1b` @ `78f3254`)** |
 | S2 | Auth and policy (security boundary) | Split by size: **S2a** `auth.rs`, `auth.json`, `domain.json` (runtime `normalize_domain`), Python fix of the auth 500 (2.3 step 2); **S2b** `address.rs`, `address.json`, the D-15 check; **S2c** `policy.rs`, `policy.json`, production shapes. Scope: `auth.rs`, `domain.rs`, `address.rs`, `policy.rs`; fixtures `auth.json`, `domain.json`, `address.json` (corpus), `policy.json`; Rust counterparts of `test_auth.py`, `test_policy.py`, the address parts of `test_headers.py`; Python tests added for every corpus case that pins a new boundary decision; config loader rejects allowlist entries with a non-ASCII local part (D-17; implemented with the secrets loader in S1c); the D-15 validity check of `ENVELOPE_SENDER` (S1 applies only the IDN/EAI rule; `config_env.json` then marks the invalid senders D-15) | S1, S0-py merged (the oracle must already carry the Q1/Q2 behaviour). **Status: S2a, S2b and S2c merged; done** |
 | S3 | Request parsing and pipeline | `form.rs` (both encodings, limits), `pipeline.rs` (2.3 steps 1–9 with a stub submitter), header/subject validation, error mapping, response JSON, `event=request` record; fixtures `headers.json`; counterparts of `test_messages_endpoint.py` (non-SMTP), `test_headers.py`, `test_body_limit.py` | S2. **Status: split by size into S3a (`headers.rs`, `headers.json`; merged), S3b (`form.rs`, `form_decoding.json`; merged), S3c (`pipeline.rs`, the route, the request record, a step-9 stub in `mime.rs`, the core endpoint tests; merged) and S3d (the remaining endpoint tests: limits, body reading, decision order, records, route, production shapes, panics; merged). Done**. Interfaces for the later slices: S4 replaces the stub behind `mime::build(MessageInput) -> Result<BuiltMessage, InvalidMessage>` (`InvalidMessage` is the 400 of step 9; `BuiltMessage` carries `message_id`, `envelope`, `formatted`); S5 implements `pipeline::Submitter::submit(BuiltMessage) -> Result<Vec<Refusal>, SubmitError>` (refused recipients with their codes; `Temporary` 503, `Permanent` 502). Until S5 the binary's submitter answers every message with 503, so no build claims a message as queued that was not sent |
-| S4 | MIME construction | `mime.rs` with lettre builder (2.10), envelope and de-duplication, Message-Id/Date, inline/related/mixed, container downgrade, Reply-To; IDN as A-labels, EAI rejected (Q2); semantic tests by parsing the output; counterparts of `test_mime_build.py` | S2 (parallel to S3) |
+| S4 | MIME construction | `mime.rs` with lettre builder (2.10), envelope and de-duplication, Message-Id/Date, inline/related/mixed, container downgrade, Reply-To; IDN as A-labels, EAI rejected (Q2); semantic tests by parsing the output; counterparts of `test_mime_build.py` | S2 (parallel to S3). **Status: split by size into S4a (`mime.rs`, S3's step-9 stub replaced behind its interface (2.10), D-21, the Python fix of non-ASCII message-id headers; lettre with the `builder` feature only, `deny.toml` gains 0BSD for its `quoted_printable`) and S4b (`mime.json`, `check_mime.py`)** |
 | S5 | SMTP submission | `smtp.rs` on lettre's connection API: STARTTLS with system roots + CA file, AUTH, per-recipient RCPT, partial refusal, classification of 2.4, QUIT/close cleanup records, concurrency semaphore, per-operation timeout, `recipients_refused` and `smtp_cleanup_failed` records; scripted fake SMTP server tests mirroring `test_smtp_submission.py`, `test_smtp_outcomes.py`, `test_nonblocking_submit.py`; the S1b conditions (see "S1b result") | S1b, S3, S4 |
 | S6 | Parity harness | `rust/parity/` (7.4): fake SMTP with STARTTLS/AUTH, case corpus, runner for both implementations, semantic MIME comparison, CI job `parity`; process-level tests of the binary | S5 |
 | S7 | Release pipeline | `.github/workflows/rust-release.yml`, `scripts/release_checks.py` + tests (adapted from nyxmon), first tag `rs-v0.2.0` after S6 | S6 (tag) |

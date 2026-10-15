@@ -10,8 +10,8 @@ counterpart.
 `POST /v3/{domain}/messages` with every decision of the Python route. The
 binary loads and validates the configuration, answers `GET /health`, the
 404/405/307 fallbacks and the 413 body-limit layer, and logs the startup
-record and one record per message request. Message construction is a stub
-until S4 and SMTP submission comes with S5: until then every accepted
+record and one record per message request. S4a builds the message
+(`src/mime.rs`); SMTP submission comes with S5: until then every accepted
 message is answered with 503 and nothing is sent. Nothing deploys this code
 until the role is switched (PLAN.md section 9).
 

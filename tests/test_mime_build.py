@@ -286,3 +286,21 @@ def test_non_ascii_local_part_is_rejected_in_every_address_field(
 ) -> None:
     with pytest.raises(HeaderInjectionError):
         build_message(_base_input(**overrides))
+
+
+@pytest.mark.parametrize("name", ["In-Reply-To", "references"])
+@pytest.mark.parametrize("value", ["<jörg@example.test>", "Grüße", "=?utf-8?q?J=C3=B6rg?="])
+def test_non_ascii_message_id_header_is_rejected(name: str, value: str) -> None:
+    # smtplib could not serialise the decoded value and the request failed
+    # with 502 after the SMTP login; it is a client error.
+    with pytest.raises(HeaderInjectionError):
+        build_message(_base_input(custom_headers={name: value}))
+
+
+def test_ascii_message_id_headers_are_kept() -> None:
+    msg, _, _ = build_message(
+        _base_input(custom_headers={"In-Reply-To": "<a@b.test>", "References": "<a@b> <c@d>"})
+    )
+    assert msg["In-Reply-To"] == "<a@b.test>"
+    assert msg["References"] == "<a@b> <c@d>"
+    assert bytes(msg).isascii()
