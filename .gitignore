@@ -12,3 +12,6 @@ build/
 htmlcov/
 .coverage
 .coverage.*
+# Cargo build output of the Rust port (rust/), including throwaway spikes
+rust/target/
+rust/spikes/**/target/

@@ -1,0 +1,3451 @@
+{
+ "cases": [
+  {
+   "env": [],
+   "expected": {
+    "bind_host": "127.0.0.1",
+    "bind_port": 8085,
+    "envelope_sender": "",
+    "fail_on_partial_refusal": false,
+    "log_level": "INFO",
+    "max_attachment_bytes": 10485760,
+    "max_attachments": 10,
+    "max_body_bytes": 26214400,
+    "max_header_value_length": 998,
+    "max_recipients": 100,
+    "public_host": "mailgun.home.xn--wersdrfer-47a.de",
+    "secrets_path": "/etc/mailgun-relay/secrets.yml",
+    "smtp_ca_file": "",
+    "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
+    "smtp_max_concurrency": 8,
+    "smtp_port": 587,
+    "smtp_starttls": true,
+    "smtp_timeout_s": 30.0
+   },
+   "name": "defaults"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_BIND_HOST",
+     "127.0.0.1"
+    ],
+    [
+     "MAILGUN_RELAY_BIND_PORT",
+     "8085"
+    ],
+    [
+     "MAILGUN_RELAY_PUBLIC_HOST",
+     "mailgun.home.xn--wersdrfer-47a.de"
+    ],
+    [
+     "MAILGUN_RELAY_SECRETS_PATH",
+     "/etc/mailgun-relay/secrets.yml"
+    ],
+    [
+     "MAILGUN_RELAY_SMTP_HOST",
+     "smtp.home.xn--wersdrfer-47a.de"
+    ],
+    [
+     "MAILGUN_RELAY_SMTP_PORT",
+     "587"
+    ],
+    [
+     "MAILGUN_RELAY_SMTP_STARTTLS",
+     "true"
+    ],
+    [
+     "MAILGUN_RELAY_SMTP_TIMEOUT_S",
+     "30"
+    ],
+    [
+     "MAILGUN_RELAY_ENVELOPE_SENDER",
+     "mailgun-relay@xn--wersdrfer-47a.de"
+    ],
+    [
+     "MAILGUN_RELAY_MAX_BODY_BYTES",
+     "26214400"
+    ],
+    [
+     "MAILGUN_RELAY_MAX_ATTACHMENTS",
+     "10"
+    ],
+    [
+     "MAILGUN_RELAY_MAX_ATTACHMENT_BYTES",
+     "10485760"
+    ],
+    [
+     "MAILGUN_RELAY_MAX_RECIPIENTS",
+     "100"
+    ],
+    [
+     "MAILGUN_RELAY_MAX_HEADER_VALUE_LENGTH",
+     "998"
+    ],
+    [
+     "MAILGUN_RELAY_LOG_LEVEL",
+     "INFO"
+    ],
+    [
+     "PATH",
+     "/usr/bin"
+    ]
+   ],
+   "expected": {
+    "bind_host": "127.0.0.1",
+    "bind_port": 8085,
+    "envelope_sender": "mailgun-relay@xn--wersdrfer-47a.de",
+    "fail_on_partial_refusal": false,
+    "log_level": "INFO",
+    "max_attachment_bytes": 10485760,
+    "max_attachments": 10,
+    "max_body_bytes": 26214400,
+    "max_header_value_length": 998,
+    "max_recipients": 100,
+    "public_host": "mailgun.home.xn--wersdrfer-47a.de",
+    "secrets_path": "/etc/mailgun-relay/secrets.yml",
+    "smtp_ca_file": "",
+    "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
+    "smtp_max_concurrency": 8,
+    "smtp_port": 587,
+    "smtp_starttls": true,
+    "smtp_timeout_s": 30.0
+   },
+   "name": "production shape"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_FOO",
+     "x"
+    ]
+   ],
+   "expected": {
+    "bind_host": "127.0.0.1",
+    "bind_port": 8085,
+    "envelope_sender": "",
+    "fail_on_partial_refusal": false,
+    "log_level": "INFO",
+    "max_attachment_bytes": 10485760,
+    "max_attachments": 10,
+    "max_body_bytes": 26214400,
+    "max_header_value_length": 998,
+    "max_recipients": 100,
+    "public_host": "mailgun.home.xn--wersdrfer-47a.de",
+    "secrets_path": "/etc/mailgun-relay/secrets.yml",
+    "smtp_ca_file": "",
+    "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
+    "smtp_max_concurrency": 8,
+    "smtp_port": 587,
+    "smtp_starttls": true,
+    "smtp_timeout_s": 30.0
+   },
+   "name": "unknown prefixed variable ignored"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_PUBLIC_HOST",
+     ""
+    ],
+    [
+     "MAILGUN_RELAY_SMTP_CA_FILE",
+     ""
+    ]
+   ],
+   "expected": {
+    "bind_host": "127.0.0.1",
+    "bind_port": 8085,
+    "envelope_sender": "",
+    "fail_on_partial_refusal": false,
+    "log_level": "INFO",
+    "max_attachment_bytes": 10485760,
+    "max_attachments": 10,
+    "max_body_bytes": 26214400,
+    "max_header_value_length": 998,
+    "max_recipients": 100,
+    "public_host": "",
+    "secrets_path": "/etc/mailgun-relay/secrets.yml",
+    "smtp_ca_file": "",
+    "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
+    "smtp_max_concurrency": 8,
+    "smtp_port": 587,
+    "smtp_starttls": true,
+    "smtp_timeout_s": 30.0
+   },
+   "name": "empty strings are values"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_SMTP_CA_FILE",
+     "/etc/ssl/private-ca.pem"
+    ]
+   ],
+   "expected": {
+    "bind_host": "127.0.0.1",
+    "bind_port": 8085,
+    "envelope_sender": "",
+    "fail_on_partial_refusal": false,
+    "log_level": "INFO",
+    "max_attachment_bytes": 10485760,
+    "max_attachments": 10,
+    "max_body_bytes": 26214400,
+    "max_header_value_length": 998,
+    "max_recipients": 100,
+    "public_host": "mailgun.home.xn--wersdrfer-47a.de",
+    "secrets_path": "/etc/mailgun-relay/secrets.yml",
+    "smtp_ca_file": "/etc/ssl/private-ca.pem",
+    "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
+    "smtp_max_concurrency": 8,
+    "smtp_port": 587,
+    "smtp_starttls": true,
+    "smtp_timeout_s": 30.0
+   },
+   "name": "ca file"
+  },
+  {
+   "divergence": "D-18",
+   "env": [
+    [
+     "MAILGUN_RELAY_BIND_HOST",
+     ""
+    ]
+   ],
+   "expected": null,
+   "name": "empty bind host",
+   "python_starts": true
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_BIND_HOST",
+     "localhost"
+    ]
+   ],
+   "expected": {
+    "bind_host": "localhost",
+    "bind_port": 8085,
+    "envelope_sender": "",
+    "fail_on_partial_refusal": false,
+    "log_level": "INFO",
+    "max_attachment_bytes": 10485760,
+    "max_attachments": 10,
+    "max_body_bytes": 26214400,
+    "max_header_value_length": 998,
+    "max_recipients": 100,
+    "public_host": "mailgun.home.xn--wersdrfer-47a.de",
+    "secrets_path": "/etc/mailgun-relay/secrets.yml",
+    "smtp_ca_file": "",
+    "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
+    "smtp_max_concurrency": 8,
+    "smtp_port": 587,
+    "smtp_starttls": true,
+    "smtp_timeout_s": 30.0
+   },
+   "name": "bind host name"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_SMTP_STARTTLS",
+     "1"
+    ]
+   ],
+   "expected": {
+    "bind_host": "127.0.0.1",
+    "bind_port": 8085,
+    "envelope_sender": "",
+    "fail_on_partial_refusal": false,
+    "log_level": "INFO",
+    "max_attachment_bytes": 10485760,
+    "max_attachments": 10,
+    "max_body_bytes": 26214400,
+    "max_header_value_length": 998,
+    "max_recipients": 100,
+    "public_host": "mailgun.home.xn--wersdrfer-47a.de",
+    "secrets_path": "/etc/mailgun-relay/secrets.yml",
+    "smtp_ca_file": "",
+    "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
+    "smtp_max_concurrency": 8,
+    "smtp_port": 587,
+    "smtp_starttls": true,
+    "smtp_timeout_s": 30.0
+   },
+   "name": "bool '1'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_SMTP_STARTTLS",
+     "on"
+    ]
+   ],
+   "expected": {
+    "bind_host": "127.0.0.1",
+    "bind_port": 8085,
+    "envelope_sender": "",
+    "fail_on_partial_refusal": false,
+    "log_level": "INFO",
+    "max_attachment_bytes": 10485760,
+    "max_attachments": 10,
+    "max_body_bytes": 26214400,
+    "max_header_value_length": 998,
+    "max_recipients": 100,
+    "public_host": "mailgun.home.xn--wersdrfer-47a.de",
+    "secrets_path": "/etc/mailgun-relay/secrets.yml",
+    "smtp_ca_file": "",
+    "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
+    "smtp_max_concurrency": 8,
+    "smtp_port": 587,
+    "smtp_starttls": true,
+    "smtp_timeout_s": 30.0
+   },
+   "name": "bool 'on'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_SMTP_STARTTLS",
+     "t"
+    ]
+   ],
+   "expected": {
+    "bind_host": "127.0.0.1",
+    "bind_port": 8085,
+    "envelope_sender": "",
+    "fail_on_partial_refusal": false,
+    "log_level": "INFO",
+    "max_attachment_bytes": 10485760,
+    "max_attachments": 10,
+    "max_body_bytes": 26214400,
+    "max_header_value_length": 998,
+    "max_recipients": 100,
+    "public_host": "mailgun.home.xn--wersdrfer-47a.de",
+    "secrets_path": "/etc/mailgun-relay/secrets.yml",
+    "smtp_ca_file": "",
+    "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
+    "smtp_max_concurrency": 8,
+    "smtp_port": 587,
+    "smtp_starttls": true,
+    "smtp_timeout_s": 30.0
+   },
+   "name": "bool 't'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_SMTP_STARTTLS",
+     "true"
+    ]
+   ],
+   "expected": {
+    "bind_host": "127.0.0.1",
+    "bind_port": 8085,
+    "envelope_sender": "",
+    "fail_on_partial_refusal": false,
+    "log_level": "INFO",
+    "max_attachment_bytes": 10485760,
+    "max_attachments": 10,
+    "max_body_bytes": 26214400,
+    "max_header_value_length": 998,
+    "max_recipients": 100,
+    "public_host": "mailgun.home.xn--wersdrfer-47a.de",
+    "secrets_path": "/etc/mailgun-relay/secrets.yml",
+    "smtp_ca_file": "",
+    "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
+    "smtp_max_concurrency": 8,
+    "smtp_port": 587,
+    "smtp_starttls": true,
+    "smtp_timeout_s": 30.0
+   },
+   "name": "bool 'true'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_SMTP_STARTTLS",
+     "y"
+    ]
+   ],
+   "expected": {
+    "bind_host": "127.0.0.1",
+    "bind_port": 8085,
+    "envelope_sender": "",
+    "fail_on_partial_refusal": false,
+    "log_level": "INFO",
+    "max_attachment_bytes": 10485760,
+    "max_attachments": 10,
+    "max_body_bytes": 26214400,
+    "max_header_value_length": 998,
+    "max_recipients": 100,
+    "public_host": "mailgun.home.xn--wersdrfer-47a.de",
+    "secrets_path": "/etc/mailgun-relay/secrets.yml",
+    "smtp_ca_file": "",
+    "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
+    "smtp_max_concurrency": 8,
+    "smtp_port": 587,
+    "smtp_starttls": true,
+    "smtp_timeout_s": 30.0
+   },
+   "name": "bool 'y'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_SMTP_STARTTLS",
+     "yes"
+    ]
+   ],
+   "expected": {
+    "bind_host": "127.0.0.1",
+    "bind_port": 8085,
+    "envelope_sender": "",
+    "fail_on_partial_refusal": false,
+    "log_level": "INFO",
+    "max_attachment_bytes": 10485760,
+    "max_attachments": 10,
+    "max_body_bytes": 26214400,
+    "max_header_value_length": 998,
+    "max_recipients": 100,
+    "public_host": "mailgun.home.xn--wersdrfer-47a.de",
+    "secrets_path": "/etc/mailgun-relay/secrets.yml",
+    "smtp_ca_file": "",
+    "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
+    "smtp_max_concurrency": 8,
+    "smtp_port": 587,
+    "smtp_starttls": true,
+    "smtp_timeout_s": 30.0
+   },
+   "name": "bool 'yes'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_SMTP_STARTTLS",
+     "0"
+    ]
+   ],
+   "expected": {
+    "bind_host": "127.0.0.1",
+    "bind_port": 8085,
+    "envelope_sender": "",
+    "fail_on_partial_refusal": false,
+    "log_level": "INFO",
+    "max_attachment_bytes": 10485760,
+    "max_attachments": 10,
+    "max_body_bytes": 26214400,
+    "max_header_value_length": 998,
+    "max_recipients": 100,
+    "public_host": "mailgun.home.xn--wersdrfer-47a.de",
+    "secrets_path": "/etc/mailgun-relay/secrets.yml",
+    "smtp_ca_file": "",
+    "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
+    "smtp_max_concurrency": 8,
+    "smtp_port": 587,
+    "smtp_starttls": false,
+    "smtp_timeout_s": 30.0
+   },
+   "name": "bool '0'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_SMTP_STARTTLS",
+     "off"
+    ]
+   ],
+   "expected": {
+    "bind_host": "127.0.0.1",
+    "bind_port": 8085,
+    "envelope_sender": "",
+    "fail_on_partial_refusal": false,
+    "log_level": "INFO",
+    "max_attachment_bytes": 10485760,
+    "max_attachments": 10,
+    "max_body_bytes": 26214400,
+    "max_header_value_length": 998,
+    "max_recipients": 100,
+    "public_host": "mailgun.home.xn--wersdrfer-47a.de",
+    "secrets_path": "/etc/mailgun-relay/secrets.yml",
+    "smtp_ca_file": "",
+    "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
+    "smtp_max_concurrency": 8,
+    "smtp_port": 587,
+    "smtp_starttls": false,
+    "smtp_timeout_s": 30.0
+   },
+   "name": "bool 'off'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_SMTP_STARTTLS",
+     "f"
+    ]
+   ],
+   "expected": {
+    "bind_host": "127.0.0.1",
+    "bind_port": 8085,
+    "envelope_sender": "",
+    "fail_on_partial_refusal": false,
+    "log_level": "INFO",
+    "max_attachment_bytes": 10485760,
+    "max_attachments": 10,
+    "max_body_bytes": 26214400,
+    "max_header_value_length": 998,
+    "max_recipients": 100,
+    "public_host": "mailgun.home.xn--wersdrfer-47a.de",
+    "secrets_path": "/etc/mailgun-relay/secrets.yml",
+    "smtp_ca_file": "",
+    "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
+    "smtp_max_concurrency": 8,
+    "smtp_port": 587,
+    "smtp_starttls": false,
+    "smtp_timeout_s": 30.0
+   },
+   "name": "bool 'f'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_SMTP_STARTTLS",
+     "false"
+    ]
+   ],
+   "expected": {
+    "bind_host": "127.0.0.1",
+    "bind_port": 8085,
+    "envelope_sender": "",
+    "fail_on_partial_refusal": false,
+    "log_level": "INFO",
+    "max_attachment_bytes": 10485760,
+    "max_attachments": 10,
+    "max_body_bytes": 26214400,
+    "max_header_value_length": 998,
+    "max_recipients": 100,
+    "public_host": "mailgun.home.xn--wersdrfer-47a.de",
+    "secrets_path": "/etc/mailgun-relay/secrets.yml",
+    "smtp_ca_file": "",
+    "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
+    "smtp_max_concurrency": 8,
+    "smtp_port": 587,
+    "smtp_starttls": false,
+    "smtp_timeout_s": 30.0
+   },
+   "name": "bool 'false'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_SMTP_STARTTLS",
+     "n"
+    ]
+   ],
+   "expected": {
+    "bind_host": "127.0.0.1",
+    "bind_port": 8085,
+    "envelope_sender": "",
+    "fail_on_partial_refusal": false,
+    "log_level": "INFO",
+    "max_attachment_bytes": 10485760,
+    "max_attachments": 10,
+    "max_body_bytes": 26214400,
+    "max_header_value_length": 998,
+    "max_recipients": 100,
+    "public_host": "mailgun.home.xn--wersdrfer-47a.de",
+    "secrets_path": "/etc/mailgun-relay/secrets.yml",
+    "smtp_ca_file": "",
+    "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
+    "smtp_max_concurrency": 8,
+    "smtp_port": 587,
+    "smtp_starttls": false,
+    "smtp_timeout_s": 30.0
+   },
+   "name": "bool 'n'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_SMTP_STARTTLS",
+     "no"
+    ]
+   ],
+   "expected": {
+    "bind_host": "127.0.0.1",
+    "bind_port": 8085,
+    "envelope_sender": "",
+    "fail_on_partial_refusal": false,
+    "log_level": "INFO",
+    "max_attachment_bytes": 10485760,
+    "max_attachments": 10,
+    "max_body_bytes": 26214400,
+    "max_header_value_length": 998,
+    "max_recipients": 100,
+    "public_host": "mailgun.home.xn--wersdrfer-47a.de",
+    "secrets_path": "/etc/mailgun-relay/secrets.yml",
+    "smtp_ca_file": "",
+    "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
+    "smtp_max_concurrency": 8,
+    "smtp_port": 587,
+    "smtp_starttls": false,
+    "smtp_timeout_s": 30.0
+   },
+   "name": "bool 'no'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_SMTP_STARTTLS",
+     "TRUE"
+    ]
+   ],
+   "expected": {
+    "bind_host": "127.0.0.1",
+    "bind_port": 8085,
+    "envelope_sender": "",
+    "fail_on_partial_refusal": false,
+    "log_level": "INFO",
+    "max_attachment_bytes": 10485760,
+    "max_attachments": 10,
+    "max_body_bytes": 26214400,
+    "max_header_value_length": 998,
+    "max_recipients": 100,
+    "public_host": "mailgun.home.xn--wersdrfer-47a.de",
+    "secrets_path": "/etc/mailgun-relay/secrets.yml",
+    "smtp_ca_file": "",
+    "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
+    "smtp_max_concurrency": 8,
+    "smtp_port": 587,
+    "smtp_starttls": true,
+    "smtp_timeout_s": 30.0
+   },
+   "name": "bool 'TRUE'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_SMTP_STARTTLS",
+     "Yes"
+    ]
+   ],
+   "expected": {
+    "bind_host": "127.0.0.1",
+    "bind_port": 8085,
+    "envelope_sender": "",
+    "fail_on_partial_refusal": false,
+    "log_level": "INFO",
+    "max_attachment_bytes": 10485760,
+    "max_attachments": 10,
+    "max_body_bytes": 26214400,
+    "max_header_value_length": 998,
+    "max_recipients": 100,
+    "public_host": "mailgun.home.xn--wersdrfer-47a.de",
+    "secrets_path": "/etc/mailgun-relay/secrets.yml",
+    "smtp_ca_file": "",
+    "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
+    "smtp_max_concurrency": 8,
+    "smtp_port": 587,
+    "smtp_starttls": true,
+    "smtp_timeout_s": 30.0
+   },
+   "name": "bool 'Yes'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_SMTP_STARTTLS",
+     "oN"
+    ]
+   ],
+   "expected": {
+    "bind_host": "127.0.0.1",
+    "bind_port": 8085,
+    "envelope_sender": "",
+    "fail_on_partial_refusal": false,
+    "log_level": "INFO",
+    "max_attachment_bytes": 10485760,
+    "max_attachments": 10,
+    "max_body_bytes": 26214400,
+    "max_header_value_length": 998,
+    "max_recipients": 100,
+    "public_host": "mailgun.home.xn--wersdrfer-47a.de",
+    "secrets_path": "/etc/mailgun-relay/secrets.yml",
+    "smtp_ca_file": "",
+    "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
+    "smtp_max_concurrency": 8,
+    "smtp_port": 587,
+    "smtp_starttls": true,
+    "smtp_timeout_s": 30.0
+   },
+   "name": "bool 'oN'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_SMTP_STARTTLS",
+     "F"
+    ]
+   ],
+   "expected": {
+    "bind_host": "127.0.0.1",
+    "bind_port": 8085,
+    "envelope_sender": "",
+    "fail_on_partial_refusal": false,
+    "log_level": "INFO",
+    "max_attachment_bytes": 10485760,
+    "max_attachments": 10,
+    "max_body_bytes": 26214400,
+    "max_header_value_length": 998,
+    "max_recipients": 100,
+    "public_host": "mailgun.home.xn--wersdrfer-47a.de",
+    "secrets_path": "/etc/mailgun-relay/secrets.yml",
+    "smtp_ca_file": "",
+    "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
+    "smtp_max_concurrency": 8,
+    "smtp_port": 587,
+    "smtp_starttls": false,
+    "smtp_timeout_s": 30.0
+   },
+   "name": "bool 'F'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_SMTP_STARTTLS",
+     " true"
+    ]
+   ],
+   "expected": null,
+   "name": "bool ' true'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_SMTP_STARTTLS",
+     "true "
+    ]
+   ],
+   "expected": null,
+   "name": "bool 'true '"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_SMTP_STARTTLS",
+     ""
+    ]
+   ],
+   "expected": null,
+   "name": "bool ''"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_SMTP_STARTTLS",
+     "2"
+    ]
+   ],
+   "expected": null,
+   "name": "bool '2'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_SMTP_STARTTLS",
+     "ye"
+    ]
+   ],
+   "expected": null,
+   "name": "bool 'ye'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_SMTP_STARTTLS",
+     "enabled"
+    ]
+   ],
+   "expected": null,
+   "name": "bool 'enabled'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_FAIL_ON_PARTIAL_REFUSAL",
+     "true"
+    ]
+   ],
+   "expected": {
+    "bind_host": "127.0.0.1",
+    "bind_port": 8085,
+    "envelope_sender": "",
+    "fail_on_partial_refusal": true,
+    "log_level": "INFO",
+    "max_attachment_bytes": 10485760,
+    "max_attachments": 10,
+    "max_body_bytes": 26214400,
+    "max_header_value_length": 998,
+    "max_recipients": 100,
+    "public_host": "mailgun.home.xn--wersdrfer-47a.de",
+    "secrets_path": "/etc/mailgun-relay/secrets.yml",
+    "smtp_ca_file": "",
+    "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
+    "smtp_max_concurrency": 8,
+    "smtp_port": 587,
+    "smtp_starttls": true,
+    "smtp_timeout_s": 30.0
+   },
+   "name": "partial refusal 'true'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_FAIL_ON_PARTIAL_REFUSAL",
+     "No"
+    ]
+   ],
+   "expected": {
+    "bind_host": "127.0.0.1",
+    "bind_port": 8085,
+    "envelope_sender": "",
+    "fail_on_partial_refusal": false,
+    "log_level": "INFO",
+    "max_attachment_bytes": 10485760,
+    "max_attachments": 10,
+    "max_body_bytes": 26214400,
+    "max_header_value_length": 998,
+    "max_recipients": 100,
+    "public_host": "mailgun.home.xn--wersdrfer-47a.de",
+    "secrets_path": "/etc/mailgun-relay/secrets.yml",
+    "smtp_ca_file": "",
+    "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
+    "smtp_max_concurrency": 8,
+    "smtp_port": 587,
+    "smtp_starttls": true,
+    "smtp_timeout_s": 30.0
+   },
+   "name": "partial refusal 'No'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_FAIL_ON_PARTIAL_REFUSAL",
+     "x"
+    ]
+   ],
+   "expected": null,
+   "name": "partial refusal 'x'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_MAX_BODY_BYTES",
+     "26214400"
+    ]
+   ],
+   "expected": {
+    "bind_host": "127.0.0.1",
+    "bind_port": 8085,
+    "envelope_sender": "",
+    "fail_on_partial_refusal": false,
+    "log_level": "INFO",
+    "max_attachment_bytes": 10485760,
+    "max_attachments": 10,
+    "max_body_bytes": 26214400,
+    "max_header_value_length": 998,
+    "max_recipients": 100,
+    "public_host": "mailgun.home.xn--wersdrfer-47a.de",
+    "secrets_path": "/etc/mailgun-relay/secrets.yml",
+    "smtp_ca_file": "",
+    "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
+    "smtp_max_concurrency": 8,
+    "smtp_port": 587,
+    "smtp_starttls": true,
+    "smtp_timeout_s": 30.0
+   },
+   "name": "int '26214400'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_MAX_BODY_BYTES",
+     " 1 "
+    ]
+   ],
+   "expected": {
+    "bind_host": "127.0.0.1",
+    "bind_port": 8085,
+    "envelope_sender": "",
+    "fail_on_partial_refusal": false,
+    "log_level": "INFO",
+    "max_attachment_bytes": 10485760,
+    "max_attachments": 10,
+    "max_body_bytes": 1,
+    "max_header_value_length": 998,
+    "max_recipients": 100,
+    "public_host": "mailgun.home.xn--wersdrfer-47a.de",
+    "secrets_path": "/etc/mailgun-relay/secrets.yml",
+    "smtp_ca_file": "",
+    "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
+    "smtp_max_concurrency": 8,
+    "smtp_port": 587,
+    "smtp_starttls": true,
+    "smtp_timeout_s": 30.0
+   },
+   "name": "int ' 1 '"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_MAX_BODY_BYTES",
+     "\t7\n"
+    ]
+   ],
+   "expected": {
+    "bind_host": "127.0.0.1",
+    "bind_port": 8085,
+    "envelope_sender": "",
+    "fail_on_partial_refusal": false,
+    "log_level": "INFO",
+    "max_attachment_bytes": 10485760,
+    "max_attachments": 10,
+    "max_body_bytes": 7,
+    "max_header_value_length": 998,
+    "max_recipients": 100,
+    "public_host": "mailgun.home.xn--wersdrfer-47a.de",
+    "secrets_path": "/etc/mailgun-relay/secrets.yml",
+    "smtp_ca_file": "",
+    "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
+    "smtp_max_concurrency": 8,
+    "smtp_port": 587,
+    "smtp_starttls": true,
+    "smtp_timeout_s": 30.0
+   },
+   "name": "int '\\t7\\n'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_MAX_BODY_BYTES",
+     "+5"
+    ]
+   ],
+   "expected": {
+    "bind_host": "127.0.0.1",
+    "bind_port": 8085,
+    "envelope_sender": "",
+    "fail_on_partial_refusal": false,
+    "log_level": "INFO",
+    "max_attachment_bytes": 10485760,
+    "max_attachments": 10,
+    "max_body_bytes": 5,
+    "max_header_value_length": 998,
+    "max_recipients": 100,
+    "public_host": "mailgun.home.xn--wersdrfer-47a.de",
+    "secrets_path": "/etc/mailgun-relay/secrets.yml",
+    "smtp_ca_file": "",
+    "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
+    "smtp_max_concurrency": 8,
+    "smtp_port": 587,
+    "smtp_starttls": true,
+    "smtp_timeout_s": 30.0
+   },
+   "name": "int '+5'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_MAX_BODY_BYTES",
+     "-1"
+    ]
+   ],
+   "expected": {
+    "bind_host": "127.0.0.1",
+    "bind_port": 8085,
+    "envelope_sender": "",
+    "fail_on_partial_refusal": false,
+    "log_level": "INFO",
+    "max_attachment_bytes": 10485760,
+    "max_attachments": 10,
+    "max_body_bytes": -1,
+    "max_header_value_length": 998,
+    "max_recipients": 100,
+    "public_host": "mailgun.home.xn--wersdrfer-47a.de",
+    "secrets_path": "/etc/mailgun-relay/secrets.yml",
+    "smtp_ca_file": "",
+    "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
+    "smtp_max_concurrency": 8,
+    "smtp_port": 587,
+    "smtp_starttls": true,
+    "smtp_timeout_s": 30.0
+   },
+   "name": "int '-1'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_MAX_BODY_BYTES",
+     "0"
+    ]
+   ],
+   "expected": {
+    "bind_host": "127.0.0.1",
+    "bind_port": 8085,
+    "envelope_sender": "",
+    "fail_on_partial_refusal": false,
+    "log_level": "INFO",
+    "max_attachment_bytes": 10485760,
+    "max_attachments": 10,
+    "max_body_bytes": 0,
+    "max_header_value_length": 998,
+    "max_recipients": 100,
+    "public_host": "mailgun.home.xn--wersdrfer-47a.de",
+    "secrets_path": "/etc/mailgun-relay/secrets.yml",
+    "smtp_ca_file": "",
+    "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
+    "smtp_max_concurrency": 8,
+    "smtp_port": 587,
+    "smtp_starttls": true,
+    "smtp_timeout_s": 30.0
+   },
+   "name": "int '0'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_MAX_BODY_BYTES",
+     "0_1"
+    ]
+   ],
+   "expected": {
+    "bind_host": "127.0.0.1",
+    "bind_port": 8085,
+    "envelope_sender": "",
+    "fail_on_partial_refusal": false,
+    "log_level": "INFO",
+    "max_attachment_bytes": 10485760,
+    "max_attachments": 10,
+    "max_body_bytes": 1,
+    "max_header_value_length": 998,
+    "max_recipients": 100,
+    "public_host": "mailgun.home.xn--wersdrfer-47a.de",
+    "secrets_path": "/etc/mailgun-relay/secrets.yml",
+    "smtp_ca_file": "",
+    "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
+    "smtp_max_concurrency": 8,
+    "smtp_port": 587,
+    "smtp_starttls": true,
+    "smtp_timeout_s": 30.0
+   },
+   "name": "int '0_1'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_MAX_BODY_BYTES",
+     "1_000"
+    ]
+   ],
+   "expected": {
+    "bind_host": "127.0.0.1",
+    "bind_port": 8085,
+    "envelope_sender": "",
+    "fail_on_partial_refusal": false,
+    "log_level": "INFO",
+    "max_attachment_bytes": 10485760,
+    "max_attachments": 10,
+    "max_body_bytes": 1000,
+    "max_header_value_length": 998,
+    "max_recipients": 100,
+    "public_host": "mailgun.home.xn--wersdrfer-47a.de",
+    "secrets_path": "/etc/mailgun-relay/secrets.yml",
+    "smtp_ca_file": "",
+    "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
+    "smtp_max_concurrency": 8,
+    "smtp_port": 587,
+    "smtp_starttls": true,
+    "smtp_timeout_s": 30.0
+   },
+   "name": "int '1_000'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_MAX_BODY_BYTES",
+     "007"
+    ]
+   ],
+   "expected": {
+    "bind_host": "127.0.0.1",
+    "bind_port": 8085,
+    "envelope_sender": "",
+    "fail_on_partial_refusal": false,
+    "log_level": "INFO",
+    "max_attachment_bytes": 10485760,
+    "max_attachments": 10,
+    "max_body_bytes": 7,
+    "max_header_value_length": 998,
+    "max_recipients": 100,
+    "public_host": "mailgun.home.xn--wersdrfer-47a.de",
+    "secrets_path": "/etc/mailgun-relay/secrets.yml",
+    "smtp_ca_file": "",
+    "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
+    "smtp_max_concurrency": 8,
+    "smtp_port": 587,
+    "smtp_starttls": true,
+    "smtp_timeout_s": 30.0
+   },
+   "name": "int '007'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_MAX_BODY_BYTES",
+     "8085.0"
+    ]
+   ],
+   "expected": {
+    "bind_host": "127.0.0.1",
+    "bind_port": 8085,
+    "envelope_sender": "",
+    "fail_on_partial_refusal": false,
+    "log_level": "INFO",
+    "max_attachment_bytes": 10485760,
+    "max_attachments": 10,
+    "max_body_bytes": 8085,
+    "max_header_value_length": 998,
+    "max_recipients": 100,
+    "public_host": "mailgun.home.xn--wersdrfer-47a.de",
+    "secrets_path": "/etc/mailgun-relay/secrets.yml",
+    "smtp_ca_file": "",
+    "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
+    "smtp_max_concurrency": 8,
+    "smtp_port": 587,
+    "smtp_starttls": true,
+    "smtp_timeout_s": 30.0
+   },
+   "name": "int '8085.0'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_MAX_BODY_BYTES",
+     "8085.00"
+    ]
+   ],
+   "expected": {
+    "bind_host": "127.0.0.1",
+    "bind_port": 8085,
+    "envelope_sender": "",
+    "fail_on_partial_refusal": false,
+    "log_level": "INFO",
+    "max_attachment_bytes": 10485760,
+    "max_attachments": 10,
+    "max_body_bytes": 8085,
+    "max_header_value_length": 998,
+    "max_recipients": 100,
+    "public_host": "mailgun.home.xn--wersdrfer-47a.de",
+    "secrets_path": "/etc/mailgun-relay/secrets.yml",
+    "smtp_ca_file": "",
+    "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
+    "smtp_max_concurrency": 8,
+    "smtp_port": 587,
+    "smtp_starttls": true,
+    "smtp_timeout_s": 30.0
+   },
+   "name": "int '8085.00'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_MAX_BODY_BYTES",
+     "-0.0"
+    ]
+   ],
+   "expected": {
+    "bind_host": "127.0.0.1",
+    "bind_port": 8085,
+    "envelope_sender": "",
+    "fail_on_partial_refusal": false,
+    "log_level": "INFO",
+    "max_attachment_bytes": 10485760,
+    "max_attachments": 10,
+    "max_body_bytes": 0,
+    "max_header_value_length": 998,
+    "max_recipients": 100,
+    "public_host": "mailgun.home.xn--wersdrfer-47a.de",
+    "secrets_path": "/etc/mailgun-relay/secrets.yml",
+    "smtp_ca_file": "",
+    "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
+    "smtp_max_concurrency": 8,
+    "smtp_port": 587,
+    "smtp_starttls": true,
+    "smtp_timeout_s": 30.0
+   },
+   "name": "int '-0.0'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_MAX_BODY_BYTES",
+     "+1.0"
+    ]
+   ],
+   "expected": {
+    "bind_host": "127.0.0.1",
+    "bind_port": 8085,
+    "envelope_sender": "",
+    "fail_on_partial_refusal": false,
+    "log_level": "INFO",
+    "max_attachment_bytes": 10485760,
+    "max_attachments": 10,
+    "max_body_bytes": 1,
+    "max_header_value_length": 998,
+    "max_recipients": 100,
+    "public_host": "mailgun.home.xn--wersdrfer-47a.de",
+    "secrets_path": "/etc/mailgun-relay/secrets.yml",
+    "smtp_ca_file": "",
+    "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
+    "smtp_max_concurrency": 8,
+    "smtp_port": 587,
+    "smtp_starttls": true,
+    "smtp_timeout_s": 30.0
+   },
+   "name": "int '+1.0'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_MAX_BODY_BYTES",
+     "8085."
+    ]
+   ],
+   "expected": null,
+   "name": "int '8085.'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_MAX_BODY_BYTES",
+     "1 .0"
+    ]
+   ],
+   "expected": null,
+   "name": "int '1 .0'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_MAX_BODY_BYTES",
+     "1\t.0"
+    ]
+   ],
+   "expected": null,
+   "name": "int '1\\t.0'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_MAX_BODY_BYTES",
+     "1.5"
+    ]
+   ],
+   "expected": null,
+   "name": "int '1.5'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_MAX_BODY_BYTES",
+     "1.0_0"
+    ]
+   ],
+   "expected": null,
+   "name": "int '1.0_0'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_MAX_BODY_BYTES",
+     "1__0"
+    ]
+   ],
+   "expected": null,
+   "name": "int '1__0'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_MAX_BODY_BYTES",
+     "_1"
+    ]
+   ],
+   "expected": null,
+   "name": "int '_1'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_MAX_BODY_BYTES",
+     "1_"
+    ]
+   ],
+   "expected": null,
+   "name": "int '1_'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_MAX_BODY_BYTES",
+     "+_1"
+    ]
+   ],
+   "expected": null,
+   "name": "int '+_1'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_MAX_BODY_BYTES",
+     "0x10"
+    ]
+   ],
+   "expected": null,
+   "name": "int '0x10'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_MAX_BODY_BYTES",
+     "1e3"
+    ]
+   ],
+   "expected": null,
+   "name": "int '1e3'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_MAX_BODY_BYTES",
+     ""
+    ]
+   ],
+   "expected": null,
+   "name": "int ''"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_MAX_BODY_BYTES",
+     "\u0668"
+    ]
+   ],
+   "expected": null,
+   "name": "int '\u0668'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_MAX_BODY_BYTES",
+     "\u00a01"
+    ]
+   ],
+   "expected": {
+    "bind_host": "127.0.0.1",
+    "bind_port": 8085,
+    "envelope_sender": "",
+    "fail_on_partial_refusal": false,
+    "log_level": "INFO",
+    "max_attachment_bytes": 10485760,
+    "max_attachments": 10,
+    "max_body_bytes": 1,
+    "max_header_value_length": 998,
+    "max_recipients": 100,
+    "public_host": "mailgun.home.xn--wersdrfer-47a.de",
+    "secrets_path": "/etc/mailgun-relay/secrets.yml",
+    "smtp_ca_file": "",
+    "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
+    "smtp_max_concurrency": 8,
+    "smtp_port": 587,
+    "smtp_starttls": true,
+    "smtp_timeout_s": 30.0
+   },
+   "name": "int '\\xa01'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_MAX_BODY_BYTES",
+     "\u001c1"
+    ]
+   ],
+   "expected": null,
+   "name": "int '\\x1c1'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_MAX_BODY_BYTES",
+     "0000000000000000000000005"
+    ]
+   ],
+   "expected": {
+    "bind_host": "127.0.0.1",
+    "bind_port": 8085,
+    "envelope_sender": "",
+    "fail_on_partial_refusal": false,
+    "log_level": "INFO",
+    "max_attachment_bytes": 10485760,
+    "max_attachments": 10,
+    "max_body_bytes": 5,
+    "max_header_value_length": 998,
+    "max_recipients": 100,
+    "public_host": "mailgun.home.xn--wersdrfer-47a.de",
+    "secrets_path": "/etc/mailgun-relay/secrets.yml",
+    "smtp_ca_file": "",
+    "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
+    "smtp_max_concurrency": 8,
+    "smtp_port": 587,
+    "smtp_starttls": true,
+    "smtp_timeout_s": 30.0
+   },
+   "name": "int '0000000000000000000000005'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_MAX_BODY_BYTES",
+     "9223372036854775807"
+    ]
+   ],
+   "expected": {
+    "bind_host": "127.0.0.1",
+    "bind_port": 8085,
+    "envelope_sender": "",
+    "fail_on_partial_refusal": false,
+    "log_level": "INFO",
+    "max_attachment_bytes": 10485760,
+    "max_attachments": 10,
+    "max_body_bytes": 9223372036854775807,
+    "max_header_value_length": 998,
+    "max_recipients": 100,
+    "public_host": "mailgun.home.xn--wersdrfer-47a.de",
+    "secrets_path": "/etc/mailgun-relay/secrets.yml",
+    "smtp_ca_file": "",
+    "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
+    "smtp_max_concurrency": 8,
+    "smtp_port": 587,
+    "smtp_starttls": true,
+    "smtp_timeout_s": 30.0
+   },
+   "name": "int '9223372036854775807'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_MAX_BODY_BYTES",
+     "-9223372036854775808"
+    ]
+   ],
+   "expected": {
+    "bind_host": "127.0.0.1",
+    "bind_port": 8085,
+    "envelope_sender": "",
+    "fail_on_partial_refusal": false,
+    "log_level": "INFO",
+    "max_attachment_bytes": 10485760,
+    "max_attachments": 10,
+    "max_body_bytes": -9223372036854775808,
+    "max_header_value_length": 998,
+    "max_recipients": 100,
+    "public_host": "mailgun.home.xn--wersdrfer-47a.de",
+    "secrets_path": "/etc/mailgun-relay/secrets.yml",
+    "smtp_ca_file": "",
+    "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
+    "smtp_max_concurrency": 8,
+    "smtp_port": 587,
+    "smtp_starttls": true,
+    "smtp_timeout_s": 30.0
+   },
+   "name": "int '-9223372036854775808'"
+  },
+  {
+   "divergence": "D-18",
+   "env": [
+    [
+     "MAILGUN_RELAY_MAX_BODY_BYTES",
+     "9223372036854775808"
+    ]
+   ],
+   "expected": null,
+   "name": "int '9223372036854775808'",
+   "python_starts": true
+  },
+  {
+   "divergence": "D-18",
+   "env": [
+    [
+     "MAILGUN_RELAY_MAX_BODY_BYTES",
+     "99999999999999999999999"
+    ]
+   ],
+   "expected": null,
+   "name": "int '99999999999999999999999'",
+   "python_starts": true
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_MAX_ATTACHMENTS",
+     "-3"
+    ]
+   ],
+   "expected": {
+    "bind_host": "127.0.0.1",
+    "bind_port": 8085,
+    "envelope_sender": "",
+    "fail_on_partial_refusal": false,
+    "log_level": "INFO",
+    "max_attachment_bytes": 10485760,
+    "max_attachments": -3,
+    "max_body_bytes": 26214400,
+    "max_header_value_length": 998,
+    "max_recipients": 100,
+    "public_host": "mailgun.home.xn--wersdrfer-47a.de",
+    "secrets_path": "/etc/mailgun-relay/secrets.yml",
+    "smtp_ca_file": "",
+    "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
+    "smtp_max_concurrency": 8,
+    "smtp_port": 587,
+    "smtp_starttls": true,
+    "smtp_timeout_s": 30.0
+   },
+   "name": "other int fields '-3'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_MAX_ATTACHMENT_BYTES",
+     "1_048_576"
+    ]
+   ],
+   "expected": {
+    "bind_host": "127.0.0.1",
+    "bind_port": 8085,
+    "envelope_sender": "",
+    "fail_on_partial_refusal": false,
+    "log_level": "INFO",
+    "max_attachment_bytes": 1048576,
+    "max_attachments": 10,
+    "max_body_bytes": 26214400,
+    "max_header_value_length": 998,
+    "max_recipients": 100,
+    "public_host": "mailgun.home.xn--wersdrfer-47a.de",
+    "secrets_path": "/etc/mailgun-relay/secrets.yml",
+    "smtp_ca_file": "",
+    "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
+    "smtp_max_concurrency": 8,
+    "smtp_port": 587,
+    "smtp_starttls": true,
+    "smtp_timeout_s": 30.0
+   },
+   "name": "other int fields '1_048_576'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_MAX_RECIPIENTS",
+     "0"
+    ]
+   ],
+   "expected": {
+    "bind_host": "127.0.0.1",
+    "bind_port": 8085,
+    "envelope_sender": "",
+    "fail_on_partial_refusal": false,
+    "log_level": "INFO",
+    "max_attachment_bytes": 10485760,
+    "max_attachments": 10,
+    "max_body_bytes": 26214400,
+    "max_header_value_length": 998,
+    "max_recipients": 0,
+    "public_host": "mailgun.home.xn--wersdrfer-47a.de",
+    "secrets_path": "/etc/mailgun-relay/secrets.yml",
+    "smtp_ca_file": "",
+    "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
+    "smtp_max_concurrency": 8,
+    "smtp_port": 587,
+    "smtp_starttls": true,
+    "smtp_timeout_s": 30.0
+   },
+   "name": "other int fields '0'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_MAX_HEADER_VALUE_LENGTH",
+     "78.0"
+    ]
+   ],
+   "expected": {
+    "bind_host": "127.0.0.1",
+    "bind_port": 8085,
+    "envelope_sender": "",
+    "fail_on_partial_refusal": false,
+    "log_level": "INFO",
+    "max_attachment_bytes": 10485760,
+    "max_attachments": 10,
+    "max_body_bytes": 26214400,
+    "max_header_value_length": 78,
+    "max_recipients": 100,
+    "public_host": "mailgun.home.xn--wersdrfer-47a.de",
+    "secrets_path": "/etc/mailgun-relay/secrets.yml",
+    "smtp_ca_file": "",
+    "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
+    "smtp_max_concurrency": 8,
+    "smtp_port": 587,
+    "smtp_starttls": true,
+    "smtp_timeout_s": 30.0
+   },
+   "name": "other int fields '78.0'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_BIND_PORT",
+     "9000"
+    ]
+   ],
+   "expected": {
+    "bind_host": "127.0.0.1",
+    "bind_port": 9000,
+    "envelope_sender": "",
+    "fail_on_partial_refusal": false,
+    "log_level": "INFO",
+    "max_attachment_bytes": 10485760,
+    "max_attachments": 10,
+    "max_body_bytes": 26214400,
+    "max_header_value_length": 998,
+    "max_recipients": 100,
+    "public_host": "mailgun.home.xn--wersdrfer-47a.de",
+    "secrets_path": "/etc/mailgun-relay/secrets.yml",
+    "smtp_ca_file": "",
+    "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
+    "smtp_max_concurrency": 8,
+    "smtp_port": 587,
+    "smtp_starttls": true,
+    "smtp_timeout_s": 30.0
+   },
+   "name": "bind port '9000'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_BIND_PORT",
+     " 9000"
+    ]
+   ],
+   "expected": {
+    "bind_host": "127.0.0.1",
+    "bind_port": 9000,
+    "envelope_sender": "",
+    "fail_on_partial_refusal": false,
+    "log_level": "INFO",
+    "max_attachment_bytes": 10485760,
+    "max_attachments": 10,
+    "max_body_bytes": 26214400,
+    "max_header_value_length": 998,
+    "max_recipients": 100,
+    "public_host": "mailgun.home.xn--wersdrfer-47a.de",
+    "secrets_path": "/etc/mailgun-relay/secrets.yml",
+    "smtp_ca_file": "",
+    "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
+    "smtp_max_concurrency": 8,
+    "smtp_port": 587,
+    "smtp_starttls": true,
+    "smtp_timeout_s": 30.0
+   },
+   "name": "bind port ' 9000'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_BIND_PORT",
+     "+9_000"
+    ]
+   ],
+   "expected": {
+    "bind_host": "127.0.0.1",
+    "bind_port": 9000,
+    "envelope_sender": "",
+    "fail_on_partial_refusal": false,
+    "log_level": "INFO",
+    "max_attachment_bytes": 10485760,
+    "max_attachments": 10,
+    "max_body_bytes": 26214400,
+    "max_header_value_length": 998,
+    "max_recipients": 100,
+    "public_host": "mailgun.home.xn--wersdrfer-47a.de",
+    "secrets_path": "/etc/mailgun-relay/secrets.yml",
+    "smtp_ca_file": "",
+    "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
+    "smtp_max_concurrency": 8,
+    "smtp_port": 587,
+    "smtp_starttls": true,
+    "smtp_timeout_s": 30.0
+   },
+   "name": "bind port '+9_000'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_BIND_PORT",
+     "8085.0"
+    ]
+   ],
+   "expected": null,
+   "name": "bind port '8085.0'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_BIND_PORT",
+     "0"
+    ]
+   ],
+   "expected": {
+    "bind_host": "127.0.0.1",
+    "bind_port": 0,
+    "envelope_sender": "",
+    "fail_on_partial_refusal": false,
+    "log_level": "INFO",
+    "max_attachment_bytes": 10485760,
+    "max_attachments": 10,
+    "max_body_bytes": 26214400,
+    "max_header_value_length": 998,
+    "max_recipients": 100,
+    "public_host": "mailgun.home.xn--wersdrfer-47a.de",
+    "secrets_path": "/etc/mailgun-relay/secrets.yml",
+    "smtp_ca_file": "",
+    "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
+    "smtp_max_concurrency": 8,
+    "smtp_port": 587,
+    "smtp_starttls": true,
+    "smtp_timeout_s": 30.0
+   },
+   "name": "bind port '0'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_BIND_PORT",
+     "65535"
+    ]
+   ],
+   "expected": {
+    "bind_host": "127.0.0.1",
+    "bind_port": 65535,
+    "envelope_sender": "",
+    "fail_on_partial_refusal": false,
+    "log_level": "INFO",
+    "max_attachment_bytes": 10485760,
+    "max_attachments": 10,
+    "max_body_bytes": 26214400,
+    "max_header_value_length": 998,
+    "max_recipients": 100,
+    "public_host": "mailgun.home.xn--wersdrfer-47a.de",
+    "secrets_path": "/etc/mailgun-relay/secrets.yml",
+    "smtp_ca_file": "",
+    "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
+    "smtp_max_concurrency": 8,
+    "smtp_port": 587,
+    "smtp_starttls": true,
+    "smtp_timeout_s": 30.0
+   },
+   "name": "bind port '65535'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_BIND_PORT",
+     "65536"
+    ]
+   ],
+   "expected": null,
+   "name": "bind port '65536'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_BIND_PORT",
+     "-1"
+    ]
+   ],
+   "expected": null,
+   "name": "bind port '-1'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_BIND_PORT",
+     "x"
+    ]
+   ],
+   "expected": null,
+   "name": "bind port 'x'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_SMTP_PORT",
+     "25"
+    ]
+   ],
+   "expected": {
+    "bind_host": "127.0.0.1",
+    "bind_port": 8085,
+    "envelope_sender": "",
+    "fail_on_partial_refusal": false,
+    "log_level": "INFO",
+    "max_attachment_bytes": 10485760,
+    "max_attachments": 10,
+    "max_body_bytes": 26214400,
+    "max_header_value_length": 998,
+    "max_recipients": 100,
+    "public_host": "mailgun.home.xn--wersdrfer-47a.de",
+    "secrets_path": "/etc/mailgun-relay/secrets.yml",
+    "smtp_ca_file": "",
+    "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
+    "smtp_max_concurrency": 8,
+    "smtp_port": 25,
+    "smtp_starttls": true,
+    "smtp_timeout_s": 30.0
+   },
+   "name": "smtp port '25'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_SMTP_PORT",
+     "465.0"
+    ]
+   ],
+   "expected": {
+    "bind_host": "127.0.0.1",
+    "bind_port": 8085,
+    "envelope_sender": "",
+    "fail_on_partial_refusal": false,
+    "log_level": "INFO",
+    "max_attachment_bytes": 10485760,
+    "max_attachments": 10,
+    "max_body_bytes": 26214400,
+    "max_header_value_length": 998,
+    "max_recipients": 100,
+    "public_host": "mailgun.home.xn--wersdrfer-47a.de",
+    "secrets_path": "/etc/mailgun-relay/secrets.yml",
+    "smtp_ca_file": "",
+    "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
+    "smtp_max_concurrency": 8,
+    "smtp_port": 465,
+    "smtp_starttls": true,
+    "smtp_timeout_s": 30.0
+   },
+   "name": "smtp port '465.0'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_SMTP_PORT",
+     "0"
+    ]
+   ],
+   "expected": {
+    "bind_host": "127.0.0.1",
+    "bind_port": 8085,
+    "envelope_sender": "",
+    "fail_on_partial_refusal": false,
+    "log_level": "INFO",
+    "max_attachment_bytes": 10485760,
+    "max_attachments": 10,
+    "max_body_bytes": 26214400,
+    "max_header_value_length": 998,
+    "max_recipients": 100,
+    "public_host": "mailgun.home.xn--wersdrfer-47a.de",
+    "secrets_path": "/etc/mailgun-relay/secrets.yml",
+    "smtp_ca_file": "",
+    "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
+    "smtp_max_concurrency": 8,
+    "smtp_port": 0,
+    "smtp_starttls": true,
+    "smtp_timeout_s": 30.0
+   },
+   "name": "smtp port '0'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_SMTP_PORT",
+     "65535"
+    ]
+   ],
+   "expected": {
+    "bind_host": "127.0.0.1",
+    "bind_port": 8085,
+    "envelope_sender": "",
+    "fail_on_partial_refusal": false,
+    "log_level": "INFO",
+    "max_attachment_bytes": 10485760,
+    "max_attachments": 10,
+    "max_body_bytes": 26214400,
+    "max_header_value_length": 998,
+    "max_recipients": 100,
+    "public_host": "mailgun.home.xn--wersdrfer-47a.de",
+    "secrets_path": "/etc/mailgun-relay/secrets.yml",
+    "smtp_ca_file": "",
+    "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
+    "smtp_max_concurrency": 8,
+    "smtp_port": 65535,
+    "smtp_starttls": true,
+    "smtp_timeout_s": 30.0
+   },
+   "name": "smtp port '65535'"
+  },
+  {
+   "divergence": "D-18",
+   "env": [
+    [
+     "MAILGUN_RELAY_SMTP_PORT",
+     "65536"
+    ]
+   ],
+   "expected": null,
+   "name": "smtp port '65536'",
+   "python_starts": true
+  },
+  {
+   "divergence": "D-18",
+   "env": [
+    [
+     "MAILGUN_RELAY_SMTP_PORT",
+     "-25"
+    ]
+   ],
+   "expected": null,
+   "name": "smtp port '-25'",
+   "python_starts": true
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_SMTP_TIMEOUT_S",
+     "30"
+    ]
+   ],
+   "expected": {
+    "bind_host": "127.0.0.1",
+    "bind_port": 8085,
+    "envelope_sender": "",
+    "fail_on_partial_refusal": false,
+    "log_level": "INFO",
+    "max_attachment_bytes": 10485760,
+    "max_attachments": 10,
+    "max_body_bytes": 26214400,
+    "max_header_value_length": 998,
+    "max_recipients": 100,
+    "public_host": "mailgun.home.xn--wersdrfer-47a.de",
+    "secrets_path": "/etc/mailgun-relay/secrets.yml",
+    "smtp_ca_file": "",
+    "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
+    "smtp_max_concurrency": 8,
+    "smtp_port": 587,
+    "smtp_starttls": true,
+    "smtp_timeout_s": 30.0
+   },
+   "name": "float '30'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_SMTP_TIMEOUT_S",
+     "30.0"
+    ]
+   ],
+   "expected": {
+    "bind_host": "127.0.0.1",
+    "bind_port": 8085,
+    "envelope_sender": "",
+    "fail_on_partial_refusal": false,
+    "log_level": "INFO",
+    "max_attachment_bytes": 10485760,
+    "max_attachments": 10,
+    "max_body_bytes": 26214400,
+    "max_header_value_length": 998,
+    "max_recipients": 100,
+    "public_host": "mailgun.home.xn--wersdrfer-47a.de",
+    "secrets_path": "/etc/mailgun-relay/secrets.yml",
+    "smtp_ca_file": "",
+    "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
+    "smtp_max_concurrency": 8,
+    "smtp_port": 587,
+    "smtp_starttls": true,
+    "smtp_timeout_s": 30.0
+   },
+   "name": "float '30.0'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_SMTP_TIMEOUT_S",
+     " 2.5 "
+    ]
+   ],
+   "expected": {
+    "bind_host": "127.0.0.1",
+    "bind_port": 8085,
+    "envelope_sender": "",
+    "fail_on_partial_refusal": false,
+    "log_level": "INFO",
+    "max_attachment_bytes": 10485760,
+    "max_attachments": 10,
+    "max_body_bytes": 26214400,
+    "max_header_value_length": 998,
+    "max_recipients": 100,
+    "public_host": "mailgun.home.xn--wersdrfer-47a.de",
+    "secrets_path": "/etc/mailgun-relay/secrets.yml",
+    "smtp_ca_file": "",
+    "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
+    "smtp_max_concurrency": 8,
+    "smtp_port": 587,
+    "smtp_starttls": true,
+    "smtp_timeout_s": 2.5
+   },
+   "name": "float ' 2.5 '"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_SMTP_TIMEOUT_S",
+     "1e3"
+    ]
+   ],
+   "expected": {
+    "bind_host": "127.0.0.1",
+    "bind_port": 8085,
+    "envelope_sender": "",
+    "fail_on_partial_refusal": false,
+    "log_level": "INFO",
+    "max_attachment_bytes": 10485760,
+    "max_attachments": 10,
+    "max_body_bytes": 26214400,
+    "max_header_value_length": 998,
+    "max_recipients": 100,
+    "public_host": "mailgun.home.xn--wersdrfer-47a.de",
+    "secrets_path": "/etc/mailgun-relay/secrets.yml",
+    "smtp_ca_file": "",
+    "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
+    "smtp_max_concurrency": 8,
+    "smtp_port": 587,
+    "smtp_starttls": true,
+    "smtp_timeout_s": 1000.0
+   },
+   "name": "float '1e3'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_SMTP_TIMEOUT_S",
+     "1E2"
+    ]
+   ],
+   "expected": {
+    "bind_host": "127.0.0.1",
+    "bind_port": 8085,
+    "envelope_sender": "",
+    "fail_on_partial_refusal": false,
+    "log_level": "INFO",
+    "max_attachment_bytes": 10485760,
+    "max_attachments": 10,
+    "max_body_bytes": 26214400,
+    "max_header_value_length": 998,
+    "max_recipients": 100,
+    "public_host": "mailgun.home.xn--wersdrfer-47a.de",
+    "secrets_path": "/etc/mailgun-relay/secrets.yml",
+    "smtp_ca_file": "",
+    "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
+    "smtp_max_concurrency": 8,
+    "smtp_port": 587,
+    "smtp_starttls": true,
+    "smtp_timeout_s": 100.0
+   },
+   "name": "float '1E2'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_SMTP_TIMEOUT_S",
+     ".5"
+    ]
+   ],
+   "expected": {
+    "bind_host": "127.0.0.1",
+    "bind_port": 8085,
+    "envelope_sender": "",
+    "fail_on_partial_refusal": false,
+    "log_level": "INFO",
+    "max_attachment_bytes": 10485760,
+    "max_attachments": 10,
+    "max_body_bytes": 26214400,
+    "max_header_value_length": 998,
+    "max_recipients": 100,
+    "public_host": "mailgun.home.xn--wersdrfer-47a.de",
+    "secrets_path": "/etc/mailgun-relay/secrets.yml",
+    "smtp_ca_file": "",
+    "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
+    "smtp_max_concurrency": 8,
+    "smtp_port": 587,
+    "smtp_starttls": true,
+    "smtp_timeout_s": 0.5
+   },
+   "name": "float '.5'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_SMTP_TIMEOUT_S",
+     "5."
+    ]
+   ],
+   "expected": {
+    "bind_host": "127.0.0.1",
+    "bind_port": 8085,
+    "envelope_sender": "",
+    "fail_on_partial_refusal": false,
+    "log_level": "INFO",
+    "max_attachment_bytes": 10485760,
+    "max_attachments": 10,
+    "max_body_bytes": 26214400,
+    "max_header_value_length": 998,
+    "max_recipients": 100,
+    "public_host": "mailgun.home.xn--wersdrfer-47a.de",
+    "secrets_path": "/etc/mailgun-relay/secrets.yml",
+    "smtp_ca_file": "",
+    "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
+    "smtp_max_concurrency": 8,
+    "smtp_port": 587,
+    "smtp_starttls": true,
+    "smtp_timeout_s": 5.0
+   },
+   "name": "float '5.'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_SMTP_TIMEOUT_S",
+     "+7"
+    ]
+   ],
+   "expected": {
+    "bind_host": "127.0.0.1",
+    "bind_port": 8085,
+    "envelope_sender": "",
+    "fail_on_partial_refusal": false,
+    "log_level": "INFO",
+    "max_attachment_bytes": 10485760,
+    "max_attachments": 10,
+    "max_body_bytes": 26214400,
+    "max_header_value_length": 998,
+    "max_recipients": 100,
+    "public_host": "mailgun.home.xn--wersdrfer-47a.de",
+    "secrets_path": "/etc/mailgun-relay/secrets.yml",
+    "smtp_ca_file": "",
+    "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
+    "smtp_max_concurrency": 8,
+    "smtp_port": 587,
+    "smtp_starttls": true,
+    "smtp_timeout_s": 7.0
+   },
+   "name": "float '+7'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_SMTP_TIMEOUT_S",
+     "1_0.5"
+    ]
+   ],
+   "expected": {
+    "bind_host": "127.0.0.1",
+    "bind_port": 8085,
+    "envelope_sender": "",
+    "fail_on_partial_refusal": false,
+    "log_level": "INFO",
+    "max_attachment_bytes": 10485760,
+    "max_attachments": 10,
+    "max_body_bytes": 26214400,
+    "max_header_value_length": 998,
+    "max_recipients": 100,
+    "public_host": "mailgun.home.xn--wersdrfer-47a.de",
+    "secrets_path": "/etc/mailgun-relay/secrets.yml",
+    "smtp_ca_file": "",
+    "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
+    "smtp_max_concurrency": 8,
+    "smtp_port": 587,
+    "smtp_starttls": true,
+    "smtp_timeout_s": 10.5
+   },
+   "name": "float '1_0.5'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_SMTP_TIMEOUT_S",
+     "1._5"
+    ]
+   ],
+   "expected": {
+    "bind_host": "127.0.0.1",
+    "bind_port": 8085,
+    "envelope_sender": "",
+    "fail_on_partial_refusal": false,
+    "log_level": "INFO",
+    "max_attachment_bytes": 10485760,
+    "max_attachments": 10,
+    "max_body_bytes": 26214400,
+    "max_header_value_length": 998,
+    "max_recipients": 100,
+    "public_host": "mailgun.home.xn--wersdrfer-47a.de",
+    "secrets_path": "/etc/mailgun-relay/secrets.yml",
+    "smtp_ca_file": "",
+    "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
+    "smtp_max_concurrency": 8,
+    "smtp_port": 587,
+    "smtp_starttls": true,
+    "smtp_timeout_s": 1.5
+   },
+   "name": "float '1._5'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_SMTP_TIMEOUT_S",
+     "1_e1"
+    ]
+   ],
+   "expected": {
+    "bind_host": "127.0.0.1",
+    "bind_port": 8085,
+    "envelope_sender": "",
+    "fail_on_partial_refusal": false,
+    "log_level": "INFO",
+    "max_attachment_bytes": 10485760,
+    "max_attachments": 10,
+    "max_body_bytes": 26214400,
+    "max_header_value_length": 998,
+    "max_recipients": 100,
+    "public_host": "mailgun.home.xn--wersdrfer-47a.de",
+    "secrets_path": "/etc/mailgun-relay/secrets.yml",
+    "smtp_ca_file": "",
+    "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
+    "smtp_max_concurrency": 8,
+    "smtp_port": 587,
+    "smtp_starttls": true,
+    "smtp_timeout_s": 10.0
+   },
+   "name": "float '1_e1'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_SMTP_TIMEOUT_S",
+     "0"
+    ]
+   ],
+   "expected": {
+    "bind_host": "127.0.0.1",
+    "bind_port": 8085,
+    "envelope_sender": "",
+    "fail_on_partial_refusal": false,
+    "log_level": "INFO",
+    "max_attachment_bytes": 10485760,
+    "max_attachments": 10,
+    "max_body_bytes": 26214400,
+    "max_header_value_length": 998,
+    "max_recipients": 100,
+    "public_host": "mailgun.home.xn--wersdrfer-47a.de",
+    "secrets_path": "/etc/mailgun-relay/secrets.yml",
+    "smtp_ca_file": "",
+    "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
+    "smtp_max_concurrency": 8,
+    "smtp_port": 587,
+    "smtp_starttls": true,
+    "smtp_timeout_s": 0.0
+   },
+   "name": "float '0'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_SMTP_TIMEOUT_S",
+     "-0.0"
+    ]
+   ],
+   "expected": {
+    "bind_host": "127.0.0.1",
+    "bind_port": 8085,
+    "envelope_sender": "",
+    "fail_on_partial_refusal": false,
+    "log_level": "INFO",
+    "max_attachment_bytes": 10485760,
+    "max_attachments": 10,
+    "max_body_bytes": 26214400,
+    "max_header_value_length": 998,
+    "max_recipients": 100,
+    "public_host": "mailgun.home.xn--wersdrfer-47a.de",
+    "secrets_path": "/etc/mailgun-relay/secrets.yml",
+    "smtp_ca_file": "",
+    "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
+    "smtp_max_concurrency": 8,
+    "smtp_port": 587,
+    "smtp_starttls": true,
+    "smtp_timeout_s": -0.0
+   },
+   "name": "float '-0.0'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_SMTP_TIMEOUT_S",
+     "1e-400"
+    ]
+   ],
+   "expected": {
+    "bind_host": "127.0.0.1",
+    "bind_port": 8085,
+    "envelope_sender": "",
+    "fail_on_partial_refusal": false,
+    "log_level": "INFO",
+    "max_attachment_bytes": 10485760,
+    "max_attachments": 10,
+    "max_body_bytes": 26214400,
+    "max_header_value_length": 998,
+    "max_recipients": 100,
+    "public_host": "mailgun.home.xn--wersdrfer-47a.de",
+    "secrets_path": "/etc/mailgun-relay/secrets.yml",
+    "smtp_ca_file": "",
+    "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
+    "smtp_max_concurrency": 8,
+    "smtp_port": 587,
+    "smtp_starttls": true,
+    "smtp_timeout_s": 0.0
+   },
+   "name": "float '1e-400'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_SMTP_TIMEOUT_S",
+     "1__0"
+    ]
+   ],
+   "expected": null,
+   "name": "float '1__0'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_SMTP_TIMEOUT_S",
+     "_1"
+    ]
+   ],
+   "expected": null,
+   "name": "float '_1'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_SMTP_TIMEOUT_S",
+     "1_"
+    ]
+   ],
+   "expected": null,
+   "name": "float '1_'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_SMTP_TIMEOUT_S",
+     "0x10"
+    ]
+   ],
+   "expected": null,
+   "name": "float '0x10'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_SMTP_TIMEOUT_S",
+     ""
+    ]
+   ],
+   "expected": null,
+   "name": "float ''"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_SMTP_TIMEOUT_S",
+     "1e"
+    ]
+   ],
+   "expected": null,
+   "name": "float '1e'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_SMTP_TIMEOUT_S",
+     "\u0663"
+    ]
+   ],
+   "expected": null,
+   "name": "float '\u0663'"
+  },
+  {
+   "divergence": "D-18",
+   "env": [
+    [
+     "MAILGUN_RELAY_SMTP_TIMEOUT_S",
+     "inf"
+    ]
+   ],
+   "expected": null,
+   "name": "float 'inf'",
+   "python_starts": true
+  },
+  {
+   "divergence": "D-18",
+   "env": [
+    [
+     "MAILGUN_RELAY_SMTP_TIMEOUT_S",
+     "-inf"
+    ]
+   ],
+   "expected": null,
+   "name": "float '-inf'",
+   "python_starts": true
+  },
+  {
+   "divergence": "D-18",
+   "env": [
+    [
+     "MAILGUN_RELAY_SMTP_TIMEOUT_S",
+     "nan"
+    ]
+   ],
+   "expected": null,
+   "name": "float 'nan'",
+   "python_starts": true
+  },
+  {
+   "divergence": "D-18",
+   "env": [
+    [
+     "MAILGUN_RELAY_SMTP_TIMEOUT_S",
+     "Infinity"
+    ]
+   ],
+   "expected": null,
+   "name": "float 'Infinity'",
+   "python_starts": true
+  },
+  {
+   "divergence": "D-18",
+   "env": [
+    [
+     "MAILGUN_RELAY_SMTP_TIMEOUT_S",
+     "-1"
+    ]
+   ],
+   "expected": null,
+   "name": "float '-1'",
+   "python_starts": true
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_SMTP_TIMEOUT_S",
+     "1e9"
+    ]
+   ],
+   "expected": {
+    "bind_host": "127.0.0.1",
+    "bind_port": 8085,
+    "envelope_sender": "",
+    "fail_on_partial_refusal": false,
+    "log_level": "INFO",
+    "max_attachment_bytes": 10485760,
+    "max_attachments": 10,
+    "max_body_bytes": 26214400,
+    "max_header_value_length": 998,
+    "max_recipients": 100,
+    "public_host": "mailgun.home.xn--wersdrfer-47a.de",
+    "secrets_path": "/etc/mailgun-relay/secrets.yml",
+    "smtp_ca_file": "",
+    "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
+    "smtp_max_concurrency": 8,
+    "smtp_port": 587,
+    "smtp_starttls": true,
+    "smtp_timeout_s": 1000000000.0
+   },
+   "name": "float '1e9'"
+  },
+  {
+   "divergence": "D-18",
+   "env": [
+    [
+     "MAILGUN_RELAY_SMTP_TIMEOUT_S",
+     "1e10"
+    ]
+   ],
+   "expected": null,
+   "name": "float '1e10'",
+   "python_starts": true
+  },
+  {
+   "divergence": "D-18",
+   "env": [
+    [
+     "MAILGUN_RELAY_SMTP_TIMEOUT_S",
+     "1.7976931348623157e309"
+    ]
+   ],
+   "expected": null,
+   "name": "float '1.7976931348623157e309'",
+   "python_starts": true
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_SMTP_MAX_CONCURRENCY",
+     "1"
+    ]
+   ],
+   "expected": {
+    "bind_host": "127.0.0.1",
+    "bind_port": 8085,
+    "envelope_sender": "",
+    "fail_on_partial_refusal": false,
+    "log_level": "INFO",
+    "max_attachment_bytes": 10485760,
+    "max_attachments": 10,
+    "max_body_bytes": 26214400,
+    "max_header_value_length": 998,
+    "max_recipients": 100,
+    "public_host": "mailgun.home.xn--wersdrfer-47a.de",
+    "secrets_path": "/etc/mailgun-relay/secrets.yml",
+    "smtp_ca_file": "",
+    "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
+    "smtp_max_concurrency": 1,
+    "smtp_port": 587,
+    "smtp_starttls": true,
+    "smtp_timeout_s": 30.0
+   },
+   "name": "concurrency '1'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_SMTP_MAX_CONCURRENCY",
+     "0"
+    ]
+   ],
+   "expected": null,
+   "name": "concurrency '0'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_SMTP_MAX_CONCURRENCY",
+     "-1"
+    ]
+   ],
+   "expected": null,
+   "name": "concurrency '-1'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_SMTP_MAX_CONCURRENCY",
+     "64"
+    ]
+   ],
+   "expected": {
+    "bind_host": "127.0.0.1",
+    "bind_port": 8085,
+    "envelope_sender": "",
+    "fail_on_partial_refusal": false,
+    "log_level": "INFO",
+    "max_attachment_bytes": 10485760,
+    "max_attachments": 10,
+    "max_body_bytes": 26214400,
+    "max_header_value_length": 998,
+    "max_recipients": 100,
+    "public_host": "mailgun.home.xn--wersdrfer-47a.de",
+    "secrets_path": "/etc/mailgun-relay/secrets.yml",
+    "smtp_ca_file": "",
+    "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
+    "smtp_max_concurrency": 64,
+    "smtp_port": 587,
+    "smtp_starttls": true,
+    "smtp_timeout_s": 30.0
+   },
+   "name": "concurrency '64'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_SMTP_MAX_CONCURRENCY",
+     "4294967295"
+    ]
+   ],
+   "expected": {
+    "bind_host": "127.0.0.1",
+    "bind_port": 8085,
+    "envelope_sender": "",
+    "fail_on_partial_refusal": false,
+    "log_level": "INFO",
+    "max_attachment_bytes": 10485760,
+    "max_attachments": 10,
+    "max_body_bytes": 26214400,
+    "max_header_value_length": 998,
+    "max_recipients": 100,
+    "public_host": "mailgun.home.xn--wersdrfer-47a.de",
+    "secrets_path": "/etc/mailgun-relay/secrets.yml",
+    "smtp_ca_file": "",
+    "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
+    "smtp_max_concurrency": 4294967295,
+    "smtp_port": 587,
+    "smtp_starttls": true,
+    "smtp_timeout_s": 30.0
+   },
+   "name": "concurrency '4294967295'"
+  },
+  {
+   "divergence": "D-18",
+   "env": [
+    [
+     "MAILGUN_RELAY_SMTP_MAX_CONCURRENCY",
+     "4294967296"
+    ]
+   ],
+   "expected": null,
+   "name": "concurrency '4294967296'",
+   "python_starts": true
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_LOG_LEVEL",
+     "DEBUG"
+    ]
+   ],
+   "expected": {
+    "bind_host": "127.0.0.1",
+    "bind_port": 8085,
+    "envelope_sender": "",
+    "fail_on_partial_refusal": false,
+    "log_level": "DEBUG",
+    "max_attachment_bytes": 10485760,
+    "max_attachments": 10,
+    "max_body_bytes": 26214400,
+    "max_header_value_length": 998,
+    "max_recipients": 100,
+    "public_host": "mailgun.home.xn--wersdrfer-47a.de",
+    "secrets_path": "/etc/mailgun-relay/secrets.yml",
+    "smtp_ca_file": "",
+    "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
+    "smtp_max_concurrency": 8,
+    "smtp_port": 587,
+    "smtp_starttls": true,
+    "smtp_timeout_s": 30.0
+   },
+   "name": "log level 'DEBUG'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_LOG_LEVEL",
+     "info"
+    ]
+   ],
+   "expected": {
+    "bind_host": "127.0.0.1",
+    "bind_port": 8085,
+    "envelope_sender": "",
+    "fail_on_partial_refusal": false,
+    "log_level": "INFO",
+    "max_attachment_bytes": 10485760,
+    "max_attachments": 10,
+    "max_body_bytes": 26214400,
+    "max_header_value_length": 998,
+    "max_recipients": 100,
+    "public_host": "mailgun.home.xn--wersdrfer-47a.de",
+    "secrets_path": "/etc/mailgun-relay/secrets.yml",
+    "smtp_ca_file": "",
+    "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
+    "smtp_max_concurrency": 8,
+    "smtp_port": 587,
+    "smtp_starttls": true,
+    "smtp_timeout_s": 30.0
+   },
+   "name": "log level 'info'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_LOG_LEVEL",
+     "Warning"
+    ]
+   ],
+   "expected": {
+    "bind_host": "127.0.0.1",
+    "bind_port": 8085,
+    "envelope_sender": "",
+    "fail_on_partial_refusal": false,
+    "log_level": "WARNING",
+    "max_attachment_bytes": 10485760,
+    "max_attachments": 10,
+    "max_body_bytes": 26214400,
+    "max_header_value_length": 998,
+    "max_recipients": 100,
+    "public_host": "mailgun.home.xn--wersdrfer-47a.de",
+    "secrets_path": "/etc/mailgun-relay/secrets.yml",
+    "smtp_ca_file": "",
+    "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
+    "smtp_max_concurrency": 8,
+    "smtp_port": 587,
+    "smtp_starttls": true,
+    "smtp_timeout_s": 30.0
+   },
+   "name": "log level 'Warning'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_LOG_LEVEL",
+     "error"
+    ]
+   ],
+   "expected": {
+    "bind_host": "127.0.0.1",
+    "bind_port": 8085,
+    "envelope_sender": "",
+    "fail_on_partial_refusal": false,
+    "log_level": "ERROR",
+    "max_attachment_bytes": 10485760,
+    "max_attachments": 10,
+    "max_body_bytes": 26214400,
+    "max_header_value_length": 998,
+    "max_recipients": 100,
+    "public_host": "mailgun.home.xn--wersdrfer-47a.de",
+    "secrets_path": "/etc/mailgun-relay/secrets.yml",
+    "smtp_ca_file": "",
+    "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
+    "smtp_max_concurrency": 8,
+    "smtp_port": 587,
+    "smtp_starttls": true,
+    "smtp_timeout_s": 30.0
+   },
+   "name": "log level 'error'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_LOG_LEVEL",
+     "CRITICAL"
+    ]
+   ],
+   "expected": {
+    "bind_host": "127.0.0.1",
+    "bind_port": 8085,
+    "envelope_sender": "",
+    "fail_on_partial_refusal": false,
+    "log_level": "CRITICAL",
+    "max_attachment_bytes": 10485760,
+    "max_attachments": 10,
+    "max_body_bytes": 26214400,
+    "max_header_value_length": 998,
+    "max_recipients": 100,
+    "public_host": "mailgun.home.xn--wersdrfer-47a.de",
+    "secrets_path": "/etc/mailgun-relay/secrets.yml",
+    "smtp_ca_file": "",
+    "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
+    "smtp_max_concurrency": 8,
+    "smtp_port": 587,
+    "smtp_starttls": true,
+    "smtp_timeout_s": 30.0
+   },
+   "name": "log level 'CRITICAL'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_LOG_LEVEL",
+     "trace"
+    ]
+   ],
+   "expected": null,
+   "name": "log level 'trace'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_LOG_LEVEL",
+     "warn"
+    ]
+   ],
+   "expected": null,
+   "name": "log level 'warn'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_LOG_LEVEL",
+     "fatal"
+    ]
+   ],
+   "expected": null,
+   "name": "log level 'fatal'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_LOG_LEVEL",
+     "notset"
+    ]
+   ],
+   "expected": null,
+   "name": "log level 'notset'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_LOG_LEVEL",
+     ""
+    ]
+   ],
+   "expected": null,
+   "name": "log level ''"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_LOG_LEVEL",
+     " INFO"
+    ]
+   ],
+   "expected": null,
+   "name": "log level ' INFO'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_LOG_LEVEL",
+     "INFO "
+    ]
+   ],
+   "expected": null,
+   "name": "log level 'INFO '"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_ENVELOPE_SENDER",
+     ""
+    ]
+   ],
+   "expected": {
+    "bind_host": "127.0.0.1",
+    "bind_port": 8085,
+    "envelope_sender": "",
+    "fail_on_partial_refusal": false,
+    "log_level": "INFO",
+    "max_attachment_bytes": 10485760,
+    "max_attachments": 10,
+    "max_body_bytes": 26214400,
+    "max_header_value_length": 998,
+    "max_recipients": 100,
+    "public_host": "mailgun.home.xn--wersdrfer-47a.de",
+    "secrets_path": "/etc/mailgun-relay/secrets.yml",
+    "smtp_ca_file": "",
+    "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
+    "smtp_max_concurrency": 8,
+    "smtp_port": 587,
+    "smtp_starttls": true,
+    "smtp_timeout_s": 30.0
+   },
+   "name": "envelope sender ''"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_ENVELOPE_SENDER",
+     "relay@example.org"
+    ]
+   ],
+   "expected": {
+    "bind_host": "127.0.0.1",
+    "bind_port": 8085,
+    "envelope_sender": "relay@example.org",
+    "fail_on_partial_refusal": false,
+    "log_level": "INFO",
+    "max_attachment_bytes": 10485760,
+    "max_attachments": 10,
+    "max_body_bytes": 26214400,
+    "max_header_value_length": 998,
+    "max_recipients": 100,
+    "public_host": "mailgun.home.xn--wersdrfer-47a.de",
+    "secrets_path": "/etc/mailgun-relay/secrets.yml",
+    "smtp_ca_file": "",
+    "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
+    "smtp_max_concurrency": 8,
+    "smtp_port": 587,
+    "smtp_starttls": true,
+    "smtp_timeout_s": 30.0
+   },
+   "name": "envelope sender 'relay@example.org'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_ENVELOPE_SENDER",
+     "Relay@Example.ORG"
+    ]
+   ],
+   "expected": {
+    "bind_host": "127.0.0.1",
+    "bind_port": 8085,
+    "envelope_sender": "Relay@Example.ORG",
+    "fail_on_partial_refusal": false,
+    "log_level": "INFO",
+    "max_attachment_bytes": 10485760,
+    "max_attachments": 10,
+    "max_body_bytes": 26214400,
+    "max_header_value_length": 998,
+    "max_recipients": 100,
+    "public_host": "mailgun.home.xn--wersdrfer-47a.de",
+    "secrets_path": "/etc/mailgun-relay/secrets.yml",
+    "smtp_ca_file": "",
+    "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
+    "smtp_max_concurrency": 8,
+    "smtp_port": 587,
+    "smtp_starttls": true,
+    "smtp_timeout_s": 30.0
+   },
+   "name": "envelope sender 'Relay@Example.ORG'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_ENVELOPE_SENDER",
+     "not an address"
+    ]
+   ],
+   "expected": {
+    "bind_host": "127.0.0.1",
+    "bind_port": 8085,
+    "envelope_sender": "not an address",
+    "fail_on_partial_refusal": false,
+    "log_level": "INFO",
+    "max_attachment_bytes": 10485760,
+    "max_attachments": 10,
+    "max_body_bytes": 26214400,
+    "max_header_value_length": 998,
+    "max_recipients": 100,
+    "public_host": "mailgun.home.xn--wersdrfer-47a.de",
+    "secrets_path": "/etc/mailgun-relay/secrets.yml",
+    "smtp_ca_file": "",
+    "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
+    "smtp_max_concurrency": 8,
+    "smtp_port": 587,
+    "smtp_starttls": true,
+    "smtp_timeout_s": 30.0
+   },
+   "name": "envelope sender 'not an address'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_ENVELOPE_SENDER",
+     "relay@wersd\u00f6rfer.de"
+    ]
+   ],
+   "expected": {
+    "bind_host": "127.0.0.1",
+    "bind_port": 8085,
+    "envelope_sender": "relay@xn--wersdrfer-47a.de",
+    "fail_on_partial_refusal": false,
+    "log_level": "INFO",
+    "max_attachment_bytes": 10485760,
+    "max_attachments": 10,
+    "max_body_bytes": 26214400,
+    "max_header_value_length": 998,
+    "max_recipients": 100,
+    "public_host": "mailgun.home.xn--wersdrfer-47a.de",
+    "secrets_path": "/etc/mailgun-relay/secrets.yml",
+    "smtp_ca_file": "",
+    "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
+    "smtp_max_concurrency": 8,
+    "smtp_port": 587,
+    "smtp_starttls": true,
+    "smtp_timeout_s": 30.0
+   },
+   "name": "envelope sender 'relay@wersd\u00f6rfer.de'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_ENVELOPE_SENDER",
+     "Relay@WERSD\u00d6RFER.de"
+    ]
+   ],
+   "expected": {
+    "bind_host": "127.0.0.1",
+    "bind_port": 8085,
+    "envelope_sender": "Relay@xn--wersdrfer-47a.de",
+    "fail_on_partial_refusal": false,
+    "log_level": "INFO",
+    "max_attachment_bytes": 10485760,
+    "max_attachments": 10,
+    "max_body_bytes": 26214400,
+    "max_header_value_length": 998,
+    "max_recipients": 100,
+    "public_host": "mailgun.home.xn--wersdrfer-47a.de",
+    "secrets_path": "/etc/mailgun-relay/secrets.yml",
+    "smtp_ca_file": "",
+    "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
+    "smtp_max_concurrency": 8,
+    "smtp_port": 587,
+    "smtp_starttls": true,
+    "smtp_timeout_s": 30.0
+   },
+   "name": "envelope sender 'Relay@WERSD\u00d6RFER.de'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_ENVELOPE_SENDER",
+     "j\u00f6rg@example.org"
+    ]
+   ],
+   "expected": null,
+   "name": "envelope sender 'j\u00f6rg@example.org'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_ENVELOPE_SENDER",
+     "@wersd\u00f6rfer.de"
+    ]
+   ],
+   "expected": null,
+   "name": "envelope sender '@wersd\u00f6rfer.de'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_ENVELOPE_SENDER",
+     "wersd\u00f6rfer.de"
+    ]
+   ],
+   "expected": null,
+   "name": "envelope sender 'wersd\u00f6rfer.de'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_ENVELOPE_SENDER",
+     "a@b@wersd\u00f6rfer.de"
+    ]
+   ],
+   "expected": {
+    "bind_host": "127.0.0.1",
+    "bind_port": 8085,
+    "envelope_sender": "a@b@xn--wersdrfer-47a.de",
+    "fail_on_partial_refusal": false,
+    "log_level": "INFO",
+    "max_attachment_bytes": 10485760,
+    "max_attachments": 10,
+    "max_body_bytes": 26214400,
+    "max_header_value_length": 998,
+    "max_recipients": 100,
+    "public_host": "mailgun.home.xn--wersdrfer-47a.de",
+    "secrets_path": "/etc/mailgun-relay/secrets.yml",
+    "smtp_ca_file": "",
+    "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
+    "smtp_max_concurrency": 8,
+    "smtp_port": 587,
+    "smtp_starttls": true,
+    "smtp_timeout_s": 30.0
+   },
+   "name": "envelope sender 'a@b@wersd\u00f6rfer.de'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_ENVELOPE_SENDER",
+     "relay@wersd\u00f6rfer..de"
+    ]
+   ],
+   "expected": null,
+   "name": "envelope sender 'relay@wersd\u00f6rfer..de'"
+  },
+  {
+   "divergence": "D-10",
+   "env": [
+    [
+     "MAILGUN_RELAY_ENVELOPE_SENDER",
+     "relay@\u216b.de"
+    ]
+   ],
+   "expected": null,
+   "name": "envelope sender 'relay@\u216b.de'",
+   "python_starts": true
+  },
+  {
+   "divergence": "D-10",
+   "env": [
+    [
+     "MAILGUN_RELAY_ENVELOPE_SENDER",
+     "relay@p\u0430ypal.de"
+    ]
+   ],
+   "expected": null,
+   "name": "envelope sender 'relay@p\u0430ypal.de'",
+   "python_starts": true
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_ENVELOPE_SENDER",
+     "relay@\u2603.de"
+    ]
+   ],
+   "expected": null,
+   "name": "envelope sender 'relay@\u2603.de'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_ENVELOPE_SENDER",
+     "relay@\u0140.de"
+    ]
+   ],
+   "expected": null,
+   "name": "envelope sender 'relay@\u0140.de'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_ENVELOPE_SENDER",
+     "relay@xn--n3h.\u00fc"
+    ]
+   ],
+   "expected": null,
+   "name": "envelope sender 'relay@xn--n3h.\u00fc'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_ENVELOPE_SENDER",
+     "relay@xn--wersdrfer-47a.\u00fc"
+    ]
+   ],
+   "expected": {
+    "bind_host": "127.0.0.1",
+    "bind_port": 8085,
+    "envelope_sender": "relay@xn--wersdrfer-47a.xn--tda",
+    "fail_on_partial_refusal": false,
+    "log_level": "INFO",
+    "max_attachment_bytes": 10485760,
+    "max_attachments": 10,
+    "max_body_bytes": 26214400,
+    "max_header_value_length": 998,
+    "max_recipients": 100,
+    "public_host": "mailgun.home.xn--wersdrfer-47a.de",
+    "secrets_path": "/etc/mailgun-relay/secrets.yml",
+    "smtp_ca_file": "",
+    "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
+    "smtp_max_concurrency": 8,
+    "smtp_port": 587,
+    "smtp_starttls": true,
+    "smtp_timeout_s": 30.0
+   },
+   "name": "envelope sender 'relay@xn--wersdrfer-47a.\u00fc'"
+  },
+  {
+   "env": [
+    [
+     "mailgun_relay_smtp_port",
+     "25"
+    ]
+   ],
+   "expected": {
+    "bind_host": "127.0.0.1",
+    "bind_port": 8085,
+    "envelope_sender": "",
+    "fail_on_partial_refusal": false,
+    "log_level": "INFO",
+    "max_attachment_bytes": 10485760,
+    "max_attachments": 10,
+    "max_body_bytes": 26214400,
+    "max_header_value_length": 998,
+    "max_recipients": 100,
+    "public_host": "mailgun.home.xn--wersdrfer-47a.de",
+    "secrets_path": "/etc/mailgun-relay/secrets.yml",
+    "smtp_ca_file": "",
+    "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
+    "smtp_max_concurrency": 8,
+    "smtp_port": 25,
+    "smtp_starttls": true,
+    "smtp_timeout_s": 30.0
+   },
+   "name": "lower-case name"
+  },
+  {
+   "env": [
+    [
+     "Mailgun_Relay_Max_Recipients",
+     "5"
+    ]
+   ],
+   "expected": {
+    "bind_host": "127.0.0.1",
+    "bind_port": 8085,
+    "envelope_sender": "",
+    "fail_on_partial_refusal": false,
+    "log_level": "INFO",
+    "max_attachment_bytes": 10485760,
+    "max_attachments": 10,
+    "max_body_bytes": 26214400,
+    "max_header_value_length": 998,
+    "max_recipients": 5,
+    "public_host": "mailgun.home.xn--wersdrfer-47a.de",
+    "secrets_path": "/etc/mailgun-relay/secrets.yml",
+    "smtp_ca_file": "",
+    "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
+    "smtp_max_concurrency": 8,
+    "smtp_port": 587,
+    "smtp_starttls": true,
+    "smtp_timeout_s": 30.0
+   },
+   "name": "mixed-case name"
+  },
+  {
+   "divergence": "D-7",
+   "env": [
+    [
+     "mailgun_relay_bind_port",
+     "9000"
+    ]
+   ],
+   "expected": {
+    "bind_host": "127.0.0.1",
+    "bind_port": 9000,
+    "envelope_sender": "",
+    "fail_on_partial_refusal": false,
+    "log_level": "INFO",
+    "max_attachment_bytes": 10485760,
+    "max_attachments": 10,
+    "max_body_bytes": 26214400,
+    "max_header_value_length": 998,
+    "max_recipients": 100,
+    "public_host": "mailgun.home.xn--wersdrfer-47a.de",
+    "secrets_path": "/etc/mailgun-relay/secrets.yml",
+    "smtp_ca_file": "",
+    "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
+    "smtp_max_concurrency": 8,
+    "smtp_port": 587,
+    "smtp_starttls": true,
+    "smtp_timeout_s": 30.0
+   },
+   "name": "lower-case bind port",
+   "python_starts": true
+  },
+  {
+   "divergence": "D-7",
+   "env": [
+    [
+     "mailgun_relay_bind_host",
+     "0.0.0.0"
+    ]
+   ],
+   "expected": {
+    "bind_host": "0.0.0.0",
+    "bind_port": 8085,
+    "envelope_sender": "",
+    "fail_on_partial_refusal": false,
+    "log_level": "INFO",
+    "max_attachment_bytes": 10485760,
+    "max_attachments": 10,
+    "max_body_bytes": 26214400,
+    "max_header_value_length": 998,
+    "max_recipients": 100,
+    "public_host": "mailgun.home.xn--wersdrfer-47a.de",
+    "secrets_path": "/etc/mailgun-relay/secrets.yml",
+    "smtp_ca_file": "",
+    "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
+    "smtp_max_concurrency": 8,
+    "smtp_port": 587,
+    "smtp_starttls": true,
+    "smtp_timeout_s": 30.0
+   },
+   "name": "lower-case bind host",
+   "python_starts": true
+  },
+  {
+   "env": [
+    [
+     "mailgun_relay_log_level",
+     "debug"
+    ]
+   ],
+   "expected": {
+    "bind_host": "127.0.0.1",
+    "bind_port": 8085,
+    "envelope_sender": "",
+    "fail_on_partial_refusal": false,
+    "log_level": "DEBUG",
+    "max_attachment_bytes": 10485760,
+    "max_attachments": 10,
+    "max_body_bytes": 26214400,
+    "max_header_value_length": 998,
+    "max_recipients": 100,
+    "public_host": "mailgun.home.xn--wersdrfer-47a.de",
+    "secrets_path": "/etc/mailgun-relay/secrets.yml",
+    "smtp_ca_file": "",
+    "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
+    "smtp_max_concurrency": 8,
+    "smtp_port": 587,
+    "smtp_starttls": true,
+    "smtp_timeout_s": 30.0
+   },
+   "name": "lower-case log level"
+  },
+  {
+   "divergence": "D-7",
+   "env": [
+    [
+     "mailgun_relay_log_level",
+     "warn"
+    ]
+   ],
+   "expected": null,
+   "name": "lower-case log level warn",
+   "python_starts": true
+  },
+  {
+   "env": [
+    [
+     "mailgun_relay_bind_port",
+     "x"
+    ]
+   ],
+   "expected": null,
+   "name": "lower-case bad bind port"
+  },
+  {
+   "divergence": "D-7",
+   "env": [
+    [
+     "MAILGUN_RELAY_SMTP_PORT",
+     "25"
+    ],
+    [
+     "mailgun_relay_smtp_port",
+     "2525"
+    ]
+   ],
+   "expected": null,
+   "name": "exact name before variant",
+   "python_starts": true
+  },
+  {
+   "divergence": "D-7",
+   "env": [
+    [
+     "mailgun_relay_smtp_port",
+     "2525"
+    ],
+    [
+     "MAILGUN_RELAY_SMTP_PORT",
+     "25"
+    ]
+   ],
+   "expected": null,
+   "name": "variant before exact name",
+   "python_starts": true
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_SMTP_PORT",
+     "25"
+    ],
+    [
+     "mailgun_relay_smtp_port",
+     "invalid"
+    ]
+   ],
+   "expected": null,
+   "name": "exact name and invalid variant"
+  },
+  {
+   "env": [
+    [
+     "aaaaaaaaaaaaa\u00fcx",
+     "1"
+    ]
+   ],
+   "expected": {
+    "bind_host": "127.0.0.1",
+    "bind_port": 8085,
+    "envelope_sender": "",
+    "fail_on_partial_refusal": false,
+    "log_level": "INFO",
+    "max_attachment_bytes": 10485760,
+    "max_attachments": 10,
+    "max_body_bytes": 26214400,
+    "max_header_value_length": 998,
+    "max_recipients": 100,
+    "public_host": "mailgun.home.xn--wersdrfer-47a.de",
+    "secrets_path": "/etc/mailgun-relay/secrets.yml",
+    "smtp_ca_file": "",
+    "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
+    "smtp_max_concurrency": 8,
+    "smtp_port": 587,
+    "smtp_starttls": true,
+    "smtp_timeout_s": 30.0
+   },
+   "name": "unrelated non-ASCII name"
+  },
+  {
+   "divergence": "D-7",
+   "env": [
+    [
+     "mailgun_relay_smtp_port",
+     "25"
+    ],
+    [
+     "Mailgun_Relay_Smtp_Port",
+     "2525"
+    ]
+   ],
+   "expected": null,
+   "name": "two variants",
+   "python_starts": true
+  }
+ ],
+ "source": "mailgun_relay.config.Settings + mailgun_relay.__main__ reads"
+}

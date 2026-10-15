@@ -4,6 +4,26 @@ All notable changes to mailgun-relay are documented here.
 
 ## Unreleased
 
+### Rust port: skeleton and environment settings (slice S1a)
+
+- The repository is now MIT-licensed (`LICENSE`).
+- `rust/` holds the Rust port as one Cargo package (`mailgun-relay` 0.2.0,
+  pinned toolchain 1.99.0, `cargo-deny` policy). So far the binary reads the
+  same `MAILGUN_RELAY_*` settings as the Python service: `--version`, and
+  `--check-config` validates the environment and exits 0 or 1. It cannot
+  serve yet and is not deployed. Exotic settings Python would accept make it
+  refuse to start (fail closed; `rust/PLAN.md` D-7, D-10, D-18).
+- Fixtures generated from the Python code (`rust/fixtures/generate.py`) pin
+  the settings decisions; `tests/test_rust_fixtures.py` fails when they are
+  stale. CI gains a `rust` job (fmt, clippy, cargo-deny, tests, release
+  build).
+- `rust/PLAN.md` records the S1b spike result (lettre connection API, live
+  EHLO of the SMTP backend: `AUTH PLAIN LOGIN`, no `SMTPUTF8`), its
+  conditions for the SMTP slice, the broken-reply case of D-3, the new
+  entries D-17 and D-18, and the split of S1 into S1a, S1c and S1d.
+  `.gitignore` ignores `rust/target/`.
+- The Python service is unchanged.
+
 ### Rust port plan
 
 - Added `rust/PLAN.md` and a `rust/TESTMAP.md` sketch: the plan for

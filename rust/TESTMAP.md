@@ -27,19 +27,21 @@ and fixture cases generated from the fixed Python.
 | `test_auth.py` (all 8) | fixture `auth.json` + unit `auth::tests`; harness 401 cases with realm | pending (S2) |
 | `test_policy.py` (all 13) | fixtures `domain.json`, `address.json`, `policy.json`; unit `policy::tests` for the production shapes | pending (S2) |
 | `test_headers.py::test_parse_address_list_*`, `::test_header_address_list_*` | fixture `address.json` | pending (S2) |
-| `test_config.py::test_load_secrets_normalizes_idn_to_punycode`, `::test_token_policy_allowed_addresses_none_means_domain_only` | fixture `config_secrets.json` | pending (S1/S2) |
+| `test_config.py::test_load_secrets_normalizes_idn_to_punycode`, `::test_token_policy_allowed_addresses_none_means_domain_only` | fixture `config_secrets.json` | pending (S1c) |
 | new: corpus decisions (≥ 400 addresses, ≥ 100 domains), "Rust accepts ⇒ Python accepts" | property test over `address.json`/`domain.json` | pending (S2) |
 
-## Configuration and startup (S1)
+## Configuration and startup (S1a, S1c, S1d)
 
 | Python test | Rust counterpart | Status |
 | --- | --- | --- |
-| `test_config.py::test_load_secrets_*` (minimal, empty tokens, changeme, bad sha, duplicate labels, missing domains, mode bits) | fixture `config_secrets.json` | pending (S1) |
-| `test_config.py::test_settings_reads_env`, `test_nonblocking_submit.py::test_smtp_max_concurrency_must_be_positive` | fixture `config_env.json` | pending (S1) |
-| `test_config.py::test_token_policy_repr_does_not_leak_sha` | unit: `Debug` of policies and credentials redacts | pending (S1) |
-| `test_logging.py` (all 4) | unit `log::tests`; process test reads stdout per line | pending (S1/S3) |
-| `test_health.py` (both) | unit + harness `/health` cases | pending (S1) |
-| new: 404/405/307, `HEAD /health` | unit + harness | pending (S1) |
+| `test_config.py::test_load_secrets_*` (minimal, IDN to punycode, empty tokens, changeme, bad sha, duplicate labels, missing domains, mode bits) | fixture `config_secrets.json` | pending (S1c) |
+| `test_config.py::test_token_policy_allowed_addresses_none_means_domain_only` | fixture `config_secrets.json` | pending (S1c) |
+| `test_config.py::test_settings_reads_env`, `::test_envelope_sender_*`, `test_nonblocking_submit.py::test_smtp_max_concurrency_must_be_positive` | fixture `config_env.json` (160 env sets) via `config::tests::config_env_fixture` | done (S1a) |
+| `test_config.py::test_token_policy_repr_does_not_leak_sha` | unit: `Debug` of policies and credentials redacts | pending (S1c) |
+| `test_logging.py` (all 4) | unit `log::tests`; process test reads stdout per line | pending (S1d) |
+| `test_health.py` (both) | unit + process test; harness `/health` cases | pending (S1d, S6) |
+| new: 404/405/307, `HEAD /health`, 413 on `/health` and a 404 path | unit + process test | pending (S1d) |
+| new: `--version`, `--check-config` exit 0/1, unknown arguments exit 2 | process tests `binary.rs` | done (S1a) |
 
 ## Request pipeline (S3)
 

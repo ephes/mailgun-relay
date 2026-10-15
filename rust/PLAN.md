@@ -1,10 +1,13 @@
 # Rust port of mailgun-relay — implementation plan
 
-Status: plan, not yet implemented. Campaign `mailgun-relay-rust`, phase 2.
+Status: in implementation. Campaign `mailgun-relay-rust`, phase 2.
 Owner decisions of 2026-10-15 are incorporated (section 13); the plan starts
 with the Python fix slice S0-py (section 6), which is merged on `main` as
 `bc8880e` (336 Python tests); its deploy to macmini is approved by the owner
-and follows the 403 fix.
+and follows the 403 fix. The spike S1b is done (GO with
+conditions, section 6 "S1b result"). S1 is split by size into S1a
+(repository plumbing, environment settings, fixture generator), S1c (secrets
+file) and S1d (server, `/health`, startup record); S1a is merged.
 
 This document is the contract for re-implementing the FastAPI service in
 `src/mailgun_relay` (1,744 lines, `origin/main` `13e274f`, run on macmini as
@@ -72,8 +75,10 @@ rust/
   PLAN.md  TESTMAP.md  README.md
   build.rs              # embeds the commit (MAILGUN_RELAY_GIT_COMMIT, else git rev-parse, else "unknown")
   src/
-    main.rs             # argv (--version, --check-config), runtime, signals
-    config.rs           # env settings + secrets loader + YAML subset
+    main.rs             # argv (--version, --check-config), runtime, signals, startup record
+    config.rs           # env settings (2.7)
+    secrets.rs  yaml.rs # secrets loader and its YAML 1.1 subset (2.8)
+    pystr.rs            # Python str.strip() whitespace
     auth.rs  policy.rs  address.rs  domain.rs  headers.rs
     form.rs             # urlencoded + multipart into an ordered item list
     pipeline.rs         # the decision order of section 2.3
@@ -81,7 +86,7 @@ rust/
     smtp.rs             # submission (lettre connection API)
     log.rs              # JSON line logger
     http.rs             # axum router, body-limit layer, fallbacks
-  tests/                # process-level tests against the built binary
+  tests/                # process-level tests against the built binary (binary.rs)
   fixtures/             # Python-generated JSON fixtures + generator (section 7.2)
   parity/               # differential harness and shadow tools (sections 7.4, 10)
   scripts/release_checks.py
@@ -178,7 +183,14 @@ Notes for the implementation:
 - axum's `get()` also serves `HEAD`. FastAPI does not, so `/health` is
   registered with a GET-only method filter and HEAD gets 405.
 - The 307 rule is cheap and kept although no client uses it (phase 1 marks it
-  free).
+  free). Rust builds the `location` as Starlette 1.3 does: scheme `http`, or
+  the single `X-Forwarded-Proto` value (`http`, `https`, `ws`, `wss`) when the
+  peer is `127.0.0.1` (uvicorn's proxy headers, the Traefik case); netloc
+  from the `Host` header when it matches Starlette's `_HOST_RE`, else the
+  listening address; the decoded path without trailing slashes; the raw
+  query; the whole URL through `urllib.parse.quote` with Starlette's safe
+  set. The route patterns match as Python's `re` does, so `$` also matches
+  before one final newline (`/health%0A` is `/health`).
 - Response headers `server`, `date` and the reason phrase are free.
 - Fixed texts are kept verbatim because they cost nothing:
   `Unauthorized`, `Payload Too Large`, `Queued. Thank you.`,
@@ -325,7 +337,7 @@ From `relay:smtp_client.py:67-85,107-179` and `routes.py:206-277`:
 | all recipients refused, only 5xx | 502 |
 | banner, STARTTLS, MAIL or DATA reply 4xx | 503 |
 | same replies 5xx | 502 |
-| EHLO rejected (any code) | not classified by its code: `submit` ignores the EHLO reply (`smtp_client.py:129,135`), so the next step decides. Production settings (STARTTLS on, credentials set): STARTTLS is then "not offered" → 503 (reproduced by the reviewer for EHLO 550). STARTTLS off with credentials: cleartext refusal → 502. A failing EHLO after STARTTLS: `smtplib.ehlo` records the reply even on failure (`smtplib.py:466`), so no HELO fallback happens and `login` finds no AUTH extension → 503. Without credentials (test settings only) the session continues to `MAIL` and that reply decides. The fake-SMTP cases pin every EHLO code for the production settings and for the test settings. |
+| EHLO rejected (any code) | not classified by its code: `submit` ignores the EHLO reply (`smtp_client.py:129,135`), so the next step decides. Production settings (STARTTLS on, credentials set): STARTTLS is then "not offered" → 503 (reproduced by the reviewer for EHLO 550). STARTTLS off with credentials: cleartext refusal → 502. A failing EHLO after STARTTLS: `smtplib.ehlo` records the reply even on failure (`smtplib.py:466`), so no HELO fallback happens and `login` finds no AUTH extension → 503. Without credentials (test settings only) the session continues to `MAIL` and that reply decides; that configuration is unreachable, because the secrets schema always provides credentials (2.8), so lettre ending the session at the rejected EHLO changes no reachable status (S1b). The fake-SMTP cases pin every EHLO code for the production settings (STARTTLS on → 503, STARTTLS off with credentials → 502). |
 | AUTH rejected (any code) | 502 |
 | credentials configured but TLS not active | 502, credentials never sent |
 | connection refused, timeout, disconnect, and every other transport-level failure: TLS handshake or certificate/hostname failure, STARTTLS or AUTH not offered, no common AUTH mechanism, SMTPUTF8 needed but not offered | 503 (Python: every `OSError`, which includes `smtplib.SMTPException`; see Q3) |
@@ -558,8 +570,8 @@ Everything that differs and is not listed here or in 2.12 is a bug. The
 owner decided every entry on 2026-10-15 (section 13). D-1, D-2 and D-16 are
 fixed in Python first (slice S0-py), so after S0-py they are no longer
 differences between the implementations: the oracle, the fixtures and the
-harness use the fixed Python. Entries D-5 to D-12, D-15 and D-17 only affect exotic
-input or configuration (Q4); their common rule is **fail closed**: where Rust
+harness use the fixed Python. Entries D-5 to D-12, D-15, D-17 and D-18 only
+affect exotic input or configuration (Q4); their common rule is **fail closed**: where Rust
 and Python disagree, Rust may reject what Python accepts (or fail at start
 where Python starts), never the reverse.
 
@@ -567,21 +579,22 @@ where Python starts), never the reverse.
 | --- | --- | --- | --- |
 | D-1 | `text=""` (or `html=""`) with no other non-empty body passes step 4, then `build_message` raises `ValueError` → **500** (`mime_build.py:103-104`; measured). Reachable from Anymail: a Django message with an empty body sends `text=""`. `text=""` together with a non-empty `html` is accepted and the empty text is dropped (200, html only). | **400** at the same position (step 9), so every other decision is unchanged; the empty-text-plus-html case stays 200 html-only. Same fix in Python (S0-py). | Decided 2026-10-15 (Q1); Python via S0-py |
 | D-2 | IDN recipient domains are normalised to U-labels: the header gets an RFC-violating encoded word in the domain (`foo@=?utf-8?q?wersd=C3=B6rfer?=.de`), the envelope gets the U-label, `smtplib` switches the whole message to SMTPUTF8 (raw UTF-8 headers); without server SMTPUTF8 → 503. The same applies to an IDN `from` in the header. Non-ASCII local parts (EAI) behave the same way and genuinely need SMTPUTF8. **Security-relevant: externally triggerable.** allauth's "unknown account" mail (`ACCOUNT_EMAIL_UNKNOWN_ACCOUNTS=True`) goes to any address an outside visitor types into the password-reset form of homepage or python-podcast, so anyone can make the relay emit RFC-violating headers and take the SMTPUTF8 path (or a 503) on demand. It does not bypass the token/domain/sender policy. | IDN domains as A-labels in every header address (From, To, Cc, Reply-To) and in the envelope; no SMTPUTF8. EAI local parts → **400** in every address field (`from` at the policy step, the others at step 9), fail closed. Fixed in Python **first** (S0-py, own deploy, before the Rust port), which closes the externally triggerable path now. | Decided 2026-10-15 (Q2); Python via S0-py |
-| D-3 | Every `OSError` is TEMPORARY → 503, including `SMTPException` subclasses: STARTTLS not offered, no AUTH, no common mechanism, SMTPUTF8 unsupported, certificate or hostname failure (`smtp_client.py:83-84`). | **503** as Python: every lettre error without an SMTP reply code maps to 503. | Decided 2026-10-15 (Q3); no divergence |
-| D-4 | `smtplib.login` prefers CRAM-MD5 > PLAIN > LOGIN. | lettre offers PLAIN and LOGIN only. A server offering only CRAM-MD5 would give Rust 503 where Python logs in. Gate: the read-only EHLO pre-flight on `smtp.home…:587` (S1b) must show PLAIN or LOGIN after STARTTLS; otherwise stop and escalate. | expected no-op |
-| D-5 | Unquoted all-digit `token_sha256` is a YAML int and is converted with `format(x, "064x")` (`config.py:135-136`), i.e. a different hash than written. The ops template quotes the value. | Startup failure (`--check-config` catches it before any switch). | Decided 2026-10-15 (Q4) |
-| D-6 | PyYAML `safe_load` accepts anchors/aliases, merge keys `<<`, explicit tags. | Anchors/aliases and `!!str` supported; merge keys and other tags → startup failure. | Decided 2026-10-15 (Q4) |
-| D-7 | pydantic reads env names case-insensitively, but `__main__.py:8-19` reads `BIND_HOST`, `BIND_PORT`, `LOG_LEVEL` again, case-sensitively and with Python `int()`, so a lowercase or oddly spelled value can make the logged and the real bind differ. | One reader for everything: the exact upper-case name wins, otherwise a case-insensitive match; the logged value is the used value. | Decided 2026-10-15 (Q4) |
+| D-3 | Every `OSError` is TEMPORARY → 503, including `SMTPException` subclasses: STARTTLS not offered, no AUTH, no common mechanism, SMTPUTF8 unsupported, certificate or hostname failure (`smtp_client.py:83-84`). A syntactically broken server reply without a parsable code (no three-digit code, line too long) is code −1 or 500 in `smtplib` → **502** (a refused recipient with −1 at `RCPT`). | **503** as Python: every lettre error without an SMTP reply code maps to 503. Exception, a deliberate divergence: a broken reply without a parsable code is a lettre error without a code, so Rust answers **503** where Python answers 502. Postfix never sends such replies, so production cannot trigger it (S1b: 2 of 42 spike scenarios). | Decided 2026-10-15 (Q3); broken replies: divergence decided by the coordinator 2026-10-15 |
+| D-4 | `smtplib.login` prefers CRAM-MD5 > PLAIN > LOGIN. | lettre offers PLAIN and LOGIN only. A server offering only CRAM-MD5 would give Rust 503 where Python logs in. Gate: the read-only EHLO pre-flight on `smtp.home…:587` (S1b) must show PLAIN or LOGIN after STARTTLS; otherwise stop and escalate. S1b: Postfix offers `AUTH PLAIN LOGIN` after STARTTLS, no CRAM-MD5; both implementations use PLAIN. | no-op, verified (S1b) |
+| D-5 | Unquoted all-digit `token_sha256` is a YAML int and is converted with `format(x, "064x")` (`config.py:135-136`), i.e. a different hash than written; a plain `yes`/`true` is a `bool`, which Python also treats as an int (hash `0…01`). The ops template quotes the value. | Startup failure for every non-string `token_sha256` (`--check-config` catches it before any switch). Pinned by `config_secrets.json`. | Decided 2026-10-15 (Q4) |
+| D-6 | PyYAML `safe_load` accepts anchors/aliases, merge keys `<<`, explicit tags, recursive aliases, any nesting depth, and treats NEL, LS and PS (U+0085, U+2028, U+2029) as YAML 1.1 line breaks. | Anchors/aliases and `!!str` supported; merge keys and other tags (also `!!seq`/`!!map`) → startup failure. The parser (`yaml-rust2`, YAML 1.2 syntax) is wrapped fail-closed (S1, `src/yaml.rs`): an alias to a node that is still open (recursion), nesting deeper than 64 levels, and the characters NEL/LS/PS anywhere → startup failure. Reproduced as Python: PyYAML's implicit types for plain scalars (bool, int, float, null, timestamp; never a string), the failures of its constructors (invalid dates, `0b_`, `=`, `<<` as a value, collection keys), duplicate anchors, non-printable characters, one document only, last duplicate key wins, universal newlines and a leading BOM. Pinned by `config_secrets.json`. | Decided 2026-10-15 (Q4); parser details S1 |
+| D-7 | pydantic reads env names case-insensitively, but `__main__.py:8-19` reads `BIND_HOST`, `BIND_PORT`, `LOG_LEVEL` again, case-sensitively and with Python `int()`, so a lowercase or oddly spelled value can make the logged and the real bind differ. With several case variants of one name, pydantic takes the last in environment order. | One reader for everything: the variable whose name matches case-insensitively (the decision said: the exact upper-case name wins, otherwise a case-insensitive match); the logged value is the used value. Fail closed (S1a review): several case variants of one name, the exact one included, → startup failure, because Python would use and validate only the last of them. `BIND_PORT` accepts only spellings both Python readers accept (no `8085.0`), `LOG_LEVEL` only the five names both accept, so with exact names Rust starts exactly when Python starts. `config_env.json` marks the cases that still differ (lower-case names, `warn` under a lower-case name, several variants). | Decided 2026-10-15 (Q4) |
 | D-8 | (withdrawn in review round 1) urlencoded decoding is reproduced exactly (latin-1, then `unquote_plus`; 2.3 step 3). Decoding raw UTF-8 as UTF-8 instead would have widened acceptance: with `bü.de` allowed, a raw-byte `from=a@bü.de` is 400 in Python (mojibake domain) but would pass in Rust. | – | no divergence |
 | D-9 | Multipart decoding uses the `charset` parameter of the request Content-Type with any Python codec (`cp1252`, `utf-16`, `iso-8859-15`, …), falling back to latin-1 on a decoding error or an unknown codec name. | Absent, UTF-8 spellings (`utf-8`, `utf8`, `utf_8`, case-insensitive) and latin-1 spellings (`latin-1`, `latin1`, `iso-8859-1`, `iso8859-1`, `iso_8859_1`, `l1`) and `ascii`/`us-ascii` behave as in Python (incl. the latin-1 fallback). Any other declared charset → **400** (Rust-stricter; recorder and Anymail send no charset). | Decided 2026-10-15 (Q4) |
-| D-10 | `idna` 3.16 applies IDNA2008 code point classes; labels that UTS46 allows but IDNA2008 disallows (symbols, emoji, some CONTEXTO cases) are invalid: path domain → 400, and a secrets file containing such a domain fails to load. | Runtime path domains: the `idna` crate (UTS46 + STD3 + hyphen + bidi + joiner + DNS length checks) maps them to an A-label → 403 instead of 400. Configuration must not accept more than Python: a domain entry (in `mailgun_domains`, `allowed_from_domains` and the domain part of `allowed_from_addresses`) whose Unicode form contains anything other than Latin-script letters and marks, ASCII digits, `-` and `.` is a startup error, so every configured domain is one Python also loads (all production domains are ASCII). Because both sides apply the same UTS46 mapping before comparing, a runtime input can then only match a configured domain if Python's mapped form matches it too, so acceptance cannot widen; only the 400/403 split for garbage path domains differs. `config_secrets.json` includes emoji, symbol and mixed-script domains. | Decided 2026-10-15 (Q4) |
+| D-10 | `idna` 3.16 applies IDNA2008 code point classes; labels that UTS46 allows but IDNA2008 disallows (symbols, emoji, some CONTEXTO cases) are invalid: path domain → 400, and a secrets file containing such a domain fails to load. | Runtime path domains: the `idna` crate (UTS46 + STD3 + hyphen + bidi + joiner + DNS length checks) maps them to an A-label → 403 instead of 400. Configuration must not accept more than Python: a domain entry (in `mailgun_domains`, `allowed_from_domains`, the domain part of `allowed_from_addresses` and of a non-ASCII `ENVELOPE_SENDER`) whose stripped, lower-cased form contains anything other than ASCII letters and digits, `-`, `.`, the letters of Latin-1, Latin Extended-A/B, IPA Extensions and Latin Extended Additional, and the combining diacritical marks U+0300–U+036F is a startup error (S1, `src/domain.rs`); the set applies to the input and to the Unicode form of the resulting A-label, so neither a UTS46 mapping (`ŀ` → `l·`, CONTEXTO in IDNA2008) nor an A-label input (`xn--n3h` = `☃`) brings in another character. So every configured domain is one Python also loads (all production domains are ASCII). Compatibility forms Python maps (`ⅻ.de`, fullwidth letters) and other scripts are therefore refused in the configuration. Because both sides apply the same UTS46 mapping before comparing, a runtime input can then only match a configured domain if Python's mapped form matches it too, so acceptance cannot widen; only the 400/403 split for garbage path domains differs. `config_secrets.json` includes emoji, symbol and mixed-script domains. | Decided 2026-10-15 (Q4) |
 | D-11 | Address acceptance comes from `email_validator`, `parseaddr` and `getaddresses` (strict mode); comments become display names (`j@x.de (Kommentar)` → `Kommentar <j@x.de>`). | Address rules implemented directly (2.6), pinned by a corpus of ≥ 400 addresses and ≥ 100 domains generated from Python. Corpus cases must match; residual differences found later must be Rust-stricter (400 where Python accepted), and are added to the corpus and this table. The mailbox parser reproduces Python's display-name result for comments (a comment becomes the display name when there is no phrase), pinned by the corpus. | Decided 2026-10-15 (Q4) |
 | D-12 | The ASGI middleware maps unparseable or negative `Content-Length` to 413 (`app.py:42-51`), but in the deployed process uvicorn/httptools rejects such requests before the app. | hyper rejects them before the app as well. The harness compares against real uvicorn; if the status differs it is listed here. | expected no-op |
 | D-13 | Logs: local-time `ts` without milliseconds, `ensure_ascii=True`, uvicorn plain-text lines on stderr. | `ts` in UTC RFC 3339 seconds, raw UTF-8, no stderr chatter; the startup record gains `"impl":"rust"`. | free (section 4) |
 | D-14 | MIME byte form (Python `email` folding, CTE heuristic, boundaries, `MIME-Version` in sub-parts, Date `+0000`). | lettre's form, 7-bit clean transfer encodings for non-ASCII bodies (no `8BITMIME` dependency). | free |
 | D-15 | `ENVELOPE_SENDER` is not validated; any string is sent in `MAIL FROM:<…>`; an IDN or non-ASCII value switches `smtplib` to SMTPUTF8 even for ASCII recipients (verified in the final review). | Empty → null sender (as Python). Python since S0-py: an ASCII value passes unchanged; a non-ASCII value has its domain converted to an A-label and a non-ASCII local part fails the start, so Q2's "no SMTPUTF8" also holds for `MAIL FROM`. Rust applies the same IDN/EAI rule and **additionally** requires a syntactically valid address (fail at start), the remaining divergence; an ASCII value is used unchanged (no lowercasing). Production renders `mailgun-relay@xn--wersdrfer-47a.de`. | Decided 2026-10-15 (Q2, Q4); IDN/EAI part via S0-py |
 | D-16 | A `to` or `cc` display name that decodes to CR or LF (`=?utf-8?B?YQ0KYg==?= <a@example.org>`) raises `ValueError` in the email package → **500**; the same in `h:Reply-To` is 400, in `from` 200 (measured). | **400** at the same position (step 9), like Reply-To. Same fix in Python (S0-py). | Decided 2026-10-15 (Q1); Python via S0-py |
-| D-17 | `allowed_from_addresses` entries with a non-ASCII (EAI) local part load fine (`normalize_address` only lowercases the local part), but since S0-py an EAI `from` is always 400 before the allowlist check, so such an entry can never match. Python stays unchanged. | The Rust config loader rejects such an entry and the start fails (`--check-config` reports it before any switch). Fail closed under Q4; the production policy contains no such entry today. Pinned in `config_secrets.json`. | Decided 2026-10-15 (coordinator, under Q4); S2 |
+| D-17 | `allowed_from_addresses` entries with a non-ASCII (EAI) local part load fine (`normalize_address` only lowercases the local part), but since S0-py an EAI `from` is always 400 before the allowlist check, so such an entry can never match. Python stays unchanged. | The Rust config loader rejects such an entry and the start fails (`--check-config` reports it before any switch). Fail closed under Q4; the production policy contains no such entry today. Pinned in `config_secrets.json`. | Decided 2026-10-15 (coordinator, under Q4); implemented with the secrets loader (S1c) |
+| D-18 | pydantic accepts any integer size, any float (`inf`, `nan`, negatives) and any string; Python then fails per request or binds every interface: with `SMTP_PORT` outside 0–65535 every submission fails (`getaddrinfo` error → 503), a non-finite, negative or too large (from about 9.2e9 s) `SMTP_TIMEOUT_S` makes every submission raise `ValueError`/`OverflowError` (502), `BIND_HOST=""` binds all interfaces, huge integers are kept. | Startup failure for: empty `BIND_HOST`; `SMTP_PORT` outside 0–65535; integer settings outside 64-bit; `SMTP_TIMEOUT_S` not finite or outside 0–1e9 s; `SMTP_MAX_CONCURRENCY` above 2^32−1; a value that is not valid UTF-8. Pinned by `config_env.json`. | Q4 (fail closed), added in S1 |
 
 Not divergences, recorded so nobody "fixes" them: empty subject accepted;
 recipient limit counted before de-duplication; header name case variants are
@@ -628,18 +641,19 @@ re-implementation of Python libraries, no hand-rolled protocol code.
 | Need | Crate (features) | Notes |
 | --- | --- | --- |
 | runtime | `tokio` (`rt`, `net`, `time`, `signal`, `sync`, `macros`, `io-util`), **current_thread** | One thread is enough for a few requests a week and keeps RSS low. CPU-heavy steps (MIME encoding of large attachments) run in `spawn_blocking` with `max_blocking_threads(2)`; idle blocking threads exit after 10 s. `getaddrinfo` also runs there. |
-| HTTP server | `axum` 0.8 (`default-features = false`, `http1`, `tokio`) on hyper 1 | No HTTP/2, no JSON/form extractors (bodies are parsed by our code). Body-limit layer via `middleware::from_fn`; router fallbacks for 404/405/307. Graceful shutdown on SIGTERM/SIGINT; submissions run in tasks tracked by `tokio_util::task::TaskTracker` (`tokio-util`, `rt`) so a disconnected client neither cancels nor loses them. |
+| HTTP server | `axum` 0.8 (`default-features = false`, `http1`, `tokio`) on hyper 1 | No HTTP/2, no JSON/form extractors (bodies are parsed by our code). Body-limit layer via `middleware::from_fn`; one fallback handler routes on the decoded path as Starlette does (2.2) and answers 404/405/307. Graceful shutdown on SIGTERM/SIGINT; submissions run in tasks tracked by `tokio_util::task::TaskTracker` (`tokio-util`, `rt`) so a disconnected client neither cancels nor loses them. |
 | multipart | `multer` 3 with size constraints | Streams parts; we count fields/files ourselves (Starlette limits, 2.3 step 3). |
 | urlencoded | none (own ~40-line splitter and decoder) | Python's exact decoding (latin-1, then `unquote_plus` semantics, 2.3 step 3) is a small rule; `form_urlencoded` decodes raw bytes as UTF-8, which would widen acceptance (review round 1). Pinned by `form_decoding.json`. |
 | JSON | `serde` (derive), `serde_json` | Responses and log records from structs; declaration order = field order. |
-| YAML | `yaml-rust2` (event parser only) | Gives scalar style and tags, which the YAML 1.1 subset of 2.8 needs. `serde_yaml` is archived and YAML 1.2. A small typed tree is built from events (~150 lines). Alternative if needed: `saphyr-parser`. |
-| SMTP + MIME | `lettre` 0.11 (`default-features = false`; `builder`, `smtp-transport`, `tokio1`, `tokio1-rustls`, `rustls-native-certs`, `ring`, `hostname`) | Message builder for 2.10. Submission uses lettre's **connection-level API** (`AsyncSmtpConnection`: connect, STARTTLS, AUTH, then `MAIL`, one `RCPT` per recipient, `DATA` and the message through lettre's command types), because the high-level `send` aborts on the first refused recipient and cannot express partial refusal (2.4). This is lettre's protocol code, not our own. Exact feature names and the connection API are confirmed in spike S1b. |
-| TLS | `rustls` 0.23 (`ring`, `std`, `tls12`), `rustls-native-certs`, `rustls-pki-types` (PEM for the CA file) | No OpenSSL, so the binary links only glibc/libgcc (release check). Roots from the system store, like Python's `create_default_context()` on Ubuntu (`/etc/ssl/certs`, maintained by `ca-certificates`); this matters because the Postfix certificate chains to Let's Encrypt's newer hierarchy (issuer YE2), which a bundled `webpki-roots` snapshot might lag. `SMTP_CA_FILE` adds to the system roots, as `load_verify_locations` does. Hostname verified against `SMTP_HOST`. `ring` instead of `aws-lc-rs` avoids cmake/nasm in the build. Built once at startup. |
+| YAML | `yaml-rust2` 0.13 (`default-features = false`, event parser and scanner only) | Gives scalar style, tags and anchor names, which the YAML 1.1 subset of 2.8 needs. `serde_yaml` is archived and YAML 1.2. A small typed tree is built from events (`src/yaml.rs`, fail-closed details in D-6). |
+| SMTP + MIME | `lettre` `=0.11.23` (`default-features = false`; `builder`, `smtp-transport`, `tokio1`, `tokio1-rustls`, `rustls-native-certs`, `ring`, `hostname`; confirmed in S1b, `rustls-native-certs` is an implicit feature of the optional dependency) | Message builder for 2.10. Submission uses lettre's **connection-level API**, because the high-level `send` aborts on the first refused recipient and cannot express partial refusal (2.4): `AsyncSmtpConnection::connect_with_transport` over our own stream wrapper (banner + EHLO), `starttls`, `auth(&[Plain, Login])`, `command(Mail)`, `command(Rcpt)` per recipient, `command(Data)`, `message`, `quit`. The wrapper sets the per-operation timeouts and a "written" flag that tells a banner failure from an EHLO failure (S1b result). This is lettre's protocol code, not our own. lettre's `Address` is lax and only carries addresses our own validation accepted. |
+| SMTP timeouts | `tokio-io-timeout` 1.2 | Read/write timeout per socket operation inside the stream wrapper, the semantics of `SMTP_TIMEOUT_S` in Python; rustls wraps the wrapper, so it also applies under TLS. The TCP connect is bounded with `tokio::time::timeout`. |
+| TLS | `rustls` 0.23 (`ring`, `std`, `tls12`) and `rustls-native-certs`, both through lettre; the CA file is read by lettre's `Certificate::from_pem` (bundles with several certificates), so no own `rustls-pki-types` code | No OpenSSL, so the binary links only glibc/libgcc (release check). Roots from the system store, like Python's `create_default_context()` on Ubuntu (`/etc/ssl/certs`, maintained by `ca-certificates`); this matters because the Postfix certificate chains to Let's Encrypt's newer hierarchy (issuer YE2), which a bundled `webpki-roots` snapshot might lag. `SMTP_CA_FILE` adds to the system roots (`TlsParameters::builder(host).add_root_certificate`), as `load_verify_locations` does. Hostname verified against `SMTP_HOST`; no `dangerous_*` call. S1b validated the live chain with the exact Ubuntu bundle of macmini (which lacks ISRG Root YE and builds the path through the cross-signs). `ring` instead of `aws-lc-rs` avoids cmake/nasm in the build. Built once at startup. |
 | auth | `base64` 0.22 (custom engine, 2.3), `sha2`, `subtle` (constant-time equality) | |
 | IDNA | `idna` 1 (UTS46 non-transitional, STD3 deny list, hyphen and DNS-length checks, root dot allowed) | Residual: D-10. |
 | Unicode | `unicode-normalization` (NFC for local parts) | |
 | RFC 2047 | `rfc2047-decoder` | decoding of incoming encoded words (2.10); encoding is lettre's |
-| patterns | `regex` (`std`, `unicode-perl` only) | YAML 1.1 implicit-type table and env parsing. Header-name and control-character checks are plain code. |
+| patterns | `regex` (`std` only) | YAML 1.1 implicit-type table and Starlette's host pattern; all patterns are ASCII. Env parsing, header-name and control-character checks are plain code. |
 | randomness | `getrandom` | 128-bit hex for `request_id` and Message-Id. |
 | logging | none (own ~60-line JSON line writer on stdout, flush per record) | `tracing-subscriber`'s JSON layout does not give these field names without a custom formatter; a direct writer is smaller. UTC timestamp formatting is ~15 lines (no time crate). |
 | CLI | none (three flags, manual argv) | |
@@ -682,12 +696,12 @@ changed lines per slice excluding generated fixtures.
 | # | Slice | Scope | Depends on |
 | --- | --- | --- | --- |
 | S0-py | Python fix before the port (Q1, Q2) | Python-only change in `src/mailgun_relay` (branch `fix/s0-py-idn-eai-empty-body`): empty `text`/`html` without another body → 400 (D-1); To/Cc display name decoding to CR/LF → 400 (D-16); IDN domains as A-labels in From/To/Cc/Reply-To and the envelope, so `smtplib` never switches to SMTPUTF8 (D-2); EAI local parts → 400 in `from` (policy step) and in `to`/`cc`/`bcc`/Reply-To (step 9); `ENVELOPE_SENDER` normalised at startup (IDN domain → A-label, non-ASCII local part → start failure, empty stays the null sender, D-15); tests for each (both encodings, the allauth-style external IDN recipient, multi-fault order); `docs/api-compatibility.md`, README if affected, CHANGELOG; own review, own deploy to macmini | – (first; parallel to S1). **Status: merged on `main` as `bc8880e`, deploy approved (after the 403 fix)** |
-| S1 | Skeleton, config, `/health` | MIT `LICENSE` at the repository root (Q6); package, toolchain, `deny.toml`, CI `rust` job; env settings (2.7), secrets loader with YAML 1.1 subset and mode check (2.8); `--version`, `--check-config`; startup record; axum server, `/health`, 404/405/307 fallbacks, 413 layer, graceful shutdown; fixture generator skeleton + drift test; `rust/README.md`; `.gitignore`; ops-library: `rust/target/` rsync exclude | – |
-| S1b | Spike: lettre and the live SMTP server | throwaway branch: lettre connection API can send MAIL + individual RCPT + DATA with partial refusal and expose reply codes; addresses the corpus accepts round-trip through lettre `Address`; feature names; **read-only** EHLO on macmini (`openssl s_client -starttls smtp`, EHLO, QUIT): `AUTH` mechanisms after STARTTLS, `SMTPUTF8`, `SIZE`. Result recorded in this plan. | – (parallel to S1) |
-| S2 | Auth and policy (security boundary) | `auth.rs`, `domain.rs`, `address.rs`, `policy.rs`; fixtures `auth.json`, `domain.json`, `address.json` (corpus), `policy.json`; Rust counterparts of `test_auth.py`, `test_policy.py`, the address parts of `test_headers.py`; Python tests added for every corpus case that pins a new boundary decision; config loader rejects allowlist entries with a non-ASCII local part (D-17) | S1, S0-py merged (the oracle must already carry the Q1/Q2 behaviour) |
+| S1 | Skeleton, config, `/health` | MIT `LICENSE` at the repository root (Q6); package, toolchain, `deny.toml`, CI `rust` job; env settings (2.7), secrets loader with YAML 1.1 subset and mode check (2.8); `--version`, `--check-config`; startup record; axum server, `/health`, 404/405/307 fallbacks, 413 layer, graceful shutdown; fixture generator skeleton + drift test; `rust/README.md`; `.gitignore`; ops-library: `rust/target/` rsync exclude | – **Status: split by size into S1a (plumbing, CI, `LICENSE`, env settings, `--version`/`--check-config`, fixture generator + drift test, `.gitignore`, ops-library exclude; merged), S1c (secrets loader, YAML subset), S1d (server, `/health`, fallbacks, 413, startup record, graceful shutdown); one review and merge each** |
+| S1b | Spike: lettre and the live SMTP server | throwaway branch: lettre connection API can send MAIL + individual RCPT + DATA with partial refusal and expose reply codes; addresses the corpus accepts round-trip through lettre `Address`; feature names; **read-only** EHLO on macmini (`openssl s_client -starttls smtp`, EHLO, QUIT): `AUTH` mechanisms after STARTTLS, `SMTPUTF8`, `SIZE`. Result recorded in this plan. | – (parallel to S1). **Status: done, GO with conditions (`rust/spike-s1b` @ `78f3254`)** |
+| S2 | Auth and policy (security boundary) | `auth.rs`, `domain.rs`, `address.rs`, `policy.rs`; fixtures `auth.json`, `domain.json`, `address.json` (corpus), `policy.json`; Rust counterparts of `test_auth.py`, `test_policy.py`, the address parts of `test_headers.py`; Python tests added for every corpus case that pins a new boundary decision; config loader rejects allowlist entries with a non-ASCII local part (D-17; implemented with the secrets loader in S1c); the D-15 validity check of `ENVELOPE_SENDER` (S1 applies only the IDN/EAI rule; `config_env.json` then marks the invalid senders D-15) | S1, S0-py merged (the oracle must already carry the Q1/Q2 behaviour) |
 | S3 | Request parsing and pipeline | `form.rs` (both encodings, limits), `pipeline.rs` (2.3 steps 1–9 with a stub submitter), header/subject validation, error mapping, response JSON, `event=request` record; fixtures `headers.json`; counterparts of `test_messages_endpoint.py` (non-SMTP), `test_headers.py`, `test_body_limit.py` | S2 |
 | S4 | MIME construction | `mime.rs` with lettre builder (2.10), envelope and de-duplication, Message-Id/Date, inline/related/mixed, container downgrade, Reply-To; IDN as A-labels, EAI rejected (Q2); semantic tests by parsing the output; counterparts of `test_mime_build.py` | S2 (parallel to S3) |
-| S5 | SMTP submission | `smtp.rs` on lettre's connection API: STARTTLS with system roots + CA file, AUTH, per-recipient RCPT, partial refusal, classification of 2.4, QUIT/close cleanup records, concurrency semaphore, per-operation timeout, `recipients_refused` and `smtp_cleanup_failed` records; scripted fake SMTP server tests mirroring `test_smtp_submission.py`, `test_smtp_outcomes.py`, `test_nonblocking_submit.py` | S1b, S3, S4 |
+| S5 | SMTP submission | `smtp.rs` on lettre's connection API: STARTTLS with system roots + CA file, AUTH, per-recipient RCPT, partial refusal, classification of 2.4, QUIT/close cleanup records, concurrency semaphore, per-operation timeout, `recipients_refused` and `smtp_cleanup_failed` records; scripted fake SMTP server tests mirroring `test_smtp_submission.py`, `test_smtp_outcomes.py`, `test_nonblocking_submit.py`; the S1b conditions (see "S1b result") | S1b, S3, S4 |
 | S6 | Parity harness | `rust/parity/` (7.4): fake SMTP with STARTTLS/AUTH, case corpus, runner for both implementations, semantic MIME comparison, CI job `parity`; process-level tests of the binary | S5 |
 | S7 | Release pipeline | `.github/workflows/rust-release.yml`, `scripts/release_checks.py` + tests (adapted from nyxmon), first tag `rs-v0.2.0` after S6 | S6 (tag) |
 | S8 | Role and inventory | ops-library `mailgun_relay_deploy` changes (9.1) with tests and molecule; ops-control host vars (impl `python`, version pinned), playbook gate, runbook `docs/MAILGUN_RELAY_RUST.md`; deploy to macmini: binary installed, `--check-config` green against production files, nothing switched | S7 |
@@ -744,7 +758,14 @@ Acceptance criteria (in addition to the green checks):
   statuses taken from the Python run of the same script, all-refused mixtures, QUIT failure after accepted DATA,
   already closed connection, TLS with an `rcgen` CA via `SMTP_CA_FILE`,
   wrong hostname → 503, no TLS with credentials → 502; `/health` answers
-  while a submission hangs; the concurrency cap queues.
+  while a submission hangs; the concurrency cap queues. The S1b conditions
+  hold: the 42 scenarios of `rust/spikes/s1b/fake/run_matrix.py` (branch
+  `rust/spike-s1b`) are the template and give Python's status except the
+  documented D-3 and D-4 cases; positive replies are checked for the exact
+  codes `smtplib` requires (MAIL 250, RCPT 250/251, DATA 354, end of data
+  250); QUIT is sent after "STARTTLS not offered"; envelope addresses are
+  checked to be ASCII before `MAIL`/`RCPT` (lettre adds no `SMTPUTF8`
+  itself, Q2); `deny.toml` gains ISC for `ring`.
 - **S6**: `parity` CI job green with zero unexplained differences on the
   full case corpus (≥ 150 request cases); runtime ≤ 5 min.
 - **S7**: archive + sha256 from `workflow_dispatch`; glibc floor ≤ 2.35;
@@ -754,6 +775,41 @@ Acceptance criteria (in addition to the green checks):
   `/opt/mailgun-relay/0.2.0/`, `--check-config` OK, no drop-in, unit still
   Python (argv check), no restart when nothing else changed.
 - **S9, S10**: as in sections 10 and 12, with numbers recorded.
+
+### S1b result (2026-10-15)
+
+GO with conditions; no blocker, no owner stop (`handoff/s1b-spike-result.md`,
+prototype on `rust/spike-s1b` @ `78f3254`, not merged).
+
+- **Partial refusal works** with public lettre 0.11.23 calls:
+  `connect_with_transport` → `starttls` → `auth` → `command(Mail)` →
+  `command(Rcpt)` per recipient (a refusal is `Err` with `status()` = the
+  code, the connection stays usable because `command` does not abort) →
+  `command(Data)` → `message` → `quit`. Demonstrated against a scripted
+  server and against aiosmtpd with mandatory STARTTLS and AUTH.
+- **Status classes:** 39 of 42 scenarios give Python's status (oracle: the
+  real `smtp_client.submit` against the same scripted server). The three
+  others: CRAM-MD5-only (D-4, unreachable on Postfix) and two broken replies
+  without a parsable code (D-3, 503 instead of 502).
+- **EHLO of `smtp.home.xn--wersdrfer-47a.de:587`** (read-only: banner,
+  EHLO, STARTTLS, EHLO, QUIT; no credentials): Postfix 3.8.6; before TLS
+  `PIPELINING, SIZE 52428800, VRFY, ETRN, STARTTLS, ENHANCEDSTATUSCODES,
+  8BITMIME, DSN, CHUNKING` without AUTH; after STARTTLS (TLS 1.3) the same
+  with `AUTH PLAIN LOGIN` instead of STARTTLS. No CRAM-MD5 (D-4 no-op), no
+  `SMTPUTF8` (confirms Q2), `SIZE` 50 MiB. The chain validates with rustls
+  and the system roots, including the exact Ubuntu bundle of macmini.
+  Python sends `EHLO [127.0.1.1]`, lettre `EHLO macmini`; the EHLO name is
+  free (2.12) and passes `reject_invalid_helo_hostname`.
+- **Resources:** a full submit with STARTTLS and AUTH peaks at 4.1 MB VmHWM
+  (Linux, glibc, `current_thread`); the spike release binary is 3.5 MB and
+  links only libc and libgcc_s.
+- **Conditions** for S5 (taken into its scope and acceptance above): exact
+  positive codes, QUIT after "STARTTLS not offered", ASCII envelope check,
+  stream wrapper for timeouts and banner/EHLO attribution, test
+  certificates with AKI/SKI for Python's `VERIFY_X509_STRICT` (also S6).
+  Not reproduced, recorded only: an AUTH reply 503 ("already
+  authenticated") counts as success in `smtplib` and as 502 in lettre
+  (unreachable).
 
 ---
 
@@ -1134,8 +1190,8 @@ The owner answered the questions of `handoff/p2-owner-questions.md` on
   **IDN as A-labels** in headers and envelope, no SMTPUTF8; **EAI local parts
   → 400** (fail closed); fixed in Python first (S0-py, own deploy).
 - **Q3** transport-level SMTP failures (D-3): **503** as Python.
-- **Q4** exotic input and configuration (D-5–D-11, D-15, and D-17 by
-  coordinator decision under the same rule): **corpus-pinned
+- **Q4** exotic input and configuration (D-5–D-11, D-15, D-17 by
+  coordinator decision and D-18 from S1 under the same rule): **corpus-pinned
   parity** (≥ 400 addresses, ≥ 100 domains, config corpus from Python) with
   the fail-closed rule; every residual difference is listed in section 3; no
   re-implementation of `email_validator`, `idna` or PyYAML.
@@ -1149,7 +1205,8 @@ The owner answered the questions of `handoff/p2-owner-questions.md` on
   `mailgun_relay_python_enabled: false`.
 
 Open facts (resolved by slices, not by the owner): AUTH mechanisms and
-SMTPUTF8 of `smtp.home…:587` (S1b); lettre connection API details (S1b);
+SMTPUTF8 of `smtp.home…:587` (S1b: PLAIN/LOGIN, no SMTPUTF8); lettre
+connection API details (S1b: section 6 "S1b result");
 whether glibc keeps large buffers resident (S9).
 
 Risks:

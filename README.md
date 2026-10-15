@@ -117,6 +117,7 @@ expand beyond simple trusted transactional sends.
 - [Architecture](docs/architecture.md) describes data flow, trust boundaries, validation, SMTP submission, and failure handling.
 - [API Compatibility](docs/api-compatibility.md) documents the planned Mailgun/Anymail subset and unsupported features.
 - [Ops Integration](docs/ops-integration.md) describes the later `ops-library` and `ops-control` integration shape.
+- [Rust port](rust/README.md) is the in-progress re-implementation as a small binary; [`rust/PLAN.md`](rust/PLAN.md) is its contract.
 
 ## Upstream References
 

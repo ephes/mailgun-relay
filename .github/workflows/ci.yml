@@ -1,8 +1,8 @@
 name: CI
 
-# Same checks as the README development quickstart, in check-only mode.
-# Tests are self-contained (no SMTP server or Mailgun account), so no secrets are
-# needed.
+# Same checks as the README development quickstart, in check-only mode, plus
+# the Rust port in rust/ (rust/README.md). Tests are self-contained (no SMTP
+# server or Mailgun account), so no secrets are needed.
 
 on:
   push:
@@ -52,3 +52,59 @@ jobs:
         run: uv run mypy
       - name: Tests
         run: uv run pytest -q
+
+  rust:
+    name: Rust port (fmt, clippy, deny, tests, release build)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: rust
+    env:
+      CARGO_TERM_COLOR: always
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install the pinned toolchain (rust/rust-toolchain.toml)
+        run: |
+          rustup toolchain install
+          rustc --version
+      - name: Cache cargo registry and build
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            rust/target
+          key: rust-${{ runner.os }}-${{ hashFiles('rust/rust-toolchain.toml', 'rust/Cargo.lock') }}
+          restore-keys: rust-${{ runner.os }}-
+      - name: Format (cargo fmt)
+        run: cargo fmt --check
+      - name: Lint (cargo clippy)
+        run: cargo clippy --all-targets --locked -- -D warnings
+      - name: Install cargo-deny (pinned release, sha256 checked)
+        env:
+          CARGO_DENY_VERSION: "0.20.2"
+          CARGO_DENY_SHA256: 9f12ed4c49936e09b48bf862b595cde2fe64fcbd9d74dfacac6131ca824c8d5f
+        run: |
+          name="cargo-deny-${CARGO_DENY_VERSION}-x86_64-unknown-linux-musl"
+          curl --proto '=https' --tlsv1.2 -sSfL -o "$RUNNER_TEMP/${name}.tar.gz" \
+            "https://github.com/EmbarkStudios/cargo-deny/releases/download/${CARGO_DENY_VERSION}/${name}.tar.gz"
+          echo "${CARGO_DENY_SHA256}  $RUNNER_TEMP/${name}.tar.gz" | sha256sum --check
+          tar -xzf "$RUNNER_TEMP/${name}.tar.gz" -C "$RUNNER_TEMP"
+          install -m 0755 "$RUNNER_TEMP/${name}/cargo-deny" "$HOME/.cargo/bin/cargo-deny"
+          cargo deny --version
+      - name: Supply chain (cargo deny, rust/deny.toml)
+        run: cargo deny --locked check
+      - name: Tests (cargo test)
+        run: cargo test --locked
+      - name: Release build
+        run: cargo build --release --locked
+      - name: Binary size
+        run: |
+          size=$(stat -c %s target/release/mailgun-relay)
+          echo "mailgun-relay release binary: ${size} bytes"
+          echo "mailgun-relay release binary: ${size} bytes" >> "$GITHUB_STEP_SUMMARY"
