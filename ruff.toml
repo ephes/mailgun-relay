@@ -1,4 +1,6 @@
 target-version = "py314"
+# The parity harness also runs with a host's bare python3 (PLAN.md 10.1).
+per-file-target-version = { "rust/parity/*.py" = "py312" }
 line-length = 100
 src = ["src", "tests"]
 

@@ -18,16 +18,15 @@ Usage::
 
 from __future__ import annotations
 
-import email
-import email.policy
 import importlib.util
 import json
-import re
 import sys
-from email.message import EmailMessage
 from pathlib import Path
 from types import ModuleType
 from typing import Any
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "parity"))
+import semantic  # the conformance checks, shared with the parity harness
 
 FIXTURES_DIR = Path(__file__).resolve().parent
 
@@ -45,21 +44,7 @@ def _generator() -> ModuleType:
 
 def check_message(generator: ModuleType, raw: bytes, case: dict[str, Any]) -> list[str]:
     """The problems of one Rust message; empty when it passes."""
-    problems = []
-    if not raw.isascii():
-        problems.append("not 7-bit")
-    lines = raw.split(b"\r\n")
-    if lines[-1] != b"":
-        problems.append("does not end with CRLF")
-    for line in lines:
-        if b"\r" in line or b"\n" in line:
-            problems.append(f"bare CR or LF in {line[:60]!r}")
-        if len(line) > 998:
-            problems.append(f"line of {len(line)} octets")
-    head = raw.split(b"\r\n\r\n", 1)[0].decode("ascii", "replace")
-    for word in re.findall(r"=\?[^?\s]*\?[bBqQ]\?[^?\s]*\?=", head):
-        if len(word) > 75:
-            problems.append(f"encoded word of {len(word)} characters")
+    problems = semantic.conformance(raw)
     expected = case["expected"]
     actual = generator.semantic_message(raw)
     if actual != expected["message"]:
@@ -67,9 +52,7 @@ def check_message(generator: ModuleType, raw: bytes, case: dict[str, Any]) -> li
             f"semantic view differs:\n  rust   {json.dumps(actual, ensure_ascii=False)}"
             f"\n  python {json.dumps(expected['message'], ensure_ascii=False)}"
         )
-    parsed = email.message_from_bytes(raw, policy=email.policy.default)
-    assert isinstance(parsed, EmailMessage)
-    extra = set(generator._defects(parsed)) - set(expected["defects"])
+    extra = set(generator._defects(semantic.parse(raw))) - set(expected["defects"])
     if extra:
         problems.append(f"parser defects {sorted(extra)}")
     return problems

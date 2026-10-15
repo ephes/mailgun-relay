@@ -34,12 +34,9 @@ import logging
 import os
 import random
 import re
-import ssl
 import string
-import subprocess
 import sys
 import tempfile
-import threading
 import urllib.parse
 import warnings
 from collections.abc import Callable, Mapping, Sequence
@@ -80,6 +77,13 @@ from mailgun_relay.policy import (
     parse_email_strict,
 )
 from mailgun_relay.smtp_client import FailureCategory, SmtpSubmitError, SmtpTransport, submit
+
+# The parity harness's standard-library modules (rust/parity): the semantic
+# view of a message and the scripted SMTP server.
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "parity"))
+from semantic import defects as _defects
+from semantic import semantic_message
+from smtp_fake import SMTP_DEFAULTS, ScriptedSmtp, make_certificates, server_contexts
 
 FIXTURES_DIR = Path(__file__).resolve().parent
 
@@ -2277,11 +2281,6 @@ def build_form_decoding() -> dict[str, Any]:
 MIME_HOST = "relay.example.test"
 MIME_FROM = "Alice <alice@example.test>"
 PNG = b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR"
-# Headers the semantic view leaves out: per-message values (Message-Id is
-# checked against the response id, Date for presence) and MIME structure,
-# which the tree carries.
-_MIME_SKIPPED = {"message-id", "date", "mime-version", "content-type", "content-transfer-encoding"}
-_ADDRESS_HEADERS = {"from", "to", "cc", "reply-to", "bcc"}
 
 
 def _upload(filename: str, content_type: str, data: bytes) -> dict[str, str]:
@@ -2637,75 +2636,6 @@ def _attachment(upload: dict[str, str]) -> Attachment:
     )
 
 
-def _defects(message: EmailMessage) -> list[str]:
-    """Parser defects of the message, its headers and its parts. A part
-    records transfer-encoding defects only when it is decoded."""
-    found: set[str] = set()
-    for part in message.walk():
-        if not part.is_multipart():
-            part.get_payload(decode=True)
-        found.update(type(d).__name__ for d in part.defects)
-        for name, _ in part.raw_items():
-            try:
-                found.update(type(d).__name__ for d in part[name].defects)
-            except ValueError:
-                found.add("ValueError")
-    return sorted(found)
-
-
-def _addresses(header: Any) -> list[list[str]]:
-    return [[a.display_name, a.addr_spec] for a in header.addresses]
-
-
-def _semantic_node(part: EmailMessage) -> dict[str, Any]:
-    node: dict[str, Any] = {"type": part.get_content_type()}
-    if part.is_multipart():
-        node["parts"] = [_semantic_node(p) for p in part.iter_parts()]  # type: ignore[arg-type]
-        return node
-    disposition = part.get_content_disposition()
-    if disposition is not None:
-        node["disposition"] = disposition
-        node["filename"] = part.get_filename()
-    if part["Content-ID"] is not None:
-        node["content_id"] = str(part["Content-ID"])
-    if node["type"].startswith("text/") and disposition is None:
-        node["charset"] = part.get_content_charset()
-        text = part.get_content().replace("\r\n", "\n")
-        node["text"] = text.removesuffix("\n")
-    else:
-        payload = part.get_payload(decode=True)
-        assert isinstance(payload, bytes)
-        node["data"] = base64.b64encode(payload).decode()
-    return node
-
-
-def semantic_message(raw: bytes) -> dict[str, Any]:
-    """What a receiver's parser (``email``, ``policy.default``) reads from
-    ``raw``: headers (decoded, sorted, without per-message and structural
-    ones) and the MIME tree with decoded bodies (line endings normalised,
-    one trailing newline dropped)."""
-    message = email.message_from_bytes(raw, policy=email.policy.default)
-    assert isinstance(message, EmailMessage)
-    headers: list[list[Any]] = []
-    for name, value in message.raw_items():
-        key = name.lower()
-        if key in _MIME_SKIPPED:
-            continue
-        try:
-            parsed = message.policy.header_fetch_parse(name, value)
-            decoded: Any = _addresses(parsed) if key in _ADDRESS_HEADERS else str(parsed)
-        except ValueError:
-            # The registry refuses a display name with CR/LF (From, 200);
-            # compare the decoded text instead.
-            decoded = [
-                "unparsable",
-                str(email.header.make_header(email.header.decode_header(value))),
-            ]
-        headers.append([key, decoded])
-    headers.sort(key=json.dumps)
-    return {"headers": headers, "body": _semantic_node(message)}
-
-
 def python_message(case: dict[str, Any]) -> tuple[bytes, list[str]] | None:
     """Python's message for a ``mime.json`` input as smtplib writes it, and
     the envelope; None when ``build_message`` refuses it (400)."""
@@ -2975,23 +2905,9 @@ def build_mime() -> dict[str, Any]:
 # rust/spike-s1b), plus every code of test_smtp_outcomes.py in every phase
 # and the positive replies smtplib does not accept. A scenario overrides the
 # fake server's defaults (SMTP_DEFAULTS); "fault" makes a phase answer with
-# a garbage line, close the connection or hang. The Rust fake server
+# a garbage line, close the connection or hang. The server is the parity
+# harness's (rust/parity/smtp_fake.py); the Rust fake server
 # (rust/tests/support/fake_smtp.rs) reads the same scenarios.
-SMTP_DEFAULTS: dict[str, Any] = {
-    "banner": 220,
-    "ehlo": 250,
-    "ehlo_tls": 250,
-    "offer_starttls": True,
-    "starttls": 220,
-    "auth_offer": "PLAIN LOGIN",
-    "auth": 235,
-    "mail": 250,
-    "rcpt": {},
-    "data": 354,
-    "data_end": 250,
-    "quit": 221,
-    "fault": {},
-}
 SMTP_THREE = ["ok1@example.com", "bad@example.com", "ok2@example.com"]
 SMTP_TIMEOUT_S = 5.0
 SMTP_HANG_TIMEOUT_S = 0.5
@@ -3085,177 +3001,11 @@ def _smtp_cases() -> list[dict[str, Any]]:
     return cases
 
 
-class _ScriptedSmtp:
-    """The fake server of the S1b spike (``scripted_smtp.py``), in a thread."""
-
-    def __init__(self, contexts: dict[str, Any]) -> None:
-        self.contexts = contexts
-        self.loop = asyncio.new_event_loop()
-        self.thread = threading.Thread(target=self.loop.run_forever, daemon=True)
-        self.thread.start()
-        self.tasks: set[asyncio.Task[None]] = set()
-
-    def run(self, coro: Any) -> Any:
-        return asyncio.run_coroutine_threadsafe(coro, self.loop).result()
-
-    def start(self, scenario: dict[str, Any], cert: str) -> tuple[Any, list[dict[str, Any]]]:
-        sessions: list[dict[str, Any]] = []
-        script = {**SMTP_DEFAULTS, **scenario}
-        context = self.contexts[cert]
-
-        async def handle(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
-            task = asyncio.current_task()
-            assert task is not None
-            self.tasks.add(task)
-            session: dict[str, Any] = {"rcpts": [], "data_for": None}
-            sessions.append(session)
-            tls = False
-
-            async def reply(phase: str, code: int, lines: list[str]) -> bool:
-                fault = script["fault"].get(phase)
-                if fault == "close":
-                    return False
-                if fault == "hang":
-                    await asyncio.sleep(3600)
-                if fault == "garbage":
-                    writer.write(b"garbage reply\r\n")
-                    await writer.drain()
-                    return True
-                for i, line in enumerate(lines):
-                    sep = " " if i == len(lines) - 1 else "-"
-                    writer.write(f"{code}{sep}{line}\r\n".encode())
-                await writer.drain()
-                return code != 421
-
-            def ehlo_lines() -> list[str]:
-                lines = ["fake.test", "PIPELINING", "SIZE 52428800", "8BITMIME"]
-                if not tls and script["offer_starttls"]:
-                    lines.append("STARTTLS")
-                if (tls or not script["offer_starttls"]) and script["auth_offer"]:
-                    lines.append("AUTH " + script["auth_offer"])
-                return lines
-
-            try:
-                if not await reply("banner", script["banner"], ["fake.test ESMTP"]):
-                    return
-                while True:
-                    raw = await reader.readline()
-                    if not raw:
-                        return
-                    line = raw.decode("utf-8", "replace").rstrip("\r\n")
-                    verb = line.split(" ", 1)[0].upper()
-                    if verb in ("EHLO", "HELO"):
-                        phase = "ehlo_tls" if tls else "ehlo"
-                        code = script[phase]
-                        ok = await reply(phase, code, ehlo_lines() if code == 250 else ["no"])
-                    elif verb == "STARTTLS":
-                        ok = await reply("starttls", script["starttls"], ["go ahead"])
-                        if ok and script["starttls"] == 220:
-                            await writer.start_tls(context)
-                            tls = True
-                    elif verb == "AUTH":
-                        parts = line.split()
-                        prompts = []
-                        if parts[1].upper() == "LOGIN":
-                            prompts = (
-                                ["UGFzc3dvcmQ6"]
-                                if len(parts) == 3
-                                else ["VXNlcm5hbWU6", "UGFzc3dvcmQ6"]
-                            )
-                        elif len(parts) == 2:
-                            prompts = [""]
-                        for prompt in prompts:
-                            writer.write(f"334 {prompt}\r\n".encode())
-                            await writer.drain()
-                            await reader.readline()
-                        code = script.get(f"auth_{parts[1].lower()}", script["auth"])
-                        ok = await reply("auth", code, ["auth result"])
-                    elif verb == "MAIL":
-                        ok = await reply("mail", script["mail"], ["sender result"])
-                    elif verb == "RCPT":
-                        addr = line.split(":", 1)[1].strip().strip("<>")
-                        code = script["rcpt"].get(addr.split("@", 1)[0], 250)
-                        if code in (250, 251):
-                            session["rcpts"].append(addr)
-                        ok = await reply("rcpt", code, ["rcpt result"])
-                    elif verb == "DATA":
-                        ok = await reply("data", script["data"], ["send data"])
-                        if ok and script["data"] == 354 and "data" not in script["fault"]:
-                            while await reader.readline() not in (b".\r\n", b""):
-                                pass
-                            session["data_for"] = list(session["rcpts"])
-                            ok = await reply("data_end", script["data_end"], ["queued"])
-                    elif verb == "RSET":
-                        session["rcpts"] = []
-                        ok = await reply("rset", 250, ["reset"])
-                    elif verb == "QUIT":
-                        await reply("quit", script["quit"], ["bye"])
-                        return
-                    else:
-                        ok = await reply("other", 502, ["not implemented"])
-                    if not ok:
-                        return
-            except ConnectionError, OSError:
-                pass
-            finally:
-                writer.close()
-
-        server = self.run(asyncio.start_server(handle, "127.0.0.1", 0))
-        return server, sessions
-
-    def stop(self, server: Any) -> None:
-        async def close() -> None:
-            server.close()
-            for task in self.tasks:
-                task.cancel()
-            await asyncio.gather(*self.tasks, return_exceptions=True)
-            self.tasks.clear()
-            await server.wait_closed()
-
-        self.run(close())
-
-    def close(self) -> None:
-        self.loop.call_soon_threadsafe(self.loop.stop)
-        self.thread.join()
-        self.loop.close()
-
-
-def _smtp_certificates(directory: Path) -> dict[str, str]:
-    """A throwaway CA with key identifiers (Python's VERIFY_X509_STRICT),
-    a ``localhost`` leaf, a leaf for another name and a self-signed one."""
-
-    def openssl(*args: str) -> None:
-        subprocess.run(["openssl", *args], check=True, capture_output=True, cwd=directory)  # noqa: S603, S607
-
-    ec = ["-newkey", "ec", "-pkeyopt", "ec_paramgen_curve:P-256", "-nodes", "-days", "2"]
-    ca = [
-        "-addext",
-        "basicConstraints=critical,CA:TRUE",
-        "-addext",
-        "keyUsage=critical,keyCertSign",
-    ]
-    openssl("req", "-x509", *ec, "-keyout", "ca.key", "-out", "ca.pem", "-subj", "/CN=CA", *ca)
-    for name, san in (("good", "DNS:localhost,IP:127.0.0.1"), ("wrongname", "DNS:other.test")):
-        subject = f"/CN={san.split(',')[0][4:]}"
-        openssl("req", *ec[:-2], "-keyout", f"{name}.key", "-out", f"{name}.csr", "-subj", subject)
-        (directory / f"{name}.ext").write_text(
-            f"subjectAltName={san}\nextendedKeyUsage=serverAuth\nbasicConstraints=CA:FALSE\n"
-            "subjectKeyIdentifier=hash\nauthorityKeyIdentifier=keyid,issuer\n"
-        )
-        signing = ["-CA", "ca.pem", "-CAkey", "ca.key", "-CAcreateserial", "-days", "2"]
-        extensions = ["-extfile", f"{name}.ext"]
-        openssl("x509", "-req", "-in", f"{name}.csr", *signing, *extensions, "-out", f"{name}.pem")
-    selfsigned = ["-subj", "/CN=localhost", "-addext", "subjectAltName=DNS:localhost"]
-    openssl("req", "-x509", *ec, "-keyout", "selfsigned.key", "-out", "selfsigned.pem", *selfsigned)
-    return {name: str(directory / name) for name in ("good", "wrongname", "selfsigned", "ca")}
-
-
-def _python_submit(smtp: _ScriptedSmtp, case: dict[str, Any], ca_file: str) -> dict[str, Any]:
+def _python_submit(smtp: ScriptedSmtp, case: dict[str, Any], ca_file: str) -> dict[str, Any]:
     """The real ``smtp_client.submit`` against the scripted server: the HTTP
     status the route maps it to, the refused recipients and who the message
     was sent for."""
-    server, sessions = smtp.start(case["scenario"], case["cert"])
-    port = server.sockets[0].getsockname()[1]
+    sink = smtp.start(case["scenario"], case["cert"])
     message = EmailMessage()
     message["From"] = "sender@example.com"
     message["To"] = ", ".join(case["recipients"])
@@ -3263,7 +3013,7 @@ def _python_submit(smtp: _ScriptedSmtp, case: dict[str, Any], ca_file: str) -> d
     message.set_content("fixture body\n")
     transport = SmtpTransport(
         host="localhost",
-        port=port,
+        port=sink.port,
         username="relay",
         password="fixture-password",  # noqa: S106 - the fake server accepts any
         use_starttls=case["starttls"],
@@ -3283,8 +3033,8 @@ def _python_submit(smtp: _ScriptedSmtp, case: dict[str, Any], ca_file: str) -> d
     except SmtpSubmitError as exc:
         status = 503 if exc.category is FailureCategory.TEMPORARY else 502
     finally:
-        smtp.stop(server)
-    data_for = next((s["data_for"] for s in sessions if s["data_for"] is not None), None)
+        smtp.stop(sink)
+    data_for = next((s["data_for"] for s in sink.sessions if s["data_for"] is not None), None)
     return {"status": status, "refused": refused, "data_for": data_for}
 
 
@@ -3294,13 +3044,8 @@ def build_smtp_outcomes() -> dict[str, Any]:
     service_log.setLevel(logging.CRITICAL)  # the cleanup warnings of the QUIT cases
     try:
         with tempfile.TemporaryDirectory() as tmp:
-            files = _smtp_certificates(Path(tmp))
-            contexts = {}
-            for name in ("good", "wrongname", "selfsigned"):
-                context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
-                context.load_cert_chain(f"{files[name]}.pem", f"{files[name]}.key")
-                contexts[name] = context
-            smtp = _ScriptedSmtp(contexts)
+            files = make_certificates(Path(tmp))
+            smtp = ScriptedSmtp(server_contexts(files))
             try:
                 cases = []
                 for case in _smtp_cases():

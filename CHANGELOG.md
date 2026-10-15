@@ -4,6 +4,15 @@ All notable changes to mailgun-relay are documented here.
 
 ## Unreleased
 
+### Rust port: shared parity harness modules (slice S6a)
+
+- `rust/parity/smtp_fake.py` (the scripted fake SMTP server, now also
+  recording TLS, login, envelope and the message, and usable as a capture
+  sink) and `rust/parity/semantic.py` (the semantic view of a message and
+  the RFC checks) move out of `rust/fixtures/generate.py` and
+  `check_mime.py`, standard library only, for the parity harness of S6b.
+  The fixtures are unchanged.
+
 ### Rust port: release pipeline (slice S7)
 
 - `.github/workflows/rust-release.yml` builds the Rust binary on
