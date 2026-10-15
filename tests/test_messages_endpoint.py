@@ -8,9 +8,11 @@ import tomllib
 from collections.abc import Iterator
 from dataclasses import replace
 from pathlib import Path
+from typing import cast
 
 import pytest
 from fastapi.testclient import TestClient
+from httpx import Response
 
 from mailgun_relay.app import create_app
 from mailgun_relay.logging_setup import _JsonFormatter, access_logger
@@ -47,6 +49,42 @@ def _with(extra: dict[str, list[str]]) -> dict[str, list[str]]:
     for k, vs in extra.items():
         f.setdefault(k, []).extend(vs)
     return f
+
+
+_ENCODINGS = ["urlencoded", "multipart"]
+
+
+def _post_form(
+    client: TestClient,
+    headers: dict[str, str],
+    form: dict[str, list[str]],
+    *,
+    encoding: str,
+    domain: str = "mg.wersdoerfer.de",
+) -> Response:
+    """POST ``form`` as Anymail would, in either form encoding.
+
+    httpx only switches to multipart when files are attached, so the multipart
+    body is built by hand (UTF-8, no charset parameter, as Anymail sends it).
+    """
+    url = f"/v3/{domain}/messages"
+    if encoding == "urlencoded":
+        return cast(Response, client.post(url, headers=headers, data=form))
+    boundary = "s0py-test-boundary"
+    parts = [
+        f'--{boundary}\r\nContent-Disposition: form-data; name="{name}"\r\n\r\n{value}\r\n'
+        for name, values in form.items()
+        for value in values
+    ]
+    body = ("".join(parts) + f"--{boundary}--\r\n").encode("utf-8")
+    return cast(
+        Response,
+        client.post(
+            url,
+            headers={**headers, "Content-Type": f"multipart/form-data; boundary={boundary}"},
+            content=body,
+        ),
+    )
 
 
 def test_happy_path_returns_queued(
@@ -707,3 +745,126 @@ def test_malformed_inline_filename_returns_400(
     r = client.post("/v3/mg.wersdoerfer.de/messages", headers=auth, data=form, files=files)
     assert r.status_code == 400, r.text
     assert recording_smtp.calls == []
+
+
+# An empty body field passes the form layer (the field is present) and used to
+# raise a bare ValueError in build_message, i.e. a 500. Anymail sends `text=""`
+# for a Django message with an empty body.
+@pytest.mark.parametrize("encoding", _ENCODINGS)
+@pytest.mark.parametrize(
+    "bodies",
+    [
+        {"text": [""]},
+        {"html": [""]},
+        {"text": [""], "html": [""]},
+        {"text": [""], "amp-html": ["<p>amp</p>"]},
+    ],
+)
+def test_empty_body_without_other_body_returns_400(
+    client: TestClient,
+    auth: dict[str, str],
+    recording_smtp: RecordingSubmitter,
+    bodies: dict[str, list[str]],
+    encoding: str,
+) -> None:
+    form = {k: v for k, v in _minimum_form().items() if k != "text"} | bodies
+    r = _post_form(client, auth, form, encoding=encoding)
+    assert r.status_code == 400, r.text
+    assert set(r.json()) == {"message"}
+    assert recording_smtp.calls == []
+
+
+@pytest.mark.parametrize("encoding", _ENCODINGS)
+def test_empty_text_with_html_sends_html_only(
+    client: TestClient, auth: dict[str, str], recording_smtp: RecordingSubmitter, encoding: str
+) -> None:
+    form = _minimum_form() | {"text": [""], "html": ["<p>hi</p>"]}
+    r = _post_form(client, auth, form, encoding=encoding)
+    assert r.status_code == 200, r.text
+    sent = recording_smtp.calls[0].message
+    assert sent.get_content_type() == "text/html"
+
+
+@pytest.mark.parametrize("encoding", _ENCODINGS)
+def test_empty_html_with_text_sends_text_only(
+    client: TestClient, auth: dict[str, str], recording_smtp: RecordingSubmitter, encoding: str
+) -> None:
+    form = _minimum_form() | {"html": [""]}
+    r = _post_form(client, auth, form, encoding=encoding)
+    assert r.status_code == 200, r.text
+    assert recording_smtp.calls[0].message.get_content_type() == "text/plain"
+
+
+@pytest.mark.parametrize(
+    "extra,status",
+    [
+        # Policy (step 5) runs before message construction.
+        ({"from": ["intruder@example.org"]}, 403),
+        # Recipient count (step 8) runs before message construction.
+        ({"to": [f"r{i}@wersdoerfer.de" for i in range(11)]}, 413),
+        ({"to": []}, 400),
+        # Subject validation (step 6) is a 400 either way.
+        ({"subject": ["a\nb"]}, 400),
+    ],
+)
+def test_empty_text_keeps_decision_order(
+    client: TestClient,
+    auth: dict[str, str],
+    recording_smtp: RecordingSubmitter,
+    extra: dict[str, list[str]],
+    status: int,
+) -> None:
+    form = _minimum_form() | {"text": [""]} | extra
+    r = client.post("/v3/mg.wersdoerfer.de/messages", headers=auth, data=form)
+    assert r.status_code == status, r.text
+    assert recording_smtp.calls == []
+
+
+# Display names that decode (RFC 2047) to CR and/or LF. The raw value carries
+# no control character, so the early checks pass; the email package refuses
+# the decoded name when the To/Cc header is assigned. That used to be a 500.
+_CRLF_DISPLAY_NAMES = [
+    "=?utf-8?B?YQ0KYg==?=",  # a\r\nb
+    "=?utf-8?B?YQpi?=",  # a\nb
+    "=?utf-8?B?YQ1i?=",  # a\rb
+    "=?utf-8?q?a=0D=0Ab?=",  # a\r\nb, Q encoding
+]
+
+
+@pytest.mark.parametrize("encoding", _ENCODINGS)
+@pytest.mark.parametrize("field", ["to", "cc"])
+@pytest.mark.parametrize("display_name", _CRLF_DISPLAY_NAMES)
+def test_recipient_display_name_decoding_to_crlf_returns_400(
+    client: TestClient,
+    auth: dict[str, str],
+    recording_smtp: RecordingSubmitter,
+    field: str,
+    display_name: str,
+    encoding: str,
+) -> None:
+    form = _with({field: [f"{display_name} <victim@wersdoerfer.de>"]})
+    r = _post_form(client, auth, form, encoding=encoding)
+    assert r.status_code == 400, r.text
+    assert set(r.json()) == {"message"}
+    assert recording_smtp.calls == []
+
+
+def test_to_display_name_crlf_plus_invalid_cc_returns_400(
+    client: TestClient, auth: dict[str, str], recording_smtp: RecordingSubmitter
+) -> None:
+    form = _with({"to": ["=?utf-8?B?YQ0KYg==?= <victim@wersdoerfer.de>"], "cc": ["bad@bad domain"]})
+    r = client.post("/v3/mg.wersdoerfer.de/messages", headers=auth, data=form)
+    assert r.status_code == 400, r.text
+    assert recording_smtp.calls == []
+
+
+@pytest.mark.parametrize("field", ["from", "bcc"])
+def test_crlf_display_name_in_from_and_bcc_is_unchanged(
+    client: TestClient, auth: dict[str, str], recording_smtp: RecordingSubmitter, field: str
+) -> None:
+    """Only To/Cc changed: From encodes the decoded text, Bcc never reaches a header."""
+    address = "jochen-homepage@wersdoerfer.de" if field == "from" else "hidden@wersdoerfer.de"
+    form = _minimum_form() | {field: [f"=?utf-8?B?YQ0KYg==?= <{address}>"]}
+    r = client.post("/v3/mg.wersdoerfer.de/messages", headers=auth, data=form)
+    assert r.status_code == 200, r.text
+    assert b"\r\nb" not in bytes(recording_smtp.calls[0].message)

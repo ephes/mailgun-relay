@@ -63,7 +63,11 @@ def parse_email_strict(value: str) -> tuple[str, str]:
         # `test_environment=True` keeps syntactic checks (spaces, '..',
         # invalid characters) but allows reserved/special-use TLDs because
         # the SMTP backend is the authoritative deliverability decision.
-        result = validate_email(addr_spec, check_deliverability=False, test_environment=True)
+        # `allow_smtputf8=False`: a non-ASCII local part is a bad request,
+        # because the relay never submits with SMTPUTF8.
+        result = validate_email(
+            addr_spec, check_deliverability=False, test_environment=True, allow_smtputf8=False
+        )
     except EmailNotValidError as exc:
         raise InvalidAddressError(str(exc)) from exc
     # `email_validator` returns the domain as a U-label (Unicode) for IDNs, but

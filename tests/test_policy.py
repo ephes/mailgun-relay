@@ -156,3 +156,35 @@ def test_from_address_with_crlf_raises_invalid_not_policy() -> None:
             path_domain="wersdoerfer.de",
             from_address="ok@wersdoerfer.de\nBcc: evil@wersdoerfer.de",
         )
+
+
+@pytest.mark.parametrize("allowed_addresses", [None, {normalize_address("jörg@wersdoerfer.de")}])
+def test_non_ascii_local_part_in_from_is_invalid_not_policy(
+    allowed_addresses: set[str] | None,
+) -> None:
+    """EAI senders are malformed (400), whatever the domain or address policy says."""
+    p = _policy(
+        mailgun_domains={"wersdoerfer.de"},
+        allowed_from_domains={"wersdoerfer.de"},
+        allowed_from_addresses=allowed_addresses,
+    )
+    with pytest.raises(InvalidAddressError):
+        enforce_policy(p, path_domain="wersdoerfer.de", from_address="Jörg <jörg@wersdoerfer.de>")
+
+
+def test_non_ascii_local_part_does_not_skip_the_path_domain_check() -> None:
+    p = _policy(mailgun_domains={"wersdoerfer.de"}, allowed_from_domains={"wersdoerfer.de"})
+    with pytest.raises(PolicyError) as caught:
+        enforce_policy(p, path_domain="example.org", from_address="jörg@wersdoerfer.de")
+    assert type(caught.value) is PolicyError
+
+
+def test_idn_from_domain_is_compared_as_a_label() -> None:
+    p = _policy(
+        mailgun_domains={"xn--wersdrfer-47a.de"},
+        allowed_from_domains={"xn--wersdrfer-47a.de"},
+    )
+    for sender in ("a@wersdörfer.de", "a@xn--wersdrfer-47a.de", "A <a@WERSDÖRFER.DE>"):
+        enforce_policy(p, path_domain="xn--wersdrfer-47a.de", from_address=sender)
+    with pytest.raises(PolicyError):
+        enforce_policy(p, path_domain="xn--wersdrfer-47a.de", from_address="a@wersdoerfer.de")

@@ -147,6 +147,7 @@ Rules:
 - If exact sender addresses are configured, require an exact match after normalization.
 - Include all `to`, `cc`, and `bcc` recipients in the SMTP envelope.
 - Do not include `bcc` recipients in generated message headers.
+- Write IDN domains as A-labels in headers and envelope and never submit with SMTPUTF8; reject non-ASCII (EAI) local parts in every address field with `400`.
 
 Domain aliases in the existing mail backend do not automatically imply relay authorization. Token policy should state allowed domains explicitly.
 
@@ -157,7 +158,7 @@ The service must distinguish the message headers from the SMTP envelope:
 - Message `From:` is the application-provided Mailgun `from` field after token policy validation.
 - SMTP envelope recipients are derived from `to`, `cc`, and `bcc`.
 - `bcc` recipients are never written to message headers.
-- SMTP envelope sender is an explicit configuration choice, not an accidental copy of the `From:` header.
+- SMTP envelope sender is an explicit configuration choice, not an accidental copy of the `From:` header. `MAILGUN_RELAY_ENVELOPE_SENDER` is made ASCII at startup (IDN domain to A-label; a non-ASCII local part stops the process; empty is the null sender).
 
 MVP default strategy:
 

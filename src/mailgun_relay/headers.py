@@ -129,12 +129,20 @@ def _validate_addr(raw_label: str, display: str, addr: str) -> Address:
     # whether the backend will accept a domain is the SMTP backend's job,
     # not the relay's. `test_environment=True` is the upstream knob for
     # exactly that ("don't reject .test/.example/.localhost").
+    # `allow_smtputf8=False` rejects internationalized (non-ASCII) local parts:
+    # the relay never uses SMTPUTF8, so such a recipient is a 400, not a
+    # message the backend may or may not be able to take.
     try:
-        result = validate_email(addr, check_deliverability=False, test_environment=True)
+        result = validate_email(
+            addr, check_deliverability=False, test_environment=True, allow_smtputf8=False
+        )
     except EmailNotValidError as exc:
         raise HeaderInjectionError(f"invalid address: {raw_label!r} ({exc})") from exc
-    normalized = result.normalized
-    local, _, domain = normalized.rpartition("@")
+    # IDN domains go into headers and the envelope as A-labels (punycode).
+    # The U-label form in `result.normalized` would be written as an
+    # RFC 2047 encoded word inside the domain (invalid) and would make
+    # smtplib switch the whole submission to SMTPUTF8.
+    local, _, domain = (result.ascii_email or "").rpartition("@")
     if not local or not domain:
         raise HeaderInjectionError(f"invalid address: {raw_label!r}")
     return Address(display_name=display, username=local, domain=domain)

@@ -5,6 +5,7 @@ from dataclasses import dataclass, field
 from email.message import EmailMessage
 from email.utils import formatdate
 
+from mailgun_relay.errors import BadRequestError
 from mailgun_relay.headers import (
     HeaderInjectionError,
     parse_address_list,
@@ -101,17 +102,26 @@ def build_message(payload: MessageInput) -> tuple[EmailMessage, str, list[str]]:
     BCC recipients are returned in envelope_recipients but NEVER added to the message headers.
     """
     if not payload.text and not payload.html:
-        raise ValueError("at least one of text/html is required")
+        # The form layer only checks that a field is present; an empty
+        # ``text=""`` (what Anymail sends for an empty Django body) without a
+        # non-empty ``html`` is still a client error.
+        raise BadRequestError("at least one of 'text' or 'html' must be non-empty")
 
     msg = EmailMessage()
     [from_addr] = parse_address_list([payload.from_address])
     msg["From"] = from_addr
     to_list = parse_address_list(payload.to) if payload.to else []
     cc_list = parse_address_list(payload.cc) if payload.cc else []
-    if to_list:
-        msg["To"] = ", ".join(str(a) for a in to_list)
-    if cc_list:
-        msg["Cc"] = ", ".join(str(a) for a in cc_list)
+    try:
+        if to_list:
+            msg["To"] = ", ".join(str(a) for a in to_list)
+        if cc_list:
+            msg["Cc"] = ", ".join(str(a) for a in cc_list)
+    except ValueError as exc:
+        # The header registry decodes RFC 2047 words in display names and
+        # refuses one that decodes to CR/LF; that is a bad request, as for
+        # Reply-To below.
+        raise HeaderInjectionError(f"invalid recipient header: {exc}") from exc
     msg["Subject"] = payload.subject
 
     message_id = f"<{uuid.uuid4().hex}@{payload.public_host}>"

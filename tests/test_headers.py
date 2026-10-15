@@ -196,3 +196,32 @@ def test_header_address_list_rejects_crlf() -> None:
 def test_header_address_list_rejects_invalid_in_middle() -> None:
     with pytest.raises(HeaderInjectionError):
         parse_header_address_list("a@x.test, bad@bad domain")
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        "foo@wersdörfer.de",
+        "foo@WERSDÖRFER.de",
+        "foo@xn--wersdrfer-47a.de",
+        "Jörg <foo@wersdörfer.de>",
+    ],
+)
+def test_idn_domain_becomes_a_label(value: str) -> None:
+    [single] = parse_address_list([value])
+    assert single.addr_spec == "foo@xn--wersdrfer-47a.de"
+    [listed] = parse_header_address_list(value)
+    assert listed.addr_spec == "foo@xn--wersdrfer-47a.de"
+
+
+def test_ascii_address_is_unchanged() -> None:
+    [addr] = parse_address_list(["Some.User@Example.TEST"])
+    assert addr.addr_spec == "Some.User@example.test"
+
+
+@pytest.mark.parametrize("value", ["jörg@example.test", "Jörg <jörg@wersdörfer.de>", "ü@x.test"])
+def test_non_ascii_local_part_is_rejected(value: str) -> None:
+    with pytest.raises(HeaderInjectionError):
+        parse_address_list([value])
+    with pytest.raises(HeaderInjectionError):
+        parse_header_address_list(f"ok@example.test, {value}")

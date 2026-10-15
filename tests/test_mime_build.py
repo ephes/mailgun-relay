@@ -4,6 +4,7 @@ from email.message import EmailMessage
 
 import pytest
 
+from mailgun_relay.errors import BadRequestError
 from mailgun_relay.headers import HeaderInjectionError
 from mailgun_relay.mime_build import Attachment, MessageInput, build_message
 
@@ -221,3 +222,67 @@ def test_container_inline_type_becomes_octet_stream() -> None:
     assert "message/rfc822" not in parts
     [inline] = parts["application/octet-stream"]
     assert inline["Content-ID"] == "<x.eml>"
+
+
+@pytest.mark.parametrize(
+    "bodies",
+    [
+        {"text": ""},
+        {"text": None, "html": ""},
+        {"text": "", "html": ""},
+        {"text": "", "amp_html": "a"},
+    ],
+)
+def test_empty_body_is_a_bad_request(bodies: dict[str, object]) -> None:
+    with pytest.raises(BadRequestError):
+        build_message(_base_input(**bodies))
+
+
+def test_empty_text_with_html_builds_html_only() -> None:
+    msg, _, _ = build_message(_base_input(text="", html="<p>hi</p>"))
+    assert msg.get_content_type() == "text/html"
+
+
+@pytest.mark.parametrize("field", ["to", "cc"])
+def test_recipient_display_name_decoding_to_crlf_is_rejected(field: str) -> None:
+    with pytest.raises(HeaderInjectionError):
+        build_message(_base_input(**{field: ["=?utf-8?B?YQ0KYg==?= <x@example.test>"]}))
+
+
+def test_idn_addresses_are_a_labels_in_headers_and_envelope() -> None:
+    msg, _, recipients = build_message(
+        _base_input(
+            from_address="Jörg <sender@wersdörfer.de>",
+            to=["to@wersdörfer.de"],
+            cc=["Cc <cc@bü.test>"],
+            bcc=["bcc@wersdörfer.de"],
+            custom_headers={"Reply-To": "reply@wersdörfer.de"},
+        )
+    )
+    assert "sender@xn--wersdrfer-47a.de" in str(msg["From"])
+    assert str(msg["To"]) == "to@xn--wersdrfer-47a.de"
+    assert "cc@xn--b-eha.test" in str(msg["Cc"])
+    assert str(msg["Reply-To"]) == "reply@xn--wersdrfer-47a.de"
+    assert recipients == [
+        "to@xn--wersdrfer-47a.de",
+        "cc@xn--b-eha.test",
+        "bcc@xn--wersdrfer-47a.de",
+    ]
+    assert bytes(msg).isascii()
+
+
+@pytest.mark.parametrize(
+    "overrides",
+    [
+        {"from_address": "jörg@example.test"},
+        {"to": ["jörg@example.test"]},
+        {"cc": ["jörg@example.test"]},
+        {"bcc": ["jörg@example.test"]},
+        {"custom_headers": {"Reply-To": "jörg@example.test"}},
+    ],
+)
+def test_non_ascii_local_part_is_rejected_in_every_address_field(
+    overrides: dict[str, object],
+) -> None:
+    with pytest.raises(HeaderInjectionError):
+        build_message(_base_input(**overrides))

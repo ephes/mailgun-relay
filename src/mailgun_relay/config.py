@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 import yaml
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from mailgun_relay.policy import normalize_address, normalize_domain
@@ -77,6 +77,24 @@ class Settings(BaseSettings):
     max_header_value_length: int = 998
 
     log_level: str = Field(default="INFO")
+
+    @field_validator("envelope_sender")
+    @classmethod
+    def _envelope_sender_ascii(cls, value: str) -> str:
+        """Keep ``MAIL FROM`` ASCII so smtplib never switches to SMTPUTF8.
+
+        Empty stays the null sender and an ASCII value is used unchanged. An
+        IDN domain is converted to its A-label; a non-ASCII local part cannot
+        be expressed without SMTPUTF8 and stops the process at startup.
+        """
+        if value.isascii():
+            return value
+        local, sep, domain = value.rpartition("@")
+        if not sep or not local or not local.isascii():
+            raise ValueError(
+                "envelope_sender: only the domain may be non-ASCII (SMTPUTF8 is not used)"
+            )
+        return f"{local}@{normalize_domain(domain)}"
 
 
 def _reject_changeme(field_name: str, value: str) -> None:

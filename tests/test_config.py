@@ -242,3 +242,30 @@ def test_token_policy_allowed_addresses_none_means_domain_only() -> None:
         allowed_from_addresses=None,
     )
     assert p.allowed_from_addresses is None
+
+
+@pytest.mark.parametrize(
+    "value,expected",
+    [
+        ("", ""),
+        ("mailgun-relay@xn--wersdrfer-47a.de", "mailgun-relay@xn--wersdrfer-47a.de"),
+        ("relay@wersdörfer.de", "relay@xn--wersdrfer-47a.de"),
+        ("relay@WERSDÖRFER.DE", "relay@xn--wersdrfer-47a.de"),
+    ],
+)
+def test_envelope_sender_is_ascii_after_startup(value: str, expected: str) -> None:
+    assert Settings(envelope_sender=value).envelope_sender == expected
+
+
+@pytest.mark.parametrize(
+    "value", ["jörg@example.test", "jörg@wersdörfer.de", "wersdörfer", "a@-ö.de"]
+)
+def test_envelope_sender_that_needs_smtputf8_fails_startup(value: str) -> None:
+    with pytest.raises(ValueError, match="envelope_sender"):
+        Settings(envelope_sender=value)
+
+
+def test_envelope_sender_from_env_fails_startup(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("MAILGUN_RELAY_ENVELOPE_SENDER", "jörg@example.test")
+    with pytest.raises(ValueError, match="envelope_sender"):
+        Settings()

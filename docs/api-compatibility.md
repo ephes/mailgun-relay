@@ -51,7 +51,7 @@ Required fields:
 
 - `from`: sender address with optional display name.
 - At least one recipient across `to`, `cc`, or `bcc`.
-- At least one content part, usually `text` or `html`.
+- At least one non-empty `text` or `html`. A request that carries only empty ones (`text=""`, `html=""`, or `text=""` with only `amp-html`) is `400`; `text=""` with a non-empty `html` is sent as HTML only.
 
 Supported fields:
 
@@ -73,6 +73,15 @@ Supported fields:
 | `v:*` variables | Reject (400) | No events/templates metadata support. |
 | `recipient-variables` | Reject (400) | Batch personalization out of scope. |
 | `template` / `t:*` | Reject (400) | Stored Mailgun templates out of scope. |
+
+### Addresses
+
+Every address field (`from`, `to`, `cc`, `bcc`, `h:Reply-To`) holds RFC 5322 mailboxes; `to`, `cc` and `bcc` take exactly one per value.
+
+- **IDN domains are sent as A-labels.** `foo@wersdörfer.de` and `foo@xn--wersdrfer-47a.de` are the same address; both appear as `foo@xn--wersdrfer-47a.de` in the message headers and in `RCPT TO`, and duplicates of the two spellings collapse to one envelope recipient. The relay never submits with SMTPUTF8; the generated message headers are ASCII.
+- **Non-ASCII local parts are rejected with `400`** (`jörg@example.org`, SMTPUTF8/EAI addresses). For `from` this happens at the sender-policy step, after the path-domain check; for the other fields when the message is built, after the subject, custom-header and recipient-count checks.
+- **Display names are decoded.** RFC 2047 encoded words in display names are decoded and re-encoded. A `to`, `cc` or `h:Reply-To` display name that decodes to CR or LF is `400`.
+- `MAILGUN_RELAY_ENVELOPE_SENDER` follows the same rule at startup: an IDN domain is converted to its A-label, a non-ASCII local part stops the process, empty means the null sender `MAIL FROM:<>`.
 
 Success response:
 

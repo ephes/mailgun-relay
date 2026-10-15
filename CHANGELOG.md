@@ -48,6 +48,35 @@ has to change for it.
 
 ### Mailgun API compatibility
 
+- **IDN addresses are sent as ASCII; non-ASCII local parts are rejected.** An
+  address with an internationalized domain (`foo@wersdörfer.de`) was written
+  into `To`/`Cc`/`From`/`Reply-To` with an RFC 2047 encoded word inside the
+  domain (not valid RFC 5322), sent as the U-label in `RCPT TO`, and made
+  `smtplib` switch the whole submission to SMTPUTF8 (a `503` against a server
+  without it). Every IDN domain, in the headers and in the envelope, is now
+  sent as its A-label (`foo@xn--wersdrfer-47a.de`); the relay never uses
+  SMTPUTF8. An address whose local part is not ASCII (`jörg@example.org`)
+  cannot be sent that way and is now a `400`: in `from` at the sender-policy
+  step (so a foreign path domain is still `403` first), in `to`, `cc`, `bcc`
+  and `h:Reply-To` when the message is built. Such a sender used to pass the
+  policy (domain-only tokens) or get `403` (address allowlist); it is `400` in
+  both cases now. Recipients are often typed in by outside visitors (Django
+  allauth mails "unknown account" notices to any address entered in the
+  password-reset form), so this path was reachable from outside. Token,
+  path-domain and sender-domain decisions are otherwise unchanged.
+- **`MAILGUN_RELAY_ENVELOPE_SENDER` is kept ASCII at startup.** An IDN domain
+  is converted to its A-label; a value with a non-ASCII local part stops the
+  process at startup instead of forcing SMTPUTF8 on every submission. Empty
+  (the null sender `MAIL FROM:<>`) and ASCII values are used unchanged.
+- **Empty bodies and CR/LF display names are a `400`, not a `500`.** `text=""`
+  (what Anymail sends for a Django message with an empty body) or `html=""`
+  without another non-empty `text`/`html` raised an unhandled error. A `to` or
+  `cc` display name whose RFC 2047 encoded word decodes to CR or LF
+  (`=?utf-8?B?YQ0KYg==?= <a@example.org>`) did the same. Both are now `400`
+  with the usual `{"message": ...}` body, at the same point of the request
+  checks, so a request with an additional earlier fault keeps that fault's
+  status. `text=""` together with a non-empty `html` is still accepted and
+  sent as HTML only.
 - **Inline images now resolve in strict clients.** An `inline` upload was sent
   with a bare `Content-ID: logo.png` and attached to the top-level
   `multipart/mixed` next to the body. It now gets the RFC 2392 form
