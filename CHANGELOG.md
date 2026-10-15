@@ -12,10 +12,10 @@ All notable changes to mailgun-relay are documented here.
   compatibility scope (HTTP contract, policy and rejection decisions,
   configuration and `/health` exact; MIME byte form and message texts free),
   records the owner decisions of 2026-10-15 on the intentional divergences,
-  starts with a Python fix (400 instead of 500 for empty bodies and CR/LF in
-  To/Cc display names, IDN addresses as A-labels, non-ASCII local parts
-  rejected) and defines slices, the Python-as-oracle fixtures, the parity harness, release, shadow
-  run, cutover and rollback. No runtime behaviour changes.
+  including the Python fix that shipped first (see "Mailgun API
+  compatibility" below), and defines slices, the Python-as-oracle fixtures,
+  the parity harness, release, shadow run, cutover and rollback. The plan
+  itself changes no runtime behaviour.
 
 ### Mailgun decommission status (re-established 2026-08-04)
 
