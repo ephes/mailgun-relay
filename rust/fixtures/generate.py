@@ -21,9 +21,12 @@ Each slice adds its builders to ``GENERATORS``.
 from __future__ import annotations
 
 import argparse
+import base64
+import hashlib
 import json
 import logging
 import os
+import random
 import sys
 import tempfile
 from collections.abc import Callable, Mapping
@@ -35,8 +38,9 @@ import idna
 import uvicorn.config
 import yaml
 
-from mailgun_relay.config import Settings, load_secrets
-from mailgun_relay.policy import normalize_domain
+from mailgun_relay.auth import AuthError, authenticate
+from mailgun_relay.config import Settings, TokenPolicy, load_secrets
+from mailgun_relay.policy import InvalidAddressError, normalize_domain
 
 FIXTURES_DIR = Path(__file__).resolve().parent
 
@@ -56,20 +60,25 @@ def config_domain_ok(domain: str, a_label: str) -> bool:
     return _config_chars_ok(domain) and _config_chars_ok(idna.decode(a_label))
 
 
-def _config_chars_ok(domain: str) -> bool:
-    ranges = [
-        (0xC0, 0xD6),
-        (0xD8, 0xF6),
-        (0xF8, 0x24F),
-        (0x250, 0x2AF),
-        (0x300, 0x36F),
-        (0x1E00, 0x1EFF),
-    ]
-    return all(
-        char in "abcdefghijklmnopqrstuvwxyz0123456789-."
-        or any(low <= ord(char) <= high for low, high in ranges)
-        for char in domain.strip().lower()
+# The non-ASCII code points of ``is_config_domain_char`` in rust/src/domain.rs.
+CONFIG_RANGES = [
+    (0xC0, 0xD6),
+    (0xD8, 0xF6),
+    (0xF8, 0x24F),
+    (0x250, 0x2AF),
+    (0x300, 0x36F),
+    (0x1E00, 0x1EFF),
+]
+
+
+def _config_char(char: str) -> bool:
+    return char in "abcdefghijklmnopqrstuvwxyz0123456789-." or any(
+        low <= ord(char) <= high for low, high in CONFIG_RANGES
     )
+
+
+def _config_chars_ok(domain: str) -> bool:
+    return all(_config_char(char) for char in domain.strip().lower())
 
 
 # -------------------------------------------------------------- config_env
@@ -548,11 +557,265 @@ def build_config_secrets() -> dict[str, Any]:
     return {"source": "mailgun_relay.config.load_secrets", "cases": cases}
 
 
+# -------------------------------------------------------------------- auth
+
+AUTH_TOKENS = [
+    ("homepage-production", "homepage-token-secret"),
+    ("python-podcast-production", "podcast-token-secret"),
+    ("colon", "a:b:c"),
+    ("umlaut", "pässwört"),
+    ("empty", ""),
+    ("spaces", " padded "),
+    ("dup-first", "shared"),
+    ("dup-second", "shared"),
+]
+
+
+def _basic(user: bytes, password: bytes, *, scheme: bytes = b"Basic ") -> bytes:
+    return scheme + base64.b64encode(user + b":" + password)
+
+
+def _auth_headers() -> list[tuple[str, bytes | None]]:
+    good = _basic(b"api", b"homepage-token-secret")
+    encoded = good[len(b"Basic ") :]
+    cases: list[tuple[str, bytes | None]] = [("absent", None), ("empty", b"")]
+    cases += [(f"token {label}", _basic(b"api", t.encode())) for label, t in AUTH_TOKENS]
+    users = [b"API", b"Api", b"api ", b" api", b"", b"apix", b"ap", b"api\x00", b"\xc3\xa4pi"]
+    cases += [(f"user {u!r}", _basic(u, b"homepage-token-secret")) for u in users]
+    schemes = [b"basic ", b"BASIC ", b"Basic", b"Basic\t", b"Basic  ", b"Bearer ", b" Basic "]
+    cases += [(f"scheme {scheme!r}", scheme + encoded) for scheme in schemes]
+    whitespace = [b"\t", b"\n", b"\x0b", b"\x0c", b"\r", b"\x1c", b"\x1d", b"\x1e", b"\x1f", b" "]
+    whitespace += [b"\x85", b"\xa0"]
+    cases += [(f"leading {w!r}", b"Basic " + w + encoded) for w in whitespace]
+    cases += [(f"trailing {w!r}", good + w) for w in whitespace]
+    cases += [
+        (f"base64 {b!r}", b"Basic " + b)
+        for b in [
+            encoded.rstrip(b"="),
+            encoded + b"=",
+            encoded + b"==",
+            b"=" + encoded,
+            encoded[:4] + b" " + encoded[4:],
+            encoded[:4] + b"\n" + encoded[4:],
+            encoded + b"YQ==",
+            encoded.replace(b"+", b"-").replace(b"/", b"_"),
+            b"!!!notbase64!!!",
+            b"YXBpOnQ=",
+            b"YXBpOnR=",
+            b"YXBpOnQ",
+            b"YXBpOnQ==",
+            b"Y",
+            b"====",
+            b"",
+        ]
+    ]
+    cases += [
+        (f"decoded {raw!r}", b"Basic " + base64.b64encode(raw))
+        for raw in [
+            b"justuser",
+            b"api",
+            b"api:",
+            b":homepage-token-secret",
+            b"api::homepage-token-secret",
+            b"api:homepage-token-secret\x00",
+            b"api:\xff",
+            b"api:\xed\xa0\x80",
+            b"api:\xc0\xaf",
+            b"api:p\xc3\xa4ssw\xc3\xb6rt",
+            b"api:p\xe4ssw\xf6rt",
+        ]
+    ]
+    cases += [
+        ("non-ascii before base64", b"Basic \xe9" + encoded),
+        ("non-ascii after base64", good + b"\xe9"),
+        ("non-ascii inside base64", b"Basic " + encoded[:4] + b"\x80" + encoded[4:]),
+        ("non-ascii scheme", b"B\xe4sic " + encoded),
+    ]
+    rng = random.Random(20261015)  # noqa: S311 - a fixed seed, reproducible
+    for i in range(40):
+        header = bytearray(good)
+        for _ in range(rng.randint(1, 3)):
+            position = rng.randrange(len(header) + 1)
+            choice = rng.random()
+            if choice < 0.4 and position < len(header):
+                del header[position]
+            elif choice < 0.7:
+                header.insert(position, rng.choice(b"AZaz09+/= \t-_\x85\xa0\xe9:"))
+            elif position < len(header):
+                header[position] = rng.randrange(256)
+        cases.append((f"mutation {i}", bytes(header)))
+    return cases
+
+
+def build_auth() -> dict[str, Any]:
+    policies = [
+        TokenPolicy(
+            label=label,
+            token_sha256=hashlib.sha256(token.encode()).hexdigest(),
+            mailgun_domains=frozenset({"mg.wersdoerfer.de"}),
+            allowed_from_domains=frozenset({"wersdoerfer.de"}),
+        )
+        for label, token in AUTH_TOKENS
+    ]
+    cases = []
+    for name, header in _auth_headers():
+        text = None if header is None else header.decode("latin-1")
+        try:
+            expected: str | None = authenticate(text, policies).label
+        except AuthError:
+            expected = None
+        cases.append({"name": name, "header": text, "expected": expected})
+    return {
+        "source": "mailgun_relay.auth.authenticate (header bytes as their latin-1 decoding)",
+        "tokens": [{"label": p.label, "token_sha256": p.token_sha256} for p in policies],
+        "cases": cases,
+    }
+
+
+# ------------------------------------------------------------------ domain
+
+# Path domains Python refuses (IDNA2008, 400) and the Rust port maps to an
+# A-label with UTS46 (403, D-10), with that A-label.
+D10_PATH_DOMAINS = {
+    "☃.de": "xn--n3h.de",
+    "\U0001f600.de": "xn--e28h.de",
+    "a\u00b7b.de": "xn--ab-0ea.de",
+    "\u0140.de": "xn--l-gda.de",
+    "x\u013fy.de": "xn--xly-mga.de",
+    "x\u0140y.de": "xn--xly-mga.de",
+    "\u30fb.jp": "xn--vek.jp",
+    "xn--n3h.de": "xn--n3h.de",
+    "xn--e28h.de": "xn--e28h.de",
+}
+
+LATIN_SET = [chr(c) for low, high in CONFIG_RANGES for c in range(low, high + 1)]
+
+
+def _domain_inputs() -> list[str]:
+    inputs = [
+        "wersdoerfer.de",
+        "mg.wersdoerfer.de",
+        "MG.WERSDOERFER.DE",
+        "mg.python-podcast.de",
+        "mg.staging.django-cast.com",
+        "email.mg.staging.django-cast.com",
+        "mg.konektom.org",
+        "wersdörfer.de",
+        "WERSDÖRFER.DE",
+        "xn--wersdrfer-47a.de",
+        "XN--wersdrfer-47a.DE",
+        "mg.wersdörfer.de",
+        " mg.wersdoerfer.de ",
+        "\tmg.wersdoerfer.de\n",
+        "\x1cmg.wersdoerfer.de\x85",
+        "\u00a0mg.wersdoerfer.de\u3000",
+        "\u200bmg.wersdoerfer.de",
+        "mg.wersdoerfer.de.",
+        "mg.wersdoerfer.de..",
+        ".mg.wersdoerfer.de",
+        ".",
+        "",
+        " ",
+        "localhost",
+        "de",
+        "a..b",
+        "a_b.de",
+        "-x.de",
+        "x-.de",
+        "ab--c.de",
+        "xn--abc.de",
+        "xn--.de",
+        "xn--4ca-.de",
+        "xn--a-ecp.de",
+        "ß.de",
+        "ς.gr",
+        "ⅻ.de",
+        f"{FULLWIDTH_A}.de",
+        "ﬁ.de",
+        "İ.de",
+        "ä.de",
+        "a\u0308.de",
+        "\u0308a.de",
+        "αβ.gr",
+        "ΑΣ.gr",
+        PAYPAL + ".de",
+        "пример.рф",
+        "例子.中国",
+        "한국.kr",
+        "עברית.il",
+        "مثال.eg",
+        "a\u200db.de",
+        "a\u200cb.de",
+        "l·l.cat",
+        "͵\u03b1.gr",
+        "א\u05f3.il",
+        "・.jp",
+        "\u0661\u06f1.eg",
+        "1.2.3.4",
+        "[::1]",
+        "a@b.de",
+        "a:25",
+        "a/b.de",
+        "a%2Fb.de",
+        "a b.de",
+        "a*b.de",
+        "123.456",
+        "x.123",
+        "\U0001f600.de",
+        "☃.de",
+        "a·b.de",
+        "ŀ.de",
+        "xn--n3h.de",
+        "xn--e28h.de",
+        "a.xn--wersdrfer-47a.ü",
+        "a" * 63 + ".de",
+        "a" * 64 + ".de",
+        ".".join(["a" * 63] * 3) + "." + "a" * 61,
+        ".".join(["a" * 63] * 3) + "." + "a" * 62,
+        ".".join(["a" * 63] * 3) + "." + "a" * 61 + ".",
+        "ä" * 59 + ".de",
+        "ä" * 60 + ".de",
+    ]
+    inputs += [f"x{char}y.de" for char in LATIN_SET]
+    rng = random.Random(20261016)  # noqa: S311 - a fixed seed, reproducible
+    pool = "abcxyz09-._ÄäöÖüßéÉ ᵃ\u0301\u200dⅻ"
+    for _ in range(60):
+        inputs.append("".join(rng.choice(pool) for _ in range(rng.randint(1, 12))) + ".de")
+    return list(dict.fromkeys(inputs))
+
+
+def _python_domain(value: str) -> str | None:
+    try:
+        return normalize_domain(value)
+    except InvalidAddressError:
+        return None
+
+
+def build_domain() -> dict[str, Any]:
+    cases = []
+    for value in _domain_inputs():
+        python = _python_domain(value)
+        expected = D10_PATH_DOMAINS.get(value, python)
+        config = python if python is not None and _config_domain_entry_ok(value) else None
+        case: dict[str, Any] = {"input": value, "expected": expected, "config": config}
+        if expected != python:
+            assert python is None, value
+            case["divergence"] = "D-10"
+            case["python"] = python
+        cases.append(case)
+    return {
+        "source": "mailgun_relay.policy.normalize_domain (config: the D-10 set)",
+        "cases": cases,
+    }
+
+
 # ------------------------------------------------------------------ driver
 
 GENERATORS: dict[str, Callable[[], Mapping[str, Any]]] = {
+    "auth.json": build_auth,
     "config_env.json": build_config_env,
     "config_secrets.json": build_config_secrets,
+    "domain.json": build_domain,
 }
 
 

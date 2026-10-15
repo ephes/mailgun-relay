@@ -24,7 +24,9 @@ and fixture cases generated from the fixed Python.
 
 | Python test | Rust counterpart | Status |
 | --- | --- | --- |
-| `test_auth.py` (all 8) | fixture `auth.json` + unit `auth::tests`; harness 401 cases with realm | pending (S2) |
+| `test_auth.py` (the 8 original tests) | unit `auth::tests::python_auth_tests` + fixture `auth.json` (121 headers: whitespace, padding, trailing bits, alphabet, UTF-8, `:` in the password, duplicate hashes, non-ASCII bytes, seeded mutations) via `auth::tests::auth_fixture`; harness 401 cases with realm | done (S2a); harness pending (S6) |
+| `test_auth.py` new in S2a (accepted/refused spellings, non-ASCII → `AuthError`, colons and empty password, last duplicate wins) | fixture `auth.json`, unit `auth::tests::last_match_wins_and_trailing_bits_decode` | done (S2a) |
+| `test_policy.py::test_normalize_domain_*` (new in S2a) and the path-domain parts of `test_policy.py` | fixture `domain.json` (1,003 inputs incl. each Latin-set character) via `domain::tests::domain_fixture` | done (S2a) |
 | `test_policy.py` (all 13) | fixtures `domain.json`, `address.json`, `policy.json`; unit `policy::tests` for the production shapes | pending (S2) |
 | `test_headers.py::test_parse_address_list_*`, `::test_header_address_list_*` | fixture `address.json` | pending (S2) |
 | `test_config.py::test_load_secrets_normalizes_idn_to_punycode`, `::test_token_policy_allowed_addresses_none_means_domain_only` | fixture `config_secrets.json` | done (S1c) |

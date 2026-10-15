@@ -67,3 +67,60 @@ def test_basic_missing_colon_raises() -> None:
     raw = base64.b64encode(b"justuser").decode("ascii")
     with pytest.raises(AuthError):
         authenticate(f"Basic {raw}", [_policy("h", "good-token")])
+
+
+# Boundary decisions the Rust port reproduces (rust/fixtures/auth.json).
+
+_API_T = base64.b64encode(b"api:t").decode("ascii")  # YXBpOnQ=
+
+
+@pytest.mark.parametrize(
+    "header",
+    [
+        f"Basic {_API_T}",
+        "Basic YXBpOnR=",  # non-zero trailing bits decode like YXBpOnQ=
+        f"Basic \t {_API_T} \x1c\x85\xa0",  # str.strip() whitespace
+    ],
+)
+def test_accepted_credential_spellings(header: str) -> None:
+    assert authenticate(header, [_policy("t", "t")]).label == "t"
+
+
+@pytest.mark.parametrize(
+    "header",
+    [
+        f"basic {_API_T}",  # the scheme is case-sensitive
+        f"Basic\t{_API_T}",
+        "Basic YXBpOnQ",  # padding is required
+        "Basic YXBpOnQ==",  # and canonical
+        f"Basic {_API_T}YQ==",  # nothing after the padding
+        "Basic YXBp OnQ=",  # no whitespace inside
+        "Basic YXBpOnQ-",  # standard alphabet only
+        "Basic " + base64.b64encode(b"API:t").decode("ascii"),  # the username too
+        "Basic " + base64.b64encode(b"api:\xff").decode("ascii"),  # strict UTF-8
+    ],
+)
+def test_refused_credential_spellings(header: str) -> None:
+    with pytest.raises(AuthError):
+        authenticate(header, [_policy("t", "t")])
+
+
+@pytest.mark.parametrize(
+    "header", ["Basic \xe9YXBpOnQ=", "Basic YXBpOnQ=\xe9", "Basic YXBp\x80OnQ="]
+)
+def test_non_ascii_credentials_are_an_auth_error(header: str) -> None:
+    """A header byte >= 0x80 (decoded as latin-1) used to escape as a plain
+    ValueError from b64decode and answer 500."""
+    with pytest.raises(AuthError):
+        authenticate(header, [_policy("t", "t")])
+
+
+def test_password_may_contain_colons_and_be_empty() -> None:
+    policies = [_policy("colon", "a:b:c"), _policy("empty", "")]
+    assert authenticate(_basic("api", "a:b:c"), policies).label == "colon"
+    assert authenticate(_basic("api", ""), policies).label == "empty"
+
+
+def test_duplicate_token_hashes_resolve_to_the_last_label() -> None:
+    policies = [_policy("first", "shared"), _policy("second", "shared")]
+    assert authenticate(_basic("api", "shared"), policies).label == "second"

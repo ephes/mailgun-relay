@@ -29,7 +29,8 @@ Mailgun-style Basic auth:
 
 Behavior:
 
-- Missing or invalid auth returns `401`.
+- Missing or invalid auth returns `401`, also for malformed credentials
+  (wrong scheme, invalid base64, non-ASCII bytes, invalid UTF-8, no `:`).
 - Username other than `api` returns `401`.
 - Valid token with disallowed domain or sender returns `403`.
 - Responses must not reveal whether a token label exists.

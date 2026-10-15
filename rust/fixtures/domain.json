@@ -1,0 +1,5033 @@
+{
+ "cases": [
+  {
+   "config": "wersdoerfer.de",
+   "expected": "wersdoerfer.de",
+   "input": "wersdoerfer.de"
+  },
+  {
+   "config": "mg.wersdoerfer.de",
+   "expected": "mg.wersdoerfer.de",
+   "input": "mg.wersdoerfer.de"
+  },
+  {
+   "config": "mg.wersdoerfer.de",
+   "expected": "mg.wersdoerfer.de",
+   "input": "MG.WERSDOERFER.DE"
+  },
+  {
+   "config": "mg.python-podcast.de",
+   "expected": "mg.python-podcast.de",
+   "input": "mg.python-podcast.de"
+  },
+  {
+   "config": "mg.staging.django-cast.com",
+   "expected": "mg.staging.django-cast.com",
+   "input": "mg.staging.django-cast.com"
+  },
+  {
+   "config": "email.mg.staging.django-cast.com",
+   "expected": "email.mg.staging.django-cast.com",
+   "input": "email.mg.staging.django-cast.com"
+  },
+  {
+   "config": "mg.konektom.org",
+   "expected": "mg.konektom.org",
+   "input": "mg.konektom.org"
+  },
+  {
+   "config": "xn--wersdrfer-47a.de",
+   "expected": "xn--wersdrfer-47a.de",
+   "input": "wersd\u00f6rfer.de"
+  },
+  {
+   "config": "xn--wersdrfer-47a.de",
+   "expected": "xn--wersdrfer-47a.de",
+   "input": "WERSD\u00d6RFER.DE"
+  },
+  {
+   "config": "xn--wersdrfer-47a.de",
+   "expected": "xn--wersdrfer-47a.de",
+   "input": "xn--wersdrfer-47a.de"
+  },
+  {
+   "config": "xn--wersdrfer-47a.de",
+   "expected": "xn--wersdrfer-47a.de",
+   "input": "XN--wersdrfer-47a.DE"
+  },
+  {
+   "config": "mg.xn--wersdrfer-47a.de",
+   "expected": "mg.xn--wersdrfer-47a.de",
+   "input": "mg.wersd\u00f6rfer.de"
+  },
+  {
+   "config": "mg.wersdoerfer.de",
+   "expected": "mg.wersdoerfer.de",
+   "input": " mg.wersdoerfer.de "
+  },
+  {
+   "config": "mg.wersdoerfer.de",
+   "expected": "mg.wersdoerfer.de",
+   "input": "\tmg.wersdoerfer.de\n"
+  },
+  {
+   "config": "mg.wersdoerfer.de",
+   "expected": "mg.wersdoerfer.de",
+   "input": "\u001cmg.wersdoerfer.de\u0085"
+  },
+  {
+   "config": "mg.wersdoerfer.de",
+   "expected": "mg.wersdoerfer.de",
+   "input": "\u00a0mg.wersdoerfer.de\u3000"
+  },
+  {
+   "config": null,
+   "expected": "mg.wersdoerfer.de",
+   "input": "\u200bmg.wersdoerfer.de"
+  },
+  {
+   "config": "mg.wersdoerfer.de.",
+   "expected": "mg.wersdoerfer.de.",
+   "input": "mg.wersdoerfer.de."
+  },
+  {
+   "config": null,
+   "expected": null,
+   "input": "mg.wersdoerfer.de.."
+  },
+  {
+   "config": null,
+   "expected": null,
+   "input": ".mg.wersdoerfer.de"
+  },
+  {
+   "config": null,
+   "expected": null,
+   "input": "."
+  },
+  {
+   "config": null,
+   "expected": null,
+   "input": ""
+  },
+  {
+   "config": null,
+   "expected": null,
+   "input": " "
+  },
+  {
+   "config": "localhost",
+   "expected": "localhost",
+   "input": "localhost"
+  },
+  {
+   "config": "de",
+   "expected": "de",
+   "input": "de"
+  },
+  {
+   "config": null,
+   "expected": null,
+   "input": "a..b"
+  },
+  {
+   "config": null,
+   "expected": null,
+   "input": "a_b.de"
+  },
+  {
+   "config": null,
+   "expected": null,
+   "input": "-x.de"
+  },
+  {
+   "config": null,
+   "expected": null,
+   "input": "x-.de"
+  },
+  {
+   "config": null,
+   "expected": null,
+   "input": "ab--c.de"
+  },
+  {
+   "config": null,
+   "expected": null,
+   "input": "xn--abc.de"
+  },
+  {
+   "config": null,
+   "expected": null,
+   "input": "xn--.de"
+  },
+  {
+   "config": null,
+   "expected": null,
+   "input": "xn--4ca-.de"
+  },
+  {
+   "config": null,
+   "expected": null,
+   "input": "xn--a-ecp.de"
+  },
+  {
+   "config": "xn--zca.de",
+   "expected": "xn--zca.de",
+   "input": "\u00df.de"
+  },
+  {
+   "config": null,
+   "expected": "xn--3xa.gr",
+   "input": "\u03c2.gr"
+  },
+  {
+   "config": null,
+   "expected": "xii.de",
+   "input": "\u217b.de"
+  },
+  {
+   "config": null,
+   "expected": "a.de",
+   "input": "\uff41.de"
+  },
+  {
+   "config": null,
+   "expected": "fi.de",
+   "input": "\ufb01.de"
+  },
+  {
+   "config": "xn--i-9bb.de",
+   "expected": "xn--i-9bb.de",
+   "input": "\u0130.de"
+  },
+  {
+   "config": "xn--4ca.de",
+   "expected": "xn--4ca.de",
+   "input": "\u00e4.de"
+  },
+  {
+   "config": "xn--4ca.de",
+   "expected": "xn--4ca.de",
+   "input": "a\u0308.de"
+  },
+  {
+   "config": null,
+   "expected": null,
+   "input": "\u0308a.de"
+  },
+  {
+   "config": null,
+   "expected": "xn--mxac.gr",
+   "input": "\u03b1\u03b2.gr"
+  },
+  {
+   "config": null,
+   "expected": "xn--mxa0b.gr",
+   "input": "\u0391\u03a3.gr"
+  },
+  {
+   "config": null,
+   "expected": "xn--pypal-4ve.de",
+   "input": "p\u0430ypal.de"
+  },
+  {
+   "config": null,
+   "expected": "xn--e1afmkfd.xn--p1ai",
+   "input": "\u043f\u0440\u0438\u043c\u0435\u0440.\u0440\u0444"
+  },
+  {
+   "config": null,
+   "expected": "xn--fsqu00a.xn--fiqs8s",
+   "input": "\u4f8b\u5b50.\u4e2d\u56fd"
+  },
+  {
+   "config": null,
+   "expected": "xn--3e0b707e.kr",
+   "input": "\ud55c\uad6d.kr"
+  },
+  {
+   "config": null,
+   "expected": "xn--5dbqzzl.il",
+   "input": "\u05e2\u05d1\u05e8\u05d9\u05ea.il"
+  },
+  {
+   "config": null,
+   "expected": "xn--mgbh0fb.eg",
+   "input": "\u0645\u062b\u0627\u0644.eg"
+  },
+  {
+   "config": null,
+   "expected": null,
+   "input": "a\u200db.de"
+  },
+  {
+   "config": null,
+   "expected": null,
+   "input": "a\u200cb.de"
+  },
+  {
+   "config": null,
+   "expected": "xn--ll-0ea.cat",
+   "input": "l\u00b7l.cat"
+  },
+  {
+   "config": null,
+   "expected": "xn--wva4j.gr",
+   "input": "\u0375\u03b1.gr"
+  },
+  {
+   "config": null,
+   "expected": "xn--4db4e.il",
+   "input": "\u05d0\u05f3.il"
+  },
+  {
+   "config": null,
+   "divergence": "D-10",
+   "expected": "xn--vek.jp",
+   "input": "\u30fb.jp",
+   "python": null
+  },
+  {
+   "config": null,
+   "expected": null,
+   "input": "\u0661\u06f1.eg"
+  },
+  {
+   "config": "1.2.3.4",
+   "expected": "1.2.3.4",
+   "input": "1.2.3.4"
+  },
+  {
+   "config": null,
+   "expected": null,
+   "input": "[::1]"
+  },
+  {
+   "config": null,
+   "expected": null,
+   "input": "a@b.de"
+  },
+  {
+   "config": null,
+   "expected": null,
+   "input": "a:25"
+  },
+  {
+   "config": null,
+   "expected": null,
+   "input": "a/b.de"
+  },
+  {
+   "config": null,
+   "expected": null,
+   "input": "a%2Fb.de"
+  },
+  {
+   "config": null,
+   "expected": null,
+   "input": "a b.de"
+  },
+  {
+   "config": null,
+   "expected": null,
+   "input": "a*b.de"
+  },
+  {
+   "config": "123.456",
+   "expected": "123.456",
+   "input": "123.456"
+  },
+  {
+   "config": "x.123",
+   "expected": "x.123",
+   "input": "x.123"
+  },
+  {
+   "config": null,
+   "divergence": "D-10",
+   "expected": "xn--e28h.de",
+   "input": "\ud83d\ude00.de",
+   "python": null
+  },
+  {
+   "config": null,
+   "divergence": "D-10",
+   "expected": "xn--n3h.de",
+   "input": "\u2603.de",
+   "python": null
+  },
+  {
+   "config": null,
+   "divergence": "D-10",
+   "expected": "xn--ab-0ea.de",
+   "input": "a\u00b7b.de",
+   "python": null
+  },
+  {
+   "config": null,
+   "divergence": "D-10",
+   "expected": "xn--l-gda.de",
+   "input": "\u0140.de",
+   "python": null
+  },
+  {
+   "config": null,
+   "divergence": "D-10",
+   "expected": "xn--n3h.de",
+   "input": "xn--n3h.de",
+   "python": null
+  },
+  {
+   "config": null,
+   "divergence": "D-10",
+   "expected": "xn--e28h.de",
+   "input": "xn--e28h.de",
+   "python": null
+  },
+  {
+   "config": "a.xn--wersdrfer-47a.xn--tda",
+   "expected": "a.xn--wersdrfer-47a.xn--tda",
+   "input": "a.xn--wersdrfer-47a.\u00fc"
+  },
+  {
+   "config": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.de",
+   "expected": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.de",
+   "input": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.de"
+  },
+  {
+   "config": null,
+   "expected": null,
+   "input": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.de"
+  },
+  {
+   "config": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "expected": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "input": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  },
+  {
+   "config": null,
+   "expected": null,
+   "input": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  },
+  {
+   "config": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.",
+   "expected": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.",
+   "input": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa."
+  },
+  {
+   "config": null,
+   "expected": null,
+   "input": "\u00e4\u00e4\u00e4\u00e4\u00e4\u00e4\u00e4\u00e4\u00e4\u00e4\u00e4\u00e4\u00e4\u00e4\u00e4\u00e4\u00e4\u00e4\u00e4\u00e4\u00e4\u00e4\u00e4\u00e4\u00e4\u00e4\u00e4\u00e4\u00e4\u00e4\u00e4\u00e4\u00e4\u00e4\u00e4\u00e4\u00e4\u00e4\u00e4\u00e4\u00e4\u00e4\u00e4\u00e4\u00e4\u00e4\u00e4\u00e4\u00e4\u00e4\u00e4\u00e4\u00e4\u00e4\u00e4\u00e4\u00e4\u00e4\u00e4.de"
+  },
+  {
+   "config": null,
+   "expected": null,
+   "input": "\u00e4\u00e4\u00e4\u00e4\u00e4\u00e4\u00e4\u00e4\u00e4\u00e4\u00e4\u00e4\u00e4\u00e4\u00e4\u00e4\u00e4\u00e4\u00e4\u00e4\u00e4\u00e4\u00e4\u00e4\u00e4\u00e4\u00e4\u00e4\u00e4\u00e4\u00e4\u00e4\u00e4\u00e4\u00e4\u00e4\u00e4\u00e4\u00e4\u00e4\u00e4\u00e4\u00e4\u00e4\u00e4\u00e4\u00e4\u00e4\u00e4\u00e4\u00e4\u00e4\u00e4\u00e4\u00e4\u00e4\u00e4\u00e4\u00e4\u00e4.de"
+  },
+  {
+   "config": "xn--xy-jia.de",
+   "expected": "xn--xy-jia.de",
+   "input": "x\u00c0y.de"
+  },
+  {
+   "config": "xn--xy-mia.de",
+   "expected": "xn--xy-mia.de",
+   "input": "x\u00c1y.de"
+  },
+  {
+   "config": "xn--xy-pia.de",
+   "expected": "xn--xy-pia.de",
+   "input": "x\u00c2y.de"
+  },
+  {
+   "config": "xn--xy-sia.de",
+   "expected": "xn--xy-sia.de",
+   "input": "x\u00c3y.de"
+  },
+  {
+   "config": "xn--xy-via.de",
+   "expected": "xn--xy-via.de",
+   "input": "x\u00c4y.de"
+  },
+  {
+   "config": "xn--xy-yia.de",
+   "expected": "xn--xy-yia.de",
+   "input": "x\u00c5y.de"
+  },
+  {
+   "config": "xn--xy-1ia.de",
+   "expected": "xn--xy-1ia.de",
+   "input": "x\u00c6y.de"
+  },
+  {
+   "config": "xn--xy-4ia.de",
+   "expected": "xn--xy-4ia.de",
+   "input": "x\u00c7y.de"
+  },
+  {
+   "config": "xn--xy-7ia.de",
+   "expected": "xn--xy-7ia.de",
+   "input": "x\u00c8y.de"
+  },
+  {
+   "config": "xn--xy-bja.de",
+   "expected": "xn--xy-bja.de",
+   "input": "x\u00c9y.de"
+  },
+  {
+   "config": "xn--xy-eja.de",
+   "expected": "xn--xy-eja.de",
+   "input": "x\u00cay.de"
+  },
+  {
+   "config": "xn--xy-hja.de",
+   "expected": "xn--xy-hja.de",
+   "input": "x\u00cby.de"
+  },
+  {
+   "config": "xn--xy-kja.de",
+   "expected": "xn--xy-kja.de",
+   "input": "x\u00ccy.de"
+  },
+  {
+   "config": "xn--xy-nja.de",
+   "expected": "xn--xy-nja.de",
+   "input": "x\u00cdy.de"
+  },
+  {
+   "config": "xn--xy-qja.de",
+   "expected": "xn--xy-qja.de",
+   "input": "x\u00cey.de"
+  },
+  {
+   "config": "xn--xy-tja.de",
+   "expected": "xn--xy-tja.de",
+   "input": "x\u00cfy.de"
+  },
+  {
+   "config": "xn--xy-wja.de",
+   "expected": "xn--xy-wja.de",
+   "input": "x\u00d0y.de"
+  },
+  {
+   "config": "xn--xy-zja.de",
+   "expected": "xn--xy-zja.de",
+   "input": "x\u00d1y.de"
+  },
+  {
+   "config": "xn--xy-2ja.de",
+   "expected": "xn--xy-2ja.de",
+   "input": "x\u00d2y.de"
+  },
+  {
+   "config": "xn--xy-5ja.de",
+   "expected": "xn--xy-5ja.de",
+   "input": "x\u00d3y.de"
+  },
+  {
+   "config": "xn--xy-8ja.de",
+   "expected": "xn--xy-8ja.de",
+   "input": "x\u00d4y.de"
+  },
+  {
+   "config": "xn--xy-cka.de",
+   "expected": "xn--xy-cka.de",
+   "input": "x\u00d5y.de"
+  },
+  {
+   "config": "xn--xy-fka.de",
+   "expected": "xn--xy-fka.de",
+   "input": "x\u00d6y.de"
+  },
+  {
+   "config": "xn--xy-lka.de",
+   "expected": "xn--xy-lka.de",
+   "input": "x\u00d8y.de"
+  },
+  {
+   "config": "xn--xy-oka.de",
+   "expected": "xn--xy-oka.de",
+   "input": "x\u00d9y.de"
+  },
+  {
+   "config": "xn--xy-rka.de",
+   "expected": "xn--xy-rka.de",
+   "input": "x\u00day.de"
+  },
+  {
+   "config": "xn--xy-uka.de",
+   "expected": "xn--xy-uka.de",
+   "input": "x\u00dby.de"
+  },
+  {
+   "config": "xn--xy-xka.de",
+   "expected": "xn--xy-xka.de",
+   "input": "x\u00dcy.de"
+  },
+  {
+   "config": "xn--xy-0ka.de",
+   "expected": "xn--xy-0ka.de",
+   "input": "x\u00ddy.de"
+  },
+  {
+   "config": "xn--xy-3ka.de",
+   "expected": "xn--xy-3ka.de",
+   "input": "x\u00dey.de"
+  },
+  {
+   "config": "xn--xy-gia.de",
+   "expected": "xn--xy-gia.de",
+   "input": "x\u00dfy.de"
+  },
+  {
+   "config": "xn--xy-jia.de",
+   "expected": "xn--xy-jia.de",
+   "input": "x\u00e0y.de"
+  },
+  {
+   "config": "xn--xy-mia.de",
+   "expected": "xn--xy-mia.de",
+   "input": "x\u00e1y.de"
+  },
+  {
+   "config": "xn--xy-pia.de",
+   "expected": "xn--xy-pia.de",
+   "input": "x\u00e2y.de"
+  },
+  {
+   "config": "xn--xy-sia.de",
+   "expected": "xn--xy-sia.de",
+   "input": "x\u00e3y.de"
+  },
+  {
+   "config": "xn--xy-via.de",
+   "expected": "xn--xy-via.de",
+   "input": "x\u00e4y.de"
+  },
+  {
+   "config": "xn--xy-yia.de",
+   "expected": "xn--xy-yia.de",
+   "input": "x\u00e5y.de"
+  },
+  {
+   "config": "xn--xy-1ia.de",
+   "expected": "xn--xy-1ia.de",
+   "input": "x\u00e6y.de"
+  },
+  {
+   "config": "xn--xy-4ia.de",
+   "expected": "xn--xy-4ia.de",
+   "input": "x\u00e7y.de"
+  },
+  {
+   "config": "xn--xy-7ia.de",
+   "expected": "xn--xy-7ia.de",
+   "input": "x\u00e8y.de"
+  },
+  {
+   "config": "xn--xy-bja.de",
+   "expected": "xn--xy-bja.de",
+   "input": "x\u00e9y.de"
+  },
+  {
+   "config": "xn--xy-eja.de",
+   "expected": "xn--xy-eja.de",
+   "input": "x\u00eay.de"
+  },
+  {
+   "config": "xn--xy-hja.de",
+   "expected": "xn--xy-hja.de",
+   "input": "x\u00eby.de"
+  },
+  {
+   "config": "xn--xy-kja.de",
+   "expected": "xn--xy-kja.de",
+   "input": "x\u00ecy.de"
+  },
+  {
+   "config": "xn--xy-nja.de",
+   "expected": "xn--xy-nja.de",
+   "input": "x\u00edy.de"
+  },
+  {
+   "config": "xn--xy-qja.de",
+   "expected": "xn--xy-qja.de",
+   "input": "x\u00eey.de"
+  },
+  {
+   "config": "xn--xy-tja.de",
+   "expected": "xn--xy-tja.de",
+   "input": "x\u00efy.de"
+  },
+  {
+   "config": "xn--xy-wja.de",
+   "expected": "xn--xy-wja.de",
+   "input": "x\u00f0y.de"
+  },
+  {
+   "config": "xn--xy-zja.de",
+   "expected": "xn--xy-zja.de",
+   "input": "x\u00f1y.de"
+  },
+  {
+   "config": "xn--xy-2ja.de",
+   "expected": "xn--xy-2ja.de",
+   "input": "x\u00f2y.de"
+  },
+  {
+   "config": "xn--xy-5ja.de",
+   "expected": "xn--xy-5ja.de",
+   "input": "x\u00f3y.de"
+  },
+  {
+   "config": "xn--xy-8ja.de",
+   "expected": "xn--xy-8ja.de",
+   "input": "x\u00f4y.de"
+  },
+  {
+   "config": "xn--xy-cka.de",
+   "expected": "xn--xy-cka.de",
+   "input": "x\u00f5y.de"
+  },
+  {
+   "config": "xn--xy-fka.de",
+   "expected": "xn--xy-fka.de",
+   "input": "x\u00f6y.de"
+  },
+  {
+   "config": "xn--xy-lka.de",
+   "expected": "xn--xy-lka.de",
+   "input": "x\u00f8y.de"
+  },
+  {
+   "config": "xn--xy-oka.de",
+   "expected": "xn--xy-oka.de",
+   "input": "x\u00f9y.de"
+  },
+  {
+   "config": "xn--xy-rka.de",
+   "expected": "xn--xy-rka.de",
+   "input": "x\u00fay.de"
+  },
+  {
+   "config": "xn--xy-uka.de",
+   "expected": "xn--xy-uka.de",
+   "input": "x\u00fby.de"
+  },
+  {
+   "config": "xn--xy-xka.de",
+   "expected": "xn--xy-xka.de",
+   "input": "x\u00fcy.de"
+  },
+  {
+   "config": "xn--xy-0ka.de",
+   "expected": "xn--xy-0ka.de",
+   "input": "x\u00fdy.de"
+  },
+  {
+   "config": "xn--xy-3ka.de",
+   "expected": "xn--xy-3ka.de",
+   "input": "x\u00fey.de"
+  },
+  {
+   "config": "xn--xy-6ka.de",
+   "expected": "xn--xy-6ka.de",
+   "input": "x\u00ffy.de"
+  },
+  {
+   "config": "xn--xy-dla.de",
+   "expected": "xn--xy-dla.de",
+   "input": "x\u0100y.de"
+  },
+  {
+   "config": "xn--xy-dla.de",
+   "expected": "xn--xy-dla.de",
+   "input": "x\u0101y.de"
+  },
+  {
+   "config": "xn--xy-jla.de",
+   "expected": "xn--xy-jla.de",
+   "input": "x\u0102y.de"
+  },
+  {
+   "config": "xn--xy-jla.de",
+   "expected": "xn--xy-jla.de",
+   "input": "x\u0103y.de"
+  },
+  {
+   "config": "xn--xy-pla.de",
+   "expected": "xn--xy-pla.de",
+   "input": "x\u0104y.de"
+  },
+  {
+   "config": "xn--xy-pla.de",
+   "expected": "xn--xy-pla.de",
+   "input": "x\u0105y.de"
+  },
+  {
+   "config": "xn--xy-vla.de",
+   "expected": "xn--xy-vla.de",
+   "input": "x\u0106y.de"
+  },
+  {
+   "config": "xn--xy-vla.de",
+   "expected": "xn--xy-vla.de",
+   "input": "x\u0107y.de"
+  },
+  {
+   "config": "xn--xy-1la.de",
+   "expected": "xn--xy-1la.de",
+   "input": "x\u0108y.de"
+  },
+  {
+   "config": "xn--xy-1la.de",
+   "expected": "xn--xy-1la.de",
+   "input": "x\u0109y.de"
+  },
+  {
+   "config": "xn--xy-7la.de",
+   "expected": "xn--xy-7la.de",
+   "input": "x\u010ay.de"
+  },
+  {
+   "config": "xn--xy-7la.de",
+   "expected": "xn--xy-7la.de",
+   "input": "x\u010by.de"
+  },
+  {
+   "config": "xn--xy-ema.de",
+   "expected": "xn--xy-ema.de",
+   "input": "x\u010cy.de"
+  },
+  {
+   "config": "xn--xy-ema.de",
+   "expected": "xn--xy-ema.de",
+   "input": "x\u010dy.de"
+  },
+  {
+   "config": "xn--xy-kma.de",
+   "expected": "xn--xy-kma.de",
+   "input": "x\u010ey.de"
+  },
+  {
+   "config": "xn--xy-kma.de",
+   "expected": "xn--xy-kma.de",
+   "input": "x\u010fy.de"
+  },
+  {
+   "config": "xn--xy-qma.de",
+   "expected": "xn--xy-qma.de",
+   "input": "x\u0110y.de"
+  },
+  {
+   "config": "xn--xy-qma.de",
+   "expected": "xn--xy-qma.de",
+   "input": "x\u0111y.de"
+  },
+  {
+   "config": "xn--xy-wma.de",
+   "expected": "xn--xy-wma.de",
+   "input": "x\u0112y.de"
+  },
+  {
+   "config": "xn--xy-wma.de",
+   "expected": "xn--xy-wma.de",
+   "input": "x\u0113y.de"
+  },
+  {
+   "config": "xn--xy-2ma.de",
+   "expected": "xn--xy-2ma.de",
+   "input": "x\u0114y.de"
+  },
+  {
+   "config": "xn--xy-2ma.de",
+   "expected": "xn--xy-2ma.de",
+   "input": "x\u0115y.de"
+  },
+  {
+   "config": "xn--xy-8ma.de",
+   "expected": "xn--xy-8ma.de",
+   "input": "x\u0116y.de"
+  },
+  {
+   "config": "xn--xy-8ma.de",
+   "expected": "xn--xy-8ma.de",
+   "input": "x\u0117y.de"
+  },
+  {
+   "config": "xn--xy-fna.de",
+   "expected": "xn--xy-fna.de",
+   "input": "x\u0118y.de"
+  },
+  {
+   "config": "xn--xy-fna.de",
+   "expected": "xn--xy-fna.de",
+   "input": "x\u0119y.de"
+  },
+  {
+   "config": "xn--xy-lna.de",
+   "expected": "xn--xy-lna.de",
+   "input": "x\u011ay.de"
+  },
+  {
+   "config": "xn--xy-lna.de",
+   "expected": "xn--xy-lna.de",
+   "input": "x\u011by.de"
+  },
+  {
+   "config": "xn--xy-rna.de",
+   "expected": "xn--xy-rna.de",
+   "input": "x\u011cy.de"
+  },
+  {
+   "config": "xn--xy-rna.de",
+   "expected": "xn--xy-rna.de",
+   "input": "x\u011dy.de"
+  },
+  {
+   "config": "xn--xy-xna.de",
+   "expected": "xn--xy-xna.de",
+   "input": "x\u011ey.de"
+  },
+  {
+   "config": "xn--xy-xna.de",
+   "expected": "xn--xy-xna.de",
+   "input": "x\u011fy.de"
+  },
+  {
+   "config": "xn--xy-3na.de",
+   "expected": "xn--xy-3na.de",
+   "input": "x\u0120y.de"
+  },
+  {
+   "config": "xn--xy-3na.de",
+   "expected": "xn--xy-3na.de",
+   "input": "x\u0121y.de"
+  },
+  {
+   "config": "xn--xy-9na.de",
+   "expected": "xn--xy-9na.de",
+   "input": "x\u0122y.de"
+  },
+  {
+   "config": "xn--xy-9na.de",
+   "expected": "xn--xy-9na.de",
+   "input": "x\u0123y.de"
+  },
+  {
+   "config": "xn--xy-goa.de",
+   "expected": "xn--xy-goa.de",
+   "input": "x\u0124y.de"
+  },
+  {
+   "config": "xn--xy-goa.de",
+   "expected": "xn--xy-goa.de",
+   "input": "x\u0125y.de"
+  },
+  {
+   "config": "xn--xy-moa.de",
+   "expected": "xn--xy-moa.de",
+   "input": "x\u0126y.de"
+  },
+  {
+   "config": "xn--xy-moa.de",
+   "expected": "xn--xy-moa.de",
+   "input": "x\u0127y.de"
+  },
+  {
+   "config": "xn--xy-soa.de",
+   "expected": "xn--xy-soa.de",
+   "input": "x\u0128y.de"
+  },
+  {
+   "config": "xn--xy-soa.de",
+   "expected": "xn--xy-soa.de",
+   "input": "x\u0129y.de"
+  },
+  {
+   "config": "xn--xy-yoa.de",
+   "expected": "xn--xy-yoa.de",
+   "input": "x\u012ay.de"
+  },
+  {
+   "config": "xn--xy-yoa.de",
+   "expected": "xn--xy-yoa.de",
+   "input": "x\u012by.de"
+  },
+  {
+   "config": "xn--xy-4oa.de",
+   "expected": "xn--xy-4oa.de",
+   "input": "x\u012cy.de"
+  },
+  {
+   "config": "xn--xy-4oa.de",
+   "expected": "xn--xy-4oa.de",
+   "input": "x\u012dy.de"
+  },
+  {
+   "config": "xn--xy-bpa.de",
+   "expected": "xn--xy-bpa.de",
+   "input": "x\u012ey.de"
+  },
+  {
+   "config": "xn--xy-bpa.de",
+   "expected": "xn--xy-bpa.de",
+   "input": "x\u012fy.de"
+  },
+  {
+   "config": "xn--xiy-9dc.de",
+   "expected": "xn--xiy-9dc.de",
+   "input": "x\u0130y.de"
+  },
+  {
+   "config": "xn--xy-hpa.de",
+   "expected": "xn--xy-hpa.de",
+   "input": "x\u0131y.de"
+  },
+  {
+   "config": "xijy.de",
+   "expected": "xijy.de",
+   "input": "x\u0132y.de"
+  },
+  {
+   "config": "xijy.de",
+   "expected": "xijy.de",
+   "input": "x\u0133y.de"
+  },
+  {
+   "config": "xn--xy-tpa.de",
+   "expected": "xn--xy-tpa.de",
+   "input": "x\u0134y.de"
+  },
+  {
+   "config": "xn--xy-tpa.de",
+   "expected": "xn--xy-tpa.de",
+   "input": "x\u0135y.de"
+  },
+  {
+   "config": "xn--xy-zpa.de",
+   "expected": "xn--xy-zpa.de",
+   "input": "x\u0136y.de"
+  },
+  {
+   "config": "xn--xy-zpa.de",
+   "expected": "xn--xy-zpa.de",
+   "input": "x\u0137y.de"
+  },
+  {
+   "config": "xn--xy-2pa.de",
+   "expected": "xn--xy-2pa.de",
+   "input": "x\u0138y.de"
+  },
+  {
+   "config": "xn--xy-8pa.de",
+   "expected": "xn--xy-8pa.de",
+   "input": "x\u0139y.de"
+  },
+  {
+   "config": "xn--xy-8pa.de",
+   "expected": "xn--xy-8pa.de",
+   "input": "x\u013ay.de"
+  },
+  {
+   "config": "xn--xy-fqa.de",
+   "expected": "xn--xy-fqa.de",
+   "input": "x\u013by.de"
+  },
+  {
+   "config": "xn--xy-fqa.de",
+   "expected": "xn--xy-fqa.de",
+   "input": "x\u013cy.de"
+  },
+  {
+   "config": "xn--xy-lqa.de",
+   "expected": "xn--xy-lqa.de",
+   "input": "x\u013dy.de"
+  },
+  {
+   "config": "xn--xy-lqa.de",
+   "expected": "xn--xy-lqa.de",
+   "input": "x\u013ey.de"
+  },
+  {
+   "config": null,
+   "divergence": "D-10",
+   "expected": "xn--xly-mga.de",
+   "input": "x\u013fy.de",
+   "python": null
+  },
+  {
+   "config": null,
+   "divergence": "D-10",
+   "expected": "xn--xly-mga.de",
+   "input": "x\u0140y.de",
+   "python": null
+  },
+  {
+   "config": "xn--xy-xqa.de",
+   "expected": "xn--xy-xqa.de",
+   "input": "x\u0141y.de"
+  },
+  {
+   "config": "xn--xy-xqa.de",
+   "expected": "xn--xy-xqa.de",
+   "input": "x\u0142y.de"
+  },
+  {
+   "config": "xn--xy-3qa.de",
+   "expected": "xn--xy-3qa.de",
+   "input": "x\u0143y.de"
+  },
+  {
+   "config": "xn--xy-3qa.de",
+   "expected": "xn--xy-3qa.de",
+   "input": "x\u0144y.de"
+  },
+  {
+   "config": "xn--xy-9qa.de",
+   "expected": "xn--xy-9qa.de",
+   "input": "x\u0145y.de"
+  },
+  {
+   "config": "xn--xy-9qa.de",
+   "expected": "xn--xy-9qa.de",
+   "input": "x\u0146y.de"
+  },
+  {
+   "config": "xn--xy-gra.de",
+   "expected": "xn--xy-gra.de",
+   "input": "x\u0147y.de"
+  },
+  {
+   "config": "xn--xy-gra.de",
+   "expected": "xn--xy-gra.de",
+   "input": "x\u0148y.de"
+  },
+  {
+   "config": null,
+   "expected": "xn--xny-o4b.de",
+   "input": "x\u0149y.de"
+  },
+  {
+   "config": "xn--xy-pra.de",
+   "expected": "xn--xy-pra.de",
+   "input": "x\u014ay.de"
+  },
+  {
+   "config": "xn--xy-pra.de",
+   "expected": "xn--xy-pra.de",
+   "input": "x\u014by.de"
+  },
+  {
+   "config": "xn--xy-vra.de",
+   "expected": "xn--xy-vra.de",
+   "input": "x\u014cy.de"
+  },
+  {
+   "config": "xn--xy-vra.de",
+   "expected": "xn--xy-vra.de",
+   "input": "x\u014dy.de"
+  },
+  {
+   "config": "xn--xy-1ra.de",
+   "expected": "xn--xy-1ra.de",
+   "input": "x\u014ey.de"
+  },
+  {
+   "config": "xn--xy-1ra.de",
+   "expected": "xn--xy-1ra.de",
+   "input": "x\u014fy.de"
+  },
+  {
+   "config": "xn--xy-7ra.de",
+   "expected": "xn--xy-7ra.de",
+   "input": "x\u0150y.de"
+  },
+  {
+   "config": "xn--xy-7ra.de",
+   "expected": "xn--xy-7ra.de",
+   "input": "x\u0151y.de"
+  },
+  {
+   "config": "xn--xy-esa.de",
+   "expected": "xn--xy-esa.de",
+   "input": "x\u0152y.de"
+  },
+  {
+   "config": "xn--xy-esa.de",
+   "expected": "xn--xy-esa.de",
+   "input": "x\u0153y.de"
+  },
+  {
+   "config": "xn--xy-ksa.de",
+   "expected": "xn--xy-ksa.de",
+   "input": "x\u0154y.de"
+  },
+  {
+   "config": "xn--xy-ksa.de",
+   "expected": "xn--xy-ksa.de",
+   "input": "x\u0155y.de"
+  },
+  {
+   "config": "xn--xy-qsa.de",
+   "expected": "xn--xy-qsa.de",
+   "input": "x\u0156y.de"
+  },
+  {
+   "config": "xn--xy-qsa.de",
+   "expected": "xn--xy-qsa.de",
+   "input": "x\u0157y.de"
+  },
+  {
+   "config": "xn--xy-wsa.de",
+   "expected": "xn--xy-wsa.de",
+   "input": "x\u0158y.de"
+  },
+  {
+   "config": "xn--xy-wsa.de",
+   "expected": "xn--xy-wsa.de",
+   "input": "x\u0159y.de"
+  },
+  {
+   "config": "xn--xy-2sa.de",
+   "expected": "xn--xy-2sa.de",
+   "input": "x\u015ay.de"
+  },
+  {
+   "config": "xn--xy-2sa.de",
+   "expected": "xn--xy-2sa.de",
+   "input": "x\u015by.de"
+  },
+  {
+   "config": "xn--xy-8sa.de",
+   "expected": "xn--xy-8sa.de",
+   "input": "x\u015cy.de"
+  },
+  {
+   "config": "xn--xy-8sa.de",
+   "expected": "xn--xy-8sa.de",
+   "input": "x\u015dy.de"
+  },
+  {
+   "config": "xn--xy-fta.de",
+   "expected": "xn--xy-fta.de",
+   "input": "x\u015ey.de"
+  },
+  {
+   "config": "xn--xy-fta.de",
+   "expected": "xn--xy-fta.de",
+   "input": "x\u015fy.de"
+  },
+  {
+   "config": "xn--xy-lta.de",
+   "expected": "xn--xy-lta.de",
+   "input": "x\u0160y.de"
+  },
+  {
+   "config": "xn--xy-lta.de",
+   "expected": "xn--xy-lta.de",
+   "input": "x\u0161y.de"
+  },
+  {
+   "config": "xn--xy-rta.de",
+   "expected": "xn--xy-rta.de",
+   "input": "x\u0162y.de"
+  },
+  {
+   "config": "xn--xy-rta.de",
+   "expected": "xn--xy-rta.de",
+   "input": "x\u0163y.de"
+  },
+  {
+   "config": "xn--xy-xta.de",
+   "expected": "xn--xy-xta.de",
+   "input": "x\u0164y.de"
+  },
+  {
+   "config": "xn--xy-xta.de",
+   "expected": "xn--xy-xta.de",
+   "input": "x\u0165y.de"
+  },
+  {
+   "config": "xn--xy-3ta.de",
+   "expected": "xn--xy-3ta.de",
+   "input": "x\u0166y.de"
+  },
+  {
+   "config": "xn--xy-3ta.de",
+   "expected": "xn--xy-3ta.de",
+   "input": "x\u0167y.de"
+  },
+  {
+   "config": "xn--xy-9ta.de",
+   "expected": "xn--xy-9ta.de",
+   "input": "x\u0168y.de"
+  },
+  {
+   "config": "xn--xy-9ta.de",
+   "expected": "xn--xy-9ta.de",
+   "input": "x\u0169y.de"
+  },
+  {
+   "config": "xn--xy-gua.de",
+   "expected": "xn--xy-gua.de",
+   "input": "x\u016ay.de"
+  },
+  {
+   "config": "xn--xy-gua.de",
+   "expected": "xn--xy-gua.de",
+   "input": "x\u016by.de"
+  },
+  {
+   "config": "xn--xy-mua.de",
+   "expected": "xn--xy-mua.de",
+   "input": "x\u016cy.de"
+  },
+  {
+   "config": "xn--xy-mua.de",
+   "expected": "xn--xy-mua.de",
+   "input": "x\u016dy.de"
+  },
+  {
+   "config": "xn--xy-sua.de",
+   "expected": "xn--xy-sua.de",
+   "input": "x\u016ey.de"
+  },
+  {
+   "config": "xn--xy-sua.de",
+   "expected": "xn--xy-sua.de",
+   "input": "x\u016fy.de"
+  },
+  {
+   "config": "xn--xy-yua.de",
+   "expected": "xn--xy-yua.de",
+   "input": "x\u0170y.de"
+  },
+  {
+   "config": "xn--xy-yua.de",
+   "expected": "xn--xy-yua.de",
+   "input": "x\u0171y.de"
+  },
+  {
+   "config": "xn--xy-4ua.de",
+   "expected": "xn--xy-4ua.de",
+   "input": "x\u0172y.de"
+  },
+  {
+   "config": "xn--xy-4ua.de",
+   "expected": "xn--xy-4ua.de",
+   "input": "x\u0173y.de"
+  },
+  {
+   "config": "xn--xy-bva.de",
+   "expected": "xn--xy-bva.de",
+   "input": "x\u0174y.de"
+  },
+  {
+   "config": "xn--xy-bva.de",
+   "expected": "xn--xy-bva.de",
+   "input": "x\u0175y.de"
+  },
+  {
+   "config": "xn--xy-hva.de",
+   "expected": "xn--xy-hva.de",
+   "input": "x\u0176y.de"
+  },
+  {
+   "config": "xn--xy-hva.de",
+   "expected": "xn--xy-hva.de",
+   "input": "x\u0177y.de"
+  },
+  {
+   "config": "xn--xy-6ka.de",
+   "expected": "xn--xy-6ka.de",
+   "input": "x\u0178y.de"
+  },
+  {
+   "config": "xn--xy-qva.de",
+   "expected": "xn--xy-qva.de",
+   "input": "x\u0179y.de"
+  },
+  {
+   "config": "xn--xy-qva.de",
+   "expected": "xn--xy-qva.de",
+   "input": "x\u017ay.de"
+  },
+  {
+   "config": "xn--xy-wva.de",
+   "expected": "xn--xy-wva.de",
+   "input": "x\u017by.de"
+  },
+  {
+   "config": "xn--xy-wva.de",
+   "expected": "xn--xy-wva.de",
+   "input": "x\u017cy.de"
+  },
+  {
+   "config": "xn--xy-2va.de",
+   "expected": "xn--xy-2va.de",
+   "input": "x\u017dy.de"
+  },
+  {
+   "config": "xn--xy-2va.de",
+   "expected": "xn--xy-2va.de",
+   "input": "x\u017ey.de"
+  },
+  {
+   "config": "xsy.de",
+   "expected": "xsy.de",
+   "input": "x\u017fy.de"
+  },
+  {
+   "config": "xn--xy-8va.de",
+   "expected": "xn--xy-8va.de",
+   "input": "x\u0180y.de"
+  },
+  {
+   "config": "xn--xy-cfb.de",
+   "expected": "xn--xy-cfb.de",
+   "input": "x\u0181y.de"
+  },
+  {
+   "config": "xn--xy-iwa.de",
+   "expected": "xn--xy-iwa.de",
+   "input": "x\u0182y.de"
+  },
+  {
+   "config": "xn--xy-iwa.de",
+   "expected": "xn--xy-iwa.de",
+   "input": "x\u0183y.de"
+  },
+  {
+   "config": "xn--xy-owa.de",
+   "expected": "xn--xy-owa.de",
+   "input": "x\u0184y.de"
+  },
+  {
+   "config": "xn--xy-owa.de",
+   "expected": "xn--xy-owa.de",
+   "input": "x\u0185y.de"
+  },
+  {
+   "config": "xn--xy-ffb.de",
+   "expected": "xn--xy-ffb.de",
+   "input": "x\u0186y.de"
+  },
+  {
+   "config": "xn--xy-xwa.de",
+   "expected": "xn--xy-xwa.de",
+   "input": "x\u0187y.de"
+  },
+  {
+   "config": "xn--xy-xwa.de",
+   "expected": "xn--xy-xwa.de",
+   "input": "x\u0188y.de"
+  },
+  {
+   "config": "xn--xy-lfb.de",
+   "expected": "xn--xy-lfb.de",
+   "input": "x\u0189y.de"
+  },
+  {
+   "config": "xn--xy-ofb.de",
+   "expected": "xn--xy-ofb.de",
+   "input": "x\u018ay.de"
+  },
+  {
+   "config": "xn--xy-9wa.de",
+   "expected": "xn--xy-9wa.de",
+   "input": "x\u018by.de"
+  },
+  {
+   "config": "xn--xy-9wa.de",
+   "expected": "xn--xy-9wa.de",
+   "input": "x\u018cy.de"
+  },
+  {
+   "config": "xn--xy-dxa.de",
+   "expected": "xn--xy-dxa.de",
+   "input": "x\u018dy.de"
+  },
+  {
+   "config": "xn--xy-73a.de",
+   "expected": "xn--xy-73a.de",
+   "input": "x\u018ey.de"
+  },
+  {
+   "config": "xn--xy-ufb.de",
+   "expected": "xn--xy-ufb.de",
+   "input": "x\u018fy.de"
+  },
+  {
+   "config": "xn--xy-0fb.de",
+   "expected": "xn--xy-0fb.de",
+   "input": "x\u0190y.de"
+  },
+  {
+   "config": "xn--xy-sxa.de",
+   "expected": "xn--xy-sxa.de",
+   "input": "x\u0191y.de"
+  },
+  {
+   "config": "xn--xy-sxa.de",
+   "expected": "xn--xy-sxa.de",
+   "input": "x\u0192y.de"
+  },
+  {
+   "config": "xn--xy-ggb.de",
+   "expected": "xn--xy-ggb.de",
+   "input": "x\u0193y.de"
+  },
+  {
+   "config": "xn--xy-pgb.de",
+   "expected": "xn--xy-pgb.de",
+   "input": "x\u0194y.de"
+  },
+  {
+   "config": "xn--xy-1xa.de",
+   "expected": "xn--xy-1xa.de",
+   "input": "x\u0195y.de"
+  },
+  {
+   "config": "xn--xy-7gb.de",
+   "expected": "xn--xy-7gb.de",
+   "input": "x\u0196y.de"
+  },
+  {
+   "config": "xn--xy-4gb.de",
+   "expected": "xn--xy-4gb.de",
+   "input": "x\u0197y.de"
+  },
+  {
+   "config": "xn--xy-eya.de",
+   "expected": "xn--xy-eya.de",
+   "input": "x\u0198y.de"
+  },
+  {
+   "config": "xn--xy-eya.de",
+   "expected": "xn--xy-eya.de",
+   "input": "x\u0199y.de"
+  },
+  {
+   "config": "xn--xy-hya.de",
+   "expected": "xn--xy-hya.de",
+   "input": "x\u019ay.de"
+  },
+  {
+   "config": "xn--xy-kya.de",
+   "expected": "xn--xy-kya.de",
+   "input": "x\u019by.de"
+  },
+  {
+   "config": "xn--xy-qhb.de",
+   "expected": "xn--xy-qhb.de",
+   "input": "x\u019cy.de"
+  },
+  {
+   "config": "xn--xy-zhb.de",
+   "expected": "xn--xy-zhb.de",
+   "input": "x\u019dy.de"
+  },
+  {
+   "config": "xn--xy-tya.de",
+   "expected": "xn--xy-tya.de",
+   "input": "x\u019ey.de"
+  },
+  {
+   "config": "xn--xy-8hb.de",
+   "expected": "xn--xy-8hb.de",
+   "input": "x\u019fy.de"
+  },
+  {
+   "config": "xn--xy-2ya.de",
+   "expected": "xn--xy-2ya.de",
+   "input": "x\u01a0y.de"
+  },
+  {
+   "config": "xn--xy-2ya.de",
+   "expected": "xn--xy-2ya.de",
+   "input": "x\u01a1y.de"
+  },
+  {
+   "config": "xn--xy-8ya.de",
+   "expected": "xn--xy-8ya.de",
+   "input": "x\u01a2y.de"
+  },
+  {
+   "config": "xn--xy-8ya.de",
+   "expected": "xn--xy-8ya.de",
+   "input": "x\u01a3y.de"
+  },
+  {
+   "config": "xn--xy-fza.de",
+   "expected": "xn--xy-fza.de",
+   "input": "x\u01a4y.de"
+  },
+  {
+   "config": "xn--xy-fza.de",
+   "expected": "xn--xy-fza.de",
+   "input": "x\u01a5y.de"
+  },
+  {
+   "config": "xn--xy-6ib.de",
+   "expected": "xn--xy-6ib.de",
+   "input": "x\u01a6y.de"
+  },
+  {
+   "config": "xn--xy-oza.de",
+   "expected": "xn--xy-oza.de",
+   "input": "x\u01a7y.de"
+  },
+  {
+   "config": "xn--xy-oza.de",
+   "expected": "xn--xy-oza.de",
+   "input": "x\u01a8y.de"
+  },
+  {
+   "config": "xn--xy-gjb.de",
+   "expected": "xn--xy-gjb.de",
+   "input": "x\u01a9y.de"
+  },
+  {
+   "config": "xn--xy-uza.de",
+   "expected": "xn--xy-uza.de",
+   "input": "x\u01aay.de"
+  },
+  {
+   "config": "xn--xy-xza.de",
+   "expected": "xn--xy-xza.de",
+   "input": "x\u01aby.de"
+  },
+  {
+   "config": "xn--xy-3za.de",
+   "expected": "xn--xy-3za.de",
+   "input": "x\u01acy.de"
+  },
+  {
+   "config": "xn--xy-3za.de",
+   "expected": "xn--xy-3za.de",
+   "input": "x\u01ady.de"
+  },
+  {
+   "config": "xn--xy-vjb.de",
+   "expected": "xn--xy-vjb.de",
+   "input": "x\u01aey.de"
+  },
+  {
+   "config": "xn--xy-d0a.de",
+   "expected": "xn--xy-d0a.de",
+   "input": "x\u01afy.de"
+  },
+  {
+   "config": "xn--xy-d0a.de",
+   "expected": "xn--xy-d0a.de",
+   "input": "x\u01b0y.de"
+  },
+  {
+   "config": "xn--xy-1jb.de",
+   "expected": "xn--xy-1jb.de",
+   "input": "x\u01b1y.de"
+  },
+  {
+   "config": "xn--xy-4jb.de",
+   "expected": "xn--xy-4jb.de",
+   "input": "x\u01b2y.de"
+  },
+  {
+   "config": "xn--xy-p0a.de",
+   "expected": "xn--xy-p0a.de",
+   "input": "x\u01b3y.de"
+  },
+  {
+   "config": "xn--xy-p0a.de",
+   "expected": "xn--xy-p0a.de",
+   "input": "x\u01b4y.de"
+  },
+  {
+   "config": "xn--xy-v0a.de",
+   "expected": "xn--xy-v0a.de",
+   "input": "x\u01b5y.de"
+  },
+  {
+   "config": "xn--xy-v0a.de",
+   "expected": "xn--xy-v0a.de",
+   "input": "x\u01b6y.de"
+  },
+  {
+   "config": "xn--xy-qkb.de",
+   "expected": "xn--xy-qkb.de",
+   "input": "x\u01b7y.de"
+  },
+  {
+   "config": "xn--xy-40a.de",
+   "expected": "xn--xy-40a.de",
+   "input": "x\u01b8y.de"
+  },
+  {
+   "config": "xn--xy-40a.de",
+   "expected": "xn--xy-40a.de",
+   "input": "x\u01b9y.de"
+  },
+  {
+   "config": "xn--xy-70a.de",
+   "expected": "xn--xy-70a.de",
+   "input": "x\u01bay.de"
+  },
+  {
+   "config": "xn--xy-b1a.de",
+   "expected": "xn--xy-b1a.de",
+   "input": "x\u01bby.de"
+  },
+  {
+   "config": "xn--xy-h1a.de",
+   "expected": "xn--xy-h1a.de",
+   "input": "x\u01bcy.de"
+  },
+  {
+   "config": "xn--xy-h1a.de",
+   "expected": "xn--xy-h1a.de",
+   "input": "x\u01bdy.de"
+  },
+  {
+   "config": "xn--xy-k1a.de",
+   "expected": "xn--xy-k1a.de",
+   "input": "x\u01bey.de"
+  },
+  {
+   "config": "xn--xy-n1a.de",
+   "expected": "xn--xy-n1a.de",
+   "input": "x\u01bfy.de"
+  },
+  {
+   "config": "xn--xy-q1a.de",
+   "expected": "xn--xy-q1a.de",
+   "input": "x\u01c0y.de"
+  },
+  {
+   "config": "xn--xy-t1a.de",
+   "expected": "xn--xy-t1a.de",
+   "input": "x\u01c1y.de"
+  },
+  {
+   "config": "xn--xy-w1a.de",
+   "expected": "xn--xy-w1a.de",
+   "input": "x\u01c2y.de"
+  },
+  {
+   "config": "xn--xy-z1a.de",
+   "expected": "xn--xy-z1a.de",
+   "input": "x\u01c3y.de"
+  },
+  {
+   "config": "xn--xdy-d3a.de",
+   "expected": "xn--xdy-d3a.de",
+   "input": "x\u01c4y.de"
+  },
+  {
+   "config": "xn--xdy-d3a.de",
+   "expected": "xn--xdy-d3a.de",
+   "input": "x\u01c5y.de"
+  },
+  {
+   "config": "xn--xdy-d3a.de",
+   "expected": "xn--xdy-d3a.de",
+   "input": "x\u01c6y.de"
+  },
+  {
+   "config": "xljy.de",
+   "expected": "xljy.de",
+   "input": "x\u01c7y.de"
+  },
+  {
+   "config": "xljy.de",
+   "expected": "xljy.de",
+   "input": "x\u01c8y.de"
+  },
+  {
+   "config": "xljy.de",
+   "expected": "xljy.de",
+   "input": "x\u01c9y.de"
+  },
+  {
+   "config": "xnjy.de",
+   "expected": "xnjy.de",
+   "input": "x\u01cay.de"
+  },
+  {
+   "config": "xnjy.de",
+   "expected": "xnjy.de",
+   "input": "x\u01cby.de"
+  },
+  {
+   "config": "xnjy.de",
+   "expected": "xnjy.de",
+   "input": "x\u01ccy.de"
+  },
+  {
+   "config": "xn--xy-x2a.de",
+   "expected": "xn--xy-x2a.de",
+   "input": "x\u01cdy.de"
+  },
+  {
+   "config": "xn--xy-x2a.de",
+   "expected": "xn--xy-x2a.de",
+   "input": "x\u01cey.de"
+  },
+  {
+   "config": "xn--xy-32a.de",
+   "expected": "xn--xy-32a.de",
+   "input": "x\u01cfy.de"
+  },
+  {
+   "config": "xn--xy-32a.de",
+   "expected": "xn--xy-32a.de",
+   "input": "x\u01d0y.de"
+  },
+  {
+   "config": "xn--xy-92a.de",
+   "expected": "xn--xy-92a.de",
+   "input": "x\u01d1y.de"
+  },
+  {
+   "config": "xn--xy-92a.de",
+   "expected": "xn--xy-92a.de",
+   "input": "x\u01d2y.de"
+  },
+  {
+   "config": "xn--xy-g3a.de",
+   "expected": "xn--xy-g3a.de",
+   "input": "x\u01d3y.de"
+  },
+  {
+   "config": "xn--xy-g3a.de",
+   "expected": "xn--xy-g3a.de",
+   "input": "x\u01d4y.de"
+  },
+  {
+   "config": "xn--xy-m3a.de",
+   "expected": "xn--xy-m3a.de",
+   "input": "x\u01d5y.de"
+  },
+  {
+   "config": "xn--xy-m3a.de",
+   "expected": "xn--xy-m3a.de",
+   "input": "x\u01d6y.de"
+  },
+  {
+   "config": "xn--xy-s3a.de",
+   "expected": "xn--xy-s3a.de",
+   "input": "x\u01d7y.de"
+  },
+  {
+   "config": "xn--xy-s3a.de",
+   "expected": "xn--xy-s3a.de",
+   "input": "x\u01d8y.de"
+  },
+  {
+   "config": "xn--xy-y3a.de",
+   "expected": "xn--xy-y3a.de",
+   "input": "x\u01d9y.de"
+  },
+  {
+   "config": "xn--xy-y3a.de",
+   "expected": "xn--xy-y3a.de",
+   "input": "x\u01day.de"
+  },
+  {
+   "config": "xn--xy-43a.de",
+   "expected": "xn--xy-43a.de",
+   "input": "x\u01dby.de"
+  },
+  {
+   "config": "xn--xy-43a.de",
+   "expected": "xn--xy-43a.de",
+   "input": "x\u01dcy.de"
+  },
+  {
+   "config": "xn--xy-73a.de",
+   "expected": "xn--xy-73a.de",
+   "input": "x\u01ddy.de"
+  },
+  {
+   "config": "xn--xy-e4a.de",
+   "expected": "xn--xy-e4a.de",
+   "input": "x\u01dey.de"
+  },
+  {
+   "config": "xn--xy-e4a.de",
+   "expected": "xn--xy-e4a.de",
+   "input": "x\u01dfy.de"
+  },
+  {
+   "config": "xn--xy-k4a.de",
+   "expected": "xn--xy-k4a.de",
+   "input": "x\u01e0y.de"
+  },
+  {
+   "config": "xn--xy-k4a.de",
+   "expected": "xn--xy-k4a.de",
+   "input": "x\u01e1y.de"
+  },
+  {
+   "config": "xn--xy-q4a.de",
+   "expected": "xn--xy-q4a.de",
+   "input": "x\u01e2y.de"
+  },
+  {
+   "config": "xn--xy-q4a.de",
+   "expected": "xn--xy-q4a.de",
+   "input": "x\u01e3y.de"
+  },
+  {
+   "config": "xn--xy-w4a.de",
+   "expected": "xn--xy-w4a.de",
+   "input": "x\u01e4y.de"
+  },
+  {
+   "config": "xn--xy-w4a.de",
+   "expected": "xn--xy-w4a.de",
+   "input": "x\u01e5y.de"
+  },
+  {
+   "config": "xn--xy-24a.de",
+   "expected": "xn--xy-24a.de",
+   "input": "x\u01e6y.de"
+  },
+  {
+   "config": "xn--xy-24a.de",
+   "expected": "xn--xy-24a.de",
+   "input": "x\u01e7y.de"
+  },
+  {
+   "config": "xn--xy-84a.de",
+   "expected": "xn--xy-84a.de",
+   "input": "x\u01e8y.de"
+  },
+  {
+   "config": "xn--xy-84a.de",
+   "expected": "xn--xy-84a.de",
+   "input": "x\u01e9y.de"
+  },
+  {
+   "config": "xn--xy-f5a.de",
+   "expected": "xn--xy-f5a.de",
+   "input": "x\u01eay.de"
+  },
+  {
+   "config": "xn--xy-f5a.de",
+   "expected": "xn--xy-f5a.de",
+   "input": "x\u01eby.de"
+  },
+  {
+   "config": "xn--xy-l5a.de",
+   "expected": "xn--xy-l5a.de",
+   "input": "x\u01ecy.de"
+  },
+  {
+   "config": "xn--xy-l5a.de",
+   "expected": "xn--xy-l5a.de",
+   "input": "x\u01edy.de"
+  },
+  {
+   "config": "xn--xy-r5a.de",
+   "expected": "xn--xy-r5a.de",
+   "input": "x\u01eey.de"
+  },
+  {
+   "config": "xn--xy-r5a.de",
+   "expected": "xn--xy-r5a.de",
+   "input": "x\u01efy.de"
+  },
+  {
+   "config": "xn--xy-u5a.de",
+   "expected": "xn--xy-u5a.de",
+   "input": "x\u01f0y.de"
+  },
+  {
+   "config": "xdzy.de",
+   "expected": "xdzy.de",
+   "input": "x\u01f1y.de"
+  },
+  {
+   "config": "xdzy.de",
+   "expected": "xdzy.de",
+   "input": "x\u01f2y.de"
+  },
+  {
+   "config": "xdzy.de",
+   "expected": "xdzy.de",
+   "input": "x\u01f3y.de"
+  },
+  {
+   "config": "xn--xy-95a.de",
+   "expected": "xn--xy-95a.de",
+   "input": "x\u01f4y.de"
+  },
+  {
+   "config": "xn--xy-95a.de",
+   "expected": "xn--xy-95a.de",
+   "input": "x\u01f5y.de"
+  },
+  {
+   "config": "xn--xy-1xa.de",
+   "expected": "xn--xy-1xa.de",
+   "input": "x\u01f6y.de"
+  },
+  {
+   "config": "xn--xy-n1a.de",
+   "expected": "xn--xy-n1a.de",
+   "input": "x\u01f7y.de"
+  },
+  {
+   "config": "xn--xy-m6a.de",
+   "expected": "xn--xy-m6a.de",
+   "input": "x\u01f8y.de"
+  },
+  {
+   "config": "xn--xy-m6a.de",
+   "expected": "xn--xy-m6a.de",
+   "input": "x\u01f9y.de"
+  },
+  {
+   "config": "xn--xy-s6a.de",
+   "expected": "xn--xy-s6a.de",
+   "input": "x\u01fay.de"
+  },
+  {
+   "config": "xn--xy-s6a.de",
+   "expected": "xn--xy-s6a.de",
+   "input": "x\u01fby.de"
+  },
+  {
+   "config": "xn--xy-y6a.de",
+   "expected": "xn--xy-y6a.de",
+   "input": "x\u01fcy.de"
+  },
+  {
+   "config": "xn--xy-y6a.de",
+   "expected": "xn--xy-y6a.de",
+   "input": "x\u01fdy.de"
+  },
+  {
+   "config": "xn--xy-46a.de",
+   "expected": "xn--xy-46a.de",
+   "input": "x\u01fey.de"
+  },
+  {
+   "config": "xn--xy-46a.de",
+   "expected": "xn--xy-46a.de",
+   "input": "x\u01ffy.de"
+  },
+  {
+   "config": "xn--xy-b7a.de",
+   "expected": "xn--xy-b7a.de",
+   "input": "x\u0200y.de"
+  },
+  {
+   "config": "xn--xy-b7a.de",
+   "expected": "xn--xy-b7a.de",
+   "input": "x\u0201y.de"
+  },
+  {
+   "config": "xn--xy-h7a.de",
+   "expected": "xn--xy-h7a.de",
+   "input": "x\u0202y.de"
+  },
+  {
+   "config": "xn--xy-h7a.de",
+   "expected": "xn--xy-h7a.de",
+   "input": "x\u0203y.de"
+  },
+  {
+   "config": "xn--xy-n7a.de",
+   "expected": "xn--xy-n7a.de",
+   "input": "x\u0204y.de"
+  },
+  {
+   "config": "xn--xy-n7a.de",
+   "expected": "xn--xy-n7a.de",
+   "input": "x\u0205y.de"
+  },
+  {
+   "config": "xn--xy-t7a.de",
+   "expected": "xn--xy-t7a.de",
+   "input": "x\u0206y.de"
+  },
+  {
+   "config": "xn--xy-t7a.de",
+   "expected": "xn--xy-t7a.de",
+   "input": "x\u0207y.de"
+  },
+  {
+   "config": "xn--xy-z7a.de",
+   "expected": "xn--xy-z7a.de",
+   "input": "x\u0208y.de"
+  },
+  {
+   "config": "xn--xy-z7a.de",
+   "expected": "xn--xy-z7a.de",
+   "input": "x\u0209y.de"
+  },
+  {
+   "config": "xn--xy-57a.de",
+   "expected": "xn--xy-57a.de",
+   "input": "x\u020ay.de"
+  },
+  {
+   "config": "xn--xy-57a.de",
+   "expected": "xn--xy-57a.de",
+   "input": "x\u020by.de"
+  },
+  {
+   "config": "xn--xy-c8a.de",
+   "expected": "xn--xy-c8a.de",
+   "input": "x\u020cy.de"
+  },
+  {
+   "config": "xn--xy-c8a.de",
+   "expected": "xn--xy-c8a.de",
+   "input": "x\u020dy.de"
+  },
+  {
+   "config": "xn--xy-i8a.de",
+   "expected": "xn--xy-i8a.de",
+   "input": "x\u020ey.de"
+  },
+  {
+   "config": "xn--xy-i8a.de",
+   "expected": "xn--xy-i8a.de",
+   "input": "x\u020fy.de"
+  },
+  {
+   "config": "xn--xy-o8a.de",
+   "expected": "xn--xy-o8a.de",
+   "input": "x\u0210y.de"
+  },
+  {
+   "config": "xn--xy-o8a.de",
+   "expected": "xn--xy-o8a.de",
+   "input": "x\u0211y.de"
+  },
+  {
+   "config": "xn--xy-u8a.de",
+   "expected": "xn--xy-u8a.de",
+   "input": "x\u0212y.de"
+  },
+  {
+   "config": "xn--xy-u8a.de",
+   "expected": "xn--xy-u8a.de",
+   "input": "x\u0213y.de"
+  },
+  {
+   "config": "xn--xy-08a.de",
+   "expected": "xn--xy-08a.de",
+   "input": "x\u0214y.de"
+  },
+  {
+   "config": "xn--xy-08a.de",
+   "expected": "xn--xy-08a.de",
+   "input": "x\u0215y.de"
+  },
+  {
+   "config": "xn--xy-68a.de",
+   "expected": "xn--xy-68a.de",
+   "input": "x\u0216y.de"
+  },
+  {
+   "config": "xn--xy-68a.de",
+   "expected": "xn--xy-68a.de",
+   "input": "x\u0217y.de"
+  },
+  {
+   "config": "xn--xy-d9a.de",
+   "expected": "xn--xy-d9a.de",
+   "input": "x\u0218y.de"
+  },
+  {
+   "config": "xn--xy-d9a.de",
+   "expected": "xn--xy-d9a.de",
+   "input": "x\u0219y.de"
+  },
+  {
+   "config": "xn--xy-j9a.de",
+   "expected": "xn--xy-j9a.de",
+   "input": "x\u021ay.de"
+  },
+  {
+   "config": "xn--xy-j9a.de",
+   "expected": "xn--xy-j9a.de",
+   "input": "x\u021by.de"
+  },
+  {
+   "config": "xn--xy-p9a.de",
+   "expected": "xn--xy-p9a.de",
+   "input": "x\u021cy.de"
+  },
+  {
+   "config": "xn--xy-p9a.de",
+   "expected": "xn--xy-p9a.de",
+   "input": "x\u021dy.de"
+  },
+  {
+   "config": "xn--xy-v9a.de",
+   "expected": "xn--xy-v9a.de",
+   "input": "x\u021ey.de"
+  },
+  {
+   "config": "xn--xy-v9a.de",
+   "expected": "xn--xy-v9a.de",
+   "input": "x\u021fy.de"
+  },
+  {
+   "config": "xn--xy-tya.de",
+   "expected": "xn--xy-tya.de",
+   "input": "x\u0220y.de"
+  },
+  {
+   "config": "xn--xy-19a.de",
+   "expected": "xn--xy-19a.de",
+   "input": "x\u0221y.de"
+  },
+  {
+   "config": "xn--xy-79a.de",
+   "expected": "xn--xy-79a.de",
+   "input": "x\u0222y.de"
+  },
+  {
+   "config": "xn--xy-79a.de",
+   "expected": "xn--xy-79a.de",
+   "input": "x\u0223y.de"
+  },
+  {
+   "config": "xn--xy-ebb.de",
+   "expected": "xn--xy-ebb.de",
+   "input": "x\u0224y.de"
+  },
+  {
+   "config": "xn--xy-ebb.de",
+   "expected": "xn--xy-ebb.de",
+   "input": "x\u0225y.de"
+  },
+  {
+   "config": "xn--xy-kbb.de",
+   "expected": "xn--xy-kbb.de",
+   "input": "x\u0226y.de"
+  },
+  {
+   "config": "xn--xy-kbb.de",
+   "expected": "xn--xy-kbb.de",
+   "input": "x\u0227y.de"
+  },
+  {
+   "config": "xn--xy-qbb.de",
+   "expected": "xn--xy-qbb.de",
+   "input": "x\u0228y.de"
+  },
+  {
+   "config": "xn--xy-qbb.de",
+   "expected": "xn--xy-qbb.de",
+   "input": "x\u0229y.de"
+  },
+  {
+   "config": "xn--xy-wbb.de",
+   "expected": "xn--xy-wbb.de",
+   "input": "x\u022ay.de"
+  },
+  {
+   "config": "xn--xy-wbb.de",
+   "expected": "xn--xy-wbb.de",
+   "input": "x\u022by.de"
+  },
+  {
+   "config": "xn--xy-2bb.de",
+   "expected": "xn--xy-2bb.de",
+   "input": "x\u022cy.de"
+  },
+  {
+   "config": "xn--xy-2bb.de",
+   "expected": "xn--xy-2bb.de",
+   "input": "x\u022dy.de"
+  },
+  {
+   "config": "xn--xy-8bb.de",
+   "expected": "xn--xy-8bb.de",
+   "input": "x\u022ey.de"
+  },
+  {
+   "config": "xn--xy-8bb.de",
+   "expected": "xn--xy-8bb.de",
+   "input": "x\u022fy.de"
+  },
+  {
+   "config": "xn--xy-fcb.de",
+   "expected": "xn--xy-fcb.de",
+   "input": "x\u0230y.de"
+  },
+  {
+   "config": "xn--xy-fcb.de",
+   "expected": "xn--xy-fcb.de",
+   "input": "x\u0231y.de"
+  },
+  {
+   "config": "xn--xy-lcb.de",
+   "expected": "xn--xy-lcb.de",
+   "input": "x\u0232y.de"
+  },
+  {
+   "config": "xn--xy-lcb.de",
+   "expected": "xn--xy-lcb.de",
+   "input": "x\u0233y.de"
+  },
+  {
+   "config": "xn--xy-ocb.de",
+   "expected": "xn--xy-ocb.de",
+   "input": "x\u0234y.de"
+  },
+  {
+   "config": "xn--xy-rcb.de",
+   "expected": "xn--xy-rcb.de",
+   "input": "x\u0235y.de"
+  },
+  {
+   "config": "xn--xy-ucb.de",
+   "expected": "xn--xy-ucb.de",
+   "input": "x\u0236y.de"
+  },
+  {
+   "config": "xn--xy-xcb.de",
+   "expected": "xn--xy-xcb.de",
+   "input": "x\u0237y.de"
+  },
+  {
+   "config": "xn--xy-0cb.de",
+   "expected": "xn--xy-0cb.de",
+   "input": "x\u0238y.de"
+  },
+  {
+   "config": "xn--xy-3cb.de",
+   "expected": "xn--xy-3cb.de",
+   "input": "x\u0239y.de"
+  },
+  {
+   "config": null,
+   "expected": "xn--xy-hs1a.de",
+   "input": "x\u023ay.de"
+  },
+  {
+   "config": "xn--xy-ddb.de",
+   "expected": "xn--xy-ddb.de",
+   "input": "x\u023by.de"
+  },
+  {
+   "config": "xn--xy-ddb.de",
+   "expected": "xn--xy-ddb.de",
+   "input": "x\u023cy.de"
+  },
+  {
+   "config": "xn--xy-hya.de",
+   "expected": "xn--xy-hya.de",
+   "input": "x\u023dy.de"
+  },
+  {
+   "config": null,
+   "expected": "xn--xy-ks1a.de",
+   "input": "x\u023ey.de"
+  },
+  {
+   "config": "xn--xy-mdb.de",
+   "expected": "xn--xy-mdb.de",
+   "input": "x\u023fy.de"
+  },
+  {
+   "config": "xn--xy-pdb.de",
+   "expected": "xn--xy-pdb.de",
+   "input": "x\u0240y.de"
+  },
+  {
+   "config": "xn--xy-vdb.de",
+   "expected": "xn--xy-vdb.de",
+   "input": "x\u0241y.de"
+  },
+  {
+   "config": "xn--xy-vdb.de",
+   "expected": "xn--xy-vdb.de",
+   "input": "x\u0242y.de"
+  },
+  {
+   "config": "xn--xy-8va.de",
+   "expected": "xn--xy-8va.de",
+   "input": "x\u0243y.de"
+  },
+  {
+   "config": "xn--xy-yjb.de",
+   "expected": "xn--xy-yjb.de",
+   "input": "x\u0244y.de"
+  },
+  {
+   "config": "xn--xy-7jb.de",
+   "expected": "xn--xy-7jb.de",
+   "input": "x\u0245y.de"
+  },
+  {
+   "config": "xn--xy-beb.de",
+   "expected": "xn--xy-beb.de",
+   "input": "x\u0246y.de"
+  },
+  {
+   "config": "xn--xy-beb.de",
+   "expected": "xn--xy-beb.de",
+   "input": "x\u0247y.de"
+  },
+  {
+   "config": "xn--xy-heb.de",
+   "expected": "xn--xy-heb.de",
+   "input": "x\u0248y.de"
+  },
+  {
+   "config": "xn--xy-heb.de",
+   "expected": "xn--xy-heb.de",
+   "input": "x\u0249y.de"
+  },
+  {
+   "config": "xn--xy-neb.de",
+   "expected": "xn--xy-neb.de",
+   "input": "x\u024ay.de"
+  },
+  {
+   "config": "xn--xy-neb.de",
+   "expected": "xn--xy-neb.de",
+   "input": "x\u024by.de"
+  },
+  {
+   "config": "xn--xy-teb.de",
+   "expected": "xn--xy-teb.de",
+   "input": "x\u024cy.de"
+  },
+  {
+   "config": "xn--xy-teb.de",
+   "expected": "xn--xy-teb.de",
+   "input": "x\u024dy.de"
+  },
+  {
+   "config": "xn--xy-zeb.de",
+   "expected": "xn--xy-zeb.de",
+   "input": "x\u024ey.de"
+  },
+  {
+   "config": "xn--xy-zeb.de",
+   "expected": "xn--xy-zeb.de",
+   "input": "x\u024fy.de"
+  },
+  {
+   "config": "xn--xy-2eb.de",
+   "expected": "xn--xy-2eb.de",
+   "input": "x\u0250y.de"
+  },
+  {
+   "config": "xn--xy-5eb.de",
+   "expected": "xn--xy-5eb.de",
+   "input": "x\u0251y.de"
+  },
+  {
+   "config": "xn--xy-8eb.de",
+   "expected": "xn--xy-8eb.de",
+   "input": "x\u0252y.de"
+  },
+  {
+   "config": "xn--xy-cfb.de",
+   "expected": "xn--xy-cfb.de",
+   "input": "x\u0253y.de"
+  },
+  {
+   "config": "xn--xy-ffb.de",
+   "expected": "xn--xy-ffb.de",
+   "input": "x\u0254y.de"
+  },
+  {
+   "config": "xn--xy-ifb.de",
+   "expected": "xn--xy-ifb.de",
+   "input": "x\u0255y.de"
+  },
+  {
+   "config": "xn--xy-lfb.de",
+   "expected": "xn--xy-lfb.de",
+   "input": "x\u0256y.de"
+  },
+  {
+   "config": "xn--xy-ofb.de",
+   "expected": "xn--xy-ofb.de",
+   "input": "x\u0257y.de"
+  },
+  {
+   "config": "xn--xy-rfb.de",
+   "expected": "xn--xy-rfb.de",
+   "input": "x\u0258y.de"
+  },
+  {
+   "config": "xn--xy-ufb.de",
+   "expected": "xn--xy-ufb.de",
+   "input": "x\u0259y.de"
+  },
+  {
+   "config": "xn--xy-xfb.de",
+   "expected": "xn--xy-xfb.de",
+   "input": "x\u025ay.de"
+  },
+  {
+   "config": "xn--xy-0fb.de",
+   "expected": "xn--xy-0fb.de",
+   "input": "x\u025by.de"
+  },
+  {
+   "config": "xn--xy-3fb.de",
+   "expected": "xn--xy-3fb.de",
+   "input": "x\u025cy.de"
+  },
+  {
+   "config": "xn--xy-6fb.de",
+   "expected": "xn--xy-6fb.de",
+   "input": "x\u025dy.de"
+  },
+  {
+   "config": "xn--xy-9fb.de",
+   "expected": "xn--xy-9fb.de",
+   "input": "x\u025ey.de"
+  },
+  {
+   "config": "xn--xy-dgb.de",
+   "expected": "xn--xy-dgb.de",
+   "input": "x\u025fy.de"
+  },
+  {
+   "config": "xn--xy-ggb.de",
+   "expected": "xn--xy-ggb.de",
+   "input": "x\u0260y.de"
+  },
+  {
+   "config": "xn--xy-jgb.de",
+   "expected": "xn--xy-jgb.de",
+   "input": "x\u0261y.de"
+  },
+  {
+   "config": "xn--xy-mgb.de",
+   "expected": "xn--xy-mgb.de",
+   "input": "x\u0262y.de"
+  },
+  {
+   "config": "xn--xy-pgb.de",
+   "expected": "xn--xy-pgb.de",
+   "input": "x\u0263y.de"
+  },
+  {
+   "config": "xn--xy-sgb.de",
+   "expected": "xn--xy-sgb.de",
+   "input": "x\u0264y.de"
+  },
+  {
+   "config": "xn--xy-vgb.de",
+   "expected": "xn--xy-vgb.de",
+   "input": "x\u0265y.de"
+  },
+  {
+   "config": "xn--xy-ygb.de",
+   "expected": "xn--xy-ygb.de",
+   "input": "x\u0266y.de"
+  },
+  {
+   "config": "xn--xy-1gb.de",
+   "expected": "xn--xy-1gb.de",
+   "input": "x\u0267y.de"
+  },
+  {
+   "config": "xn--xy-4gb.de",
+   "expected": "xn--xy-4gb.de",
+   "input": "x\u0268y.de"
+  },
+  {
+   "config": "xn--xy-7gb.de",
+   "expected": "xn--xy-7gb.de",
+   "input": "x\u0269y.de"
+  },
+  {
+   "config": "xn--xy-bhb.de",
+   "expected": "xn--xy-bhb.de",
+   "input": "x\u026ay.de"
+  },
+  {
+   "config": "xn--xy-ehb.de",
+   "expected": "xn--xy-ehb.de",
+   "input": "x\u026by.de"
+  },
+  {
+   "config": "xn--xy-hhb.de",
+   "expected": "xn--xy-hhb.de",
+   "input": "x\u026cy.de"
+  },
+  {
+   "config": "xn--xy-khb.de",
+   "expected": "xn--xy-khb.de",
+   "input": "x\u026dy.de"
+  },
+  {
+   "config": "xn--xy-nhb.de",
+   "expected": "xn--xy-nhb.de",
+   "input": "x\u026ey.de"
+  },
+  {
+   "config": "xn--xy-qhb.de",
+   "expected": "xn--xy-qhb.de",
+   "input": "x\u026fy.de"
+  },
+  {
+   "config": "xn--xy-thb.de",
+   "expected": "xn--xy-thb.de",
+   "input": "x\u0270y.de"
+  },
+  {
+   "config": "xn--xy-whb.de",
+   "expected": "xn--xy-whb.de",
+   "input": "x\u0271y.de"
+  },
+  {
+   "config": "xn--xy-zhb.de",
+   "expected": "xn--xy-zhb.de",
+   "input": "x\u0272y.de"
+  },
+  {
+   "config": "xn--xy-2hb.de",
+   "expected": "xn--xy-2hb.de",
+   "input": "x\u0273y.de"
+  },
+  {
+   "config": "xn--xy-5hb.de",
+   "expected": "xn--xy-5hb.de",
+   "input": "x\u0274y.de"
+  },
+  {
+   "config": "xn--xy-8hb.de",
+   "expected": "xn--xy-8hb.de",
+   "input": "x\u0275y.de"
+  },
+  {
+   "config": "xn--xy-cib.de",
+   "expected": "xn--xy-cib.de",
+   "input": "x\u0276y.de"
+  },
+  {
+   "config": "xn--xy-fib.de",
+   "expected": "xn--xy-fib.de",
+   "input": "x\u0277y.de"
+  },
+  {
+   "config": "xn--xy-iib.de",
+   "expected": "xn--xy-iib.de",
+   "input": "x\u0278y.de"
+  },
+  {
+   "config": "xn--xy-lib.de",
+   "expected": "xn--xy-lib.de",
+   "input": "x\u0279y.de"
+  },
+  {
+   "config": "xn--xy-oib.de",
+   "expected": "xn--xy-oib.de",
+   "input": "x\u027ay.de"
+  },
+  {
+   "config": "xn--xy-rib.de",
+   "expected": "xn--xy-rib.de",
+   "input": "x\u027by.de"
+  },
+  {
+   "config": "xn--xy-uib.de",
+   "expected": "xn--xy-uib.de",
+   "input": "x\u027cy.de"
+  },
+  {
+   "config": "xn--xy-xib.de",
+   "expected": "xn--xy-xib.de",
+   "input": "x\u027dy.de"
+  },
+  {
+   "config": "xn--xy-0ib.de",
+   "expected": "xn--xy-0ib.de",
+   "input": "x\u027ey.de"
+  },
+  {
+   "config": "xn--xy-3ib.de",
+   "expected": "xn--xy-3ib.de",
+   "input": "x\u027fy.de"
+  },
+  {
+   "config": "xn--xy-6ib.de",
+   "expected": "xn--xy-6ib.de",
+   "input": "x\u0280y.de"
+  },
+  {
+   "config": "xn--xy-9ib.de",
+   "expected": "xn--xy-9ib.de",
+   "input": "x\u0281y.de"
+  },
+  {
+   "config": "xn--xy-djb.de",
+   "expected": "xn--xy-djb.de",
+   "input": "x\u0282y.de"
+  },
+  {
+   "config": "xn--xy-gjb.de",
+   "expected": "xn--xy-gjb.de",
+   "input": "x\u0283y.de"
+  },
+  {
+   "config": "xn--xy-jjb.de",
+   "expected": "xn--xy-jjb.de",
+   "input": "x\u0284y.de"
+  },
+  {
+   "config": "xn--xy-mjb.de",
+   "expected": "xn--xy-mjb.de",
+   "input": "x\u0285y.de"
+  },
+  {
+   "config": "xn--xy-pjb.de",
+   "expected": "xn--xy-pjb.de",
+   "input": "x\u0286y.de"
+  },
+  {
+   "config": "xn--xy-sjb.de",
+   "expected": "xn--xy-sjb.de",
+   "input": "x\u0287y.de"
+  },
+  {
+   "config": "xn--xy-vjb.de",
+   "expected": "xn--xy-vjb.de",
+   "input": "x\u0288y.de"
+  },
+  {
+   "config": "xn--xy-yjb.de",
+   "expected": "xn--xy-yjb.de",
+   "input": "x\u0289y.de"
+  },
+  {
+   "config": "xn--xy-1jb.de",
+   "expected": "xn--xy-1jb.de",
+   "input": "x\u028ay.de"
+  },
+  {
+   "config": "xn--xy-4jb.de",
+   "expected": "xn--xy-4jb.de",
+   "input": "x\u028by.de"
+  },
+  {
+   "config": "xn--xy-7jb.de",
+   "expected": "xn--xy-7jb.de",
+   "input": "x\u028cy.de"
+  },
+  {
+   "config": "xn--xy-bkb.de",
+   "expected": "xn--xy-bkb.de",
+   "input": "x\u028dy.de"
+  },
+  {
+   "config": "xn--xy-ekb.de",
+   "expected": "xn--xy-ekb.de",
+   "input": "x\u028ey.de"
+  },
+  {
+   "config": "xn--xy-hkb.de",
+   "expected": "xn--xy-hkb.de",
+   "input": "x\u028fy.de"
+  },
+  {
+   "config": "xn--xy-kkb.de",
+   "expected": "xn--xy-kkb.de",
+   "input": "x\u0290y.de"
+  },
+  {
+   "config": "xn--xy-nkb.de",
+   "expected": "xn--xy-nkb.de",
+   "input": "x\u0291y.de"
+  },
+  {
+   "config": "xn--xy-qkb.de",
+   "expected": "xn--xy-qkb.de",
+   "input": "x\u0292y.de"
+  },
+  {
+   "config": "xn--xy-tkb.de",
+   "expected": "xn--xy-tkb.de",
+   "input": "x\u0293y.de"
+  },
+  {
+   "config": "xn--xy-wkb.de",
+   "expected": "xn--xy-wkb.de",
+   "input": "x\u0294y.de"
+  },
+  {
+   "config": "xn--xy-zkb.de",
+   "expected": "xn--xy-zkb.de",
+   "input": "x\u0295y.de"
+  },
+  {
+   "config": "xn--xy-2kb.de",
+   "expected": "xn--xy-2kb.de",
+   "input": "x\u0296y.de"
+  },
+  {
+   "config": "xn--xy-5kb.de",
+   "expected": "xn--xy-5kb.de",
+   "input": "x\u0297y.de"
+  },
+  {
+   "config": "xn--xy-8kb.de",
+   "expected": "xn--xy-8kb.de",
+   "input": "x\u0298y.de"
+  },
+  {
+   "config": "xn--xy-clb.de",
+   "expected": "xn--xy-clb.de",
+   "input": "x\u0299y.de"
+  },
+  {
+   "config": "xn--xy-flb.de",
+   "expected": "xn--xy-flb.de",
+   "input": "x\u029ay.de"
+  },
+  {
+   "config": "xn--xy-ilb.de",
+   "expected": "xn--xy-ilb.de",
+   "input": "x\u029by.de"
+  },
+  {
+   "config": "xn--xy-llb.de",
+   "expected": "xn--xy-llb.de",
+   "input": "x\u029cy.de"
+  },
+  {
+   "config": "xn--xy-olb.de",
+   "expected": "xn--xy-olb.de",
+   "input": "x\u029dy.de"
+  },
+  {
+   "config": "xn--xy-rlb.de",
+   "expected": "xn--xy-rlb.de",
+   "input": "x\u029ey.de"
+  },
+  {
+   "config": "xn--xy-ulb.de",
+   "expected": "xn--xy-ulb.de",
+   "input": "x\u029fy.de"
+  },
+  {
+   "config": "xn--xy-xlb.de",
+   "expected": "xn--xy-xlb.de",
+   "input": "x\u02a0y.de"
+  },
+  {
+   "config": "xn--xy-0lb.de",
+   "expected": "xn--xy-0lb.de",
+   "input": "x\u02a1y.de"
+  },
+  {
+   "config": "xn--xy-3lb.de",
+   "expected": "xn--xy-3lb.de",
+   "input": "x\u02a2y.de"
+  },
+  {
+   "config": "xn--xy-6lb.de",
+   "expected": "xn--xy-6lb.de",
+   "input": "x\u02a3y.de"
+  },
+  {
+   "config": "xn--xy-9lb.de",
+   "expected": "xn--xy-9lb.de",
+   "input": "x\u02a4y.de"
+  },
+  {
+   "config": "xn--xy-dmb.de",
+   "expected": "xn--xy-dmb.de",
+   "input": "x\u02a5y.de"
+  },
+  {
+   "config": "xn--xy-gmb.de",
+   "expected": "xn--xy-gmb.de",
+   "input": "x\u02a6y.de"
+  },
+  {
+   "config": "xn--xy-jmb.de",
+   "expected": "xn--xy-jmb.de",
+   "input": "x\u02a7y.de"
+  },
+  {
+   "config": "xn--xy-mmb.de",
+   "expected": "xn--xy-mmb.de",
+   "input": "x\u02a8y.de"
+  },
+  {
+   "config": "xn--xy-pmb.de",
+   "expected": "xn--xy-pmb.de",
+   "input": "x\u02a9y.de"
+  },
+  {
+   "config": "xn--xy-smb.de",
+   "expected": "xn--xy-smb.de",
+   "input": "x\u02aay.de"
+  },
+  {
+   "config": "xn--xy-vmb.de",
+   "expected": "xn--xy-vmb.de",
+   "input": "x\u02aby.de"
+  },
+  {
+   "config": "xn--xy-ymb.de",
+   "expected": "xn--xy-ymb.de",
+   "input": "x\u02acy.de"
+  },
+  {
+   "config": "xn--xy-1mb.de",
+   "expected": "xn--xy-1mb.de",
+   "input": "x\u02ady.de"
+  },
+  {
+   "config": "xn--xy-4mb.de",
+   "expected": "xn--xy-4mb.de",
+   "input": "x\u02aey.de"
+  },
+  {
+   "config": "xn--xy-7mb.de",
+   "expected": "xn--xy-7mb.de",
+   "input": "x\u02afy.de"
+  },
+  {
+   "config": "xn--xy-5tb.de",
+   "expected": "xn--xy-5tb.de",
+   "input": "x\u0300y.de"
+  },
+  {
+   "config": "xn--xy-8tb.de",
+   "expected": "xn--xy-8tb.de",
+   "input": "x\u0301y.de"
+  },
+  {
+   "config": "xn--xy-cub.de",
+   "expected": "xn--xy-cub.de",
+   "input": "x\u0302y.de"
+  },
+  {
+   "config": "xn--xy-fub.de",
+   "expected": "xn--xy-fub.de",
+   "input": "x\u0303y.de"
+  },
+  {
+   "config": "xn--xy-iub.de",
+   "expected": "xn--xy-iub.de",
+   "input": "x\u0304y.de"
+  },
+  {
+   "config": "xn--xy-lub.de",
+   "expected": "xn--xy-lub.de",
+   "input": "x\u0305y.de"
+  },
+  {
+   "config": "xn--xy-oub.de",
+   "expected": "xn--xy-oub.de",
+   "input": "x\u0306y.de"
+  },
+  {
+   "config": "xn--y-rtm.de",
+   "expected": "xn--y-rtm.de",
+   "input": "x\u0307y.de"
+  },
+  {
+   "config": "xn--y-vtm.de",
+   "expected": "xn--y-vtm.de",
+   "input": "x\u0308y.de"
+  },
+  {
+   "config": "xn--xy-xub.de",
+   "expected": "xn--xy-xub.de",
+   "input": "x\u0309y.de"
+  },
+  {
+   "config": "xn--xy-0ub.de",
+   "expected": "xn--xy-0ub.de",
+   "input": "x\u030ay.de"
+  },
+  {
+   "config": "xn--xy-3ub.de",
+   "expected": "xn--xy-3ub.de",
+   "input": "x\u030by.de"
+  },
+  {
+   "config": "xn--xy-6ub.de",
+   "expected": "xn--xy-6ub.de",
+   "input": "x\u030cy.de"
+  },
+  {
+   "config": "xn--xy-9ub.de",
+   "expected": "xn--xy-9ub.de",
+   "input": "x\u030dy.de"
+  },
+  {
+   "config": "xn--xy-dvb.de",
+   "expected": "xn--xy-dvb.de",
+   "input": "x\u030ey.de"
+  },
+  {
+   "config": "xn--xy-gvb.de",
+   "expected": "xn--xy-gvb.de",
+   "input": "x\u030fy.de"
+  },
+  {
+   "config": "xn--xy-jvb.de",
+   "expected": "xn--xy-jvb.de",
+   "input": "x\u0310y.de"
+  },
+  {
+   "config": "xn--xy-mvb.de",
+   "expected": "xn--xy-mvb.de",
+   "input": "x\u0311y.de"
+  },
+  {
+   "config": "xn--xy-pvb.de",
+   "expected": "xn--xy-pvb.de",
+   "input": "x\u0312y.de"
+  },
+  {
+   "config": "xn--xy-svb.de",
+   "expected": "xn--xy-svb.de",
+   "input": "x\u0313y.de"
+  },
+  {
+   "config": "xn--xy-vvb.de",
+   "expected": "xn--xy-vvb.de",
+   "input": "x\u0314y.de"
+  },
+  {
+   "config": "xn--xy-yvb.de",
+   "expected": "xn--xy-yvb.de",
+   "input": "x\u0315y.de"
+  },
+  {
+   "config": "xn--xy-1vb.de",
+   "expected": "xn--xy-1vb.de",
+   "input": "x\u0316y.de"
+  },
+  {
+   "config": "xn--xy-4vb.de",
+   "expected": "xn--xy-4vb.de",
+   "input": "x\u0317y.de"
+  },
+  {
+   "config": "xn--xy-7vb.de",
+   "expected": "xn--xy-7vb.de",
+   "input": "x\u0318y.de"
+  },
+  {
+   "config": "xn--xy-bwb.de",
+   "expected": "xn--xy-bwb.de",
+   "input": "x\u0319y.de"
+  },
+  {
+   "config": "xn--xy-ewb.de",
+   "expected": "xn--xy-ewb.de",
+   "input": "x\u031ay.de"
+  },
+  {
+   "config": "xn--xy-hwb.de",
+   "expected": "xn--xy-hwb.de",
+   "input": "x\u031by.de"
+  },
+  {
+   "config": "xn--xy-kwb.de",
+   "expected": "xn--xy-kwb.de",
+   "input": "x\u031cy.de"
+  },
+  {
+   "config": "xn--xy-nwb.de",
+   "expected": "xn--xy-nwb.de",
+   "input": "x\u031dy.de"
+  },
+  {
+   "config": "xn--xy-qwb.de",
+   "expected": "xn--xy-qwb.de",
+   "input": "x\u031ey.de"
+  },
+  {
+   "config": "xn--xy-twb.de",
+   "expected": "xn--xy-twb.de",
+   "input": "x\u031fy.de"
+  },
+  {
+   "config": "xn--xy-wwb.de",
+   "expected": "xn--xy-wwb.de",
+   "input": "x\u0320y.de"
+  },
+  {
+   "config": "xn--xy-zwb.de",
+   "expected": "xn--xy-zwb.de",
+   "input": "x\u0321y.de"
+  },
+  {
+   "config": "xn--xy-2wb.de",
+   "expected": "xn--xy-2wb.de",
+   "input": "x\u0322y.de"
+  },
+  {
+   "config": "xn--xy-5wb.de",
+   "expected": "xn--xy-5wb.de",
+   "input": "x\u0323y.de"
+  },
+  {
+   "config": "xn--xy-8wb.de",
+   "expected": "xn--xy-8wb.de",
+   "input": "x\u0324y.de"
+  },
+  {
+   "config": "xn--xy-cxb.de",
+   "expected": "xn--xy-cxb.de",
+   "input": "x\u0325y.de"
+  },
+  {
+   "config": "xn--xy-fxb.de",
+   "expected": "xn--xy-fxb.de",
+   "input": "x\u0326y.de"
+  },
+  {
+   "config": "xn--xy-ixb.de",
+   "expected": "xn--xy-ixb.de",
+   "input": "x\u0327y.de"
+  },
+  {
+   "config": "xn--xy-lxb.de",
+   "expected": "xn--xy-lxb.de",
+   "input": "x\u0328y.de"
+  },
+  {
+   "config": "xn--xy-oxb.de",
+   "expected": "xn--xy-oxb.de",
+   "input": "x\u0329y.de"
+  },
+  {
+   "config": "xn--xy-rxb.de",
+   "expected": "xn--xy-rxb.de",
+   "input": "x\u032ay.de"
+  },
+  {
+   "config": "xn--xy-uxb.de",
+   "expected": "xn--xy-uxb.de",
+   "input": "x\u032by.de"
+  },
+  {
+   "config": "xn--xy-xxb.de",
+   "expected": "xn--xy-xxb.de",
+   "input": "x\u032cy.de"
+  },
+  {
+   "config": "xn--xy-0xb.de",
+   "expected": "xn--xy-0xb.de",
+   "input": "x\u032dy.de"
+  },
+  {
+   "config": "xn--xy-3xb.de",
+   "expected": "xn--xy-3xb.de",
+   "input": "x\u032ey.de"
+  },
+  {
+   "config": "xn--xy-6xb.de",
+   "expected": "xn--xy-6xb.de",
+   "input": "x\u032fy.de"
+  },
+  {
+   "config": "xn--xy-9xb.de",
+   "expected": "xn--xy-9xb.de",
+   "input": "x\u0330y.de"
+  },
+  {
+   "config": "xn--xy-dyb.de",
+   "expected": "xn--xy-dyb.de",
+   "input": "x\u0331y.de"
+  },
+  {
+   "config": "xn--xy-gyb.de",
+   "expected": "xn--xy-gyb.de",
+   "input": "x\u0332y.de"
+  },
+  {
+   "config": "xn--xy-jyb.de",
+   "expected": "xn--xy-jyb.de",
+   "input": "x\u0333y.de"
+  },
+  {
+   "config": "xn--xy-myb.de",
+   "expected": "xn--xy-myb.de",
+   "input": "x\u0334y.de"
+  },
+  {
+   "config": "xn--xy-pyb.de",
+   "expected": "xn--xy-pyb.de",
+   "input": "x\u0335y.de"
+  },
+  {
+   "config": "xn--xy-syb.de",
+   "expected": "xn--xy-syb.de",
+   "input": "x\u0336y.de"
+  },
+  {
+   "config": "xn--xy-vyb.de",
+   "expected": "xn--xy-vyb.de",
+   "input": "x\u0337y.de"
+  },
+  {
+   "config": "xn--xy-yyb.de",
+   "expected": "xn--xy-yyb.de",
+   "input": "x\u0338y.de"
+  },
+  {
+   "config": "xn--xy-1yb.de",
+   "expected": "xn--xy-1yb.de",
+   "input": "x\u0339y.de"
+  },
+  {
+   "config": "xn--xy-4yb.de",
+   "expected": "xn--xy-4yb.de",
+   "input": "x\u033ay.de"
+  },
+  {
+   "config": "xn--xy-7yb.de",
+   "expected": "xn--xy-7yb.de",
+   "input": "x\u033by.de"
+  },
+  {
+   "config": "xn--xy-bzb.de",
+   "expected": "xn--xy-bzb.de",
+   "input": "x\u033cy.de"
+  },
+  {
+   "config": "xn--xy-ezb.de",
+   "expected": "xn--xy-ezb.de",
+   "input": "x\u033dy.de"
+  },
+  {
+   "config": "xn--xy-hzb.de",
+   "expected": "xn--xy-hzb.de",
+   "input": "x\u033ey.de"
+  },
+  {
+   "config": "xn--xy-kzb.de",
+   "expected": "xn--xy-kzb.de",
+   "input": "x\u033fy.de"
+  },
+  {
+   "config": "xn--xy-5tb.de",
+   "expected": "xn--xy-5tb.de",
+   "input": "x\u0340y.de"
+  },
+  {
+   "config": "xn--xy-8tb.de",
+   "expected": "xn--xy-8tb.de",
+   "input": "x\u0341y.de"
+  },
+  {
+   "config": "xn--xy-tzb.de",
+   "expected": "xn--xy-tzb.de",
+   "input": "x\u0342y.de"
+  },
+  {
+   "config": "xn--xy-svb.de",
+   "expected": "xn--xy-svb.de",
+   "input": "x\u0343y.de"
+  },
+  {
+   "config": "xn--y-wbb962s.de",
+   "expected": "xn--y-wbb962s.de",
+   "input": "x\u0344y.de"
+  },
+  {
+   "config": null,
+   "expected": "xn--xy-09b.de",
+   "input": "x\u0345y.de"
+  },
+  {
+   "config": "xn--xy-5zb.de",
+   "expected": "xn--xy-5zb.de",
+   "input": "x\u0346y.de"
+  },
+  {
+   "config": "xn--xy-8zb.de",
+   "expected": "xn--xy-8zb.de",
+   "input": "x\u0347y.de"
+  },
+  {
+   "config": "xn--xy-c0b.de",
+   "expected": "xn--xy-c0b.de",
+   "input": "x\u0348y.de"
+  },
+  {
+   "config": "xn--xy-f0b.de",
+   "expected": "xn--xy-f0b.de",
+   "input": "x\u0349y.de"
+  },
+  {
+   "config": "xn--xy-i0b.de",
+   "expected": "xn--xy-i0b.de",
+   "input": "x\u034ay.de"
+  },
+  {
+   "config": "xn--xy-l0b.de",
+   "expected": "xn--xy-l0b.de",
+   "input": "x\u034by.de"
+  },
+  {
+   "config": "xn--xy-o0b.de",
+   "expected": "xn--xy-o0b.de",
+   "input": "x\u034cy.de"
+  },
+  {
+   "config": "xn--xy-r0b.de",
+   "expected": "xn--xy-r0b.de",
+   "input": "x\u034dy.de"
+  },
+  {
+   "config": "xn--xy-u0b.de",
+   "expected": "xn--xy-u0b.de",
+   "input": "x\u034ey.de"
+  },
+  {
+   "config": "xy.de",
+   "expected": "xy.de",
+   "input": "x\u034fy.de"
+  },
+  {
+   "config": "xn--xy-00b.de",
+   "expected": "xn--xy-00b.de",
+   "input": "x\u0350y.de"
+  },
+  {
+   "config": "xn--xy-30b.de",
+   "expected": "xn--xy-30b.de",
+   "input": "x\u0351y.de"
+  },
+  {
+   "config": "xn--xy-60b.de",
+   "expected": "xn--xy-60b.de",
+   "input": "x\u0352y.de"
+  },
+  {
+   "config": "xn--xy-90b.de",
+   "expected": "xn--xy-90b.de",
+   "input": "x\u0353y.de"
+  },
+  {
+   "config": "xn--xy-d1b.de",
+   "expected": "xn--xy-d1b.de",
+   "input": "x\u0354y.de"
+  },
+  {
+   "config": "xn--xy-g1b.de",
+   "expected": "xn--xy-g1b.de",
+   "input": "x\u0355y.de"
+  },
+  {
+   "config": "xn--xy-j1b.de",
+   "expected": "xn--xy-j1b.de",
+   "input": "x\u0356y.de"
+  },
+  {
+   "config": "xn--xy-m1b.de",
+   "expected": "xn--xy-m1b.de",
+   "input": "x\u0357y.de"
+  },
+  {
+   "config": "xn--xy-p1b.de",
+   "expected": "xn--xy-p1b.de",
+   "input": "x\u0358y.de"
+  },
+  {
+   "config": "xn--xy-s1b.de",
+   "expected": "xn--xy-s1b.de",
+   "input": "x\u0359y.de"
+  },
+  {
+   "config": "xn--xy-v1b.de",
+   "expected": "xn--xy-v1b.de",
+   "input": "x\u035ay.de"
+  },
+  {
+   "config": "xn--xy-y1b.de",
+   "expected": "xn--xy-y1b.de",
+   "input": "x\u035by.de"
+  },
+  {
+   "config": "xn--xy-11b.de",
+   "expected": "xn--xy-11b.de",
+   "input": "x\u035cy.de"
+  },
+  {
+   "config": "xn--xy-41b.de",
+   "expected": "xn--xy-41b.de",
+   "input": "x\u035dy.de"
+  },
+  {
+   "config": "xn--xy-71b.de",
+   "expected": "xn--xy-71b.de",
+   "input": "x\u035ey.de"
+  },
+  {
+   "config": "xn--xy-b2b.de",
+   "expected": "xn--xy-b2b.de",
+   "input": "x\u035fy.de"
+  },
+  {
+   "config": "xn--xy-e2b.de",
+   "expected": "xn--xy-e2b.de",
+   "input": "x\u0360y.de"
+  },
+  {
+   "config": "xn--xy-h2b.de",
+   "expected": "xn--xy-h2b.de",
+   "input": "x\u0361y.de"
+  },
+  {
+   "config": "xn--xy-k2b.de",
+   "expected": "xn--xy-k2b.de",
+   "input": "x\u0362y.de"
+  },
+  {
+   "config": "xn--xy-n2b.de",
+   "expected": "xn--xy-n2b.de",
+   "input": "x\u0363y.de"
+  },
+  {
+   "config": "xn--xy-q2b.de",
+   "expected": "xn--xy-q2b.de",
+   "input": "x\u0364y.de"
+  },
+  {
+   "config": "xn--xy-t2b.de",
+   "expected": "xn--xy-t2b.de",
+   "input": "x\u0365y.de"
+  },
+  {
+   "config": "xn--xy-w2b.de",
+   "expected": "xn--xy-w2b.de",
+   "input": "x\u0366y.de"
+  },
+  {
+   "config": "xn--xy-z2b.de",
+   "expected": "xn--xy-z2b.de",
+   "input": "x\u0367y.de"
+  },
+  {
+   "config": "xn--xy-22b.de",
+   "expected": "xn--xy-22b.de",
+   "input": "x\u0368y.de"
+  },
+  {
+   "config": "xn--xy-52b.de",
+   "expected": "xn--xy-52b.de",
+   "input": "x\u0369y.de"
+  },
+  {
+   "config": "xn--xy-82b.de",
+   "expected": "xn--xy-82b.de",
+   "input": "x\u036ay.de"
+  },
+  {
+   "config": "xn--xy-c3b.de",
+   "expected": "xn--xy-c3b.de",
+   "input": "x\u036by.de"
+  },
+  {
+   "config": "xn--xy-f3b.de",
+   "expected": "xn--xy-f3b.de",
+   "input": "x\u036cy.de"
+  },
+  {
+   "config": "xn--xy-i3b.de",
+   "expected": "xn--xy-i3b.de",
+   "input": "x\u036dy.de"
+  },
+  {
+   "config": "xn--xy-l3b.de",
+   "expected": "xn--xy-l3b.de",
+   "input": "x\u036ey.de"
+  },
+  {
+   "config": "xn--xy-o3b.de",
+   "expected": "xn--xy-o3b.de",
+   "input": "x\u036fy.de"
+  },
+  {
+   "config": "xn--xy-prs.de",
+   "expected": "xn--xy-prs.de",
+   "input": "x\u1e00y.de"
+  },
+  {
+   "config": "xn--xy-prs.de",
+   "expected": "xn--xy-prs.de",
+   "input": "x\u1e01y.de"
+  },
+  {
+   "config": "xn--xy-vrs.de",
+   "expected": "xn--xy-vrs.de",
+   "input": "x\u1e02y.de"
+  },
+  {
+   "config": "xn--xy-vrs.de",
+   "expected": "xn--xy-vrs.de",
+   "input": "x\u1e03y.de"
+  },
+  {
+   "config": "xn--xy-1rs.de",
+   "expected": "xn--xy-1rs.de",
+   "input": "x\u1e04y.de"
+  },
+  {
+   "config": "xn--xy-1rs.de",
+   "expected": "xn--xy-1rs.de",
+   "input": "x\u1e05y.de"
+  },
+  {
+   "config": "xn--xy-7rs.de",
+   "expected": "xn--xy-7rs.de",
+   "input": "x\u1e06y.de"
+  },
+  {
+   "config": "xn--xy-7rs.de",
+   "expected": "xn--xy-7rs.de",
+   "input": "x\u1e07y.de"
+  },
+  {
+   "config": "xn--xy-ess.de",
+   "expected": "xn--xy-ess.de",
+   "input": "x\u1e08y.de"
+  },
+  {
+   "config": "xn--xy-ess.de",
+   "expected": "xn--xy-ess.de",
+   "input": "x\u1e09y.de"
+  },
+  {
+   "config": "xn--xy-kss.de",
+   "expected": "xn--xy-kss.de",
+   "input": "x\u1e0ay.de"
+  },
+  {
+   "config": "xn--xy-kss.de",
+   "expected": "xn--xy-kss.de",
+   "input": "x\u1e0by.de"
+  },
+  {
+   "config": "xn--xy-qss.de",
+   "expected": "xn--xy-qss.de",
+   "input": "x\u1e0cy.de"
+  },
+  {
+   "config": "xn--xy-qss.de",
+   "expected": "xn--xy-qss.de",
+   "input": "x\u1e0dy.de"
+  },
+  {
+   "config": "xn--xy-wss.de",
+   "expected": "xn--xy-wss.de",
+   "input": "x\u1e0ey.de"
+  },
+  {
+   "config": "xn--xy-wss.de",
+   "expected": "xn--xy-wss.de",
+   "input": "x\u1e0fy.de"
+  },
+  {
+   "config": "xn--xy-2ss.de",
+   "expected": "xn--xy-2ss.de",
+   "input": "x\u1e10y.de"
+  },
+  {
+   "config": "xn--xy-2ss.de",
+   "expected": "xn--xy-2ss.de",
+   "input": "x\u1e11y.de"
+  },
+  {
+   "config": "xn--xy-8ss.de",
+   "expected": "xn--xy-8ss.de",
+   "input": "x\u1e12y.de"
+  },
+  {
+   "config": "xn--xy-8ss.de",
+   "expected": "xn--xy-8ss.de",
+   "input": "x\u1e13y.de"
+  },
+  {
+   "config": "xn--xy-fts.de",
+   "expected": "xn--xy-fts.de",
+   "input": "x\u1e14y.de"
+  },
+  {
+   "config": "xn--xy-fts.de",
+   "expected": "xn--xy-fts.de",
+   "input": "x\u1e15y.de"
+  },
+  {
+   "config": "xn--xy-lts.de",
+   "expected": "xn--xy-lts.de",
+   "input": "x\u1e16y.de"
+  },
+  {
+   "config": "xn--xy-lts.de",
+   "expected": "xn--xy-lts.de",
+   "input": "x\u1e17y.de"
+  },
+  {
+   "config": "xn--xy-rts.de",
+   "expected": "xn--xy-rts.de",
+   "input": "x\u1e18y.de"
+  },
+  {
+   "config": "xn--xy-rts.de",
+   "expected": "xn--xy-rts.de",
+   "input": "x\u1e19y.de"
+  },
+  {
+   "config": "xn--xy-xts.de",
+   "expected": "xn--xy-xts.de",
+   "input": "x\u1e1ay.de"
+  },
+  {
+   "config": "xn--xy-xts.de",
+   "expected": "xn--xy-xts.de",
+   "input": "x\u1e1by.de"
+  },
+  {
+   "config": "xn--xy-3ts.de",
+   "expected": "xn--xy-3ts.de",
+   "input": "x\u1e1cy.de"
+  },
+  {
+   "config": "xn--xy-3ts.de",
+   "expected": "xn--xy-3ts.de",
+   "input": "x\u1e1dy.de"
+  },
+  {
+   "config": "xn--xy-9ts.de",
+   "expected": "xn--xy-9ts.de",
+   "input": "x\u1e1ey.de"
+  },
+  {
+   "config": "xn--xy-9ts.de",
+   "expected": "xn--xy-9ts.de",
+   "input": "x\u1e1fy.de"
+  },
+  {
+   "config": "xn--xy-gus.de",
+   "expected": "xn--xy-gus.de",
+   "input": "x\u1e20y.de"
+  },
+  {
+   "config": "xn--xy-gus.de",
+   "expected": "xn--xy-gus.de",
+   "input": "x\u1e21y.de"
+  },
+  {
+   "config": "xn--xy-mus.de",
+   "expected": "xn--xy-mus.de",
+   "input": "x\u1e22y.de"
+  },
+  {
+   "config": "xn--xy-mus.de",
+   "expected": "xn--xy-mus.de",
+   "input": "x\u1e23y.de"
+  },
+  {
+   "config": "xn--xy-sus.de",
+   "expected": "xn--xy-sus.de",
+   "input": "x\u1e24y.de"
+  },
+  {
+   "config": "xn--xy-sus.de",
+   "expected": "xn--xy-sus.de",
+   "input": "x\u1e25y.de"
+  },
+  {
+   "config": "xn--xy-yus.de",
+   "expected": "xn--xy-yus.de",
+   "input": "x\u1e26y.de"
+  },
+  {
+   "config": "xn--xy-yus.de",
+   "expected": "xn--xy-yus.de",
+   "input": "x\u1e27y.de"
+  },
+  {
+   "config": "xn--xy-4us.de",
+   "expected": "xn--xy-4us.de",
+   "input": "x\u1e28y.de"
+  },
+  {
+   "config": "xn--xy-4us.de",
+   "expected": "xn--xy-4us.de",
+   "input": "x\u1e29y.de"
+  },
+  {
+   "config": "xn--xy-bvs.de",
+   "expected": "xn--xy-bvs.de",
+   "input": "x\u1e2ay.de"
+  },
+  {
+   "config": "xn--xy-bvs.de",
+   "expected": "xn--xy-bvs.de",
+   "input": "x\u1e2by.de"
+  },
+  {
+   "config": "xn--xy-hvs.de",
+   "expected": "xn--xy-hvs.de",
+   "input": "x\u1e2cy.de"
+  },
+  {
+   "config": "xn--xy-hvs.de",
+   "expected": "xn--xy-hvs.de",
+   "input": "x\u1e2dy.de"
+  },
+  {
+   "config": "xn--xy-nvs.de",
+   "expected": "xn--xy-nvs.de",
+   "input": "x\u1e2ey.de"
+  },
+  {
+   "config": "xn--xy-nvs.de",
+   "expected": "xn--xy-nvs.de",
+   "input": "x\u1e2fy.de"
+  },
+  {
+   "config": "xn--xy-tvs.de",
+   "expected": "xn--xy-tvs.de",
+   "input": "x\u1e30y.de"
+  },
+  {
+   "config": "xn--xy-tvs.de",
+   "expected": "xn--xy-tvs.de",
+   "input": "x\u1e31y.de"
+  },
+  {
+   "config": "xn--xy-zvs.de",
+   "expected": "xn--xy-zvs.de",
+   "input": "x\u1e32y.de"
+  },
+  {
+   "config": "xn--xy-zvs.de",
+   "expected": "xn--xy-zvs.de",
+   "input": "x\u1e33y.de"
+  },
+  {
+   "config": "xn--xy-5vs.de",
+   "expected": "xn--xy-5vs.de",
+   "input": "x\u1e34y.de"
+  },
+  {
+   "config": "xn--xy-5vs.de",
+   "expected": "xn--xy-5vs.de",
+   "input": "x\u1e35y.de"
+  },
+  {
+   "config": "xn--xy-cws.de",
+   "expected": "xn--xy-cws.de",
+   "input": "x\u1e36y.de"
+  },
+  {
+   "config": "xn--xy-cws.de",
+   "expected": "xn--xy-cws.de",
+   "input": "x\u1e37y.de"
+  },
+  {
+   "config": "xn--xy-iws.de",
+   "expected": "xn--xy-iws.de",
+   "input": "x\u1e38y.de"
+  },
+  {
+   "config": "xn--xy-iws.de",
+   "expected": "xn--xy-iws.de",
+   "input": "x\u1e39y.de"
+  },
+  {
+   "config": "xn--xy-ows.de",
+   "expected": "xn--xy-ows.de",
+   "input": "x\u1e3ay.de"
+  },
+  {
+   "config": "xn--xy-ows.de",
+   "expected": "xn--xy-ows.de",
+   "input": "x\u1e3by.de"
+  },
+  {
+   "config": "xn--xy-uws.de",
+   "expected": "xn--xy-uws.de",
+   "input": "x\u1e3cy.de"
+  },
+  {
+   "config": "xn--xy-uws.de",
+   "expected": "xn--xy-uws.de",
+   "input": "x\u1e3dy.de"
+  },
+  {
+   "config": "xn--xy-0ws.de",
+   "expected": "xn--xy-0ws.de",
+   "input": "x\u1e3ey.de"
+  },
+  {
+   "config": "xn--xy-0ws.de",
+   "expected": "xn--xy-0ws.de",
+   "input": "x\u1e3fy.de"
+  },
+  {
+   "config": "xn--xy-6ws.de",
+   "expected": "xn--xy-6ws.de",
+   "input": "x\u1e40y.de"
+  },
+  {
+   "config": "xn--xy-6ws.de",
+   "expected": "xn--xy-6ws.de",
+   "input": "x\u1e41y.de"
+  },
+  {
+   "config": "xn--xy-dxs.de",
+   "expected": "xn--xy-dxs.de",
+   "input": "x\u1e42y.de"
+  },
+  {
+   "config": "xn--xy-dxs.de",
+   "expected": "xn--xy-dxs.de",
+   "input": "x\u1e43y.de"
+  },
+  {
+   "config": "xn--xy-jxs.de",
+   "expected": "xn--xy-jxs.de",
+   "input": "x\u1e44y.de"
+  },
+  {
+   "config": "xn--xy-jxs.de",
+   "expected": "xn--xy-jxs.de",
+   "input": "x\u1e45y.de"
+  },
+  {
+   "config": "xn--xy-pxs.de",
+   "expected": "xn--xy-pxs.de",
+   "input": "x\u1e46y.de"
+  },
+  {
+   "config": "xn--xy-pxs.de",
+   "expected": "xn--xy-pxs.de",
+   "input": "x\u1e47y.de"
+  },
+  {
+   "config": "xn--xy-vxs.de",
+   "expected": "xn--xy-vxs.de",
+   "input": "x\u1e48y.de"
+  },
+  {
+   "config": "xn--xy-vxs.de",
+   "expected": "xn--xy-vxs.de",
+   "input": "x\u1e49y.de"
+  },
+  {
+   "config": "xn--xy-1xs.de",
+   "expected": "xn--xy-1xs.de",
+   "input": "x\u1e4ay.de"
+  },
+  {
+   "config": "xn--xy-1xs.de",
+   "expected": "xn--xy-1xs.de",
+   "input": "x\u1e4by.de"
+  },
+  {
+   "config": "xn--xy-7xs.de",
+   "expected": "xn--xy-7xs.de",
+   "input": "x\u1e4cy.de"
+  },
+  {
+   "config": "xn--xy-7xs.de",
+   "expected": "xn--xy-7xs.de",
+   "input": "x\u1e4dy.de"
+  },
+  {
+   "config": "xn--xy-eys.de",
+   "expected": "xn--xy-eys.de",
+   "input": "x\u1e4ey.de"
+  },
+  {
+   "config": "xn--xy-eys.de",
+   "expected": "xn--xy-eys.de",
+   "input": "x\u1e4fy.de"
+  },
+  {
+   "config": "xn--xy-kys.de",
+   "expected": "xn--xy-kys.de",
+   "input": "x\u1e50y.de"
+  },
+  {
+   "config": "xn--xy-kys.de",
+   "expected": "xn--xy-kys.de",
+   "input": "x\u1e51y.de"
+  },
+  {
+   "config": "xn--xy-qys.de",
+   "expected": "xn--xy-qys.de",
+   "input": "x\u1e52y.de"
+  },
+  {
+   "config": "xn--xy-qys.de",
+   "expected": "xn--xy-qys.de",
+   "input": "x\u1e53y.de"
+  },
+  {
+   "config": "xn--xy-wys.de",
+   "expected": "xn--xy-wys.de",
+   "input": "x\u1e54y.de"
+  },
+  {
+   "config": "xn--xy-wys.de",
+   "expected": "xn--xy-wys.de",
+   "input": "x\u1e55y.de"
+  },
+  {
+   "config": "xn--xy-2ys.de",
+   "expected": "xn--xy-2ys.de",
+   "input": "x\u1e56y.de"
+  },
+  {
+   "config": "xn--xy-2ys.de",
+   "expected": "xn--xy-2ys.de",
+   "input": "x\u1e57y.de"
+  },
+  {
+   "config": "xn--xy-8ys.de",
+   "expected": "xn--xy-8ys.de",
+   "input": "x\u1e58y.de"
+  },
+  {
+   "config": "xn--xy-8ys.de",
+   "expected": "xn--xy-8ys.de",
+   "input": "x\u1e59y.de"
+  },
+  {
+   "config": "xn--xy-fzs.de",
+   "expected": "xn--xy-fzs.de",
+   "input": "x\u1e5ay.de"
+  },
+  {
+   "config": "xn--xy-fzs.de",
+   "expected": "xn--xy-fzs.de",
+   "input": "x\u1e5by.de"
+  },
+  {
+   "config": "xn--xy-lzs.de",
+   "expected": "xn--xy-lzs.de",
+   "input": "x\u1e5cy.de"
+  },
+  {
+   "config": "xn--xy-lzs.de",
+   "expected": "xn--xy-lzs.de",
+   "input": "x\u1e5dy.de"
+  },
+  {
+   "config": "xn--xy-rzs.de",
+   "expected": "xn--xy-rzs.de",
+   "input": "x\u1e5ey.de"
+  },
+  {
+   "config": "xn--xy-rzs.de",
+   "expected": "xn--xy-rzs.de",
+   "input": "x\u1e5fy.de"
+  },
+  {
+   "config": "xn--xy-xzs.de",
+   "expected": "xn--xy-xzs.de",
+   "input": "x\u1e60y.de"
+  },
+  {
+   "config": "xn--xy-xzs.de",
+   "expected": "xn--xy-xzs.de",
+   "input": "x\u1e61y.de"
+  },
+  {
+   "config": "xn--xy-3zs.de",
+   "expected": "xn--xy-3zs.de",
+   "input": "x\u1e62y.de"
+  },
+  {
+   "config": "xn--xy-3zs.de",
+   "expected": "xn--xy-3zs.de",
+   "input": "x\u1e63y.de"
+  },
+  {
+   "config": "xn--xy-9zs.de",
+   "expected": "xn--xy-9zs.de",
+   "input": "x\u1e64y.de"
+  },
+  {
+   "config": "xn--xy-9zs.de",
+   "expected": "xn--xy-9zs.de",
+   "input": "x\u1e65y.de"
+  },
+  {
+   "config": "xn--xy-g0s.de",
+   "expected": "xn--xy-g0s.de",
+   "input": "x\u1e66y.de"
+  },
+  {
+   "config": "xn--xy-g0s.de",
+   "expected": "xn--xy-g0s.de",
+   "input": "x\u1e67y.de"
+  },
+  {
+   "config": "xn--xy-m0s.de",
+   "expected": "xn--xy-m0s.de",
+   "input": "x\u1e68y.de"
+  },
+  {
+   "config": "xn--xy-m0s.de",
+   "expected": "xn--xy-m0s.de",
+   "input": "x\u1e69y.de"
+  },
+  {
+   "config": "xn--xy-s0s.de",
+   "expected": "xn--xy-s0s.de",
+   "input": "x\u1e6ay.de"
+  },
+  {
+   "config": "xn--xy-s0s.de",
+   "expected": "xn--xy-s0s.de",
+   "input": "x\u1e6by.de"
+  },
+  {
+   "config": "xn--xy-y0s.de",
+   "expected": "xn--xy-y0s.de",
+   "input": "x\u1e6cy.de"
+  },
+  {
+   "config": "xn--xy-y0s.de",
+   "expected": "xn--xy-y0s.de",
+   "input": "x\u1e6dy.de"
+  },
+  {
+   "config": "xn--xy-40s.de",
+   "expected": "xn--xy-40s.de",
+   "input": "x\u1e6ey.de"
+  },
+  {
+   "config": "xn--xy-40s.de",
+   "expected": "xn--xy-40s.de",
+   "input": "x\u1e6fy.de"
+  },
+  {
+   "config": "xn--xy-b1s.de",
+   "expected": "xn--xy-b1s.de",
+   "input": "x\u1e70y.de"
+  },
+  {
+   "config": "xn--xy-b1s.de",
+   "expected": "xn--xy-b1s.de",
+   "input": "x\u1e71y.de"
+  },
+  {
+   "config": "xn--xy-h1s.de",
+   "expected": "xn--xy-h1s.de",
+   "input": "x\u1e72y.de"
+  },
+  {
+   "config": "xn--xy-h1s.de",
+   "expected": "xn--xy-h1s.de",
+   "input": "x\u1e73y.de"
+  },
+  {
+   "config": "xn--xy-n1s.de",
+   "expected": "xn--xy-n1s.de",
+   "input": "x\u1e74y.de"
+  },
+  {
+   "config": "xn--xy-n1s.de",
+   "expected": "xn--xy-n1s.de",
+   "input": "x\u1e75y.de"
+  },
+  {
+   "config": "xn--xy-t1s.de",
+   "expected": "xn--xy-t1s.de",
+   "input": "x\u1e76y.de"
+  },
+  {
+   "config": "xn--xy-t1s.de",
+   "expected": "xn--xy-t1s.de",
+   "input": "x\u1e77y.de"
+  },
+  {
+   "config": "xn--xy-z1s.de",
+   "expected": "xn--xy-z1s.de",
+   "input": "x\u1e78y.de"
+  },
+  {
+   "config": "xn--xy-z1s.de",
+   "expected": "xn--xy-z1s.de",
+   "input": "x\u1e79y.de"
+  },
+  {
+   "config": "xn--xy-51s.de",
+   "expected": "xn--xy-51s.de",
+   "input": "x\u1e7ay.de"
+  },
+  {
+   "config": "xn--xy-51s.de",
+   "expected": "xn--xy-51s.de",
+   "input": "x\u1e7by.de"
+  },
+  {
+   "config": "xn--xy-c2s.de",
+   "expected": "xn--xy-c2s.de",
+   "input": "x\u1e7cy.de"
+  },
+  {
+   "config": "xn--xy-c2s.de",
+   "expected": "xn--xy-c2s.de",
+   "input": "x\u1e7dy.de"
+  },
+  {
+   "config": "xn--xy-i2s.de",
+   "expected": "xn--xy-i2s.de",
+   "input": "x\u1e7ey.de"
+  },
+  {
+   "config": "xn--xy-i2s.de",
+   "expected": "xn--xy-i2s.de",
+   "input": "x\u1e7fy.de"
+  },
+  {
+   "config": "xn--xy-o2s.de",
+   "expected": "xn--xy-o2s.de",
+   "input": "x\u1e80y.de"
+  },
+  {
+   "config": "xn--xy-o2s.de",
+   "expected": "xn--xy-o2s.de",
+   "input": "x\u1e81y.de"
+  },
+  {
+   "config": "xn--xy-u2s.de",
+   "expected": "xn--xy-u2s.de",
+   "input": "x\u1e82y.de"
+  },
+  {
+   "config": "xn--xy-u2s.de",
+   "expected": "xn--xy-u2s.de",
+   "input": "x\u1e83y.de"
+  },
+  {
+   "config": "xn--xy-02s.de",
+   "expected": "xn--xy-02s.de",
+   "input": "x\u1e84y.de"
+  },
+  {
+   "config": "xn--xy-02s.de",
+   "expected": "xn--xy-02s.de",
+   "input": "x\u1e85y.de"
+  },
+  {
+   "config": "xn--xy-62s.de",
+   "expected": "xn--xy-62s.de",
+   "input": "x\u1e86y.de"
+  },
+  {
+   "config": "xn--xy-62s.de",
+   "expected": "xn--xy-62s.de",
+   "input": "x\u1e87y.de"
+  },
+  {
+   "config": "xn--xy-d3s.de",
+   "expected": "xn--xy-d3s.de",
+   "input": "x\u1e88y.de"
+  },
+  {
+   "config": "xn--xy-d3s.de",
+   "expected": "xn--xy-d3s.de",
+   "input": "x\u1e89y.de"
+  },
+  {
+   "config": "xn--xy-j3s.de",
+   "expected": "xn--xy-j3s.de",
+   "input": "x\u1e8ay.de"
+  },
+  {
+   "config": "xn--xy-j3s.de",
+   "expected": "xn--xy-j3s.de",
+   "input": "x\u1e8by.de"
+  },
+  {
+   "config": "xn--xy-p3s.de",
+   "expected": "xn--xy-p3s.de",
+   "input": "x\u1e8cy.de"
+  },
+  {
+   "config": "xn--xy-p3s.de",
+   "expected": "xn--xy-p3s.de",
+   "input": "x\u1e8dy.de"
+  },
+  {
+   "config": "xn--xy-v3s.de",
+   "expected": "xn--xy-v3s.de",
+   "input": "x\u1e8ey.de"
+  },
+  {
+   "config": "xn--xy-v3s.de",
+   "expected": "xn--xy-v3s.de",
+   "input": "x\u1e8fy.de"
+  },
+  {
+   "config": "xn--xy-13s.de",
+   "expected": "xn--xy-13s.de",
+   "input": "x\u1e90y.de"
+  },
+  {
+   "config": "xn--xy-13s.de",
+   "expected": "xn--xy-13s.de",
+   "input": "x\u1e91y.de"
+  },
+  {
+   "config": "xn--xy-73s.de",
+   "expected": "xn--xy-73s.de",
+   "input": "x\u1e92y.de"
+  },
+  {
+   "config": "xn--xy-73s.de",
+   "expected": "xn--xy-73s.de",
+   "input": "x\u1e93y.de"
+  },
+  {
+   "config": "xn--xy-e4s.de",
+   "expected": "xn--xy-e4s.de",
+   "input": "x\u1e94y.de"
+  },
+  {
+   "config": "xn--xy-e4s.de",
+   "expected": "xn--xy-e4s.de",
+   "input": "x\u1e95y.de"
+  },
+  {
+   "config": "xn--xy-h4s.de",
+   "expected": "xn--xy-h4s.de",
+   "input": "x\u1e96y.de"
+  },
+  {
+   "config": "xn--xy-k4s.de",
+   "expected": "xn--xy-k4s.de",
+   "input": "x\u1e97y.de"
+  },
+  {
+   "config": "xn--xy-n4s.de",
+   "expected": "xn--xy-n4s.de",
+   "input": "x\u1e98y.de"
+  },
+  {
+   "config": "xn--xy-q4s.de",
+   "expected": "xn--xy-q4s.de",
+   "input": "x\u1e99y.de"
+  },
+  {
+   "config": null,
+   "expected": "xn--xay-x4b.de",
+   "input": "x\u1e9ay.de"
+  },
+  {
+   "config": "xn--xy-xzs.de",
+   "expected": "xn--xy-xzs.de",
+   "input": "x\u1e9by.de"
+  },
+  {
+   "config": "xn--xy-z4s.de",
+   "expected": "xn--xy-z4s.de",
+   "input": "x\u1e9cy.de"
+  },
+  {
+   "config": "xn--xy-24s.de",
+   "expected": "xn--xy-24s.de",
+   "input": "x\u1e9dy.de"
+  },
+  {
+   "config": "xn--xy-gia.de",
+   "expected": "xn--xy-gia.de",
+   "input": "x\u1e9ey.de"
+  },
+  {
+   "config": "xn--xy-84s.de",
+   "expected": "xn--xy-84s.de",
+   "input": "x\u1e9fy.de"
+  },
+  {
+   "config": "xn--xy-f5s.de",
+   "expected": "xn--xy-f5s.de",
+   "input": "x\u1ea0y.de"
+  },
+  {
+   "config": "xn--xy-f5s.de",
+   "expected": "xn--xy-f5s.de",
+   "input": "x\u1ea1y.de"
+  },
+  {
+   "config": "xn--xy-l5s.de",
+   "expected": "xn--xy-l5s.de",
+   "input": "x\u1ea2y.de"
+  },
+  {
+   "config": "xn--xy-l5s.de",
+   "expected": "xn--xy-l5s.de",
+   "input": "x\u1ea3y.de"
+  },
+  {
+   "config": "xn--xy-r5s.de",
+   "expected": "xn--xy-r5s.de",
+   "input": "x\u1ea4y.de"
+  },
+  {
+   "config": "xn--xy-r5s.de",
+   "expected": "xn--xy-r5s.de",
+   "input": "x\u1ea5y.de"
+  },
+  {
+   "config": "xn--xy-x5s.de",
+   "expected": "xn--xy-x5s.de",
+   "input": "x\u1ea6y.de"
+  },
+  {
+   "config": "xn--xy-x5s.de",
+   "expected": "xn--xy-x5s.de",
+   "input": "x\u1ea7y.de"
+  },
+  {
+   "config": "xn--xy-35s.de",
+   "expected": "xn--xy-35s.de",
+   "input": "x\u1ea8y.de"
+  },
+  {
+   "config": "xn--xy-35s.de",
+   "expected": "xn--xy-35s.de",
+   "input": "x\u1ea9y.de"
+  },
+  {
+   "config": "xn--xy-95s.de",
+   "expected": "xn--xy-95s.de",
+   "input": "x\u1eaay.de"
+  },
+  {
+   "config": "xn--xy-95s.de",
+   "expected": "xn--xy-95s.de",
+   "input": "x\u1eaby.de"
+  },
+  {
+   "config": "xn--xy-g6s.de",
+   "expected": "xn--xy-g6s.de",
+   "input": "x\u1eacy.de"
+  },
+  {
+   "config": "xn--xy-g6s.de",
+   "expected": "xn--xy-g6s.de",
+   "input": "x\u1eady.de"
+  },
+  {
+   "config": "xn--xy-m6s.de",
+   "expected": "xn--xy-m6s.de",
+   "input": "x\u1eaey.de"
+  },
+  {
+   "config": "xn--xy-m6s.de",
+   "expected": "xn--xy-m6s.de",
+   "input": "x\u1eafy.de"
+  },
+  {
+   "config": "xn--xy-s6s.de",
+   "expected": "xn--xy-s6s.de",
+   "input": "x\u1eb0y.de"
+  },
+  {
+   "config": "xn--xy-s6s.de",
+   "expected": "xn--xy-s6s.de",
+   "input": "x\u1eb1y.de"
+  },
+  {
+   "config": "xn--xy-y6s.de",
+   "expected": "xn--xy-y6s.de",
+   "input": "x\u1eb2y.de"
+  },
+  {
+   "config": "xn--xy-y6s.de",
+   "expected": "xn--xy-y6s.de",
+   "input": "x\u1eb3y.de"
+  },
+  {
+   "config": "xn--xy-46s.de",
+   "expected": "xn--xy-46s.de",
+   "input": "x\u1eb4y.de"
+  },
+  {
+   "config": "xn--xy-46s.de",
+   "expected": "xn--xy-46s.de",
+   "input": "x\u1eb5y.de"
+  },
+  {
+   "config": "xn--xy-b7s.de",
+   "expected": "xn--xy-b7s.de",
+   "input": "x\u1eb6y.de"
+  },
+  {
+   "config": "xn--xy-b7s.de",
+   "expected": "xn--xy-b7s.de",
+   "input": "x\u1eb7y.de"
+  },
+  {
+   "config": "xn--xy-h7s.de",
+   "expected": "xn--xy-h7s.de",
+   "input": "x\u1eb8y.de"
+  },
+  {
+   "config": "xn--xy-h7s.de",
+   "expected": "xn--xy-h7s.de",
+   "input": "x\u1eb9y.de"
+  },
+  {
+   "config": "xn--xy-n7s.de",
+   "expected": "xn--xy-n7s.de",
+   "input": "x\u1ebay.de"
+  },
+  {
+   "config": "xn--xy-n7s.de",
+   "expected": "xn--xy-n7s.de",
+   "input": "x\u1ebby.de"
+  },
+  {
+   "config": "xn--xy-t7s.de",
+   "expected": "xn--xy-t7s.de",
+   "input": "x\u1ebcy.de"
+  },
+  {
+   "config": "xn--xy-t7s.de",
+   "expected": "xn--xy-t7s.de",
+   "input": "x\u1ebdy.de"
+  },
+  {
+   "config": "xn--xy-z7s.de",
+   "expected": "xn--xy-z7s.de",
+   "input": "x\u1ebey.de"
+  },
+  {
+   "config": "xn--xy-z7s.de",
+   "expected": "xn--xy-z7s.de",
+   "input": "x\u1ebfy.de"
+  },
+  {
+   "config": "xn--xy-57s.de",
+   "expected": "xn--xy-57s.de",
+   "input": "x\u1ec0y.de"
+  },
+  {
+   "config": "xn--xy-57s.de",
+   "expected": "xn--xy-57s.de",
+   "input": "x\u1ec1y.de"
+  },
+  {
+   "config": "xn--xy-c8s.de",
+   "expected": "xn--xy-c8s.de",
+   "input": "x\u1ec2y.de"
+  },
+  {
+   "config": "xn--xy-c8s.de",
+   "expected": "xn--xy-c8s.de",
+   "input": "x\u1ec3y.de"
+  },
+  {
+   "config": "xn--xy-i8s.de",
+   "expected": "xn--xy-i8s.de",
+   "input": "x\u1ec4y.de"
+  },
+  {
+   "config": "xn--xy-i8s.de",
+   "expected": "xn--xy-i8s.de",
+   "input": "x\u1ec5y.de"
+  },
+  {
+   "config": "xn--xy-o8s.de",
+   "expected": "xn--xy-o8s.de",
+   "input": "x\u1ec6y.de"
+  },
+  {
+   "config": "xn--xy-o8s.de",
+   "expected": "xn--xy-o8s.de",
+   "input": "x\u1ec7y.de"
+  },
+  {
+   "config": "xn--xy-u8s.de",
+   "expected": "xn--xy-u8s.de",
+   "input": "x\u1ec8y.de"
+  },
+  {
+   "config": "xn--xy-u8s.de",
+   "expected": "xn--xy-u8s.de",
+   "input": "x\u1ec9y.de"
+  },
+  {
+   "config": "xn--xy-08s.de",
+   "expected": "xn--xy-08s.de",
+   "input": "x\u1ecay.de"
+  },
+  {
+   "config": "xn--xy-08s.de",
+   "expected": "xn--xy-08s.de",
+   "input": "x\u1ecby.de"
+  },
+  {
+   "config": "xn--xy-68s.de",
+   "expected": "xn--xy-68s.de",
+   "input": "x\u1eccy.de"
+  },
+  {
+   "config": "xn--xy-68s.de",
+   "expected": "xn--xy-68s.de",
+   "input": "x\u1ecdy.de"
+  },
+  {
+   "config": "xn--xy-d9s.de",
+   "expected": "xn--xy-d9s.de",
+   "input": "x\u1ecey.de"
+  },
+  {
+   "config": "xn--xy-d9s.de",
+   "expected": "xn--xy-d9s.de",
+   "input": "x\u1ecfy.de"
+  },
+  {
+   "config": "xn--xy-j9s.de",
+   "expected": "xn--xy-j9s.de",
+   "input": "x\u1ed0y.de"
+  },
+  {
+   "config": "xn--xy-j9s.de",
+   "expected": "xn--xy-j9s.de",
+   "input": "x\u1ed1y.de"
+  },
+  {
+   "config": "xn--xy-p9s.de",
+   "expected": "xn--xy-p9s.de",
+   "input": "x\u1ed2y.de"
+  },
+  {
+   "config": "xn--xy-p9s.de",
+   "expected": "xn--xy-p9s.de",
+   "input": "x\u1ed3y.de"
+  },
+  {
+   "config": "xn--xy-v9s.de",
+   "expected": "xn--xy-v9s.de",
+   "input": "x\u1ed4y.de"
+  },
+  {
+   "config": "xn--xy-v9s.de",
+   "expected": "xn--xy-v9s.de",
+   "input": "x\u1ed5y.de"
+  },
+  {
+   "config": "xn--xy-19s.de",
+   "expected": "xn--xy-19s.de",
+   "input": "x\u1ed6y.de"
+  },
+  {
+   "config": "xn--xy-19s.de",
+   "expected": "xn--xy-19s.de",
+   "input": "x\u1ed7y.de"
+  },
+  {
+   "config": "xn--xy-79s.de",
+   "expected": "xn--xy-79s.de",
+   "input": "x\u1ed8y.de"
+  },
+  {
+   "config": "xn--xy-79s.de",
+   "expected": "xn--xy-79s.de",
+   "input": "x\u1ed9y.de"
+  },
+  {
+   "config": "xn--xy-ebt.de",
+   "expected": "xn--xy-ebt.de",
+   "input": "x\u1eday.de"
+  },
+  {
+   "config": "xn--xy-ebt.de",
+   "expected": "xn--xy-ebt.de",
+   "input": "x\u1edby.de"
+  },
+  {
+   "config": "xn--xy-kbt.de",
+   "expected": "xn--xy-kbt.de",
+   "input": "x\u1edcy.de"
+  },
+  {
+   "config": "xn--xy-kbt.de",
+   "expected": "xn--xy-kbt.de",
+   "input": "x\u1eddy.de"
+  },
+  {
+   "config": "xn--xy-qbt.de",
+   "expected": "xn--xy-qbt.de",
+   "input": "x\u1edey.de"
+  },
+  {
+   "config": "xn--xy-qbt.de",
+   "expected": "xn--xy-qbt.de",
+   "input": "x\u1edfy.de"
+  },
+  {
+   "config": "xn--xy-wbt.de",
+   "expected": "xn--xy-wbt.de",
+   "input": "x\u1ee0y.de"
+  },
+  {
+   "config": "xn--xy-wbt.de",
+   "expected": "xn--xy-wbt.de",
+   "input": "x\u1ee1y.de"
+  },
+  {
+   "config": "xn--xy-2bt.de",
+   "expected": "xn--xy-2bt.de",
+   "input": "x\u1ee2y.de"
+  },
+  {
+   "config": "xn--xy-2bt.de",
+   "expected": "xn--xy-2bt.de",
+   "input": "x\u1ee3y.de"
+  },
+  {
+   "config": "xn--xy-8bt.de",
+   "expected": "xn--xy-8bt.de",
+   "input": "x\u1ee4y.de"
+  },
+  {
+   "config": "xn--xy-8bt.de",
+   "expected": "xn--xy-8bt.de",
+   "input": "x\u1ee5y.de"
+  },
+  {
+   "config": "xn--xy-fct.de",
+   "expected": "xn--xy-fct.de",
+   "input": "x\u1ee6y.de"
+  },
+  {
+   "config": "xn--xy-fct.de",
+   "expected": "xn--xy-fct.de",
+   "input": "x\u1ee7y.de"
+  },
+  {
+   "config": "xn--xy-lct.de",
+   "expected": "xn--xy-lct.de",
+   "input": "x\u1ee8y.de"
+  },
+  {
+   "config": "xn--xy-lct.de",
+   "expected": "xn--xy-lct.de",
+   "input": "x\u1ee9y.de"
+  },
+  {
+   "config": "xn--xy-rct.de",
+   "expected": "xn--xy-rct.de",
+   "input": "x\u1eeay.de"
+  },
+  {
+   "config": "xn--xy-rct.de",
+   "expected": "xn--xy-rct.de",
+   "input": "x\u1eeby.de"
+  },
+  {
+   "config": "xn--xy-xct.de",
+   "expected": "xn--xy-xct.de",
+   "input": "x\u1eecy.de"
+  },
+  {
+   "config": "xn--xy-xct.de",
+   "expected": "xn--xy-xct.de",
+   "input": "x\u1eedy.de"
+  },
+  {
+   "config": "xn--xy-3ct.de",
+   "expected": "xn--xy-3ct.de",
+   "input": "x\u1eeey.de"
+  },
+  {
+   "config": "xn--xy-3ct.de",
+   "expected": "xn--xy-3ct.de",
+   "input": "x\u1eefy.de"
+  },
+  {
+   "config": "xn--xy-9ct.de",
+   "expected": "xn--xy-9ct.de",
+   "input": "x\u1ef0y.de"
+  },
+  {
+   "config": "xn--xy-9ct.de",
+   "expected": "xn--xy-9ct.de",
+   "input": "x\u1ef1y.de"
+  },
+  {
+   "config": "xn--xy-gdt.de",
+   "expected": "xn--xy-gdt.de",
+   "input": "x\u1ef2y.de"
+  },
+  {
+   "config": "xn--xy-gdt.de",
+   "expected": "xn--xy-gdt.de",
+   "input": "x\u1ef3y.de"
+  },
+  {
+   "config": "xn--xy-mdt.de",
+   "expected": "xn--xy-mdt.de",
+   "input": "x\u1ef4y.de"
+  },
+  {
+   "config": "xn--xy-mdt.de",
+   "expected": "xn--xy-mdt.de",
+   "input": "x\u1ef5y.de"
+  },
+  {
+   "config": "xn--xy-sdt.de",
+   "expected": "xn--xy-sdt.de",
+   "input": "x\u1ef6y.de"
+  },
+  {
+   "config": "xn--xy-sdt.de",
+   "expected": "xn--xy-sdt.de",
+   "input": "x\u1ef7y.de"
+  },
+  {
+   "config": "xn--xy-ydt.de",
+   "expected": "xn--xy-ydt.de",
+   "input": "x\u1ef8y.de"
+  },
+  {
+   "config": "xn--xy-ydt.de",
+   "expected": "xn--xy-ydt.de",
+   "input": "x\u1ef9y.de"
+  },
+  {
+   "config": "xn--xy-4dt.de",
+   "expected": "xn--xy-4dt.de",
+   "input": "x\u1efay.de"
+  },
+  {
+   "config": "xn--xy-4dt.de",
+   "expected": "xn--xy-4dt.de",
+   "input": "x\u1efby.de"
+  },
+  {
+   "config": "xn--xy-bet.de",
+   "expected": "xn--xy-bet.de",
+   "input": "x\u1efcy.de"
+  },
+  {
+   "config": "xn--xy-bet.de",
+   "expected": "xn--xy-bet.de",
+   "input": "x\u1efdy.de"
+  },
+  {
+   "config": "xn--xy-het.de",
+   "expected": "xn--xy-het.de",
+   "input": "x\u1efey.de"
+  },
+  {
+   "config": "xn--xy-het.de",
+   "expected": "xn--xy-het.de",
+   "input": "x\u1effy.de"
+  },
+  {
+   "config": null,
+   "expected": "xn--xii-7ka3c.de",
+   "input": "\u217b\u00e9\u00df.de"
+  },
+  {
+   "config": null,
+   "expected": null,
+   "input": "\u0301\u00f6\u00e9.\u00d6zx\u200d\u00c9\u00df9.de"
+  },
+  {
+   "config": null,
+   "expected": null,
+   "input": "-bz\u217b\u1d43\u217b\u1d43\u1d43\u1d43.de"
+  },
+  {
+   "config": null,
+   "expected": null,
+   "input": "\u0301.de"
+  },
+  {
+   "config": null,
+   "expected": "xn--aa-uiaca0ad4h4b918a.de",
+   "input": "\u00fc\u00c4\u00c9\u00f6\u0301\u1d43\u1d43\u00c4\u00c9\u00e4.de"
+  },
+  {
+   "config": null,
+   "expected": null,
+   "input": "x\u00f6\u1d43\u00f6\u00c4b\u00df .de"
+  },
+  {
+   "config": null,
+   "expected": null,
+   "input": "\u0301\u200da\u00fc.de"
+  },
+  {
+   "config": null,
+   "expected": null,
+   "input": "\u00e9\u00df_y.de"
+  },
+  {
+   "config": null,
+   "expected": null,
+   "input": "-\u00df\u00e9.de"
+  },
+  {
+   "config": "xn--c-0fa8c.de",
+   "expected": "xn--c-0fa8c.de",
+   "input": "c\u00e4\u00d6.de"
+  },
+  {
+   "config": null,
+   "expected": null,
+   "input": "c.yxz.\u1d43_.de"
+  },
+  {
+   "config": null,
+   "expected": null,
+   "input": "x\u00d6\u00c4  \u1d43bc_c\u00c4.de"
+  },
+  {
+   "config": "xn--c-9fa.de",
+   "expected": "xn--c-9fa.de",
+   "input": "\u00e9c.de"
+  },
+  {
+   "config": null,
+   "expected": null,
+   "input": "\u200d\u0301\u200dcy\u00f6\u00df.de"
+  },
+  {
+   "config": null,
+   "expected": null,
+   "input": "\u200dz.de"
+  },
+  {
+   "config": null,
+   "expected": null,
+   "input": " 9__\u00d6.de"
+  },
+  {
+   "config": "xn--y-qfa.de",
+   "expected": "xn--y-qfa.de",
+   "input": "y\u00df.de"
+  },
+  {
+   "config": null,
+   "expected": null,
+   "input": " \u00d6 _0\u00fc\u1d43a\u00d6\u00fcc\u00e4.de"
+  },
+  {
+   "config": null,
+   "expected": null,
+   "input": "b\u0301\u0301.\u200d\u1d43\u00f6.de"
+  },
+  {
+   "config": null,
+   "expected": "xn--xii-goa.de",
+   "input": "\u00fc\u217b.de"
+  },
+  {
+   "config": null,
+   "expected": null,
+   "input": "\u00e4\u00e9\u1d43\u00df_\u217b0.de"
+  },
+  {
+   "config": "9.de",
+   "expected": "9.de",
+   "input": "9.de"
+  },
+  {
+   "config": "xn--aa-uiaa.de",
+   "expected": "xn--aa-uiaa.de",
+   "input": "\u00c4\u00c4aa.de"
+  },
+  {
+   "config": null,
+   "expected": null,
+   "input": "b0\u00df\u200d9\u00c9b.de"
+  },
+  {
+   "config": null,
+   "expected": "xn--xii9z-9rae9hy7t.xn--0-eha.de",
+   "input": "\u00c9\u217b9\u00e9z\u00f6\u0301.0\u00fc.de"
+  },
+  {
+   "config": null,
+   "expected": null,
+   "input": "\u1d43\u200d.de"
+  },
+  {
+   "config": null,
+   "expected": null,
+   "input": "xa\u200d-.de"
+  },
+  {
+   "config": null,
+   "expected": null,
+   "input": "z\u200d\u200d\u1d43\u00e9\u00df\u00d6c ay\u217b.de"
+  },
+  {
+   "config": null,
+   "expected": null,
+   "input": "\u200d\u00c40\u00e9x\u00f6.de"
+  },
+  {
+   "config": null,
+   "expected": "xn--0xiixb-eua51js2gca.de",
+   "input": "0\u217b\u00e4x\u0301z\u0301b\u0301.de"
+  },
+  {
+   "config": null,
+   "expected": "a.de",
+   "input": "\u1d43.de"
+  },
+  {
+   "config": null,
+   "expected": null,
+   "input": "zz-.de"
+  },
+  {
+   "config": null,
+   "expected": null,
+   "input": "\u00c4\u00e9\u00c4\u00d6\u1d43\u00c9_.de"
+  },
+  {
+   "config": null,
+   "expected": null,
+   "input": "9.\u00fc  \u00df-\u00e4\u1d43.de"
+  },
+  {
+   "config": null,
+   "expected": null,
+   "input": "y\u00f6\u217by\u00c9a\u00e4\u00e9 \u00c4\u00fc-.de"
+  },
+  {
+   "config": null,
+   "expected": null,
+   "input": "\u200dx\u00c4\u00df\u00fc\u00f6x\u00c9.de"
+  },
+  {
+   "config": null,
+   "expected": null,
+   "input": ".\u00fcxbz\u00e4xa \u1d43.de"
+  },
+  {
+   "config": "c.de",
+   "expected": "c.de",
+   "input": "c.de"
+  },
+  {
+   "config": null,
+   "expected": null,
+   "input": "z.\u00c4\u200d\u1d43\u00df\u00d6x9x\u217b\u00f6.de"
+  },
+  {
+   "config": null,
+   "expected": null,
+   "input": "0\u00c4_\u217b\u00c4.de"
+  },
+  {
+   "config": "xn--a-c-plac5aa.de",
+   "expected": "xn--a-c-plac5aa.de",
+   "input": "\u00e4a-\u00c4c\u00e9\u00c9.de"
+  },
+  {
+   "config": "xn--bxb-plac3i.de",
+   "expected": "xn--bxb-plac3i.de",
+   "input": " \u00e4bx\u00e4b\u00f6.de"
+  },
+  {
+   "config": null,
+   "expected": null,
+   "input": "0\u00c9 b\u00e4a\u00f6\u00c4.de"
+  },
+  {
+   "config": "xn--nda06h.de",
+   "expected": "xn--nda06h.de",
+   "input": "\u00f6\u0301.de"
+  },
+  {
+   "config": null,
+   "expected": "xn--z-y-ioa.ya.de",
+   "input": "z-\u00fcy.y\u1d43.de"
+  },
+  {
+   "config": null,
+   "expected": null,
+   "input": "cz\u200d \u00e4.de"
+  },
+  {
+   "config": null,
+   "expected": null,
+   "input": "--z\u1d430\u00df_.de"
+  },
+  {
+   "config": null,
+   "expected": null,
+   "input": "\u00dfy\u00df \u217b\u00e9\u1d439\u00e4.de"
+  },
+  {
+   "config": null,
+   "expected": null,
+   "input": "acz\u200d\u00e4 \u00e4z\u00df\u217b.\u00e9.de"
+  },
+  {
+   "config": null,
+   "expected": null,
+   "input": "\u00c4.\u00e4_yc\u00c4z.de"
+  },
+  {
+   "config": null,
+   "expected": null,
+   "input": "b._\u00c4c\u0301\u00f6\u0301\u00d6yb\u00df.de"
+  },
+  {
+   "config": null,
+   "expected": null,
+   "input": "zb a\u00f6yx\u00e4\u00fc.de"
+  },
+  {
+   "config": null,
+   "expected": null,
+   "input": "a-.de"
+  },
+  {
+   "config": null,
+   "expected": null,
+   "input": ".\u00e9z\u0301.-z0\u00c49\u00fc.de"
+  },
+  {
+   "config": "xn--9ab-rnaca.de",
+   "expected": "xn--9ab-rnaca.de",
+   "input": "\u00d69a\u00d6\u00f6b.de"
+  },
+  {
+   "config": null,
+   "expected": null,
+   "input": "y\u00e9\u00e9\u200d\u00c4\u00fc\u200d.de"
+  },
+  {
+   "config": null,
+   "expected": null,
+   "input": "\u00d6.zb\u00f6_\u00d6.0\u1d439\u00e4.de"
+  },
+  {
+   "config": null,
+   "expected": null,
+   "input": "0\u1d43-..de"
+  }
+ ],
+ "source": "mailgun_relay.policy.normalize_domain (config: the D-10 set)"
+}

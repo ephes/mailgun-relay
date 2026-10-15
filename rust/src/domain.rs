@@ -1,11 +1,13 @@
 //! Domain and allowlist-address normalisation (PLAN.md 2.6, D-10, D-17).
 //!
-//! S1 needs the configuration side: `relay:policy.py` `normalize_domain` and
-//! `normalize_address` as `relay:config.py` applies them to the secrets file
-//! and to `ENVELOPE_SENDER`. Configuration never accepts more than Python, so
-//! configured domains are restricted to a Latin character set (D-10) and
-//! configured addresses to ASCII local parts (D-17). S2 pins the runtime
-//! normalisation against the `domain.json` corpus.
+//! Two users: the path domain of a request ([`normalize_domain`], pinned by
+//! `fixtures/domain.json`; garbage Python refuses with 400 may map to an
+//! A-label here and get 403, D-10), and the configuration
+//! (`relay:config.py` applies `normalize_domain` and `normalize_address` to
+//! the secrets file and to `ENVELOPE_SENDER`). Configuration never accepts
+//! more than Python, so configured domains are restricted to a Latin
+//! character set (D-10) and configured addresses to ASCII local parts
+//! (D-17).
 
 use idna::uts46::{AsciiDenyList, DnsLength, Hyphens, Uts46};
 
@@ -35,8 +37,8 @@ pub fn normalize_domain(value: &str) -> Result<String, String> {
 /// (D-10): ASCII letters, digits, `-`, `.`, the Latin letters of Latin-1,
 /// Latin Extended-A/B, IPA Extensions and Latin Extended Additional, and the
 /// combining diacritical marks. Python's IDNA2008 tables accept all of them
-/// wherever UTS46 does, so a domain that passes here and in `idna` also loads
-/// in Python.
+/// wherever UTS46 does (checked for each one by `fixtures/domain.json`), so a
+/// domain that passes here and in `idna` also loads in Python.
 fn is_config_domain_char(c: char) -> bool {
     matches!(c,
         'a'..='z' | '0'..='9' | '-' | '.'
@@ -91,7 +93,40 @@ pub fn normalize_config_address(value: &str) -> Result<String, String> {
 
 #[cfg(test)]
 mod tests {
+    use serde_json::Value;
+
     use super::*;
+
+    /// Every case of `fixtures/domain.json`: `normalize_domain` as Python
+    /// (D-10 cases: an A-label where Python refuses, which no configured
+    /// domain can equal), the configuration side within the D-10 set.
+    /// Property: whenever Rust accepts a configured domain, Python accepts
+    /// it with the same A-label.
+    #[test]
+    fn domain_fixture() {
+        let fixture: Value = serde_json::from_str(include_str!("../fixtures/domain.json")).unwrap();
+        let cases = fixture["cases"].as_array().unwrap();
+        assert!(cases.len() >= 100);
+        let mut mismatches = Vec::new();
+        for case in cases {
+            let input = case["input"].as_str().unwrap();
+            let runtime = normalize_domain(input).ok();
+            let config = normalize_config_domain(input).ok();
+            if runtime.as_deref() != case["expected"].as_str()
+                || config.as_deref() != case["config"].as_str()
+            {
+                mismatches.push(format!("{case}: {runtime:?} {config:?}"));
+            }
+            if case["divergence"] == "D-10" {
+                assert!(case["python"].is_null() && runtime.is_some(), "{case}");
+                assert!(
+                    normalize_config_domain(&runtime.unwrap()).is_err(),
+                    "{case}"
+                );
+            }
+        }
+        assert!(mismatches.is_empty(), "{mismatches:#?}");
+    }
 
     #[test]
     fn config_domains() {

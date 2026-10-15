@@ -188,3 +188,27 @@ def test_idn_from_domain_is_compared_as_a_label() -> None:
         enforce_policy(p, path_domain="xn--wersdrfer-47a.de", from_address=sender)
     with pytest.raises(PolicyError):
         enforce_policy(p, path_domain="xn--wersdrfer-47a.de", from_address="a@wersdoerfer.de")
+
+
+# Path-domain decisions the Rust port reproduces (rust/fixtures/domain.json).
+
+
+@pytest.mark.parametrize(
+    ("value", "a_label"),
+    [
+        ("WERSDÖRFER.DE", "xn--wersdrfer-47a.de"),
+        ("ß.de", "xn--zca.de"),
+        ("ⅻ.de", "xii.de"),
+        ("mg.wersdoerfer.de.", "mg.wersdoerfer.de."),
+        ("localhost", "localhost"),
+        ("\x1c mg.wersdoerfer.de\x85", "mg.wersdoerfer.de"),
+    ],
+)
+def test_normalize_domain_boundaries(value: str, a_label: str) -> None:
+    assert normalize_domain(value) == a_label
+
+
+@pytest.mark.parametrize("value", ["a_b.de", "xn--abc.de", "a..b", "-x.de", "☃.de", "a·b.de"])
+def test_normalize_domain_refuses(value: str) -> None:
+    with pytest.raises(InvalidAddressError):
+        normalize_domain(value)

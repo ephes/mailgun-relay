@@ -4,6 +4,29 @@ All notable changes to mailgun-relay are documented here.
 
 ## Unreleased
 
+### Authentication: malformed non-ASCII credentials are 401 (slice S2a)
+
+- `Authorization: Basic …` whose credentials contain a non-ASCII character
+  (a header byte ≥ 0x80) now answers 401 `Unauthorized` like every other
+  malformed credential. It answered 500 before: `base64.b64decode` raised a
+  plain `ValueError` that the auth check did not catch. No request that
+  authenticated before is affected.
+
+### Rust port: authentication and path domains (slice S2a)
+
+- `rust/src/auth.rs` authenticates as the Python service does (`Basic `
+  prefix, `str.strip()` whitespace, strict base64 with canonical padding and
+  lenient trailing bits, strict UTF-8, username `api`, constant-time
+  comparison of the SHA-256 against every token, the last match wins). It is
+  not wired to a route yet (S3).
+- New fixtures from the Python oracle: `auth.json` (121 headers) and
+  `domain.json` (1,003 path-domain inputs, among them every character of the
+  Latin set configured domains may use). Path domains Python refuses but the
+  `idna` crate maps (symbols, emoji, CONTEXTO characters) keep the decided
+  403 instead of 400 (`rust/PLAN.md` D-10).
+- `rust/PLAN.md` D-7 now says plainly that several case variants of a
+  variable fail the start even when one is the exact name.
+
 ### Rust port: `/health` and the startup record (slice S1d)
 
 - `mailgun-relay` without arguments now serves on `BIND_HOST:BIND_PORT`

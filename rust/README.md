@@ -7,11 +7,11 @@ production. [`TESTMAP.md`](TESTMAP.md) maps every Python test to its Rust
 counterpart.
 
 **Status: slice S1 of PLAN.md section 6 is done** (merged as S1a, S1c and
-S1d). The binary loads and validates the configuration, answers
-`GET /health`, the 404/405/307 fallbacks and the 413 body-limit layer, and
-logs the startup record. `POST /v3/{domain}/messages` does not exist yet
-(S2–S5); nothing deploys this code until the role is switched (PLAN.md
-section 9).
+S1d); S2 is in progress (S2a: authentication and path domains). The binary
+loads and validates the configuration, answers `GET /health`, the
+404/405/307 fallbacks and the 413 body-limit layer, and logs the startup
+record. `POST /v3/{domain}/messages` does not exist yet (S3–S5); nothing
+deploys this code until the role is switched (PLAN.md section 9).
 
 ## Build and check
 
@@ -49,8 +49,8 @@ PLAN.md section 3):
   other than `!!str`, `%YAML`/`%TAG` directives, recursive aliases, nesting
   deeper than 64 levels, empty plain mapping keys, TAB characters and the
   YAML 1.1 line breaks NEL/LS/PS anywhere in the file (D-6);
-- a variable set under several case variants of its name, the exact
-  upper-case name included (D-7);
+- a variable set under several case variants of its name, also when one of
+  them is the exact upper-case name (D-7);
 - configured domains (secrets file, non-ASCII `ENVELOPE_SENDER`) outside
   ASCII and the Latin letter blocks, also after IDNA mapping (D-10);
 - a non-ASCII local part in `allowed_from_addresses` (D-17);
@@ -90,7 +90,8 @@ src/main.rs     argv, runtime, startup record, graceful shutdown
 src/config.rs   MAILGUN_RELAY_* settings
 src/secrets.rs  secrets file (mode check, schema)
 src/yaml.rs     YAML 1.1 subset of PyYAML safe_load
-src/domain.rs   domain/address normalisation of the configuration
+src/auth.rs     HTTP Basic authentication against the token hashes
+src/domain.rs   domain normalisation (path domains, configuration)
 src/http.rs     413 layer, /health, 404/405/307 fallbacks
 src/log.rs      JSON line logger
 src/pystr.rs    Python str.strip() semantics

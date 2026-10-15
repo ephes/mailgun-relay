@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import base64
-import binascii
 import hashlib
 import hmac
 from collections.abc import Iterable
@@ -32,7 +31,10 @@ def authenticate(authorization: str | None, policies: Iterable[TokenPolicy]) -> 
     encoded = authorization[len("Basic ") :].strip()
     try:
         decoded = base64.b64decode(encoded, validate=True).decode("utf-8", errors="strict")
-    except (binascii.Error, UnicodeDecodeError) as exc:
+    except ValueError as exc:
+        # binascii.Error (bad base64) and UnicodeDecodeError are ValueErrors;
+        # b64decode raises a plain ValueError for non-ASCII input, e.g. a
+        # header byte >= 0x80 (headers are decoded as latin-1).
         raise AuthError("malformed Basic credentials") from exc
 
     if ":" not in decoded:

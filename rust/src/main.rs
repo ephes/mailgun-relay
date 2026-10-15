@@ -5,6 +5,8 @@
 //! server does, binds nothing, and exits 0 (valid) or 1 (invalid). Unknown
 //! arguments exit 2.
 
+#[cfg_attr(not(test), expect(dead_code, reason = "used by the pipeline slice S3"))]
+mod auth;
 mod config;
 mod domain;
 mod http;

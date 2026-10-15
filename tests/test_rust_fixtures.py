@@ -54,16 +54,28 @@ def test_drift_check_detects_a_hand_edited_fixture(generator: ModuleType, tmp_pa
     assert generator.check_fixtures(tmp_path) == ["config_env.json", "config_secrets.json"]
 
 
-def test_corpus_sizes_and_divergence_labels(generator: ModuleType) -> None:
-    """S1 acceptance (PLAN.md 6): >= 60 env sets, >= 40 YAML documents, and
-    every case where the Rust expectation differs names its D-entry."""
-    env = json.loads((generator.FIXTURES_DIR / "config_env.json").read_text(encoding="utf-8"))
-    secrets = json.loads(
-        (generator.FIXTURES_DIR / "config_secrets.json").read_text(encoding="utf-8")
-    )
-    assert len(env["cases"]) >= 60
-    assert len(secrets["cases"]) >= 40
-    for case in env["cases"]:
-        assert case.get("divergence", "D-7") in {"D-7", "D-10", "D-18"}, case["name"]
-    for case in secrets["cases"]:
-        assert case.get("divergence", "D-5") in {"D-5", "D-6", "D-10", "D-17"}, case["name"]
+def _cases(generator: ModuleType, name: str) -> list[dict[str, object]]:
+    content = json.loads((generator.FIXTURES_DIR / name).read_text(encoding="utf-8"))
+    cases: list[dict[str, object]] = content["cases"]
+    return cases
+
+
+@pytest.mark.parametrize(
+    ("name", "minimum", "labels"),
+    [
+        # S1 acceptance (PLAN.md 6): >= 60 env sets, >= 40 YAML documents.
+        ("config_env.json", 60, {"D-7", "D-10", "D-18"}),
+        ("config_secrets.json", 40, {"D-5", "D-6", "D-10", "D-17"}),
+        # S2 acceptance: >= 100 domains (D-11).
+        ("domain.json", 100, {"D-10"}),
+        ("auth.json", 60, set()),
+    ],
+)
+def test_corpus_sizes_and_divergence_labels(
+    generator: ModuleType, name: str, minimum: int, labels: set[str]
+) -> None:
+    """Every case where the Rust expectation differs names its D-entry."""
+    cases = _cases(generator, name)
+    assert len(cases) >= minimum
+    for case in cases:
+        assert case.get("divergence") in labels | {None}, case

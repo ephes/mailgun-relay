@@ -10,11 +10,14 @@ publish = false
 
 [dependencies]
 axum = { version = "0.8", default-features = false, features = ["http1", "tokio"] }
+base64 = { version = "0.22", default-features = false, features = ["std"] }
 idna = "1"
 regex = { version = "1", default-features = false, features = ["std"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+sha2 = { version = "0.10", default-features = false, features = ["std"] }
 socket2 = "0.6"
+subtle = { version = "2", default-features = false, features = ["std"] }
 tokio = { version = "1", features = ["rt", "net", "time", "signal", "sync", "macros", "io-util"] }
 yaml-rust2 = { version = "0.13", default-features = false }
 
