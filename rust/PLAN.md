@@ -3,7 +3,8 @@
 Status: plan, not yet implemented. Campaign `mailgun-relay-rust`, phase 2.
 Owner decisions of 2026-10-15 are incorporated (section 13); the plan starts
 with the Python fix slice S0-py (section 6), which is merged on `main` as
-`bc8880e`; its deploy to macmini is pending.
+`bc8880e` (336 Python tests); its deploy to macmini is approved by the owner
+and follows the 403 fix.
 
 This document is the contract for re-implementing the FastAPI service in
 `src/mailgun_relay` (1,744 lines, `origin/main` `13e274f`, run on macmini as
@@ -437,7 +438,7 @@ tokens:                                  # non-empty list
     token_sha256: <string>               # strip().lower() must match ^[0-9a-f]{64}$
     mailgun_domains: [<non-empty string>, ...]        # non-empty; normalize_domain
     allowed_from_domains: [<non-empty string>, ...]   # non-empty; normalize_domain
-    allowed_from_addresses: [<non-empty string>, ...] # optional; absent/null/[] → domain rule only; normalize_address
+    allowed_from_addresses: [<non-empty string>, ...] # optional; absent/null/[] → domain rule only; normalize_address; non-ASCII local part: Rust start failure (D-17)
 ```
 
 - Top level must be a mapping; unknown keys are ignored at every level.
@@ -557,7 +558,7 @@ Everything that differs and is not listed here or in 2.12 is a bug. The
 owner decided every entry on 2026-10-15 (section 13). D-1, D-2 and D-16 are
 fixed in Python first (slice S0-py), so after S0-py they are no longer
 differences between the implementations: the oracle, the fixtures and the
-harness use the fixed Python. Entries D-5 to D-12 and D-15 only affect exotic
+harness use the fixed Python. Entries D-5 to D-12, D-15 and D-17 only affect exotic
 input or configuration (Q4); their common rule is **fail closed**: where Rust
 and Python disagree, Rust may reject what Python accepts (or fail at start
 where Python starts), never the reverse.
@@ -580,6 +581,7 @@ where Python starts), never the reverse.
 | D-14 | MIME byte form (Python `email` folding, CTE heuristic, boundaries, `MIME-Version` in sub-parts, Date `+0000`). | lettre's form, 7-bit clean transfer encodings for non-ASCII bodies (no `8BITMIME` dependency). | free |
 | D-15 | `ENVELOPE_SENDER` is not validated; any string is sent in `MAIL FROM:<…>`; an IDN or non-ASCII value switches `smtplib` to SMTPUTF8 even for ASCII recipients (verified in the final review). | Empty → null sender (as Python). Python since S0-py: an ASCII value passes unchanged; a non-ASCII value has its domain converted to an A-label and a non-ASCII local part fails the start, so Q2's "no SMTPUTF8" also holds for `MAIL FROM`. Rust applies the same IDN/EAI rule and **additionally** requires a syntactically valid address (fail at start), the remaining divergence; an ASCII value is used unchanged (no lowercasing). Production renders `mailgun-relay@xn--wersdrfer-47a.de`. | Decided 2026-10-15 (Q2, Q4); IDN/EAI part via S0-py |
 | D-16 | A `to` or `cc` display name that decodes to CR or LF (`=?utf-8?B?YQ0KYg==?= <a@example.org>`) raises `ValueError` in the email package → **500**; the same in `h:Reply-To` is 400, in `from` 200 (measured). | **400** at the same position (step 9), like Reply-To. Same fix in Python (S0-py). | Decided 2026-10-15 (Q1); Python via S0-py |
+| D-17 | `allowed_from_addresses` entries with a non-ASCII (EAI) local part load fine (`normalize_address` only lowercases the local part), but since S0-py an EAI `from` is always 400 before the allowlist check, so such an entry can never match. Python stays unchanged. | The Rust config loader rejects such an entry and the start fails (`--check-config` reports it before any switch). Fail closed under Q4; the production policy contains no such entry today. Pinned in `config_secrets.json`. | Decided 2026-10-15 (coordinator, under Q4); S2 |
 
 Not divergences, recorded so nobody "fixes" them: empty subject accepted;
 recipient limit counted before de-duplication; header name case variants are
@@ -679,10 +681,10 @@ changed lines per slice excluding generated fixtures.
 
 | # | Slice | Scope | Depends on |
 | --- | --- | --- | --- |
-| S0-py | Python fix before the port (Q1, Q2) | Python-only change in `src/mailgun_relay` (branch `fix/s0-py-idn-eai-empty-body`): empty `text`/`html` without another body → 400 (D-1); To/Cc display name decoding to CR/LF → 400 (D-16); IDN domains as A-labels in From/To/Cc/Reply-To and the envelope, so `smtplib` never switches to SMTPUTF8 (D-2); EAI local parts → 400 in `from` (policy step) and in `to`/`cc`/`bcc`/Reply-To (step 9); `ENVELOPE_SENDER` normalised at startup (IDN domain → A-label, non-ASCII local part → start failure, empty stays the null sender, D-15); tests for each (both encodings, the allauth-style external IDN recipient, multi-fault order); `docs/api-compatibility.md`, README if affected, CHANGELOG; own review, own deploy to macmini | – (first; parallel to S1). **Status: merged on `main` as `bc8880e`, deploy pending** |
+| S0-py | Python fix before the port (Q1, Q2) | Python-only change in `src/mailgun_relay` (branch `fix/s0-py-idn-eai-empty-body`): empty `text`/`html` without another body → 400 (D-1); To/Cc display name decoding to CR/LF → 400 (D-16); IDN domains as A-labels in From/To/Cc/Reply-To and the envelope, so `smtplib` never switches to SMTPUTF8 (D-2); EAI local parts → 400 in `from` (policy step) and in `to`/`cc`/`bcc`/Reply-To (step 9); `ENVELOPE_SENDER` normalised at startup (IDN domain → A-label, non-ASCII local part → start failure, empty stays the null sender, D-15); tests for each (both encodings, the allauth-style external IDN recipient, multi-fault order); `docs/api-compatibility.md`, README if affected, CHANGELOG; own review, own deploy to macmini | – (first; parallel to S1). **Status: merged on `main` as `bc8880e`, deploy approved (after the 403 fix)** |
 | S1 | Skeleton, config, `/health` | MIT `LICENSE` at the repository root (Q6); package, toolchain, `deny.toml`, CI `rust` job; env settings (2.7), secrets loader with YAML 1.1 subset and mode check (2.8); `--version`, `--check-config`; startup record; axum server, `/health`, 404/405/307 fallbacks, 413 layer, graceful shutdown; fixture generator skeleton + drift test; `rust/README.md`; `.gitignore`; ops-library: `rust/target/` rsync exclude | – |
 | S1b | Spike: lettre and the live SMTP server | throwaway branch: lettre connection API can send MAIL + individual RCPT + DATA with partial refusal and expose reply codes; addresses the corpus accepts round-trip through lettre `Address`; feature names; **read-only** EHLO on macmini (`openssl s_client -starttls smtp`, EHLO, QUIT): `AUTH` mechanisms after STARTTLS, `SMTPUTF8`, `SIZE`. Result recorded in this plan. | – (parallel to S1) |
-| S2 | Auth and policy (security boundary) | `auth.rs`, `domain.rs`, `address.rs`, `policy.rs`; fixtures `auth.json`, `domain.json`, `address.json` (corpus), `policy.json`; Rust counterparts of `test_auth.py`, `test_policy.py`, the address parts of `test_headers.py`; Python tests added for every corpus case that pins a new boundary decision | S1, S0-py merged (the oracle must already carry the Q1/Q2 behaviour) |
+| S2 | Auth and policy (security boundary) | `auth.rs`, `domain.rs`, `address.rs`, `policy.rs`; fixtures `auth.json`, `domain.json`, `address.json` (corpus), `policy.json`; Rust counterparts of `test_auth.py`, `test_policy.py`, the address parts of `test_headers.py`; Python tests added for every corpus case that pins a new boundary decision; config loader rejects allowlist entries with a non-ASCII local part (D-17) | S1, S0-py merged (the oracle must already carry the Q1/Q2 behaviour) |
 | S3 | Request parsing and pipeline | `form.rs` (both encodings, limits), `pipeline.rs` (2.3 steps 1–9 with a stub submitter), header/subject validation, error mapping, response JSON, `event=request` record; fixtures `headers.json`; counterparts of `test_messages_endpoint.py` (non-SMTP), `test_headers.py`, `test_body_limit.py` | S2 |
 | S4 | MIME construction | `mime.rs` with lettre builder (2.10), envelope and de-duplication, Message-Id/Date, inline/related/mixed, container downgrade, Reply-To; IDN as A-labels, EAI rejected (Q2); semantic tests by parsing the output; counterparts of `test_mime_build.py` | S2 (parallel to S3) |
 | S5 | SMTP submission | `smtp.rs` on lettre's connection API: STARTTLS with system roots + CA file, AUTH, per-recipient RCPT, partial refusal, classification of 2.4, QUIT/close cleanup records, concurrency semaphore, per-operation timeout, `recipients_refused` and `smtp_cleanup_failed` records; scripted fake SMTP server tests mirroring `test_smtp_submission.py`, `test_smtp_outcomes.py`, `test_nonblocking_submit.py` | S1b, S3, S4 |
@@ -726,7 +728,8 @@ Acceptance criteria (in addition to the green checks):
   macmini:587 (no credentials used, QUIT after EHLO), and any blocker. A
   blocker (no per-recipient handling, no PLAIN/LOGIN) stops the campaign at
   this point for an owner decision; no fallback to hand-rolled SMTP.
-- **S2**: every fixture case matches; corpus sizes as in D-11; a property
+- **S2**: every fixture case matches; a secrets file with an EAI entry in
+  `allowed_from_addresses` fails the start and `--check-config` (D-17); corpus sizes as in D-11; a property
   test over the corpus asserts "Rust accepts ⇒ Python accepts" for
   addresses, domains and auth; Python and Rust both test the production
   policy shapes (cross-domain path vs from, address allowlist, IDN allowlist).
@@ -1131,7 +1134,8 @@ The owner answered the questions of `handoff/p2-owner-questions.md` on
   **IDN as A-labels** in headers and envelope, no SMTPUTF8; **EAI local parts
   → 400** (fail closed); fixed in Python first (S0-py, own deploy).
 - **Q3** transport-level SMTP failures (D-3): **503** as Python.
-- **Q4** exotic input and configuration (D-5–D-11, D-15): **corpus-pinned
+- **Q4** exotic input and configuration (D-5–D-11, D-15, and D-17 by
+  coordinator decision under the same rule): **corpus-pinned
   parity** (≥ 400 addresses, ≥ 100 domains, config corpus from Python) with
   the fail-closed rule; every residual difference is listed in section 3; no
   re-implementation of `email_validator`, `idna` or PyYAML.
