@@ -6,6 +6,8 @@
 //! arguments exit 2.
 
 #[cfg_attr(not(test), expect(dead_code, reason = "used by the pipeline slice S3"))]
+mod address;
+#[cfg_attr(not(test), expect(dead_code, reason = "used by the pipeline slice S3"))]
 mod auth;
 mod config;
 mod domain;

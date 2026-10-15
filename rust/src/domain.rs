@@ -1,13 +1,14 @@
-//! Domain and allowlist-address normalisation (PLAN.md 2.6, D-10, D-17).
+//! Domain and allowlist-address normalisation (PLAN.md 2.6, D-10, D-11, D-17).
 //!
-//! Two users: the path domain of a request ([`normalize_domain`], pinned by
-//! `fixtures/domain.json`; garbage Python refuses with 400 may map to an
-//! A-label here and get 403, D-10), and the configuration
-//! (`relay:config.py` applies `normalize_domain` and `normalize_address` to
-//! the secrets file and to `ENVELOPE_SENDER`). Configuration never accepts
-//! more than Python, so configured domains are restricted to a Latin
-//! character set (D-10) and configured addresses to ASCII local parts
-//! (D-17).
+//! Three users: the path domain of a request ([`normalize_domain`], pinned
+//! by `fixtures/domain.json`; garbage Python refuses with 400 may map to an
+//! A-label here and get 403, D-10), the domain of an address
+//! ([`address_domain`], pinned by `fixtures/address.json`), and the
+//! configuration (`relay:config.py` applies `normalize_domain` and
+//! `normalize_address` to the secrets file and to `ENVELOPE_SENDER`).
+//! Configured and address domains never accept more than Python, so they are
+//! restricted to a Latin character set (D-10, D-11) and configured addresses
+//! to ASCII local parts (D-17).
 
 use idna::uts46::{AsciiDenyList, DnsLength, Hyphens, Uts46};
 
@@ -46,6 +47,11 @@ fn is_config_domain_char(c: char) -> bool {
         | '\u{250}'..='\u{2af}' | '\u{300}'..='\u{36f}' | '\u{1e00}'..='\u{1eff}')
 }
 
+/// The combining marks of the set (U+0300–U+036F, general category Mn).
+fn is_combining_mark(c: char) -> bool {
+    ('\u{300}'..='\u{36f}').contains(&c)
+}
+
 /// A domain from the configuration: the D-10 character set, then
 /// [`normalize_domain`]. The set applies to the input and to the Unicode form of the result, so
 /// neither a mapping (`ŀ` → `l·`) nor an A-label input (`xn--n3h`) can
@@ -66,6 +72,55 @@ pub fn normalize_config_domain(value: &str) -> Result<String, String> {
         return Err(outside());
     }
     Ok(ascii)
+}
+
+/// Special-use names `email_validator` refuses (`.test` is allowed with
+/// `test_environment=True`).
+const SPECIAL_USE: [&str; 5] = ["arpa", "invalid", "local", "localhost", "onion"];
+
+/// The domain of an address as `email_validator` 2.3 decides it with
+/// `test_environment=True` (PLAN.md 2.6), restricted to the character set of
+/// [`normalize_config_domain`] (D-11): the lowercase A-label. Trailing dots,
+/// empty labels, `_`, leading or trailing hyphens, `ab--` labels, invalid
+/// `xn--` labels, a leading combining mark, a missing dot (except `test`), a
+/// last character other than a letter, special-use names and DNS lengths are
+/// refused.
+pub fn address_domain(domain: &str) -> Option<String> {
+    if domain.is_empty() || !domain.to_lowercase().chars().all(is_config_domain_char) {
+        return None;
+    }
+    // `email_validator` refuses a combining mark at the start of the domain
+    // ("unsafe character"); UTS46 would drop U+034F there and accept.
+    if domain.starts_with(is_combining_mark) {
+        return None;
+    }
+    let ascii = Uts46::new()
+        .to_ascii(
+            domain.as_bytes(),
+            AsciiDenyList::STD3,
+            Hyphens::Check,
+            DnsLength::Verify,
+        )
+        .ok()?
+        .into_owned();
+    // An A-label input must already be in its canonical form.
+    if domain.is_ascii() && ascii != domain.to_ascii_lowercase() {
+        return None;
+    }
+    let (unicode, result) = idna::domain_to_unicode(&ascii);
+    if result.is_err() || !unicode.chars().all(is_config_domain_char) {
+        return None;
+    }
+    let labels_ok = unicode.split('.').all(|label| {
+        let chars: Vec<char> = label.chars().collect();
+        !label.starts_with('-') && !label.ends_with('-') && chars.get(2..4) != Some(&['-', '-'])
+    });
+    let ends_with_letter = ascii.ends_with(|c: char| c.is_ascii_alphabetic());
+    let special = SPECIAL_USE
+        .iter()
+        .any(|name| ascii == *name || ascii.ends_with(&format!(".{name}")));
+    let dotted = ascii.contains('.') || ascii == "test";
+    (labels_ok && ends_with_letter && dotted && !special).then_some(ascii)
 }
 
 /// `normalize_address` for `allowed_from_addresses`: strip, split at the last

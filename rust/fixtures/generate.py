@@ -37,10 +37,22 @@ from unittest import mock
 import idna
 import uvicorn.config
 import yaml
+from email_validator import EmailNotValidError, validate_email
 
 from mailgun_relay.auth import AuthError, authenticate
 from mailgun_relay.config import Settings, TokenPolicy, load_secrets
-from mailgun_relay.policy import InvalidAddressError, normalize_domain
+from mailgun_relay.headers import (
+    HeaderInjectionError,
+    contains_forbidden_control_chars,
+    parse_address_list,
+    parse_header_address_list,
+)
+from mailgun_relay.policy import (
+    InvalidAddressError,
+    normalize_address,
+    normalize_domain,
+    parse_email_strict,
+)
 
 FIXTURES_DIR = Path(__file__).resolve().parent
 
@@ -77,8 +89,194 @@ def _config_char(char: str) -> bool:
     )
 
 
+# ``is_combining_mark`` in rust/src/domain.rs: a domain may not start with one.
+COMBINING_MARKS = {chr(c) for c in range(0x300, 0x370)}
+
+
 def _config_chars_ok(domain: str) -> bool:
     return all(_config_char(char) for char in domain.strip().lower())
+
+
+# The mailbox grammar of rust/src/address.rs (PLAN.md 2.6, D-11), mirrored
+# here to derive the Rust expectation: a strict subset of what Python's
+# parser accepts. The generator asserts that every value it accepts gives
+# Python's result.
+
+_WORD_EXCLUDED = set('()<>@,:;"[]\\')
+_ADDR_EXCLUDED = set('()<>,:;"[]\\')
+_COMMENT_EXCLUDED = set('()\\",')
+
+
+class _GrammarError(Exception):
+    pass
+
+
+def _wsp(char: str) -> bool:
+    return char in " \t"
+
+
+def _word_char(char: str) -> bool:
+    return not _wsp(char) and char not in _WORD_EXCLUDED
+
+
+def _addr_char(char: str) -> bool:
+    return not _wsp(char) and char not in _ADDR_EXCLUDED
+
+
+class _Grammar:
+    def __init__(self, text: str) -> None:
+        self.text = text
+        self.pos = 0
+
+    def peek(self) -> str | None:
+        return self.text[self.pos] if self.pos < len(self.text) else None
+
+    def take(self, accept: Callable[[str], bool]) -> str:
+        start = self.pos
+        while self.pos < len(self.text) and accept(self.text[self.pos]):
+            self.pos += 1
+        return self.text[start : self.pos]
+
+    def cfws(self, comments: list[str]) -> None:
+        while (char := self.peek()) is not None:
+            if _wsp(char):
+                self.pos += 1
+            elif char == "(":
+                self.pos += 1
+                text = self.take(lambda c: c not in _COMMENT_EXCLUDED)
+                if self.peek() != ")":
+                    raise _GrammarError
+                self.pos += 1
+                comments.append(text)
+            else:
+                return
+
+    def quoted(self) -> str:
+        self.pos += 1
+        text = ""
+        while True:
+            char = self.peek()
+            if char is None:
+                raise _GrammarError
+            if char == '"':
+                self.pos += 1
+                return text
+            if char == "\\":
+                if self.pos + 1 >= len(self.text):
+                    raise _GrammarError
+                text += self.text[self.pos + 1]
+                self.pos += 2
+            else:
+                text += char
+                self.pos += 1
+
+    def mailbox(self) -> tuple[str, str]:
+        """(display name, addr-spec token) of the whole text."""
+        comments: list[str] = []
+        self.cfws(comments)
+        start = self.pos
+        token = self.take(_addr_char)
+        if "@" in token:
+            self.cfws(comments)
+            if self.peek() is not None:
+                raise _GrammarError
+            return " ".join(comments), token
+        self.pos = start
+        words = []
+        while True:
+            self.cfws(comments)
+            char = self.peek()
+            if char == '"':
+                words.append(self.quoted())
+            elif char is not None and _word_char(char):
+                words.append(self.take(_word_char))
+            elif char == "<":
+                break
+            else:
+                raise _GrammarError
+        display = " ".join(words)
+        if comments:
+            display += " (" + " ".join(comments) + ")"
+        self.pos += 1
+        self.take(_wsp)
+        token = self.take(_addr_char)
+        self.take(_wsp)
+        if self.peek() != ">":
+            raise _GrammarError
+        self.pos += 1
+        self.cfws([])
+        if self.peek() is not None:
+            raise _GrammarError
+        return display, token
+
+
+def _split_list(text: str) -> list[str]:
+    parts, start, quoted, escaped = [], 0, False, False
+    for i, char in enumerate(text):
+        if escaped:
+            escaped = False
+        elif char == "\\" and quoted:
+            escaped = True
+        elif char == '"':
+            quoted = not quoted
+        elif char == "," and not quoted:
+            parts.append(text[start:i])
+            start = i + 1
+    return [*parts, text[start:]]
+
+
+Mailbox = tuple[str, str, str]  # display name, addr-spec, policy address
+
+
+def _rust_token(display: str, token: str) -> Mailbox | None:
+    """The addr-spec rules of ``validate`` in rust/src/address.rs: Python's
+    ``email_validator`` decision, restricted to the Latin set (D-11)."""
+    try:
+        result = validate_email(
+            token, check_deliverability=False, test_environment=True, allow_smtputf8=False
+        )
+    except EmailNotValidError:
+        return None
+    raw_domain = token.partition("@")[2]
+    if raw_domain[:1] in COMBINING_MARKS:
+        return None
+    ascii_email = result.ascii_email or ""
+    local, _, ascii_domain = ascii_email.rpartition("@")
+    if not all(_config_char(c) for c in raw_domain.lower()):
+        return None
+    if not _config_chars_ok(idna.decode(ascii_domain)):
+        return None
+    return display, ascii_email, f"{local.lower()}@{ascii_domain}"
+
+
+def rust_mailbox(value: str) -> Mailbox | None:
+    """What ``address::parse_mailbox`` decides."""
+    if contains_forbidden_control_chars(value):
+        return None
+    return _rust_mailbox(value)
+
+
+def _rust_mailbox(value: str) -> Mailbox | None:
+    try:
+        display, token = _Grammar(value).mailbox()
+    except _GrammarError:
+        return None
+    return _rust_token(display, token)
+
+
+def rust_mailbox_list(value: str) -> list[Mailbox] | None:
+    """What ``address::parse_mailbox_list`` decides."""
+    if contains_forbidden_control_chars(value):
+        return None
+    mailboxes = [_rust_mailbox(part) for part in _split_list(value)]
+    return None if None in mailboxes else [m for m in mailboxes if m is not None]
+
+
+def rust_addr_spec(value: str) -> Mailbox | None:
+    """What ``address::parse_addr_spec`` decides (ENVELOPE_SENDER, D-15)."""
+    if not all(_addr_char(c) for c in value):
+        return None
+    return _rust_token("", value)
 
 
 # -------------------------------------------------------------- config_env
@@ -148,6 +346,8 @@ def _rust_start(env: Env) -> tuple[dict[str, Any] | None, str | None]:
     a_label = result["envelope_sender"].rpartition("@")[2]
     if not sender.isascii() and not config_domain_ok(sender.rpartition("@")[2], a_label):
         return None, "D-10"
+    if result["envelope_sender"] and rust_addr_spec(result["envelope_sender"]) is None:
+        return None, "D-15"
     return result, None
 
 
@@ -226,6 +426,10 @@ def _env_cases() -> list[tuple[str, Env]]:
     senders += ["@wersdörfer.de", "wersdörfer.de", "a@b@wersdörfer.de", "relay@wersdörfer..de"]
     senders += ["relay@Ⅻ.de", f"relay@{PAYPAL}.de", "relay@☃.de"]
     senders += ["relay@\u0140.de", "relay@xn--n3h.\u00fc", "relay@xn--wersdrfer-47a.\u00fc"]
+    senders += ["relay@localhost", "relay@example", "relay@x.local", "relay@[192.0.2.1]"]
+    senders += ["<relay@example.org>", "Relay <relay@example.org>", "relay @example.org"]
+    senders += ["bounce@example.test", "a..b@example.org", "relay@exa_mple.org", "relay@"]
+    senders += ["relay@wersdörfer.local", "relay@wersdörfer"]
     cases += [(f"envelope sender {v!r}", [(f"{PREFIX}ENVELOPE_SENDER", v)]) for v in senders]
     cases += [
         ("lower-case name", [("mailgun_relay_smtp_port", "25")]),
@@ -809,9 +1013,380 @@ def build_domain() -> dict[str, Any]:
     }
 
 
+# ----------------------------------------------------------------- address
+
+U_LABEL = "wersdörfer.de"
+A_LABEL = "xn--wersdrfer-47a.de"
+
+
+def _address_inputs() -> list[str]:
+    inputs = [
+        # Python tests (test_headers.py, test_policy.py, test_idn_addresses.py,
+        # test_messages_endpoint.py).
+        "a@x.test",
+        "b@y.test",
+        "Alice <alice@x.test>",
+        "alice@x.test\nBcc: evil@y.test",
+        "not an address",
+        "bad@bad domain",
+        "a@x..test",
+        "foo@",
+        "@bar.com",
+        "user@-.example.com",
+        "no-at-sign",
+        '"Doe, Jane" <jane@example.test>',
+        "a@x.test, b@y.test, Carol <c@z.test>",
+        "a@x.test,\nb@y.test",
+        "a@x.test, bad@bad domain",
+        f"foo@{U_LABEL}",
+        "foo@WERSDÖRFER.de",
+        f"foo@{A_LABEL}",
+        f"Jörg <foo@{U_LABEL}>",
+        "Some.User@Example.TEST",
+        "x@wersdoerfer.de",
+        "someone@wersdörfer.de",
+        "Jochen-Homepage@wersdoerfer.de",
+        "Jochen <jochen@wersdörfer.de>",
+        "someone-else@wersdoerfer.de",
+        "not-an-email",
+        "ok@wersdoerfer.de\nBcc: evil@wersdoerfer.de",
+        "Jörg <jörg@wersdoerfer.de>",
+        "jörg@wersdoerfer.de",
+        "jörg@example.org",
+        "A <a@WERSDÖRFER.DE>",
+        f"Cc Person <cc@{U_LABEL}>",
+        "hidden@bü.test",
+        f"Jörg <reply@{U_LABEL}>, other@bü.test",
+        "support@wersdoerfer.de, jörg@example.org",
+        "intruder@example.org",
+        "Anyone <anyone@wersdoerfer.de>",
+        f"visitor@{U_LABEL}",
+        "=?utf-8?B?YQ0KYg==?= <victim@wersdoerfer.de>",
+        "gone-user@Example.org",
+        "a@wersdoerfer.de, b@wersdoerfer.de",
+        # Production shapes (fix-403-diagnosis.md 1.3, 1.4).
+        "Homepage <jochen-homepage@wersdoerfer.de>",
+        "jochen-django@wersdoerfer.de",
+        "Python Podcast <noreply@mg.python-podcast.de>",
+        "noreply@email.mg.staging.django-cast.com",
+        "noreply@konektom.org",
+        "jochen-villakunterbunt@wersdoerfer.de",
+        "recorder@wersdoerfer.de",
+        "webmaster@localhost",
+        "mailgun-relay@xn--wersdrfer-47a.de",
+        "Jochen Wersdörfer <jochen@wersdoerfer.de>",
+        "=?utf-8?b?Sm9jaGVuIFdlcnNkw7ZyZmVy?= <jochen@wersdoerfer.de>",
+        '"Wersdörfer, Jochen" <jochen@wersdoerfer.de>',
+        # Mailbox forms.
+        " a@x.de ",
+        "\ta@x.de\t",
+        "Jane<a@x.de>",
+        '"Jane" <a@x.de>',
+        "Doe, Jane <a@x.de>",
+        "Dr. Jane <a@x.de>",
+        "Dr.  Jane   Doe <a@x.de>",
+        "<a@x.de>",
+        "< a@x.de >",
+        "<\ta@x.de\t>",
+        "<a@x.de> trailing",
+        "a@x.de (Kommentar)",
+        "(Kommentar) a@x.de",
+        "(c1) a@x.de (c2)",
+        "a@x.de ()",
+        "Jane (c) <a@x.de>",
+        "(c) Jane <a@x.de>",
+        "(c) <a@x.de>",
+        "Jane <a@x.de> (c)",
+        "Jane <a@x.de> (c, d)",
+        "a@x.de (Doe, Jane)",
+        "a@x.de (a (nested) comment)",
+        "a@x.de (unclosed",
+        "a@x.de )",
+        "a@x.de (with \\) escape)",
+        'a@x.de (with "quote")',
+        "a . b@x.de",
+        "a@x . de",
+        "a@ x.de",
+        "a @x.de",
+        "a(c)@x.de",
+        "a@x.de(c)",
+        '"a b"@x.de',
+        '"ab"@x.de',
+        "a@[1.2.3.4]",
+        "a@[IPv6:::1]",
+        "a@x.de>",
+        "<a@x.de",
+        "Jane <a@x.de",
+        "Jane a@x.de>",
+        "Jörg <a@x.de>",
+        "=?utf-8?b?SsO2cmc=?= <a@x.de>",
+        "=?utf-8?q?J=C3=B6rg?= <a@x.de>",
+        "a@b@x.de",
+        "a,b@x.de",
+        "a;b@x.de",
+        "grp: a@x.de;",
+        "undisclosed-recipients:;",
+        "a@x.de, b@x.de",
+        "a@x.de,",
+        ",a@x.de",
+        "a@x.de,,b@x.de",
+        "a@x.de, ,b@x.de",
+        '"Doe, Jane" <a@x.de>, b@x.de',
+        '"a,b" <a@x.de>, "c,d" <c@x.de>',
+        "'Jane' <a@x.de>",
+        'Jane "Q" Doe <a@x.de>',
+        '"Jane \\"Q\\" Doe" <a@x.de>',
+        '"Jane\\\\ Doe" <a@x.de>',
+        '"Jane\\ Doe" <a@x.de>',
+        '"Jane  Doe" <a@x.de>',
+        '"" <a@x.de>',
+        '"Jane <a@x.de>',
+        '"Jane\\" <a@x.de>',
+        "Jane\\ Doe <a@x.de>",
+        "Jane <<a@x.de>>",
+        "Jane <a@x.de><b@x.de>",
+        "Jane <a@x.de> <b@x.de>",
+        "Jane: <a@x.de>",
+        "Jane; <a@x.de>",
+        "Ja[ne] <a@x.de>",
+        "Jane@home <a@x.de>",
+        "Jö rg <a@x.de>",
+        "J\u00a0D <a@x.de>",
+        "Jane\u3000Doe <a@x.de>",
+        ".Jane <a@x.de>",
+        "Jane. <a@x.de>",
+        "<a@x.de> <b@x.de>",
+        "a@x.de b@x.de",
+        "a@x.de\tb@x.de",
+        "a@x.de\x00",
+        "a@x.de\x7f",
+        "a@x.de\x85",
+        "a@x.de\u2028",
+        "Jane\x01 <a@x.de>",
+        "a@x.de\r\n",
+        "",
+        " ",
+        "@",
+        "<>",
+        "Jane <>",
+        "<@x.de>",
+        # Local parts.
+        "@x.de",
+        "a@",
+        ".a@x.de",
+        "a.@x.de",
+        "a..b@x.de",
+        "a.b.c@x.de",
+        "a+tag@x.de",
+        "a/b=c?d^e`f{g|h}i~j!k#l$m%n&o'p*q@x.de",
+        "o'brien@wersdoerfer.de",
+        "O'Brien <o'brien@wersdoerfer.de>",
+        "a\\b@x.de",
+        'a"b@x.de',
+        "a b@x.de",
+        "jörg@x.de",
+        "ä@x.de",
+        "a\u0308@x.de",
+        "é@x.de",
+        "日本@x.de",
+        "INFO@X.DE",
+        "Info <Postmaster@x.de>",
+        "Support@x.de",
+        "WebMaster@x.de",
+        "Infos@x.de",
+        "Sales.Team@x.de",
+        # Domains.
+        "a@x",
+        "a@test",
+        "a@x.test",
+        "a@localhost",
+        "a@x.localhost",
+        "a@x.local",
+        "a@x.invalid",
+        "a@x.onion",
+        "a@x.arpa",
+        "a@home.arpa",
+        "a@arpa",
+        "a@x.example",
+        "a@example.com",
+        "a@123.45",
+        "a@x.123",
+        "a@x.1a",
+        "a@x.a1",
+        "a@1.2.3.4",
+        "a@x.de.",
+        "a@.x.de",
+        "a@x..de",
+        "a@x_y.de",
+        "a@-x.de",
+        "a@x-.de",
+        "a@x.-de",
+        "a@ab--c.de",
+        "a@xn--abc.de",
+        "a@xn--4ca.de",
+        "a@XN--4CA.DE",
+        "a@xn--wersdrfer-47a.DE",
+        "a@xn--n3h.de",
+        "a@ä.de",
+        "a@a\u0308.de",
+        "a@\u0308a.de",
+        "a@ß.de",
+        "a@ẞ.de",
+        "a@İ.de",
+        "a@ŀ.de",
+        "a@ŉ.de",
+        "a@ǆ.de",
+        "a@☃.de",
+        "a@\U0001f600.de",
+        "a@ⅻ.de",
+        f"a@{FULLWIDTH_A}.de",
+        "a@x\uff0ede",
+        "a@x。de",
+        "a@αβ.gr",
+        "a@пример.рф",
+        "a@例子.中国",
+        f"a@{PAYPAL}.de",
+        "a@a\u200db.de",
+        "a@l·l.cat",
+        "a@x.de\u00ad",
+        "a@x\uff20y.de",
+        # Lengths: local 63-66, labels 63/64, domain 253/254, address 254/255.
+        "a" * 63 + "@x.de",
+        "a" * 64 + "@x.de",
+        "a" * 65 + "@x.de",
+        "a" * 66 + "@x.de",
+        "a@" + "b" * 63 + ".de",
+        "a@" + "b" * 64 + ".de",
+        "a@" + ".".join(["b" * 63] * 3) + "." + "c" * 61,
+        "a@" + ".".join(["b" * 63] * 3) + "." + "c" * 62,
+        "a" * 64 + "@" + ".".join(["b" * 63, "c" * 63, "d" * 58]) + ".de",
+        "a" * 64 + "@" + ".".join(["b" * 63, "c" * 63, "d" * 59]) + ".de",
+        "a" * 100 + "@" + "b" * 63 + "." + "c" * 63 + "." + "d" * 20 + ".de",
+        "a" * 100 + "@" + "b" * 63 + "." + "c" * 63 + "." + "d" * 21 + ".de",
+        "a" * 200 + "@" + "ä" * 20 + ".de",
+        "a" * 200 + "@" + "ä" * 23 + ".de",
+        "a" * 200 + "@" + "ä" * 25 + ".de",
+        "a" * 230 + "@" + "x" * 20 + ".de",
+        "a" * 240 + "@" + "x" * 10 + ".de",
+        "a" * 240 + "@" + "x" * 11 + ".de",
+    ]
+    inputs += [f"a@x{char}y.de" for char in LATIN_SET]
+    # A combining mark where a domain or a label starts.
+    marks = sorted(COMBINING_MARKS)
+    inputs += [f"a@{mark}x.de" for mark in marks] + [f"a@x.{mark}y.de" for mark in marks]
+    inputs += [f"a@{char}x.de" for char in "äßǅɐḁ"]
+    rng = random.Random(20261017)  # noqa: S311 - a fixed seed, reproducible
+    seeds = [
+        "Homepage <jochen-homepage@wersdoerfer.de>",
+        "jochen-django@wersdoerfer.de",
+        '"Doe, Jane" <jane@wersdörfer.de>',
+        "a.b+c@mg.python-podcast.de (Kommentar)",
+    ]
+    pool = [*" \t.@<>()\",;:[]\\'äé日☃ⅻ\u0301\u00a0", "..", "@@", "xn--", "-"]
+    for i in range(240):
+        value = seeds[i % len(seeds)]
+        for _ in range(rng.randint(1, 3)):
+            position = rng.randrange(len(value) + 1)
+            if rng.random() < 0.3 and position < len(value):
+                value = value[:position] + value[position + 1 :]
+            else:
+                value = value[:position] + rng.choice(pool) + value[position:]
+        inputs.append(value)
+    return list(dict.fromkeys(inputs))
+
+
+def _python_strict(value: str) -> str | None:
+    try:
+        return parse_email_strict(value)[0]
+    except InvalidAddressError:
+        return None
+
+
+def _python_list(value: str) -> list[list[str]] | None:
+    try:
+        return [[a.display_name, a.addr_spec] for a in parse_address_list([value])]
+    except HeaderInjectionError:
+        return None
+
+
+def _python_header_list(value: str) -> list[list[str]] | None:
+    try:
+        return [[a.display_name, a.addr_spec] for a in parse_header_address_list(value)]
+    except HeaderInjectionError:
+        return None
+
+
+def _python_normalize_address(value: str) -> str | None:
+    try:
+        return normalize_address(value)
+    except InvalidAddressError:
+        return None
+
+
+def _rust_normalize_address(value: str) -> str | None:
+    """``normalize_config_address``: Python's result unless the local part
+    is not ASCII (D-17) or the domain is outside the D-10 set."""
+    python = _python_normalize_address(value)
+    if python is None:
+        return None
+    local, _, domain = value.strip().rpartition("@")
+    if not local.isascii() or not _config_domain_entry_ok(domain):
+        return None
+    return python
+
+
+def build_address() -> dict[str, Any]:
+    cases = []
+    for value in _address_inputs():
+        strict = _python_strict(value)
+        single = _python_list(value)
+        header = _python_header_list(value)
+        mailbox = rust_mailbox(value)
+        mailboxes = rust_mailbox_list(value)
+        if mailbox is not None:
+            # The fail-closed property: Rust's result is Python's result.
+            assert strict == mailbox[2], (value, strict, mailbox)
+            assert single == [[mailbox[0], mailbox[1]]], (value, single, mailbox)
+        if mailboxes is not None:
+            assert header == [[m[0], m[1]] for m in mailboxes], (value, header, mailboxes)
+        python_normalized = _python_normalize_address(value)
+        normalized = _rust_normalize_address(value)
+        case: dict[str, Any] = {
+            "input": value,
+            "python": {
+                "parse_email_strict": strict,
+                "parse_address_list": single,
+                "parse_header_address_list": header,
+                "normalize_address": python_normalized,
+            },
+            "expected": {
+                "mailbox": None if mailbox is None else list(mailbox),
+                "mailbox_list": None if mailboxes is None else [list(m) for m in mailboxes],
+                "normalize_address": normalized,
+            },
+        }
+        divergences = []
+        if (mailbox is None and (strict or single)) or (mailboxes is None and header):
+            divergences.append("D-11")
+        if normalized != python_normalized:
+            local = value.strip().rpartition("@")[0]
+            divergences.append("D-10" if local.isascii() else "D-17")
+        if divergences:
+            case["divergence"] = ",".join(divergences)
+        cases.append(case)
+    return {
+        "source": (
+            "mailgun_relay.policy.parse_email_strict, normalize_address; "
+            "mailgun_relay.headers.parse_address_list, parse_header_address_list"
+        ),
+        "cases": cases,
+    }
+
+
 # ------------------------------------------------------------------ driver
 
 GENERATORS: dict[str, Callable[[], Mapping[str, Any]]] = {
+    "address.json": build_address,
     "auth.json": build_auth,
     "config_env.json": build_config_env,
     "config_secrets.json": build_config_secrets,

@@ -225,3 +225,64 @@ def test_non_ascii_local_part_is_rejected(value: str) -> None:
         parse_address_list([value])
     with pytest.raises(HeaderInjectionError):
         parse_header_address_list(f"ok@example.test, {value}")
+
+
+# Mailbox decisions the Rust port reproduces (rust/fixtures/address.json).
+
+
+@pytest.mark.parametrize(
+    ("value", "display", "addr_spec"),
+    [
+        ("a@x.test (Kommentar)", "Kommentar", "a@x.test"),
+        ("(c1) a@x.test (c2)", "c1 c2", "a@x.test"),
+        ("Jane (c) <a@x.test> (dropped)", "Jane (c)", "a@x.test"),
+        ('Jane "Q" Doe <a@x.test>', "Jane Q Doe", "a@x.test"),
+        ('"Jane \\"Q\\"" <a@x.test>', 'Jane "Q"', "a@x.test"),
+        ("Dr.  Jane <a@x.test>", "Dr. Jane", "a@x.test"),
+        ("< a@x.test >", "", "a@x.test"),
+        ("Info <INFO@X.TEST>", "Info", "info@x.test"),  # RFC 2142 role names
+        ("Sales.Team@X.TEST", "", "Sales.Team@x.test"),
+        ("a" * 65 + "@x.test", "", "a" * 65 + "@x.test"),  # no 64 limit
+        ("a@test", "", "a@test"),
+    ],
+)
+def test_mailbox_forms(value: str, display: str, addr_spec: str) -> None:
+    [address] = parse_address_list([value])
+    assert (address.display_name, address.addr_spec) == (display, addr_spec)
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        "a@x.local",
+        "a@x.localhost",
+        "a@x.invalid",
+        "a@x.onion",
+        "a@home.arpa",
+        "a@x",  # a dot is required
+        "a@x.123",  # the last character must be a letter
+        "a@x.de.",
+        "a@xn--abc.de",
+        "a@ab--c.de",
+        "a@x_y.de",
+        "a@\u034fx.test",  # a leading combining mark (UTS46 would drop U+034F)
+        '"a b"@x.test',
+        "a@[192.0.2.1]",
+        "a" * 240 + "@" + "x" * 11 + ".de",  # 255 characters
+        "a@x.test (Doe, Jane)",  # a comma in a comment counts as a separator
+    ],
+)
+def test_refused_mailboxes(value: str) -> None:
+    with pytest.raises(HeaderInjectionError):
+        parse_address_list([value])
+
+
+def test_longest_address_is_accepted() -> None:
+    value = "a" * 240 + "@" + "x" * 10 + ".de"  # 254 characters
+    assert parse_address_list([value])[0].addr_spec == value
+
+
+def test_header_address_list_refuses_empty_elements() -> None:
+    for value in ["a@x.test,", "a@x.test,,b@x.test", ",a@x.test"]:
+        with pytest.raises(HeaderInjectionError):
+            parse_header_address_list(value)

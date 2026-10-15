@@ -2946,33 +2946,16 @@
    "name": "envelope sender 'Relay@Example.ORG'"
   },
   {
+   "divergence": "D-15",
    "env": [
     [
      "MAILGUN_RELAY_ENVELOPE_SENDER",
      "not an address"
     ]
    ],
-   "expected": {
-    "bind_host": "127.0.0.1",
-    "bind_port": 8085,
-    "envelope_sender": "not an address",
-    "fail_on_partial_refusal": false,
-    "log_level": "INFO",
-    "max_attachment_bytes": 10485760,
-    "max_attachments": 10,
-    "max_body_bytes": 26214400,
-    "max_header_value_length": 998,
-    "max_recipients": 100,
-    "public_host": "mailgun.home.xn--wersdrfer-47a.de",
-    "secrets_path": "/etc/mailgun-relay/secrets.yml",
-    "smtp_ca_file": "",
-    "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
-    "smtp_max_concurrency": 8,
-    "smtp_port": 587,
-    "smtp_starttls": true,
-    "smtp_timeout_s": 30.0
-   },
-   "name": "envelope sender 'not an address'"
+   "expected": null,
+   "name": "envelope sender 'not an address'",
+   "python_starts": true
   },
   {
    "env": [
@@ -3063,33 +3046,16 @@
    "name": "envelope sender 'wersd\u00f6rfer.de'"
   },
   {
+   "divergence": "D-15",
    "env": [
     [
      "MAILGUN_RELAY_ENVELOPE_SENDER",
      "a@b@wersd\u00f6rfer.de"
     ]
    ],
-   "expected": {
-    "bind_host": "127.0.0.1",
-    "bind_port": 8085,
-    "envelope_sender": "a@b@xn--wersdrfer-47a.de",
-    "fail_on_partial_refusal": false,
-    "log_level": "INFO",
-    "max_attachment_bytes": 10485760,
-    "max_attachments": 10,
-    "max_body_bytes": 26214400,
-    "max_header_value_length": 998,
-    "max_recipients": 100,
-    "public_host": "mailgun.home.xn--wersdrfer-47a.de",
-    "secrets_path": "/etc/mailgun-relay/secrets.yml",
-    "smtp_ca_file": "",
-    "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
-    "smtp_max_concurrency": 8,
-    "smtp_port": 587,
-    "smtp_starttls": true,
-    "smtp_timeout_s": 30.0
-   },
-   "name": "envelope sender 'a@b@wersd\u00f6rfer.de'"
+   "expected": null,
+   "name": "envelope sender 'a@b@wersd\u00f6rfer.de'",
+   "python_starts": true
   },
   {
    "env": [
@@ -3183,6 +3149,179 @@
     "smtp_timeout_s": 30.0
    },
    "name": "envelope sender 'relay@xn--wersdrfer-47a.\u00fc'"
+  },
+  {
+   "divergence": "D-15",
+   "env": [
+    [
+     "MAILGUN_RELAY_ENVELOPE_SENDER",
+     "relay@localhost"
+    ]
+   ],
+   "expected": null,
+   "name": "envelope sender 'relay@localhost'",
+   "python_starts": true
+  },
+  {
+   "divergence": "D-15",
+   "env": [
+    [
+     "MAILGUN_RELAY_ENVELOPE_SENDER",
+     "relay@example"
+    ]
+   ],
+   "expected": null,
+   "name": "envelope sender 'relay@example'",
+   "python_starts": true
+  },
+  {
+   "divergence": "D-15",
+   "env": [
+    [
+     "MAILGUN_RELAY_ENVELOPE_SENDER",
+     "relay@x.local"
+    ]
+   ],
+   "expected": null,
+   "name": "envelope sender 'relay@x.local'",
+   "python_starts": true
+  },
+  {
+   "divergence": "D-15",
+   "env": [
+    [
+     "MAILGUN_RELAY_ENVELOPE_SENDER",
+     "relay@[192.0.2.1]"
+    ]
+   ],
+   "expected": null,
+   "name": "envelope sender 'relay@[192.0.2.1]'",
+   "python_starts": true
+  },
+  {
+   "divergence": "D-15",
+   "env": [
+    [
+     "MAILGUN_RELAY_ENVELOPE_SENDER",
+     "<relay@example.org>"
+    ]
+   ],
+   "expected": null,
+   "name": "envelope sender '<relay@example.org>'",
+   "python_starts": true
+  },
+  {
+   "divergence": "D-15",
+   "env": [
+    [
+     "MAILGUN_RELAY_ENVELOPE_SENDER",
+     "Relay <relay@example.org>"
+    ]
+   ],
+   "expected": null,
+   "name": "envelope sender 'Relay <relay@example.org>'",
+   "python_starts": true
+  },
+  {
+   "divergence": "D-15",
+   "env": [
+    [
+     "MAILGUN_RELAY_ENVELOPE_SENDER",
+     "relay @example.org"
+    ]
+   ],
+   "expected": null,
+   "name": "envelope sender 'relay @example.org'",
+   "python_starts": true
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_ENVELOPE_SENDER",
+     "bounce@example.test"
+    ]
+   ],
+   "expected": {
+    "bind_host": "127.0.0.1",
+    "bind_port": 8085,
+    "envelope_sender": "bounce@example.test",
+    "fail_on_partial_refusal": false,
+    "log_level": "INFO",
+    "max_attachment_bytes": 10485760,
+    "max_attachments": 10,
+    "max_body_bytes": 26214400,
+    "max_header_value_length": 998,
+    "max_recipients": 100,
+    "public_host": "mailgun.home.xn--wersdrfer-47a.de",
+    "secrets_path": "/etc/mailgun-relay/secrets.yml",
+    "smtp_ca_file": "",
+    "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
+    "smtp_max_concurrency": 8,
+    "smtp_port": 587,
+    "smtp_starttls": true,
+    "smtp_timeout_s": 30.0
+   },
+   "name": "envelope sender 'bounce@example.test'"
+  },
+  {
+   "divergence": "D-15",
+   "env": [
+    [
+     "MAILGUN_RELAY_ENVELOPE_SENDER",
+     "a..b@example.org"
+    ]
+   ],
+   "expected": null,
+   "name": "envelope sender 'a..b@example.org'",
+   "python_starts": true
+  },
+  {
+   "divergence": "D-15",
+   "env": [
+    [
+     "MAILGUN_RELAY_ENVELOPE_SENDER",
+     "relay@exa_mple.org"
+    ]
+   ],
+   "expected": null,
+   "name": "envelope sender 'relay@exa_mple.org'",
+   "python_starts": true
+  },
+  {
+   "divergence": "D-15",
+   "env": [
+    [
+     "MAILGUN_RELAY_ENVELOPE_SENDER",
+     "relay@"
+    ]
+   ],
+   "expected": null,
+   "name": "envelope sender 'relay@'",
+   "python_starts": true
+  },
+  {
+   "divergence": "D-15",
+   "env": [
+    [
+     "MAILGUN_RELAY_ENVELOPE_SENDER",
+     "relay@wersd\u00f6rfer.local"
+    ]
+   ],
+   "expected": null,
+   "name": "envelope sender 'relay@wersd\u00f6rfer.local'",
+   "python_starts": true
+  },
+  {
+   "divergence": "D-15",
+   "env": [
+    [
+     "MAILGUN_RELAY_ENVELOPE_SENDER",
+     "relay@wersd\u00f6rfer"
+    ]
+   ],
+   "expected": null,
+   "name": "envelope sender 'relay@wersd\u00f6rfer'",
+   "python_starts": true
   },
   {
    "env": [

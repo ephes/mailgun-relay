@@ -7,7 +7,7 @@ production. [`TESTMAP.md`](TESTMAP.md) maps every Python test to its Rust
 counterpart.
 
 **Status: slice S1 of PLAN.md section 6 is done** (merged as S1a, S1c and
-S1d); S2 is in progress (S2a: authentication and path domains). The binary
+S1d); S2 is in progress (S2a: authentication and path domains; S2b: addresses). The binary
 loads and validates the configuration, answers `GET /health`, the
 404/405/307 fallbacks and the 413 body-limit layer, and logs the startup
 record. `POST /v3/{domain}/messages` does not exist yet (S3–S5); nothing
@@ -53,6 +53,7 @@ PLAN.md section 3):
   them is the exact upper-case name (D-7);
 - configured domains (secrets file, non-ASCII `ENVELOPE_SENDER`) outside
   ASCII and the Latin letter blocks, also after IDNA mapping (D-10);
+- an `ENVELOPE_SENDER` that is not a valid bare address (D-15);
 - a non-ASCII local part in `allowed_from_addresses` (D-17);
 - an empty `BIND_HOST`, `SMTP_PORT` outside 0–65535, integers outside 64 bits,
   `SMTP_TIMEOUT_S` not finite or outside 0–1e9 s, `SMTP_MAX_CONCURRENCY`
@@ -90,8 +91,9 @@ src/main.rs     argv, runtime, startup record, graceful shutdown
 src/config.rs   MAILGUN_RELAY_* settings
 src/secrets.rs  secrets file (mode check, schema)
 src/yaml.rs     YAML 1.1 subset of PyYAML safe_load
+src/address.rs  mailbox parsing and address validation
 src/auth.rs     HTTP Basic authentication against the token hashes
-src/domain.rs   domain normalisation (path domains, configuration)
+src/domain.rs   domain normalisation (path, address and configured domains)
 src/http.rs     413 layer, /health, 404/405/307 fallbacks
 src/log.rs      JSON line logger
 src/pystr.rs    Python str.strip() semantics

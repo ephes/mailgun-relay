@@ -28,9 +28,11 @@ and fixture cases generated from the fixed Python.
 | `test_auth.py` new in S2a (accepted/refused spellings, non-ASCII → `AuthError`, colons and empty password, last duplicate wins) | fixture `auth.json`, unit `auth::tests::last_match_wins_and_trailing_bits_decode` | done (S2a) |
 | `test_policy.py::test_normalize_domain_*` (new in S2a) and the path-domain parts of `test_policy.py` | fixture `domain.json` (1,003 inputs incl. each Latin-set character) via `domain::tests::domain_fixture` | done (S2a) |
 | `test_policy.py` (all 13) | fixtures `domain.json`, `address.json`, `policy.json`; unit `policy::tests` for the production shapes | pending (S2) |
-| `test_headers.py::test_parse_address_list_*`, `::test_header_address_list_*` | fixture `address.json` | pending (S2) |
+| `test_headers.py::test_parse_address_list_*`, `::test_header_address_list_*`, `::test_idn_domain_becomes_a_label`, `::test_ascii_address_is_unchanged` | unit `address::tests::python_header_tests` + fixture `address.json` via `address::tests::address_fixture` | done (S2b) |
+| `test_headers.py` new in S2b (`test_mailbox_forms`, `test_refused_mailboxes`, `test_longest_address_is_accepted`, `test_header_address_list_refuses_empty_elements`) | fixture `address.json`, units `address::tests::display_names_follow_python`, `::exotic_forms_are_refused` | done (S2b) |
 | `test_config.py::test_load_secrets_normalizes_idn_to_punycode`, `::test_token_policy_allowed_addresses_none_means_domain_only` | fixture `config_secrets.json` | done (S1c) |
-| new: corpus decisions (≥ 400 addresses, ≥ 100 domains), "Rust accepts ⇒ Python accepts" | property test over `address.json`/`domain.json` | pending (S2) |
+| new: corpus decisions (≥ 400 addresses, ≥ 100 domains), "Rust accepts ⇒ Python accepts" | property checks in `address::tests::address_fixture` (stored Python results), `domain::tests::domain_fixture` (D-10 results never configurable), `auth::tests::auth_fixture` (equality); generator assertions and `tests/test_rust_fixtures.py::test_rust_address_decisions_never_widen_python` | done (S2a domains, auth; S2b addresses) |
+| `test_config.py::test_envelope_sender_*` and the D-15 validity check | fixture `config_env.json` (senders Python accepts and Rust refuses marked `D-15`) | done (S2b) |
 
 ## Configuration and startup (S1: S1a, S1c, S1d)
 

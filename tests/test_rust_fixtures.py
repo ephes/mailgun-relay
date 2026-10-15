@@ -64,9 +64,10 @@ def _cases(generator: ModuleType, name: str) -> list[dict[str, object]]:
     ("name", "minimum", "labels"),
     [
         # S1 acceptance (PLAN.md 6): >= 60 env sets, >= 40 YAML documents.
-        ("config_env.json", 60, {"D-7", "D-10", "D-18"}),
+        ("config_env.json", 60, {"D-7", "D-10", "D-15", "D-18"}),
         ("config_secrets.json", 40, {"D-5", "D-6", "D-10", "D-17"}),
-        # S2 acceptance: >= 100 domains (D-11).
+        # S2 acceptance: >= 400 addresses, >= 100 domains (D-11).
+        ("address.json", 400, {"D-10", "D-11", "D-17", "D-11,D-10"}),
         ("domain.json", 100, {"D-10"}),
         ("auth.json", 60, set()),
     ],
@@ -79,3 +80,21 @@ def test_corpus_sizes_and_divergence_labels(
     assert len(cases) >= minimum
     for case in cases:
         assert case.get("divergence") in labels | {None}, case
+
+
+def test_rust_address_decisions_never_widen_python(generator: ModuleType) -> None:
+    """The fail-closed property of D-11 on the committed corpus: every
+    mailbox the Rust port accepts, Python accepts with the same address."""
+    for case in _cases(generator, "address.json"):
+        expected = case["expected"]
+        python = case["python"]
+        assert isinstance(expected, dict) and isinstance(python, dict)
+        mailbox = expected["mailbox"]
+        if mailbox is not None:
+            display, addr_spec, policy_address = mailbox
+            assert python["parse_email_strict"] == policy_address
+            assert python["parse_address_list"] == [[display, addr_spec]]
+        if expected["mailbox_list"] is not None:
+            assert python["parse_header_address_list"] == [
+                [display, addr_spec] for display, addr_spec, _ in expected["mailbox_list"]
+            ]

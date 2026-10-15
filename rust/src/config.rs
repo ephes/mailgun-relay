@@ -8,6 +8,7 @@
 use std::ffi::OsString;
 use std::fmt;
 
+use crate::address::parse_addr_spec;
 use crate::domain::normalize_config_domain;
 
 #[derive(Debug, PartialEq)]
@@ -261,18 +262,25 @@ fn parse_timeout(value: &str) -> Result<f64, String> {
     Ok(seconds)
 }
 
-/// `_envelope_sender_ascii`: ASCII unchanged, otherwise an ASCII local part
-/// and a domain converted to its A-label (D-15, D-10).
+/// `_envelope_sender_ascii`: empty is the null sender, ASCII is used
+/// unchanged, otherwise an ASCII local part and a domain converted to its
+/// A-label (D-10). Rust additionally requires a valid address (D-15).
 fn envelope_sender(value: &str) -> Result<String, String> {
-    if value.is_ascii() {
-        return Ok(value.to_owned());
+    if value.is_empty() {
+        return Ok(String::new());
     }
-    match value.rsplit_once('@') {
-        Some((local, domain)) if !local.is_empty() && local.is_ascii() => {
-            Ok(format!("{local}@{}", normalize_config_domain(domain)?))
+    let sender = if value.is_ascii() {
+        value.to_owned()
+    } else {
+        match value.rsplit_once('@') {
+            Some((local, domain)) if !local.is_empty() && local.is_ascii() => {
+                format!("{local}@{}", normalize_config_domain(domain)?)
+            }
+            _ => return Err("only the domain may be non-ASCII (SMTPUTF8 is not used)".to_owned()),
         }
-        _ => Err("only the domain may be non-ASCII (SMTPUTF8 is not used)".to_owned()),
-    }
+    };
+    parse_addr_spec(&sender).map_err(|_| "not a valid email address (PLAN.md D-15)".to_owned())?;
+    Ok(sender)
 }
 
 #[cfg(test)]

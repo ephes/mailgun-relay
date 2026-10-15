@@ -4,6 +4,23 @@ All notable changes to mailgun-relay are documented here.
 
 ## Unreleased
 
+### Rust port: addresses and the envelope sender (slice S2b)
+
+- `rust/src/address.rs` parses `from`/`to`/`cc`/`bcc` values and Reply-To
+  lists once for policy and headers: a strict subset of Python's
+  `parseaddr`/`getaddresses` plus the `email_validator` rules (ASCII
+  dot-atom local parts, IDN domains as A-labels, special-use names, lengths),
+  with Python's display names for phrases, quoted strings and comments. Not
+  wired to a route yet (S3).
+- `address.json` (1,570 values from the Python oracle) pins every decision;
+  the Rust tests check that whatever Rust accepts, Python accepts with the
+  same address and display name. Exotic forms Python accepts (whitespace
+  inside the address, unclosed `<`, groups, address domains outside the
+  Latin set) are refused (`rust/PLAN.md` D-11, fail closed).
+- The Rust binary refuses to start with an `ENVELOPE_SENDER` that is not a
+  valid bare address (D-15); production's value passes. The Python service
+  is unchanged.
+
 ### Authentication: malformed non-ASCII credentials are 401 (slice S2a)
 
 - `Authorization: Basic …` whose credentials contain a non-ASCII character
