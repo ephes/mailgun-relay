@@ -1,0 +1,22 @@
+[package]
+name = "s1b-spike"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+# Throwaway spike for rust/PLAN.md slice S1b: lettre connection API with
+# per-recipient RCPT handling, error classification, read-only EHLO probe.
+
+[dependencies]
+lettre = { version = "=0.11.23", default-features = false, features = [
+    "builder",
+    "smtp-transport",
+    "tokio1",
+    "tokio1-rustls",
+    "rustls-native-certs",
+    "webpki-roots",
+    "ring",
+    "hostname",
+] }
+tokio = { version = "1", features = ["rt", "net", "time", "macros"] }
+tokio-io-timeout = "1.2"
