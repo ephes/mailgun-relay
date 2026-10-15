@@ -6,6 +6,7 @@
 //! them.
 
 use std::io::Write;
+use std::sync::Mutex;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use serde::Serialize;
@@ -27,11 +28,27 @@ struct Record<'a, T: Serialize> {
 #[derive(Debug, Clone, Copy)]
 pub struct Logger {
     threshold: Level,
+    /// Tests collect the lines here instead of on stdout.
+    capture: Option<&'static Mutex<Vec<String>>>,
 }
 
 impl Logger {
     pub fn new(threshold: Level) -> Self {
-        Logger { threshold }
+        Logger {
+            threshold,
+            capture: None,
+        }
+    }
+
+    /// A logger whose lines go to the returned buffer (tests).
+    #[cfg(test)]
+    pub fn capturing(threshold: Level) -> (Self, &'static Mutex<Vec<String>>) {
+        let lines: &'static Mutex<Vec<String>> = Box::leak(Box::default());
+        let logger = Logger {
+            threshold,
+            capture: Some(lines),
+        };
+        (logger, lines)
     }
 
     pub fn threshold(&self) -> Level {
@@ -65,6 +82,11 @@ impl Logger {
     /// stdout) is ignored: logging never takes the service down.
     pub fn emit<T: Serialize>(&self, level: Level, logger: &str, event: &str, fields: &T) {
         if let Some(line) = self.render(level, logger, event, fields) {
+            if let Some(lines) = self.capture {
+                let text = String::from_utf8_lossy(&line).into_owned();
+                lines.lock().unwrap_or_else(|e| e.into_inner()).push(text);
+                return;
+            }
             let mut out = std::io::stdout().lock();
             let _ = out.write_all(&line).and_then(|()| out.flush());
         }

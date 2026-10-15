@@ -6,14 +6,15 @@ exactly, what may differ (section 3), the slices and the switch of
 production. [`TESTMAP.md`](TESTMAP.md) maps every Python test to its Rust
 counterpart.
 
-**Status: slice S1 of PLAN.md section 6 is done** (merged as S1a, S1c and
-S1d); S2 is done (authentication, addresses, the token policy) and S3a
-adds subject and header validation, S3b form parsing; none of it is wired to a route yet. The
-binary
-loads and validates the configuration, answers `GET /health`, the
+**Status: slices S1 and S2 of PLAN.md section 6 are done**; S3 (S3a–S3c
+merged) adds subject and header validation, form parsing and
+`POST /v3/{domain}/messages` with every decision of the Python route. The
+binary loads and validates the configuration, answers `GET /health`, the
 404/405/307 fallbacks and the 413 body-limit layer, and logs the startup
-record. `POST /v3/{domain}/messages` does not exist yet (S3–S5); nothing
-deploys this code until the role is switched (PLAN.md section 9).
+record and one record per message request. Message construction is a stub
+until S4 and SMTP submission comes with S5: until then every accepted
+message is answered with 503 and nothing is sent. Nothing deploys this code
+until the role is switched (PLAN.md section 9).
 
 ## Build and check
 

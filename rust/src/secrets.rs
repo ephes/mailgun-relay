@@ -38,7 +38,6 @@ impl fmt::Debug for SmtpCredentials {
 
 pub struct TokenPolicy {
     pub label: String,
-    #[cfg_attr(not(test), expect(dead_code, reason = "used by the auth slice S2"))]
     pub token_sha256: String,
     pub mailgun_domains: BTreeSet<String>,
     pub allowed_from_domains: BTreeSet<String>,

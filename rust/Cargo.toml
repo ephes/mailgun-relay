@@ -11,6 +11,8 @@ publish = false
 [dependencies]
 axum = { version = "0.8", default-features = false, features = ["http1", "tokio"] }
 base64 = { version = "0.22", default-features = false, features = ["std"] }
+getrandom = "0.4"
+http-body-util = "0.1"
 idna = "1"
 regex = { version = "1", default-features = false, features = ["std"] }
 serde = { version = "1", features = ["derive"] }

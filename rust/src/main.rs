@@ -5,25 +5,16 @@
 //! server does, binds nothing, and exits 0 (valid) or 1 (invalid). Unknown
 //! arguments exit 2.
 
-#[cfg_attr(not(test), expect(dead_code, reason = "used by the pipeline slice S3"))]
 mod address;
-#[cfg_attr(not(test), expect(dead_code, reason = "used by the pipeline slice S3"))]
 mod auth;
 mod config;
 mod domain;
-#[cfg_attr(
-    not(test),
-    expect(dead_code, reason = "used by the pipeline slice S3c")
-)]
 mod form;
-#[cfg_attr(
-    not(test),
-    expect(dead_code, reason = "used by the pipeline slice S3c")
-)]
 mod headers;
 mod http;
 mod log;
-#[cfg_attr(not(test), expect(dead_code, reason = "used by the pipeline slice S3"))]
+mod mime;
+mod pipeline;
 mod policy;
 mod pystr;
 mod secrets;
@@ -122,7 +113,12 @@ async fn run(settings: Settings, secrets: Secrets) -> Result<(), String> {
     log_startup(&logger, &settings, &secrets, &bind);
 
     let state = Arc::new(http::AppState {
-        max_body_bytes: settings.max_body_bytes,
+        relay: Arc::new(pipeline::Relay {
+            settings,
+            tokens: secrets.tokens,
+            logger,
+            submitter: Box::new(pipeline::Unavailable),
+        }),
     });
     let (stop, stopped) = tokio::sync::watch::channel(false);
     let mut servers = tokio::task::JoinSet::new();

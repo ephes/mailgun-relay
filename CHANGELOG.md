@@ -4,6 +4,21 @@ All notable changes to mailgun-relay are documented here.
 
 ## Unreleased
 
+### Rust port: the messages route (slice S3c)
+
+- `POST /v3/{domain}/messages` exists in the Rust binary
+  (`rust/src/pipeline.rs`): the decision order of the Python route
+  (authentication, form, field rules, policy, subject, custom headers,
+  recipient count, message checks), its statuses and JSON shapes, and one
+  `event=request` record per request with Python's fields and `result`
+  values, also when a request task panics (500). Partial refusals log
+  `event=recipients_refused` with domains and codes only.
+- Message construction is a stub (`rust/src/mime.rs`) that makes the
+  step-9 decisions without MIME encoding until slice S4; the SMTP
+  submitter comes with S5. Until then the binary answers every accepted
+  message with 503, so it never reports a message as queued that was not
+  sent.
+
 ### Rust port: form parsing (slice S3b)
 
 - `rust/src/form.rs` parses request bodies as the Python service does:

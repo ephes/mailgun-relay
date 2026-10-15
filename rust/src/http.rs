@@ -2,8 +2,7 @@
 //! Starlette's matching, and the 404/405/307 fallbacks.
 //!
 //! Routing works on the percent-decoded path, as Starlette does, so one
-//! dispatcher replaces axum's raw-path router. S3 adds the messages route
-//! to [`match_route`].
+//! dispatcher replaces axum's raw-path router.
 
 use std::net::{Ipv4Addr, SocketAddr};
 use std::sync::{Arc, LazyLock};
@@ -18,10 +17,11 @@ use axum::serve::IncomingStream;
 use regex::Regex;
 use tokio::net::TcpListener;
 
+use crate::pipeline::{self, Relay};
 use crate::pystr::py_strip;
 
 pub struct AppState {
-    pub max_body_bytes: i64,
+    pub relay: Arc<Relay>,
 }
 
 /// Both ends of the TCP connection (uvicorn's `client` and `server`): the
@@ -64,7 +64,8 @@ async fn body_limit(State(state): State<Arc<AppState>>, request: Request, next: 
             .to_str()
             .ok()
             .and_then(|v| v.trim().parse::<u64>().ok());
-        let too_large = declared.is_none_or(|n| i128::from(n) > i128::from(state.max_body_bytes));
+        let max = state.relay.settings.max_body_bytes;
+        let too_large = declared.is_none_or(|n| i128::from(n) > i128::from(max));
         if too_large {
             return json(
                 StatusCode::PAYLOAD_TOO_LARGE,
@@ -75,32 +76,43 @@ async fn body_limit(State(state): State<Arc<AppState>>, request: Request, next: 
     next.run(request).await
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 enum Route {
     Health,
+    /// `/v3/{domain}/messages` with the decoded path segment.
+    Messages(String),
 }
 
 impl Route {
-    fn allowed(self) -> &'static [Method] {
+    fn allowed(&self) -> &'static [Method] {
         match self {
             // FastAPI does not add HEAD to a GET route.
             Route::Health => &[Method::GET],
+            Route::Messages(_) => &[Method::POST],
         }
     }
 }
 
 /// Starlette matches `^<pattern>$` with Python's `re`, where `$` also
-/// matches before one final newline.
+/// matches before one final newline; `{domain}` is `[^/]+`.
 fn match_route(path: &str) -> Option<Route> {
     let path = path.strip_suffix('\n').unwrap_or(path);
-    (path == "/health").then_some(Route::Health)
+    if path == "/health" {
+        return Some(Route::Health);
+    }
+    let domain = path.strip_prefix("/v3/")?.strip_suffix("/messages")?;
+    (!domain.is_empty() && !domain.contains('/')).then(|| Route::Messages(domain.to_owned()))
 }
 
-async fn dispatch(request: Request) -> Response {
+async fn dispatch(State(state): State<Arc<AppState>>, request: Request) -> Response {
     let path = percent_decode(request.uri().path());
     match match_route(&path) {
         Some(route) if route.allowed().contains(request.method()) => match route {
             Route::Health => json(StatusCode::OK, r#"{"status":"ok"}"#),
+            Route::Messages(domain) => {
+                let (parts, body) = request.into_parts();
+                pipeline::post_messages(Arc::clone(&state.relay), domain, parts.headers, body).await
+            }
         },
         Some(route) => {
             let allow = route
@@ -242,8 +254,12 @@ mod tests {
     async fn call(
         request: axum::http::Request<Body>,
     ) -> (StatusCode, Vec<(String, String)>, String) {
-        let state = Arc::new(AppState {
+        let settings = crate::config::Settings {
             max_body_bytes: 100,
+            ..crate::config::Settings::from_env([]).unwrap()
+        };
+        let state = Arc::new(AppState {
+            relay: pipeline::tests::relay(settings).0,
         });
         let response = router(state).oneshot(request).await.unwrap();
         let status = response.status();
