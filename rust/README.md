@@ -6,7 +6,7 @@ exactly, what may differ (section 3), the slices and the switch of
 production. [`TESTMAP.md`](TESTMAP.md) maps every Python test to its Rust
 counterpart.
 
-**Status: slices S1 to S4 of PLAN.md section 6 are done, S5a is merged**;
+**Status: slices S1 to S5 of PLAN.md section 6 are done**;
 S3 adds subject and header validation, form parsing and
 `POST /v3/{domain}/messages` with every decision of the Python route. The
 binary loads and validates the configuration, answers `GET /health`, the
@@ -16,9 +16,11 @@ record and one record per message request. S4 builds the message
 connection API): STARTTLS with chain and hostname verification against the
 system roots plus `SMTP_CA_FILE`, AUTH PLAIN or LOGIN, one `RCPT` per
 recipient (a partly refused message is delivered to the others), and the
-status mapping of PLAN.md 2.4. The concurrency cap and the shutdown
-tracking of submissions follow with S5b. Nothing deploys this code until
-the role is switched (PLAN.md section 9).
+status mapping of PLAN.md 2.4, pinned by `fixtures/smtp_outcomes.json`
+(Python's `submit` against the same scripted server). At most
+`SMTP_MAX_CONCURRENCY` sessions run at once, further messages wait; a
+submission whose client went away is finished, and SIGTERM waits for it.
+Nothing deploys this code until the role is switched (PLAN.md section 9).
 
 ## Build and check
 
@@ -95,7 +97,9 @@ uv run python rust/fixtures/generate.py --check   # exit 1 when stale
 ```
 
 `tests/test_rust_fixtures.py` (Python suite) fails when a committed fixture
-differs from a fresh render. The messages the Rust port builds are also read
+differs from a fresh render (`smtp_outcomes.json` runs Python's SMTP
+client against a fake server and needs `openssl` for its throwaway CA).
+The messages the Rust port builds are also read
 with Python's parser (`mime.json`, PLAN.md 2.10):
 
 ```bash
@@ -119,7 +123,12 @@ src/domain.rs   domain normalisation (path, address and configured domains)
 src/http.rs     413 layer, /health, 404/405/307 fallbacks
 src/log.rs      JSON line logger
 src/pystr.rs    Python str.strip() semantics
+src/headers.rs  subject and custom header validation
+src/form.rs     urlencoded and multipart form parsing
+src/pipeline.rs POST /v3/{domain}/messages: decision order, records
 src/mime.rs     message construction (lettre)
+src/smtp.rs     SMTP submission (lettre connection API)
 tests/binary.rs process-level tests of the built binary
+tests/support/fake_smtp.rs  scripted fake SMTP server (unit and process tests)
 fixtures/       generator + generated JSON; check_mime.py (Python's parser on Rust messages)
 ```

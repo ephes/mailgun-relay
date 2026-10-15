@@ -4,6 +4,21 @@ All notable changes to mailgun-relay are documented here.
 
 ## Unreleased
 
+### Rust port: submission in the route (slice S5b)
+
+- The Rust port caps concurrent SMTP sessions at `SMTP_MAX_CONCURRENCY`
+  (further messages wait, `/health` never does) and finishes a submission
+  whose client went away; SIGTERM waits for it, as uvicorn does.
+- `rust/fixtures/smtp_outcomes.json` pins the status of 109 SMTP scenarios
+  (every row of `rust/PLAN.md` 2.4) from the Python client run against a
+  scripted fake server; the Rust tests run the same scenarios. Process tests
+  deliver a message end to end over STARTTLS with a test CA.
+- Memory: the message is not copied again for SMTP or for its head. A
+  request at the 25 MiB limit peaks at 73 MiB when glibc's dynamic mmap
+  threshold is fixed (`MALLOC_MMAP_THRESHOLD_=131072`, planned for the
+  systemd drop-in); with glibc's defaults it peaks at 100–135 MiB and keeps
+  up to 100 MiB resident.
+
 ### Rust port: SMTP submission (slice S5a)
 
 - `rust/src/smtp.rs` submits the built message with lettre's

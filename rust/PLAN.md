@@ -18,9 +18,10 @@ remaining route tests); all four are merged, so S3 is done (report
 construction, `src/mime.rs`) and S4b (the semantic MIME fixture from the
 Python oracle); both are merged, so S4 is done (report
 `handoff/s4-result.md`). S5 is split by size into S5a (the SMTP
-submitter, `src/smtp.rs`, wired into the binary; merged) and S5b (the
-concurrency cap and shutdown tracking of the route, the Python-oracle
-matrix `smtp_outcomes.json`, process tests, memory); S5b is next.
+submitter, `src/smtp.rs`, wired into the binary) and S5b (the concurrency
+cap and shutdown tracking of the route, the Python-oracle matrix
+`smtp_outcomes.json`, process tests, memory); both are merged, so S5 is
+done (report `handoff/s5-result.md`). S6 is next.
 
 This document is the contract for re-implementing the FastAPI service in
 `src/mailgun_relay` (1,744 lines, `origin/main` `13e274f`, run on macmini as
@@ -800,8 +801,8 @@ re-implementation of Python libraries, no hand-rolled protocol code.
 
 Build profile: `opt-level = "s"`, decided by measurement in S1 (Linux
 aarch64 container, glibc, release build of S1: 1.58 MB and 2.6 MiB idle RSS
-against 1.77 MB and 2.9 MiB with `opt-level = 3`; one thread; S5
-re-measures with TLS), `lto = "thin"`, `codegen-units = 1`, `strip = true`,
+against 1.77 MB and 2.9 MiB with `opt-level = 3`; one thread; S5b with
+TLS: 2.82 MB, 3.9 MiB idle with the system roots loaded), `lto = "thin"`, `codegen-units = 1`, `strip = true`,
 `panic = "unwind"` (a panic in one request must not kill the process; it maps
 to 500).
 
@@ -816,7 +817,19 @@ empty `ReadWritePaths`, so Rust does not use disk). If glibc keeps freed large
 buffers resident after a big request (dynamic mmap threshold), the drop-in
 gets `Environment=MALLOC_ARENA_MAX=2` and `MALLOC_MMAP_THRESHOLD_=131072`,
 decided by the measurement of section 12, not up front (`unsafe` is
-forbidden, so no `malloc_trim` call).
+forbidden, so no `malloc_trim` call). S5b measured it (Linux aarch64
+container, glibc 2.36, release build, STARTTLS to a fake server, a
+request at the 25 MiB body limit and one with a single 24.8 MiB
+attachment): with glibc's defaults the peak is 100–135 MiB (VmHWM) and
+40–100 MiB stay resident 60 s later, above the budgets of section 1; with
+`MALLOC_MMAP_THRESHOLD_=131072` alone the peak is 73 MiB and RSS is back at
+4.5 MiB right after the request (`MALLOC_ARENA_MAX=2` changes nothing
+more). The live peak is about twice the base64 size of the attachments:
+lettre renders the MIME tree into a new buffer while the encoded parts
+still exist. The SMTP stage adds no copy (the message goes to lettre in
+64 KiB pieces) and the head is put in front of the rendered body in place.
+So S8 sets `MALLOC_MMAP_THRESHOLD_=131072` in the drop-in; S9 confirms on
+x86_64.
 
 ---
 
@@ -842,7 +855,7 @@ changed lines per slice excluding generated fixtures.
 | S2 | Auth and policy (security boundary) | Split by size: **S2a** `auth.rs`, `auth.json`, `domain.json` (runtime `normalize_domain`), Python fix of the auth 500 (2.3 step 2); **S2b** `address.rs`, `address.json`, the D-15 check; **S2c** `policy.rs`, `policy.json`, production shapes. Scope: `auth.rs`, `domain.rs`, `address.rs`, `policy.rs`; fixtures `auth.json`, `domain.json`, `address.json` (corpus), `policy.json`; Rust counterparts of `test_auth.py`, `test_policy.py`, the address parts of `test_headers.py`; Python tests added for every corpus case that pins a new boundary decision; config loader rejects allowlist entries with a non-ASCII local part (D-17; implemented with the secrets loader in S1c); the D-15 validity check of `ENVELOPE_SENDER` (S1 applies only the IDN/EAI rule; `config_env.json` then marks the invalid senders D-15) | S1, S0-py merged (the oracle must already carry the Q1/Q2 behaviour). **Status: S2a, S2b and S2c merged; done** |
 | S3 | Request parsing and pipeline | `form.rs` (both encodings, limits), `pipeline.rs` (2.3 steps 1–9 with a stub submitter), header/subject validation, error mapping, response JSON, `event=request` record; fixtures `headers.json`; counterparts of `test_messages_endpoint.py` (non-SMTP), `test_headers.py`, `test_body_limit.py` | S2. **Status: split by size into S3a (`headers.rs`, `headers.json`; merged), S3b (`form.rs`, `form_decoding.json`; merged), S3c (`pipeline.rs`, the route, the request record, a step-9 stub in `mime.rs`, the core endpoint tests; merged) and S3d (the remaining endpoint tests: limits, body reading, decision order, records, route, production shapes, panics; merged). Done**. Interfaces for the later slices: S4 replaces the stub behind `mime::build(MessageInput) -> Result<BuiltMessage, InvalidMessage>` (`InvalidMessage` is the 400 of step 9; `BuiltMessage` carries `message_id`, `envelope`, `formatted`); S5 implements `pipeline::Submitter::submit(BuiltMessage) -> Result<Vec<Refusal>, SubmitError>` (refused recipients with their codes; `Temporary` 503, `Permanent` 502). Until S5 the binary's submitter answers every message with 503, so no build claims a message as queued that was not sent |
 | S4 | MIME construction | `mime.rs` with lettre builder (2.10), envelope and de-duplication, Message-Id/Date, inline/related/mixed, container downgrade, Reply-To; IDN as A-labels, EAI rejected (Q2); semantic tests by parsing the output; counterparts of `test_mime_build.py` | S2 (parallel to S3). **Status: split by size into S4a (`mime.rs`, S3's step-9 stub replaced behind its interface (2.10), D-21, the Python fix of non-ASCII message-id headers; lettre with the `builder` feature only, `deny.toml` gains 0BSD for its `quoted_printable`) and S4b (`mime.json`, `check_mime.py`, the CI step); both merged. Done** |
-| S5 | SMTP submission | `smtp.rs` on lettre's connection API: STARTTLS with system roots + CA file, AUTH, per-recipient RCPT, partial refusal, classification of 2.4, QUIT/close cleanup records, concurrency semaphore, per-operation timeout, `recipients_refused` and `smtp_cleanup_failed` records; scripted fake SMTP server tests mirroring `test_smtp_submission.py`, `test_smtp_outcomes.py`, `test_nonblocking_submit.py`; the S1b conditions (see "S1b result") | S1b, S3, S4. **Status: split by size into S5a (`smtp.rs`: the submitter, the classification, cleanup records, TLS with the CA file read at start (D-22), the fake server and its unit tests, wired into the binary; merged) and S5b (the concurrency semaphore and the shutdown task tracker in the route, `test_nonblocking_submit.py`, `fixtures/smtp_outcomes.json` from Python's `submit`, process tests, RSS)** |
+| S5 | SMTP submission | `smtp.rs` on lettre's connection API: STARTTLS with system roots + CA file, AUTH, per-recipient RCPT, partial refusal, classification of 2.4, QUIT/close cleanup records, concurrency semaphore, per-operation timeout, `recipients_refused` and `smtp_cleanup_failed` records; scripted fake SMTP server tests mirroring `test_smtp_submission.py`, `test_smtp_outcomes.py`, `test_nonblocking_submit.py`; the S1b conditions (see "S1b result") | S1b, S3, S4. **Status: split by size into S5a (`smtp.rs`: the submitter, the classification, cleanup records, TLS with the CA file read at start (D-22), the fake server and its unit tests, wired into the binary; merged) and S5b (the concurrency semaphore and the shutdown task tracker in the route, `test_nonblocking_submit.py`, `fixtures/smtp_outcomes.json` from Python's `submit`, process tests, RSS; merged). Done** |
 | S6 | Parity harness | `rust/parity/` (7.4): fake SMTP with STARTTLS/AUTH, case corpus, runner for both implementations, semantic MIME comparison, CI job `parity`; process-level tests of the binary | S5 |
 | S7 | Release pipeline | `.github/workflows/rust-release.yml`, `scripts/release_checks.py` + tests (adapted from nyxmon), first tag `rs-v0.2.0` after S6 | S6 (tag) |
 | S8 | Role and inventory | ops-library `mailgun_relay_deploy` changes (9.1) with tests and molecule; ops-control host vars (impl `python`, version pinned), playbook gate, runbook `docs/MAILGUN_RELAY_RUST.md`; deploy to macmini: binary installed, `--check-config` green against production files, nothing switched | S7 |
@@ -985,6 +998,7 @@ stable inputs). Rust loads them with `include_str!`.
 | `form_decoding.json` | Starlette `FormParser` / `MultiPartParser` decoding (`unquote_plus(x.decode("latin-1"))`, `_user_safe_decode`) | `Content-Type` × raw body × parser limits → ordered items (texts; files with filename, content type, bytes) or 400/413, exactly as `request.form(...)` with the route's mapping: decoding, request charsets (D-9 marked), framing, part headers, limits, truncation at every byte; the oracle runs each body in one piece and in four chunkings, a chunking-dependent decision is marked D-20 (S3b) |
 | `config_env.json` | `config.Settings` + the `__main__` reads | env set → settings or start failure (D-7 marked) |
 | `config_secrets.json` | `config.load_secrets` | YAML text × file mode → policies or failure (D-5, D-6 marked) |
+| `smtp_outcomes.json` | `smtp_client.submit` against a scripted fake SMTP server (S1b's `scripted_smtp.py`, in-process; STARTTLS with a throwaway `openssl` CA) | scenario (reply code or fault per phase, offered extensions, certificate, STARTTLS on/off) × recipients → the HTTP status the route maps it to, the refused recipients with codes, who the message was sent for (S5b: 109 scenarios, every row of 2.4, 421/450/451/550/554 in every phase; D-3/D-4 marked). `smtp::tests::smtp_outcomes_fixture` runs each scenario against the Rust fake server (`tests/support/fake_smtp.rs`, same scenario format) |
 | `mime.json` | `mime_build.build_message` with the form layer's upload defaults, serialised as `smtplib` writes it and parsed with `email` (`policy.default`) | message input → 400, or the envelope, the semantic view of the message (`semantic_message`: decoded headers without Message-Id/Date/MIME structure headers, sorted; the MIME tree with types, dispositions, filenames, Content-IDs, decoded text and data) and Python's own parser defects (S4b: 124 cases, every row of 2.10; D-11/D-21 marked) |
 
 Only decisions and normalised values are stored, never message texts

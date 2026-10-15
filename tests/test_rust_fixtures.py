@@ -73,6 +73,8 @@ def _cases(generator: ModuleType, name: str) -> list[dict[str, object]]:
         ("policy.json", 100, {"D-10", "D-11"}),
         # S4: every row of PLAN.md 2.10 and test_mime_build.py.
         ("mime.json", 100, {"D-11", "D-21"}),
+        # S5: every row of PLAN.md 2.4 against the scripted SMTP server.
+        ("smtp_outcomes.json", 100, {"D-3", "D-4"}),
     ],
 )
 def test_corpus_sizes_and_divergence_labels(

@@ -16,6 +16,8 @@ use axum::http::{HeaderMap, HeaderValue, StatusCode, header};
 use axum::response::{IntoResponse, Response};
 use http_body_util::BodyExt;
 use serde::Serialize;
+use tokio::sync::Semaphore;
+use tokio_util::task::TaskTracker;
 
 use crate::auth::authenticate;
 use crate::config::{Level, Settings};
@@ -73,13 +75,40 @@ pub trait Submitter: Send + Sync {
     fn submit(&self, message: BuiltMessage) -> Submission<'_>;
 }
 
-/// What the route needs: the settings, the token policies, the logger and
-/// the submitter.
+/// What the route needs: the settings, the token policies, the logger, the
+/// submitter, the SMTP slots and the request tasks.
 pub struct Relay {
     pub settings: Settings,
     pub tokens: Vec<TokenPolicy>,
     pub logger: Logger,
     pub submitter: Box<dyn Submitter>,
+    /// `SMTP_MAX_CONCURRENCY` sessions at a time; further submissions wait
+    /// without a timeout (`_smtp_limiter`).
+    smtp_slots: Semaphore,
+    /// Every request runs in a task of its own; shutdown waits for them, so
+    /// a submission whose client went away is still finished.
+    pub tasks: TaskTracker,
+}
+
+impl Relay {
+    pub fn new(
+        settings: Settings,
+        tokens: Vec<TokenPolicy>,
+        logger: Logger,
+        submitter: Box<dyn Submitter>,
+    ) -> Self {
+        let slots = usize::try_from(settings.smtp_max_concurrency)
+            .unwrap_or(usize::MAX)
+            .min(Semaphore::MAX_PERMITS);
+        Relay {
+            settings,
+            tokens,
+            logger,
+            submitter,
+            smtp_slots: Semaphore::new(slots),
+            tasks: TaskTracker::new(),
+        }
+    }
 }
 
 /// One failed decision: the status, the record's `result` and
@@ -198,7 +227,10 @@ pub async fn post_messages(
     headers: HeaderMap,
     body: Body,
 ) -> Response {
-    let task = tokio::spawn(process(relay, domain, headers, body));
+    let task = relay
+        .tasks
+        .clone()
+        .spawn(process(relay, domain, headers, body));
     match task.await {
         Ok(response) => response,
         Err(_) => error_response(StatusCode::INTERNAL_SERVER_ERROR, "Internal Server Error"),
@@ -381,25 +413,24 @@ async fn decide(
     record.message_id = Some(message_id.clone());
     record.recipient_count = message.envelope.len();
 
-    // Step 10.
-    let refused = relay
-        .submitter
-        .submit(message)
-        .await
-        .map_err(|error| match error {
-            SubmitError::Temporary => Failure {
-                status: StatusCode::SERVICE_UNAVAILABLE,
-                result: "smtp_temporary",
-                class: "SmtpSubmitError",
-                message: "Upstream SMTP temporarily unavailable".to_owned(),
-            },
-            SubmitError::Permanent => Failure {
-                status: StatusCode::BAD_GATEWAY,
-                result: "smtp_permanent",
-                class: "SmtpSubmitError",
-                message: "Upstream SMTP rejected the message".to_owned(),
-            },
-        })?;
+    // Step 10, behind the concurrency cap (never closed).
+    let slot = relay.smtp_slots.acquire().await;
+    let submitted = relay.submitter.submit(message).await;
+    drop(slot);
+    let refused = submitted.map_err(|error| match error {
+        SubmitError::Temporary => Failure {
+            status: StatusCode::SERVICE_UNAVAILABLE,
+            result: "smtp_temporary",
+            class: "SmtpSubmitError",
+            message: "Upstream SMTP temporarily unavailable".to_owned(),
+        },
+        SubmitError::Permanent => Failure {
+            status: StatusCode::BAD_GATEWAY,
+            result: "smtp_permanent",
+            class: "SmtpSubmitError",
+            message: "Upstream SMTP rejected the message".to_owned(),
+        },
+    })?;
 
     // Step 11, with the partial refusal of 2.4.
     record.result = "ok";

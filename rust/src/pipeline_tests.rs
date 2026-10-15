@@ -5,6 +5,7 @@
 
 use std::collections::BTreeSet;
 use std::sync::Mutex;
+use std::time::Duration;
 
 use axum::http::{HeaderMap, Request};
 use base64::Engine;
@@ -15,6 +16,8 @@ use tower::ServiceExt;
 use super::*;
 use crate::config::Settings;
 use crate::http::{AppState, router};
+use crate::smtp::tests::fake_smtp::FakeSmtp;
+use crate::smtp::tests::{PKI, submitter as smtp_submitter};
 
 const HOMEPAGE_TOKEN: &str = "homepage-token-secret";
 const PODCAST_TOKEN: &str = "podcast-token-secret";
@@ -105,15 +108,16 @@ pub fn relay(settings: Settings) -> (Arc<Relay>, Arc<Recorder>, &'static Mutex<V
         calls: Mutex::new(Vec::new()),
         outcome: Mutex::new(Ok(Vec::new())),
     });
-    let relay = Relay {
+    let relay = Relay::new(
         settings,
-        tokens: tokens(),
+        tokens(),
         logger,
-        submitter: Box::new(Shared(Arc::clone(&recorder))),
-    };
+        Box::new(Shared(Arc::clone(&recorder))),
+    );
     (Arc::new(relay), recorder, lines)
 }
 
+#[derive(Clone)]
 struct Harness {
     relay: Arc<Relay>,
     recorder: Arc<Recorder>,
@@ -123,6 +127,25 @@ struct Harness {
 impl Harness {
     fn new() -> Self {
         Self::with(settings())
+    }
+
+    /// A relay with another submitter, which gets the capturing logger.
+    fn with_submitter(settings: Settings, make: impl FnOnce(Logger) -> Box<dyn Submitter>) -> Self {
+        let (logger, logs) = Logger::capturing(Level::Info);
+        let relay = Relay::new(settings, tokens(), logger, make(logger));
+        Harness {
+            relay: Arc::new(relay),
+            recorder: relay_recorder(),
+            logs,
+        }
+    }
+
+    async fn health(&self) -> Reply {
+        let request = Request::builder()
+            .uri("/health")
+            .body(Body::empty())
+            .unwrap();
+        self.send(request).await
     }
 
     fn with(settings: Settings) -> Self {
@@ -982,12 +1005,7 @@ async fn records_follow_the_information_boundary() {
     assert_eq!(from.chars().count(), 320);
     // No record below the configured level.
     let (logger, lines) = Logger::capturing(Level::Warning);
-    let quiet = Relay {
-        settings: settings(),
-        tokens: tokens(),
-        logger,
-        submitter: Box::new(Panicking),
-    };
+    let quiet = Relay::new(settings(), tokens(), logger, Box::new(Panicking));
     let state = Arc::new(AppState {
         relay: Arc::new(quiet),
     });
@@ -1108,12 +1126,7 @@ impl Submitter for Panicking {
 #[tokio::test]
 async fn panics_are_500_with_a_record() {
     let (logger, lines) = Logger::capturing(Level::Info);
-    let relay = Relay {
-        settings: settings(),
-        tokens: tokens(),
-        logger,
-        submitter: Box::new(Panicking),
-    };
+    let relay = Relay::new(settings(), tokens(), logger, Box::new(Panicking));
     let h = Harness {
         relay: Arc::new(relay),
         recorder: relay_recorder(),
@@ -1133,4 +1146,219 @@ fn relay_recorder() -> Arc<Recorder> {
         calls: Mutex::new(Vec::new()),
         outcome: Mutex::new(Ok(Vec::new())),
     })
+}
+
+/// Blocks submissions to [`SLOW`] until released (`GatedSubmitter` of
+/// `tests/test_nonblocking_submit.py`).
+struct Gated {
+    entered: tokio::sync::Notify,
+    release: tokio::sync::watch::Sender<bool>,
+    recipients: Mutex<Vec<Vec<String>>>,
+}
+
+const SLOW: &str = "slow@wersdoerfer.de";
+
+struct GatedShared(Arc<Gated>);
+
+impl Submitter for GatedShared {
+    fn submit(&self, message: BuiltMessage) -> Submission<'_> {
+        let gate = Arc::clone(&self.0);
+        Box::pin(async move {
+            gate.recipients
+                .lock()
+                .unwrap()
+                .push(message.envelope.clone());
+            if message.envelope.iter().any(|r| r == SLOW) {
+                gate.entered.notify_one();
+                let mut release = gate.release.subscribe();
+                tokio::time::timeout(Duration::from_secs(5), release.wait_for(|r| *r))
+                    .await
+                    .expect("the gated submitter was released")
+                    .unwrap();
+            }
+            Ok(Vec::new())
+        })
+    }
+}
+
+fn gated(settings: Settings) -> (Harness, Arc<Gated>) {
+    let gate = Arc::new(Gated {
+        entered: tokio::sync::Notify::new(),
+        release: tokio::sync::watch::channel(false).0,
+        recipients: Mutex::new(Vec::new()),
+    });
+    let shared = Arc::clone(&gate);
+    let h = Harness::with_submitter(settings, |_| Box::new(GatedShared(shared)));
+    (h, gate)
+}
+
+fn post_to(h: &Harness, to: &'static str) -> tokio::task::JoinHandle<Reply> {
+    let h = h.clone();
+    tokio::spawn(async move {
+        h.homepage(encode(
+            Encoding::Urlencoded,
+            &without(&["to"], &[("to", to)]),
+        ))
+        .await
+    })
+}
+
+async fn entered(gate: &Gated) {
+    tokio::time::timeout(Duration::from_secs(5), gate.entered.notified())
+        .await
+        .expect("the slow send reached the submitter");
+}
+
+/// `test_nonblocking_submit.py`: a hanging submission blocks neither
+/// `/health` nor other sends.
+#[tokio::test]
+async fn health_and_other_sends_stay_responsive_while_a_send_hangs() {
+    let (h, gate) = gated(settings());
+    let slow = post_to(&h, SLOW);
+    entered(&gate).await;
+    let health = tokio::time::timeout(Duration::from_secs(5), h.health())
+        .await
+        .unwrap();
+    assert_eq!(health.status(), 200);
+    assert_eq!(health.json, json!({"status": "ok"}));
+    let other = tokio::time::timeout(Duration::from_secs(5), post_to(&h, "admin@wersdoerfer.de"))
+        .await
+        .unwrap()
+        .unwrap();
+    assert_queued(&other);
+    assert!(
+        !slow.is_finished(),
+        "the slow send finished before it was released"
+    );
+    gate.release.send_replace(true);
+    assert_queued(&slow.await.unwrap());
+    assert_eq!(
+        *gate.recipients.lock().unwrap(),
+        [
+            vec![SLOW.to_owned()],
+            vec!["admin@wersdoerfer.de".to_owned()]
+        ]
+    );
+}
+
+/// `test_nonblocking_submit.py`: `SMTP_MAX_CONCURRENCY` queues submissions,
+/// not `/health`.
+#[tokio::test]
+async fn concurrency_cap_queues_sends_but_not_health() {
+    let (h, gate) = gated(Settings {
+        smtp_max_concurrency: 1,
+        ..settings()
+    });
+    let slow = post_to(&h, SLOW);
+    entered(&gate).await;
+    let queued = post_to(&h, "admin@wersdoerfer.de");
+    let health = tokio::time::timeout(Duration::from_secs(5), h.health())
+        .await
+        .unwrap();
+    assert_eq!(health.status(), 200);
+    // The only SMTP slot is held: the second send waits before the submitter.
+    tokio::time::sleep(Duration::from_millis(100)).await;
+    assert!(!queued.is_finished());
+    assert_eq!(*gate.recipients.lock().unwrap(), [vec![SLOW.to_owned()]]);
+    gate.release.send_replace(true);
+    assert_queued(&slow.await.unwrap());
+    assert_queued(&queued.await.unwrap());
+    assert_eq!(
+        *gate.recipients.lock().unwrap(),
+        [
+            vec![SLOW.to_owned()],
+            vec!["admin@wersdoerfer.de".to_owned()]
+        ]
+    );
+}
+
+/// The route with the SMTP submitter against the fake server.
+async fn smtp_harness(scenario: Json, settings: Settings) -> (Harness, FakeSmtp) {
+    let server = FakeSmtp::start(&scenario, Some(PKI.by_name("good"))).await;
+    let port = server.port;
+    let h = Harness::with_submitter(settings, |logger| {
+        Box::new(smtp_submitter(port, true, 5.0, logger))
+    });
+    (h, server)
+}
+
+/// `test_smtp_outcomes.py` through the endpoint: refusals of the sender
+/// and the recipient with each code, a QUIT failure after an accepted
+/// message (also with a partial refusal and `FAIL_ON_PARTIAL_REFUSAL`), a
+/// DATA failure not hidden by a QUIT failure; never a reply text.
+#[tokio::test]
+async fn smtp_outcomes_through_the_endpoint() {
+    for code in [421, 450, 451, 550] {
+        for scenario in [json!({"rcpt": {"admin": code}}), json!({"mail": code})] {
+            let (h, _server) = smtp_harness(scenario.clone(), settings()).await;
+            let reply = h.homepage(encode(Encoding::Urlencoded, &MINIMUM)).await;
+            assert_error(&reply, if code < 500 { 503 } else { 502 });
+            assert!(!reply.json.to_string().contains("result"), "{scenario}");
+            let record = &h.records("request")[0];
+            let expected = if code < 500 {
+                "smtp_temporary"
+            } else {
+                "smtp_permanent"
+            };
+            assert_eq!(record["result"], expected, "{scenario}");
+        }
+    }
+    let partial = with(&[("cc", "nope@wersdoerfer.de")]);
+    for refused in [false, true] {
+        for strict in [false, true] {
+            let scenario = if refused {
+                json!({"quit": 500, "rcpt": {"nope": 550}})
+            } else {
+                json!({"quit": 500})
+            };
+            let settings = Settings {
+                fail_on_partial_refusal: strict,
+                ..settings()
+            };
+            let (h, server) = smtp_harness(scenario, settings).await;
+            let reply = h.homepage(encode(Encoding::Urlencoded, &partial)).await;
+            if strict && refused {
+                assert_error(&reply, 502);
+                let message = reply.json["message"].as_str().unwrap();
+                assert!(message.contains("sent to the others"), "{message}");
+            } else {
+                assert_queued(&reply);
+            }
+            tokio::time::sleep(Duration::from_millis(20)).await;
+            assert!(server.sessions()[0].message.is_some());
+            assert_eq!(h.records("smtp_cleanup_failed").len(), 1);
+            let record = &h.records("request")[0];
+            let result = if refused { "partial_refusal" } else { "ok" };
+            assert_eq!(record["result"], result);
+            assert_eq!(h.records("recipients_refused").len(), usize::from(refused));
+        }
+    }
+    let (h, _server) = smtp_harness(json!({"data": 451, "quit": 500}), settings()).await;
+    let reply = h.homepage(encode(Encoding::Urlencoded, &MINIMUM)).await;
+    assert_error(&reply, 503);
+    assert_eq!(h.records("smtp_cleanup_failed").len(), 1);
+}
+
+/// PLAN.md 2.9: `/health` answers while an SMTP session hangs.
+#[tokio::test]
+async fn health_answers_while_an_smtp_session_hangs() {
+    let (h, server) = smtp_harness(json!({"fault": {"data_end": "hang"}}), settings()).await;
+    let pending = post_to(&h, "admin@wersdoerfer.de");
+    let started = Instant::now();
+    while server
+        .sessions()
+        .first()
+        .is_none_or(|s| s.message.is_none())
+    {
+        assert!(
+            started.elapsed() < Duration::from_secs(5),
+            "no message arrived"
+        );
+        tokio::time::sleep(Duration::from_millis(10)).await;
+    }
+    let health = tokio::time::timeout(Duration::from_secs(1), h.health())
+        .await
+        .unwrap();
+    assert_eq!(health.status(), 200);
+    assert!(!pending.is_finished());
 }

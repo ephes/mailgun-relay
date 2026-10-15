@@ -35,6 +35,7 @@ socket2 = "0.6"
 subtle = { version = "2", default-features = false, features = ["std"] }
 tokio = { version = "1", features = ["rt", "net", "time", "signal", "sync", "macros", "io-util"] }
 tokio-io-timeout = "1.2"
+tokio-util = { version = "0.7", default-features = false, features = ["rt"] }
 yaml-rust2 = { version = "0.13", default-features = false }
 
 [dev-dependencies]

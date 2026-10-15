@@ -128,10 +128,10 @@ pub fn build(input: MessageInput) -> Result<BuiltMessage, InvalidMessage> {
     head.push_str(&custom_headers(&input.headers)?);
 
     let tree = body_tree(text, html, amp_html, input.inline, input.attachments)?;
-    let body = tree.formatted();
-    let mut formatted = Vec::with_capacity(head.len() + body.len());
-    formatted.extend_from_slice(head.as_bytes());
-    formatted.extend_from_slice(&body);
+    // The head goes in front of the rendered body in place (lettre's
+    // buffer has room to spare), so a large message is not copied again.
+    let mut formatted = tree.formatted();
+    formatted.splice(0..0, head.into_bytes());
 
     let mut seen = HashSet::new();
     let envelope = to

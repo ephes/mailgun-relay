@@ -34,9 +34,12 @@ import logging
 import os
 import random
 import re
+import ssl
 import string
+import subprocess
 import sys
 import tempfile
+import threading
 import urllib.parse
 import warnings
 from collections.abc import Callable, Mapping, Sequence
@@ -76,6 +79,7 @@ from mailgun_relay.policy import (
     normalize_domain,
     parse_email_strict,
 )
+from mailgun_relay.smtp_client import FailureCategory, SmtpSubmitError, SmtpTransport, submit
 
 FIXTURES_DIR = Path(__file__).resolve().parent
 
@@ -2965,6 +2969,367 @@ def build_mime() -> dict[str, Any]:
     }
 
 
+# ------------------------------------------------------------ smtp_outcomes
+
+# The S1b spike's scenarios (rust/spikes/s1b/fake/run_matrix.py on
+# rust/spike-s1b), plus every code of test_smtp_outcomes.py in every phase
+# and the positive replies smtplib does not accept. A scenario overrides the
+# fake server's defaults (SMTP_DEFAULTS); "fault" makes a phase answer with
+# a garbage line, close the connection or hang. The Rust fake server
+# (rust/tests/support/fake_smtp.rs) reads the same scenarios.
+SMTP_DEFAULTS: dict[str, Any] = {
+    "banner": 220,
+    "ehlo": 250,
+    "ehlo_tls": 250,
+    "offer_starttls": True,
+    "starttls": 220,
+    "auth_offer": "PLAIN LOGIN",
+    "auth": 235,
+    "mail": 250,
+    "rcpt": {},
+    "data": 354,
+    "data_end": 250,
+    "quit": 221,
+    "fault": {},
+}
+SMTP_THREE = ["ok1@example.com", "bad@example.com", "ok2@example.com"]
+SMTP_TIMEOUT_S = 5.0
+SMTP_HANG_TIMEOUT_S = 0.5
+
+# Decided differences (PLAN.md section 3): a reply without a parsable code
+# is 503 in Rust (D-3); lettre has no CRAM-MD5 (D-4).
+SMTP_DIVERGENCES = {
+    "garbage at banner": "D-3",
+    "garbage at mail": "D-3",
+    "garbage at rcpt": "D-3",
+    "garbage at data_end": "D-3",
+    "auth only CRAM-MD5": "D-4",
+}
+
+
+def _smtp_cases() -> list[dict[str, Any]]:
+    cases: list[dict[str, Any]] = []
+
+    def add(
+        name: str,
+        scenario: dict[str, Any],
+        recipients: list[str] = SMTP_THREE,
+        *,
+        starttls: bool = True,
+        cert: str = "good",
+    ) -> None:
+        hang = "hang" in scenario.get("fault", {}).values()
+        cases.append(
+            {
+                "name": name,
+                "scenario": scenario,
+                "recipients": recipients,
+                "starttls": starttls,
+                "cert": cert,
+                "timeout_s": SMTP_HANG_TIMEOUT_S if hang else SMTP_TIMEOUT_S,
+            }
+        )
+
+    add("all accepted", {}, ["ok1@example.com", "ok3@example.com", "ok2@example.com"])
+    add("partial 550", {"rcpt": {"bad": 550}})
+    add("partial 450", {"rcpt": {"bad": 450}})
+    add("partial 550+452", {"rcpt": {"bad": 550, "ok2": 452}})
+    add("all refused 5xx", {"rcpt": {"ok1": 550, "bad": 553, "ok2": 550}})
+    add("all refused 5xx+4xx", {"rcpt": {"ok1": 550, "bad": 450, "ok2": 550}})
+    add("all refused 4xx", {"rcpt": {"ok1": 450, "bad": 451, "ok2": 452}})
+    add("rcpt 421 after accepted", {"rcpt": {"bad": 421}})
+    add("starttls not offered", {"offer_starttls": False})
+    add("auth not offered", {"auth_offer": ""})
+    add("auth only CRAM-MD5", {"auth_offer": "CRAM-MD5"})
+    add("auth LOGIN only", {"auth_offer": "LOGIN"})
+    add("auth PLAIN refused, LOGIN accepted", {"auth_plain": 535})
+    add("auth PLAIN 250, LOGIN accepted", {"auth_plain": 250})
+    add("auth PLAIN refused, LOGIN refused", {"auth_plain": 535, "auth_login": 454})
+    add("auth PLAIN 421", {"auth_plain": 421})
+    add("creds without tls", {"offer_starttls": False}, starttls=False)
+    add("creds without tls, server offers starttls", {}, starttls=False)
+    add("cert wrong hostname", {}, cert="wrongname")
+    add("cert unknown CA", {}, cert="selfsigned")
+    for phase in ("banner", "ehlo", "mail", "rcpt", "data", "data_end"):
+        add(f"disconnect at {phase}", {"fault": {phase: "close"}})
+    for phase in ("banner", "mail", "rcpt", "data_end"):
+        add(f"garbage at {phase}", {"fault": {phase: "garbage"}})
+    for phase in ("banner", "mail", "data_end"):
+        add(f"timeout at {phase}", {"fault": {phase: "hang"}})
+    for code in (421, 450, 451, 550, 554):
+        for phase in ("banner", "ehlo", "ehlo_tls", "starttls", "auth"):
+            add(f"{phase} {code}", {phase: code})
+        for phase in ("mail", "data", "data_end"):
+            add(f"{phase} {code}", {phase: code})
+        add(f"rcpt {code} single", {"rcpt": {"ok1": code}}, ["ok1@example.com"])
+        add(f"rcpt {code} partial", {"rcpt": {"bad": code}})
+        for phase in ("banner", "ehlo"):
+            add(
+                f"{phase} {code} (starttls off)",
+                {phase: code, "offer_starttls": False},
+                starttls=False,
+            )
+        add(f"quit {code} after accepted", {"quit": code})
+    # Positive replies smtplib does not accept (S1b condition 2).
+    add("auth 250", {"auth": 250})
+    add("mail 251", {"mail": 251})
+    add("rcpt 252 single", {"rcpt": {"ok1": 252}}, ["ok1@example.com"])
+    add("rcpt 252 partial", {"rcpt": {"bad": 252}})
+    add("rcpt 251 accepted", {"rcpt": {"bad": 251}})
+    add("data 250", {"data": 250})
+    add("data_end 251", {"data_end": 251})
+    add("quit 250 after accepted", {"quit": 250})
+    add("quit close after accepted", {"fault": {"quit": "close"}})
+    add("partial refusal, quit 500", {"rcpt": {"bad": 550}, "quit": 500})
+    add("data 451, quit 500", {"data": 451, "quit": 500})
+    return cases
+
+
+class _ScriptedSmtp:
+    """The fake server of the S1b spike (``scripted_smtp.py``), in a thread."""
+
+    def __init__(self, contexts: dict[str, Any]) -> None:
+        self.contexts = contexts
+        self.loop = asyncio.new_event_loop()
+        self.thread = threading.Thread(target=self.loop.run_forever, daemon=True)
+        self.thread.start()
+        self.tasks: set[asyncio.Task[None]] = set()
+
+    def run(self, coro: Any) -> Any:
+        return asyncio.run_coroutine_threadsafe(coro, self.loop).result()
+
+    def start(self, scenario: dict[str, Any], cert: str) -> tuple[Any, list[dict[str, Any]]]:
+        sessions: list[dict[str, Any]] = []
+        script = {**SMTP_DEFAULTS, **scenario}
+        context = self.contexts[cert]
+
+        async def handle(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
+            task = asyncio.current_task()
+            assert task is not None
+            self.tasks.add(task)
+            session: dict[str, Any] = {"rcpts": [], "data_for": None}
+            sessions.append(session)
+            tls = False
+
+            async def reply(phase: str, code: int, lines: list[str]) -> bool:
+                fault = script["fault"].get(phase)
+                if fault == "close":
+                    return False
+                if fault == "hang":
+                    await asyncio.sleep(3600)
+                if fault == "garbage":
+                    writer.write(b"garbage reply\r\n")
+                    await writer.drain()
+                    return True
+                for i, line in enumerate(lines):
+                    sep = " " if i == len(lines) - 1 else "-"
+                    writer.write(f"{code}{sep}{line}\r\n".encode())
+                await writer.drain()
+                return code != 421
+
+            def ehlo_lines() -> list[str]:
+                lines = ["fake.test", "PIPELINING", "SIZE 52428800", "8BITMIME"]
+                if not tls and script["offer_starttls"]:
+                    lines.append("STARTTLS")
+                if (tls or not script["offer_starttls"]) and script["auth_offer"]:
+                    lines.append("AUTH " + script["auth_offer"])
+                return lines
+
+            try:
+                if not await reply("banner", script["banner"], ["fake.test ESMTP"]):
+                    return
+                while True:
+                    raw = await reader.readline()
+                    if not raw:
+                        return
+                    line = raw.decode("utf-8", "replace").rstrip("\r\n")
+                    verb = line.split(" ", 1)[0].upper()
+                    if verb in ("EHLO", "HELO"):
+                        phase = "ehlo_tls" if tls else "ehlo"
+                        code = script[phase]
+                        ok = await reply(phase, code, ehlo_lines() if code == 250 else ["no"])
+                    elif verb == "STARTTLS":
+                        ok = await reply("starttls", script["starttls"], ["go ahead"])
+                        if ok and script["starttls"] == 220:
+                            await writer.start_tls(context)
+                            tls = True
+                    elif verb == "AUTH":
+                        parts = line.split()
+                        prompts = []
+                        if parts[1].upper() == "LOGIN":
+                            prompts = (
+                                ["UGFzc3dvcmQ6"]
+                                if len(parts) == 3
+                                else ["VXNlcm5hbWU6", "UGFzc3dvcmQ6"]
+                            )
+                        elif len(parts) == 2:
+                            prompts = [""]
+                        for prompt in prompts:
+                            writer.write(f"334 {prompt}\r\n".encode())
+                            await writer.drain()
+                            await reader.readline()
+                        code = script.get(f"auth_{parts[1].lower()}", script["auth"])
+                        ok = await reply("auth", code, ["auth result"])
+                    elif verb == "MAIL":
+                        ok = await reply("mail", script["mail"], ["sender result"])
+                    elif verb == "RCPT":
+                        addr = line.split(":", 1)[1].strip().strip("<>")
+                        code = script["rcpt"].get(addr.split("@", 1)[0], 250)
+                        if code in (250, 251):
+                            session["rcpts"].append(addr)
+                        ok = await reply("rcpt", code, ["rcpt result"])
+                    elif verb == "DATA":
+                        ok = await reply("data", script["data"], ["send data"])
+                        if ok and script["data"] == 354 and "data" not in script["fault"]:
+                            while await reader.readline() not in (b".\r\n", b""):
+                                pass
+                            session["data_for"] = list(session["rcpts"])
+                            ok = await reply("data_end", script["data_end"], ["queued"])
+                    elif verb == "RSET":
+                        session["rcpts"] = []
+                        ok = await reply("rset", 250, ["reset"])
+                    elif verb == "QUIT":
+                        await reply("quit", script["quit"], ["bye"])
+                        return
+                    else:
+                        ok = await reply("other", 502, ["not implemented"])
+                    if not ok:
+                        return
+            except ConnectionError, OSError:
+                pass
+            finally:
+                writer.close()
+
+        server = self.run(asyncio.start_server(handle, "127.0.0.1", 0))
+        return server, sessions
+
+    def stop(self, server: Any) -> None:
+        async def close() -> None:
+            server.close()
+            for task in self.tasks:
+                task.cancel()
+            await asyncio.gather(*self.tasks, return_exceptions=True)
+            self.tasks.clear()
+            await server.wait_closed()
+
+        self.run(close())
+
+    def close(self) -> None:
+        self.loop.call_soon_threadsafe(self.loop.stop)
+        self.thread.join()
+        self.loop.close()
+
+
+def _smtp_certificates(directory: Path) -> dict[str, str]:
+    """A throwaway CA with key identifiers (Python's VERIFY_X509_STRICT),
+    a ``localhost`` leaf, a leaf for another name and a self-signed one."""
+
+    def openssl(*args: str) -> None:
+        subprocess.run(["openssl", *args], check=True, capture_output=True, cwd=directory)  # noqa: S603, S607
+
+    ec = ["-newkey", "ec", "-pkeyopt", "ec_paramgen_curve:P-256", "-nodes", "-days", "2"]
+    ca = [
+        "-addext",
+        "basicConstraints=critical,CA:TRUE",
+        "-addext",
+        "keyUsage=critical,keyCertSign",
+    ]
+    openssl("req", "-x509", *ec, "-keyout", "ca.key", "-out", "ca.pem", "-subj", "/CN=CA", *ca)
+    for name, san in (("good", "DNS:localhost,IP:127.0.0.1"), ("wrongname", "DNS:other.test")):
+        subject = f"/CN={san.split(',')[0][4:]}"
+        openssl("req", *ec[:-2], "-keyout", f"{name}.key", "-out", f"{name}.csr", "-subj", subject)
+        (directory / f"{name}.ext").write_text(
+            f"subjectAltName={san}\nextendedKeyUsage=serverAuth\nbasicConstraints=CA:FALSE\n"
+            "subjectKeyIdentifier=hash\nauthorityKeyIdentifier=keyid,issuer\n"
+        )
+        signing = ["-CA", "ca.pem", "-CAkey", "ca.key", "-CAcreateserial", "-days", "2"]
+        extensions = ["-extfile", f"{name}.ext"]
+        openssl("x509", "-req", "-in", f"{name}.csr", *signing, *extensions, "-out", f"{name}.pem")
+    selfsigned = ["-subj", "/CN=localhost", "-addext", "subjectAltName=DNS:localhost"]
+    openssl("req", "-x509", *ec, "-keyout", "selfsigned.key", "-out", "selfsigned.pem", *selfsigned)
+    return {name: str(directory / name) for name in ("good", "wrongname", "selfsigned", "ca")}
+
+
+def _python_submit(smtp: _ScriptedSmtp, case: dict[str, Any], ca_file: str) -> dict[str, Any]:
+    """The real ``smtp_client.submit`` against the scripted server: the HTTP
+    status the route maps it to, the refused recipients and who the message
+    was sent for."""
+    server, sessions = smtp.start(case["scenario"], case["cert"])
+    port = server.sockets[0].getsockname()[1]
+    message = EmailMessage()
+    message["From"] = "sender@example.com"
+    message["To"] = ", ".join(case["recipients"])
+    message["Subject"] = "fixture"
+    message.set_content("fixture body\n")
+    transport = SmtpTransport(
+        host="localhost",
+        port=port,
+        username="relay",
+        password="fixture-password",  # noqa: S106 - the fake server accepts any
+        use_starttls=case["starttls"],
+        timeout_s=case["timeout_s"],
+        ca_file=ca_file,
+    )
+    refused: list[list[Any]] = []
+    try:
+        result = submit(
+            message,
+            envelope_sender="sender@example.com",
+            recipients=case["recipients"],
+            transport=transport,
+        )
+        status = 200
+        refused = [[address, code] for address, (code, _reply) in result.items()]
+    except SmtpSubmitError as exc:
+        status = 503 if exc.category is FailureCategory.TEMPORARY else 502
+    finally:
+        smtp.stop(server)
+    data_for = next((s["data_for"] for s in sessions if s["data_for"] is not None), None)
+    return {"status": status, "refused": refused, "data_for": data_for}
+
+
+def build_smtp_outcomes() -> dict[str, Any]:
+    service_log = logging.getLogger("mailgun_relay.service")
+    level = service_log.level
+    service_log.setLevel(logging.CRITICAL)  # the cleanup warnings of the QUIT cases
+    try:
+        with tempfile.TemporaryDirectory() as tmp:
+            files = _smtp_certificates(Path(tmp))
+            contexts = {}
+            for name in ("good", "wrongname", "selfsigned"):
+                context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
+                context.load_cert_chain(f"{files[name]}.pem", f"{files[name]}.key")
+                contexts[name] = context
+            smtp = _ScriptedSmtp(contexts)
+            try:
+                cases = []
+                for case in _smtp_cases():
+                    python = _python_submit(smtp, case, f"{files['ca']}.pem")
+                    divergence = SMTP_DIVERGENCES.get(case["name"])
+                    expected = python
+                    if divergence == "D-3":
+                        expected = {**python, "status": 503, "refused": []}
+                    elif divergence == "D-4":
+                        # lettre cannot log in: nothing is sent.
+                        expected = {"status": 503, "refused": [], "data_for": None}
+                    entry = {**case, "expected": expected}
+                    if divergence is not None:
+                        assert python["status"] != 503, case["name"]
+                        entry["python"] = python
+                        entry["divergence"] = divergence
+                    cases.append(entry)
+            finally:
+                smtp.close()
+    finally:
+        service_log.setLevel(level)
+    return {
+        "source": "mailgun_relay.smtp_client.submit against the scripted fake SMTP server",
+        "defaults": SMTP_DEFAULTS,
+        "credentials": True,
+        "cases": cases,
+    }
+
+
 # ------------------------------------------------------------------ driver
 
 GENERATORS: dict[str, Callable[[], Mapping[str, Any]]] = {
@@ -2977,6 +3342,7 @@ GENERATORS: dict[str, Callable[[], Mapping[str, Any]]] = {
     "headers.json": build_headers,
     "mime.json": build_mime,
     "policy.json": build_policy,
+    "smtp_outcomes.json": build_smtp_outcomes,
 }
 
 

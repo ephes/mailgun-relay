@@ -116,13 +116,14 @@ async fn run(settings: Settings, secrets: Secrets, smtp: SmtpConfig) -> Result<(
     let logger = Logger::new(settings.log_level);
     log_startup(&logger, &settings, &secrets, &bind);
 
+    let relay = Arc::new(pipeline::Relay::new(
+        settings,
+        secrets.tokens,
+        logger,
+        Box::new(SmtpSubmitter::new(smtp, logger)),
+    ));
     let state = Arc::new(http::AppState {
-        relay: Arc::new(pipeline::Relay {
-            settings,
-            tokens: secrets.tokens,
-            logger,
-            submitter: Box::new(SmtpSubmitter::new(smtp, logger)),
-        }),
+        relay: Arc::clone(&relay),
     });
     let (stop, stopped) = tokio::sync::watch::channel(false);
     let mut servers = tokio::task::JoinSet::new();
@@ -150,6 +151,9 @@ async fn run(settings: Settings, secrets: Secrets, smtp: SmtpConfig) -> Result<(
             .map_err(|error| format!("server task: {error}"))?
             .map_err(|error| format!("server error: {error}"))?;
     }
+    // Requests whose client went away may still be submitting.
+    relay.tasks.close();
+    relay.tasks.wait().await;
     Ok(())
 }
 

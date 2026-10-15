@@ -1,0 +1,2359 @@
+{
+ "cases": [
+  {
+   "cert": "good",
+   "expected": {
+    "data_for": [
+     "ok1@example.com",
+     "ok3@example.com",
+     "ok2@example.com"
+    ],
+    "refused": [],
+    "status": 200
+   },
+   "name": "all accepted",
+   "recipients": [
+    "ok1@example.com",
+    "ok3@example.com",
+    "ok2@example.com"
+   ],
+   "scenario": {},
+   "starttls": true,
+   "timeout_s": 5.0
+  },
+  {
+   "cert": "good",
+   "expected": {
+    "data_for": [
+     "ok1@example.com",
+     "ok2@example.com"
+    ],
+    "refused": [
+     [
+      "bad@example.com",
+      550
+     ]
+    ],
+    "status": 200
+   },
+   "name": "partial 550",
+   "recipients": [
+    "ok1@example.com",
+    "bad@example.com",
+    "ok2@example.com"
+   ],
+   "scenario": {
+    "rcpt": {
+     "bad": 550
+    }
+   },
+   "starttls": true,
+   "timeout_s": 5.0
+  },
+  {
+   "cert": "good",
+   "expected": {
+    "data_for": [
+     "ok1@example.com",
+     "ok2@example.com"
+    ],
+    "refused": [
+     [
+      "bad@example.com",
+      450
+     ]
+    ],
+    "status": 200
+   },
+   "name": "partial 450",
+   "recipients": [
+    "ok1@example.com",
+    "bad@example.com",
+    "ok2@example.com"
+   ],
+   "scenario": {
+    "rcpt": {
+     "bad": 450
+    }
+   },
+   "starttls": true,
+   "timeout_s": 5.0
+  },
+  {
+   "cert": "good",
+   "expected": {
+    "data_for": [
+     "ok1@example.com"
+    ],
+    "refused": [
+     [
+      "bad@example.com",
+      550
+     ],
+     [
+      "ok2@example.com",
+      452
+     ]
+    ],
+    "status": 200
+   },
+   "name": "partial 550+452",
+   "recipients": [
+    "ok1@example.com",
+    "bad@example.com",
+    "ok2@example.com"
+   ],
+   "scenario": {
+    "rcpt": {
+     "bad": 550,
+     "ok2": 452
+    }
+   },
+   "starttls": true,
+   "timeout_s": 5.0
+  },
+  {
+   "cert": "good",
+   "expected": {
+    "data_for": null,
+    "refused": [],
+    "status": 502
+   },
+   "name": "all refused 5xx",
+   "recipients": [
+    "ok1@example.com",
+    "bad@example.com",
+    "ok2@example.com"
+   ],
+   "scenario": {
+    "rcpt": {
+     "bad": 553,
+     "ok1": 550,
+     "ok2": 550
+    }
+   },
+   "starttls": true,
+   "timeout_s": 5.0
+  },
+  {
+   "cert": "good",
+   "expected": {
+    "data_for": null,
+    "refused": [],
+    "status": 503
+   },
+   "name": "all refused 5xx+4xx",
+   "recipients": [
+    "ok1@example.com",
+    "bad@example.com",
+    "ok2@example.com"
+   ],
+   "scenario": {
+    "rcpt": {
+     "bad": 450,
+     "ok1": 550,
+     "ok2": 550
+    }
+   },
+   "starttls": true,
+   "timeout_s": 5.0
+  },
+  {
+   "cert": "good",
+   "expected": {
+    "data_for": null,
+    "refused": [],
+    "status": 503
+   },
+   "name": "all refused 4xx",
+   "recipients": [
+    "ok1@example.com",
+    "bad@example.com",
+    "ok2@example.com"
+   ],
+   "scenario": {
+    "rcpt": {
+     "bad": 451,
+     "ok1": 450,
+     "ok2": 452
+    }
+   },
+   "starttls": true,
+   "timeout_s": 5.0
+  },
+  {
+   "cert": "good",
+   "expected": {
+    "data_for": null,
+    "refused": [],
+    "status": 503
+   },
+   "name": "rcpt 421 after accepted",
+   "recipients": [
+    "ok1@example.com",
+    "bad@example.com",
+    "ok2@example.com"
+   ],
+   "scenario": {
+    "rcpt": {
+     "bad": 421
+    }
+   },
+   "starttls": true,
+   "timeout_s": 5.0
+  },
+  {
+   "cert": "good",
+   "expected": {
+    "data_for": null,
+    "refused": [],
+    "status": 503
+   },
+   "name": "starttls not offered",
+   "recipients": [
+    "ok1@example.com",
+    "bad@example.com",
+    "ok2@example.com"
+   ],
+   "scenario": {
+    "offer_starttls": false
+   },
+   "starttls": true,
+   "timeout_s": 5.0
+  },
+  {
+   "cert": "good",
+   "expected": {
+    "data_for": null,
+    "refused": [],
+    "status": 503
+   },
+   "name": "auth not offered",
+   "recipients": [
+    "ok1@example.com",
+    "bad@example.com",
+    "ok2@example.com"
+   ],
+   "scenario": {
+    "auth_offer": ""
+   },
+   "starttls": true,
+   "timeout_s": 5.0
+  },
+  {
+   "cert": "good",
+   "divergence": "D-4",
+   "expected": {
+    "data_for": null,
+    "refused": [],
+    "status": 503
+   },
+   "name": "auth only CRAM-MD5",
+   "python": {
+    "data_for": [
+     "ok1@example.com",
+     "bad@example.com",
+     "ok2@example.com"
+    ],
+    "refused": [],
+    "status": 200
+   },
+   "recipients": [
+    "ok1@example.com",
+    "bad@example.com",
+    "ok2@example.com"
+   ],
+   "scenario": {
+    "auth_offer": "CRAM-MD5"
+   },
+   "starttls": true,
+   "timeout_s": 5.0
+  },
+  {
+   "cert": "good",
+   "expected": {
+    "data_for": [
+     "ok1@example.com",
+     "bad@example.com",
+     "ok2@example.com"
+    ],
+    "refused": [],
+    "status": 200
+   },
+   "name": "auth LOGIN only",
+   "recipients": [
+    "ok1@example.com",
+    "bad@example.com",
+    "ok2@example.com"
+   ],
+   "scenario": {
+    "auth_offer": "LOGIN"
+   },
+   "starttls": true,
+   "timeout_s": 5.0
+  },
+  {
+   "cert": "good",
+   "expected": {
+    "data_for": [
+     "ok1@example.com",
+     "bad@example.com",
+     "ok2@example.com"
+    ],
+    "refused": [],
+    "status": 200
+   },
+   "name": "auth PLAIN refused, LOGIN accepted",
+   "recipients": [
+    "ok1@example.com",
+    "bad@example.com",
+    "ok2@example.com"
+   ],
+   "scenario": {
+    "auth_plain": 535
+   },
+   "starttls": true,
+   "timeout_s": 5.0
+  },
+  {
+   "cert": "good",
+   "expected": {
+    "data_for": [
+     "ok1@example.com",
+     "bad@example.com",
+     "ok2@example.com"
+    ],
+    "refused": [],
+    "status": 200
+   },
+   "name": "auth PLAIN 250, LOGIN accepted",
+   "recipients": [
+    "ok1@example.com",
+    "bad@example.com",
+    "ok2@example.com"
+   ],
+   "scenario": {
+    "auth_plain": 250
+   },
+   "starttls": true,
+   "timeout_s": 5.0
+  },
+  {
+   "cert": "good",
+   "expected": {
+    "data_for": null,
+    "refused": [],
+    "status": 502
+   },
+   "name": "auth PLAIN refused, LOGIN refused",
+   "recipients": [
+    "ok1@example.com",
+    "bad@example.com",
+    "ok2@example.com"
+   ],
+   "scenario": {
+    "auth_login": 454,
+    "auth_plain": 535
+   },
+   "starttls": true,
+   "timeout_s": 5.0
+  },
+  {
+   "cert": "good",
+   "expected": {
+    "data_for": null,
+    "refused": [],
+    "status": 503
+   },
+   "name": "auth PLAIN 421",
+   "recipients": [
+    "ok1@example.com",
+    "bad@example.com",
+    "ok2@example.com"
+   ],
+   "scenario": {
+    "auth_plain": 421
+   },
+   "starttls": true,
+   "timeout_s": 5.0
+  },
+  {
+   "cert": "good",
+   "expected": {
+    "data_for": null,
+    "refused": [],
+    "status": 502
+   },
+   "name": "creds without tls",
+   "recipients": [
+    "ok1@example.com",
+    "bad@example.com",
+    "ok2@example.com"
+   ],
+   "scenario": {
+    "offer_starttls": false
+   },
+   "starttls": false,
+   "timeout_s": 5.0
+  },
+  {
+   "cert": "good",
+   "expected": {
+    "data_for": null,
+    "refused": [],
+    "status": 502
+   },
+   "name": "creds without tls, server offers starttls",
+   "recipients": [
+    "ok1@example.com",
+    "bad@example.com",
+    "ok2@example.com"
+   ],
+   "scenario": {},
+   "starttls": false,
+   "timeout_s": 5.0
+  },
+  {
+   "cert": "wrongname",
+   "expected": {
+    "data_for": null,
+    "refused": [],
+    "status": 503
+   },
+   "name": "cert wrong hostname",
+   "recipients": [
+    "ok1@example.com",
+    "bad@example.com",
+    "ok2@example.com"
+   ],
+   "scenario": {},
+   "starttls": true,
+   "timeout_s": 5.0
+  },
+  {
+   "cert": "selfsigned",
+   "expected": {
+    "data_for": null,
+    "refused": [],
+    "status": 503
+   },
+   "name": "cert unknown CA",
+   "recipients": [
+    "ok1@example.com",
+    "bad@example.com",
+    "ok2@example.com"
+   ],
+   "scenario": {},
+   "starttls": true,
+   "timeout_s": 5.0
+  },
+  {
+   "cert": "good",
+   "expected": {
+    "data_for": null,
+    "refused": [],
+    "status": 503
+   },
+   "name": "disconnect at banner",
+   "recipients": [
+    "ok1@example.com",
+    "bad@example.com",
+    "ok2@example.com"
+   ],
+   "scenario": {
+    "fault": {
+     "banner": "close"
+    }
+   },
+   "starttls": true,
+   "timeout_s": 5.0
+  },
+  {
+   "cert": "good",
+   "expected": {
+    "data_for": null,
+    "refused": [],
+    "status": 503
+   },
+   "name": "disconnect at ehlo",
+   "recipients": [
+    "ok1@example.com",
+    "bad@example.com",
+    "ok2@example.com"
+   ],
+   "scenario": {
+    "fault": {
+     "ehlo": "close"
+    }
+   },
+   "starttls": true,
+   "timeout_s": 5.0
+  },
+  {
+   "cert": "good",
+   "expected": {
+    "data_for": null,
+    "refused": [],
+    "status": 503
+   },
+   "name": "disconnect at mail",
+   "recipients": [
+    "ok1@example.com",
+    "bad@example.com",
+    "ok2@example.com"
+   ],
+   "scenario": {
+    "fault": {
+     "mail": "close"
+    }
+   },
+   "starttls": true,
+   "timeout_s": 5.0
+  },
+  {
+   "cert": "good",
+   "expected": {
+    "data_for": null,
+    "refused": [],
+    "status": 503
+   },
+   "name": "disconnect at rcpt",
+   "recipients": [
+    "ok1@example.com",
+    "bad@example.com",
+    "ok2@example.com"
+   ],
+   "scenario": {
+    "fault": {
+     "rcpt": "close"
+    }
+   },
+   "starttls": true,
+   "timeout_s": 5.0
+  },
+  {
+   "cert": "good",
+   "expected": {
+    "data_for": null,
+    "refused": [],
+    "status": 503
+   },
+   "name": "disconnect at data",
+   "recipients": [
+    "ok1@example.com",
+    "bad@example.com",
+    "ok2@example.com"
+   ],
+   "scenario": {
+    "fault": {
+     "data": "close"
+    }
+   },
+   "starttls": true,
+   "timeout_s": 5.0
+  },
+  {
+   "cert": "good",
+   "expected": {
+    "data_for": [
+     "ok1@example.com",
+     "bad@example.com",
+     "ok2@example.com"
+    ],
+    "refused": [],
+    "status": 503
+   },
+   "name": "disconnect at data_end",
+   "recipients": [
+    "ok1@example.com",
+    "bad@example.com",
+    "ok2@example.com"
+   ],
+   "scenario": {
+    "fault": {
+     "data_end": "close"
+    }
+   },
+   "starttls": true,
+   "timeout_s": 5.0
+  },
+  {
+   "cert": "good",
+   "divergence": "D-3",
+   "expected": {
+    "data_for": null,
+    "refused": [],
+    "status": 503
+   },
+   "name": "garbage at banner",
+   "python": {
+    "data_for": null,
+    "refused": [],
+    "status": 502
+   },
+   "recipients": [
+    "ok1@example.com",
+    "bad@example.com",
+    "ok2@example.com"
+   ],
+   "scenario": {
+    "fault": {
+     "banner": "garbage"
+    }
+   },
+   "starttls": true,
+   "timeout_s": 5.0
+  },
+  {
+   "cert": "good",
+   "divergence": "D-3",
+   "expected": {
+    "data_for": null,
+    "refused": [],
+    "status": 503
+   },
+   "name": "garbage at mail",
+   "python": {
+    "data_for": null,
+    "refused": [],
+    "status": 502
+   },
+   "recipients": [
+    "ok1@example.com",
+    "bad@example.com",
+    "ok2@example.com"
+   ],
+   "scenario": {
+    "fault": {
+     "mail": "garbage"
+    }
+   },
+   "starttls": true,
+   "timeout_s": 5.0
+  },
+  {
+   "cert": "good",
+   "divergence": "D-3",
+   "expected": {
+    "data_for": null,
+    "refused": [],
+    "status": 503
+   },
+   "name": "garbage at rcpt",
+   "python": {
+    "data_for": null,
+    "refused": [],
+    "status": 502
+   },
+   "recipients": [
+    "ok1@example.com",
+    "bad@example.com",
+    "ok2@example.com"
+   ],
+   "scenario": {
+    "fault": {
+     "rcpt": "garbage"
+    }
+   },
+   "starttls": true,
+   "timeout_s": 5.0
+  },
+  {
+   "cert": "good",
+   "divergence": "D-3",
+   "expected": {
+    "data_for": [
+     "ok1@example.com",
+     "bad@example.com",
+     "ok2@example.com"
+    ],
+    "refused": [],
+    "status": 503
+   },
+   "name": "garbage at data_end",
+   "python": {
+    "data_for": [
+     "ok1@example.com",
+     "bad@example.com",
+     "ok2@example.com"
+    ],
+    "refused": [],
+    "status": 502
+   },
+   "recipients": [
+    "ok1@example.com",
+    "bad@example.com",
+    "ok2@example.com"
+   ],
+   "scenario": {
+    "fault": {
+     "data_end": "garbage"
+    }
+   },
+   "starttls": true,
+   "timeout_s": 5.0
+  },
+  {
+   "cert": "good",
+   "expected": {
+    "data_for": null,
+    "refused": [],
+    "status": 503
+   },
+   "name": "timeout at banner",
+   "recipients": [
+    "ok1@example.com",
+    "bad@example.com",
+    "ok2@example.com"
+   ],
+   "scenario": {
+    "fault": {
+     "banner": "hang"
+    }
+   },
+   "starttls": true,
+   "timeout_s": 0.5
+  },
+  {
+   "cert": "good",
+   "expected": {
+    "data_for": null,
+    "refused": [],
+    "status": 503
+   },
+   "name": "timeout at mail",
+   "recipients": [
+    "ok1@example.com",
+    "bad@example.com",
+    "ok2@example.com"
+   ],
+   "scenario": {
+    "fault": {
+     "mail": "hang"
+    }
+   },
+   "starttls": true,
+   "timeout_s": 0.5
+  },
+  {
+   "cert": "good",
+   "expected": {
+    "data_for": [
+     "ok1@example.com",
+     "bad@example.com",
+     "ok2@example.com"
+    ],
+    "refused": [],
+    "status": 503
+   },
+   "name": "timeout at data_end",
+   "recipients": [
+    "ok1@example.com",
+    "bad@example.com",
+    "ok2@example.com"
+   ],
+   "scenario": {
+    "fault": {
+     "data_end": "hang"
+    }
+   },
+   "starttls": true,
+   "timeout_s": 0.5
+  },
+  {
+   "cert": "good",
+   "expected": {
+    "data_for": null,
+    "refused": [],
+    "status": 503
+   },
+   "name": "banner 421",
+   "recipients": [
+    "ok1@example.com",
+    "bad@example.com",
+    "ok2@example.com"
+   ],
+   "scenario": {
+    "banner": 421
+   },
+   "starttls": true,
+   "timeout_s": 5.0
+  },
+  {
+   "cert": "good",
+   "expected": {
+    "data_for": null,
+    "refused": [],
+    "status": 503
+   },
+   "name": "ehlo 421",
+   "recipients": [
+    "ok1@example.com",
+    "bad@example.com",
+    "ok2@example.com"
+   ],
+   "scenario": {
+    "ehlo": 421
+   },
+   "starttls": true,
+   "timeout_s": 5.0
+  },
+  {
+   "cert": "good",
+   "expected": {
+    "data_for": null,
+    "refused": [],
+    "status": 503
+   },
+   "name": "ehlo_tls 421",
+   "recipients": [
+    "ok1@example.com",
+    "bad@example.com",
+    "ok2@example.com"
+   ],
+   "scenario": {
+    "ehlo_tls": 421
+   },
+   "starttls": true,
+   "timeout_s": 5.0
+  },
+  {
+   "cert": "good",
+   "expected": {
+    "data_for": null,
+    "refused": [],
+    "status": 503
+   },
+   "name": "starttls 421",
+   "recipients": [
+    "ok1@example.com",
+    "bad@example.com",
+    "ok2@example.com"
+   ],
+   "scenario": {
+    "starttls": 421
+   },
+   "starttls": true,
+   "timeout_s": 5.0
+  },
+  {
+   "cert": "good",
+   "expected": {
+    "data_for": null,
+    "refused": [],
+    "status": 503
+   },
+   "name": "auth 421",
+   "recipients": [
+    "ok1@example.com",
+    "bad@example.com",
+    "ok2@example.com"
+   ],
+   "scenario": {
+    "auth": 421
+   },
+   "starttls": true,
+   "timeout_s": 5.0
+  },
+  {
+   "cert": "good",
+   "expected": {
+    "data_for": null,
+    "refused": [],
+    "status": 503
+   },
+   "name": "mail 421",
+   "recipients": [
+    "ok1@example.com",
+    "bad@example.com",
+    "ok2@example.com"
+   ],
+   "scenario": {
+    "mail": 421
+   },
+   "starttls": true,
+   "timeout_s": 5.0
+  },
+  {
+   "cert": "good",
+   "expected": {
+    "data_for": null,
+    "refused": [],
+    "status": 503
+   },
+   "name": "data 421",
+   "recipients": [
+    "ok1@example.com",
+    "bad@example.com",
+    "ok2@example.com"
+   ],
+   "scenario": {
+    "data": 421
+   },
+   "starttls": true,
+   "timeout_s": 5.0
+  },
+  {
+   "cert": "good",
+   "expected": {
+    "data_for": [
+     "ok1@example.com",
+     "bad@example.com",
+     "ok2@example.com"
+    ],
+    "refused": [],
+    "status": 503
+   },
+   "name": "data_end 421",
+   "recipients": [
+    "ok1@example.com",
+    "bad@example.com",
+    "ok2@example.com"
+   ],
+   "scenario": {
+    "data_end": 421
+   },
+   "starttls": true,
+   "timeout_s": 5.0
+  },
+  {
+   "cert": "good",
+   "expected": {
+    "data_for": null,
+    "refused": [],
+    "status": 503
+   },
+   "name": "rcpt 421 single",
+   "recipients": [
+    "ok1@example.com"
+   ],
+   "scenario": {
+    "rcpt": {
+     "ok1": 421
+    }
+   },
+   "starttls": true,
+   "timeout_s": 5.0
+  },
+  {
+   "cert": "good",
+   "expected": {
+    "data_for": null,
+    "refused": [],
+    "status": 503
+   },
+   "name": "rcpt 421 partial",
+   "recipients": [
+    "ok1@example.com",
+    "bad@example.com",
+    "ok2@example.com"
+   ],
+   "scenario": {
+    "rcpt": {
+     "bad": 421
+    }
+   },
+   "starttls": true,
+   "timeout_s": 5.0
+  },
+  {
+   "cert": "good",
+   "expected": {
+    "data_for": null,
+    "refused": [],
+    "status": 503
+   },
+   "name": "banner 421 (starttls off)",
+   "recipients": [
+    "ok1@example.com",
+    "bad@example.com",
+    "ok2@example.com"
+   ],
+   "scenario": {
+    "banner": 421,
+    "offer_starttls": false
+   },
+   "starttls": false,
+   "timeout_s": 5.0
+  },
+  {
+   "cert": "good",
+   "expected": {
+    "data_for": null,
+    "refused": [],
+    "status": 502
+   },
+   "name": "ehlo 421 (starttls off)",
+   "recipients": [
+    "ok1@example.com",
+    "bad@example.com",
+    "ok2@example.com"
+   ],
+   "scenario": {
+    "ehlo": 421,
+    "offer_starttls": false
+   },
+   "starttls": false,
+   "timeout_s": 5.0
+  },
+  {
+   "cert": "good",
+   "expected": {
+    "data_for": [
+     "ok1@example.com",
+     "bad@example.com",
+     "ok2@example.com"
+    ],
+    "refused": [],
+    "status": 200
+   },
+   "name": "quit 421 after accepted",
+   "recipients": [
+    "ok1@example.com",
+    "bad@example.com",
+    "ok2@example.com"
+   ],
+   "scenario": {
+    "quit": 421
+   },
+   "starttls": true,
+   "timeout_s": 5.0
+  },
+  {
+   "cert": "good",
+   "expected": {
+    "data_for": null,
+    "refused": [],
+    "status": 503
+   },
+   "name": "banner 450",
+   "recipients": [
+    "ok1@example.com",
+    "bad@example.com",
+    "ok2@example.com"
+   ],
+   "scenario": {
+    "banner": 450
+   },
+   "starttls": true,
+   "timeout_s": 5.0
+  },
+  {
+   "cert": "good",
+   "expected": {
+    "data_for": null,
+    "refused": [],
+    "status": 503
+   },
+   "name": "ehlo 450",
+   "recipients": [
+    "ok1@example.com",
+    "bad@example.com",
+    "ok2@example.com"
+   ],
+   "scenario": {
+    "ehlo": 450
+   },
+   "starttls": true,
+   "timeout_s": 5.0
+  },
+  {
+   "cert": "good",
+   "expected": {
+    "data_for": null,
+    "refused": [],
+    "status": 503
+   },
+   "name": "ehlo_tls 450",
+   "recipients": [
+    "ok1@example.com",
+    "bad@example.com",
+    "ok2@example.com"
+   ],
+   "scenario": {
+    "ehlo_tls": 450
+   },
+   "starttls": true,
+   "timeout_s": 5.0
+  },
+  {
+   "cert": "good",
+   "expected": {
+    "data_for": null,
+    "refused": [],
+    "status": 503
+   },
+   "name": "starttls 450",
+   "recipients": [
+    "ok1@example.com",
+    "bad@example.com",
+    "ok2@example.com"
+   ],
+   "scenario": {
+    "starttls": 450
+   },
+   "starttls": true,
+   "timeout_s": 5.0
+  },
+  {
+   "cert": "good",
+   "expected": {
+    "data_for": null,
+    "refused": [],
+    "status": 502
+   },
+   "name": "auth 450",
+   "recipients": [
+    "ok1@example.com",
+    "bad@example.com",
+    "ok2@example.com"
+   ],
+   "scenario": {
+    "auth": 450
+   },
+   "starttls": true,
+   "timeout_s": 5.0
+  },
+  {
+   "cert": "good",
+   "expected": {
+    "data_for": null,
+    "refused": [],
+    "status": 503
+   },
+   "name": "mail 450",
+   "recipients": [
+    "ok1@example.com",
+    "bad@example.com",
+    "ok2@example.com"
+   ],
+   "scenario": {
+    "mail": 450
+   },
+   "starttls": true,
+   "timeout_s": 5.0
+  },
+  {
+   "cert": "good",
+   "expected": {
+    "data_for": null,
+    "refused": [],
+    "status": 503
+   },
+   "name": "data 450",
+   "recipients": [
+    "ok1@example.com",
+    "bad@example.com",
+    "ok2@example.com"
+   ],
+   "scenario": {
+    "data": 450
+   },
+   "starttls": true,
+   "timeout_s": 5.0
+  },
+  {
+   "cert": "good",
+   "expected": {
+    "data_for": [
+     "ok1@example.com",
+     "bad@example.com",
+     "ok2@example.com"
+    ],
+    "refused": [],
+    "status": 503
+   },
+   "name": "data_end 450",
+   "recipients": [
+    "ok1@example.com",
+    "bad@example.com",
+    "ok2@example.com"
+   ],
+   "scenario": {
+    "data_end": 450
+   },
+   "starttls": true,
+   "timeout_s": 5.0
+  },
+  {
+   "cert": "good",
+   "expected": {
+    "data_for": null,
+    "refused": [],
+    "status": 503
+   },
+   "name": "rcpt 450 single",
+   "recipients": [
+    "ok1@example.com"
+   ],
+   "scenario": {
+    "rcpt": {
+     "ok1": 450
+    }
+   },
+   "starttls": true,
+   "timeout_s": 5.0
+  },
+  {
+   "cert": "good",
+   "expected": {
+    "data_for": [
+     "ok1@example.com",
+     "ok2@example.com"
+    ],
+    "refused": [
+     [
+      "bad@example.com",
+      450
+     ]
+    ],
+    "status": 200
+   },
+   "name": "rcpt 450 partial",
+   "recipients": [
+    "ok1@example.com",
+    "bad@example.com",
+    "ok2@example.com"
+   ],
+   "scenario": {
+    "rcpt": {
+     "bad": 450
+    }
+   },
+   "starttls": true,
+   "timeout_s": 5.0
+  },
+  {
+   "cert": "good",
+   "expected": {
+    "data_for": null,
+    "refused": [],
+    "status": 503
+   },
+   "name": "banner 450 (starttls off)",
+   "recipients": [
+    "ok1@example.com",
+    "bad@example.com",
+    "ok2@example.com"
+   ],
+   "scenario": {
+    "banner": 450,
+    "offer_starttls": false
+   },
+   "starttls": false,
+   "timeout_s": 5.0
+  },
+  {
+   "cert": "good",
+   "expected": {
+    "data_for": null,
+    "refused": [],
+    "status": 502
+   },
+   "name": "ehlo 450 (starttls off)",
+   "recipients": [
+    "ok1@example.com",
+    "bad@example.com",
+    "ok2@example.com"
+   ],
+   "scenario": {
+    "ehlo": 450,
+    "offer_starttls": false
+   },
+   "starttls": false,
+   "timeout_s": 5.0
+  },
+  {
+   "cert": "good",
+   "expected": {
+    "data_for": [
+     "ok1@example.com",
+     "bad@example.com",
+     "ok2@example.com"
+    ],
+    "refused": [],
+    "status": 200
+   },
+   "name": "quit 450 after accepted",
+   "recipients": [
+    "ok1@example.com",
+    "bad@example.com",
+    "ok2@example.com"
+   ],
+   "scenario": {
+    "quit": 450
+   },
+   "starttls": true,
+   "timeout_s": 5.0
+  },
+  {
+   "cert": "good",
+   "expected": {
+    "data_for": null,
+    "refused": [],
+    "status": 503
+   },
+   "name": "banner 451",
+   "recipients": [
+    "ok1@example.com",
+    "bad@example.com",
+    "ok2@example.com"
+   ],
+   "scenario": {
+    "banner": 451
+   },
+   "starttls": true,
+   "timeout_s": 5.0
+  },
+  {
+   "cert": "good",
+   "expected": {
+    "data_for": null,
+    "refused": [],
+    "status": 503
+   },
+   "name": "ehlo 451",
+   "recipients": [
+    "ok1@example.com",
+    "bad@example.com",
+    "ok2@example.com"
+   ],
+   "scenario": {
+    "ehlo": 451
+   },
+   "starttls": true,
+   "timeout_s": 5.0
+  },
+  {
+   "cert": "good",
+   "expected": {
+    "data_for": null,
+    "refused": [],
+    "status": 503
+   },
+   "name": "ehlo_tls 451",
+   "recipients": [
+    "ok1@example.com",
+    "bad@example.com",
+    "ok2@example.com"
+   ],
+   "scenario": {
+    "ehlo_tls": 451
+   },
+   "starttls": true,
+   "timeout_s": 5.0
+  },
+  {
+   "cert": "good",
+   "expected": {
+    "data_for": null,
+    "refused": [],
+    "status": 503
+   },
+   "name": "starttls 451",
+   "recipients": [
+    "ok1@example.com",
+    "bad@example.com",
+    "ok2@example.com"
+   ],
+   "scenario": {
+    "starttls": 451
+   },
+   "starttls": true,
+   "timeout_s": 5.0
+  },
+  {
+   "cert": "good",
+   "expected": {
+    "data_for": null,
+    "refused": [],
+    "status": 502
+   },
+   "name": "auth 451",
+   "recipients": [
+    "ok1@example.com",
+    "bad@example.com",
+    "ok2@example.com"
+   ],
+   "scenario": {
+    "auth": 451
+   },
+   "starttls": true,
+   "timeout_s": 5.0
+  },
+  {
+   "cert": "good",
+   "expected": {
+    "data_for": null,
+    "refused": [],
+    "status": 503
+   },
+   "name": "mail 451",
+   "recipients": [
+    "ok1@example.com",
+    "bad@example.com",
+    "ok2@example.com"
+   ],
+   "scenario": {
+    "mail": 451
+   },
+   "starttls": true,
+   "timeout_s": 5.0
+  },
+  {
+   "cert": "good",
+   "expected": {
+    "data_for": null,
+    "refused": [],
+    "status": 503
+   },
+   "name": "data 451",
+   "recipients": [
+    "ok1@example.com",
+    "bad@example.com",
+    "ok2@example.com"
+   ],
+   "scenario": {
+    "data": 451
+   },
+   "starttls": true,
+   "timeout_s": 5.0
+  },
+  {
+   "cert": "good",
+   "expected": {
+    "data_for": [
+     "ok1@example.com",
+     "bad@example.com",
+     "ok2@example.com"
+    ],
+    "refused": [],
+    "status": 503
+   },
+   "name": "data_end 451",
+   "recipients": [
+    "ok1@example.com",
+    "bad@example.com",
+    "ok2@example.com"
+   ],
+   "scenario": {
+    "data_end": 451
+   },
+   "starttls": true,
+   "timeout_s": 5.0
+  },
+  {
+   "cert": "good",
+   "expected": {
+    "data_for": null,
+    "refused": [],
+    "status": 503
+   },
+   "name": "rcpt 451 single",
+   "recipients": [
+    "ok1@example.com"
+   ],
+   "scenario": {
+    "rcpt": {
+     "ok1": 451
+    }
+   },
+   "starttls": true,
+   "timeout_s": 5.0
+  },
+  {
+   "cert": "good",
+   "expected": {
+    "data_for": [
+     "ok1@example.com",
+     "ok2@example.com"
+    ],
+    "refused": [
+     [
+      "bad@example.com",
+      451
+     ]
+    ],
+    "status": 200
+   },
+   "name": "rcpt 451 partial",
+   "recipients": [
+    "ok1@example.com",
+    "bad@example.com",
+    "ok2@example.com"
+   ],
+   "scenario": {
+    "rcpt": {
+     "bad": 451
+    }
+   },
+   "starttls": true,
+   "timeout_s": 5.0
+  },
+  {
+   "cert": "good",
+   "expected": {
+    "data_for": null,
+    "refused": [],
+    "status": 503
+   },
+   "name": "banner 451 (starttls off)",
+   "recipients": [
+    "ok1@example.com",
+    "bad@example.com",
+    "ok2@example.com"
+   ],
+   "scenario": {
+    "banner": 451,
+    "offer_starttls": false
+   },
+   "starttls": false,
+   "timeout_s": 5.0
+  },
+  {
+   "cert": "good",
+   "expected": {
+    "data_for": null,
+    "refused": [],
+    "status": 502
+   },
+   "name": "ehlo 451 (starttls off)",
+   "recipients": [
+    "ok1@example.com",
+    "bad@example.com",
+    "ok2@example.com"
+   ],
+   "scenario": {
+    "ehlo": 451,
+    "offer_starttls": false
+   },
+   "starttls": false,
+   "timeout_s": 5.0
+  },
+  {
+   "cert": "good",
+   "expected": {
+    "data_for": [
+     "ok1@example.com",
+     "bad@example.com",
+     "ok2@example.com"
+    ],
+    "refused": [],
+    "status": 200
+   },
+   "name": "quit 451 after accepted",
+   "recipients": [
+    "ok1@example.com",
+    "bad@example.com",
+    "ok2@example.com"
+   ],
+   "scenario": {
+    "quit": 451
+   },
+   "starttls": true,
+   "timeout_s": 5.0
+  },
+  {
+   "cert": "good",
+   "expected": {
+    "data_for": null,
+    "refused": [],
+    "status": 502
+   },
+   "name": "banner 550",
+   "recipients": [
+    "ok1@example.com",
+    "bad@example.com",
+    "ok2@example.com"
+   ],
+   "scenario": {
+    "banner": 550
+   },
+   "starttls": true,
+   "timeout_s": 5.0
+  },
+  {
+   "cert": "good",
+   "expected": {
+    "data_for": null,
+    "refused": [],
+    "status": 503
+   },
+   "name": "ehlo 550",
+   "recipients": [
+    "ok1@example.com",
+    "bad@example.com",
+    "ok2@example.com"
+   ],
+   "scenario": {
+    "ehlo": 550
+   },
+   "starttls": true,
+   "timeout_s": 5.0
+  },
+  {
+   "cert": "good",
+   "expected": {
+    "data_for": null,
+    "refused": [],
+    "status": 503
+   },
+   "name": "ehlo_tls 550",
+   "recipients": [
+    "ok1@example.com",
+    "bad@example.com",
+    "ok2@example.com"
+   ],
+   "scenario": {
+    "ehlo_tls": 550
+   },
+   "starttls": true,
+   "timeout_s": 5.0
+  },
+  {
+   "cert": "good",
+   "expected": {
+    "data_for": null,
+    "refused": [],
+    "status": 502
+   },
+   "name": "starttls 550",
+   "recipients": [
+    "ok1@example.com",
+    "bad@example.com",
+    "ok2@example.com"
+   ],
+   "scenario": {
+    "starttls": 550
+   },
+   "starttls": true,
+   "timeout_s": 5.0
+  },
+  {
+   "cert": "good",
+   "expected": {
+    "data_for": null,
+    "refused": [],
+    "status": 502
+   },
+   "name": "auth 550",
+   "recipients": [
+    "ok1@example.com",
+    "bad@example.com",
+    "ok2@example.com"
+   ],
+   "scenario": {
+    "auth": 550
+   },
+   "starttls": true,
+   "timeout_s": 5.0
+  },
+  {
+   "cert": "good",
+   "expected": {
+    "data_for": null,
+    "refused": [],
+    "status": 502
+   },
+   "name": "mail 550",
+   "recipients": [
+    "ok1@example.com",
+    "bad@example.com",
+    "ok2@example.com"
+   ],
+   "scenario": {
+    "mail": 550
+   },
+   "starttls": true,
+   "timeout_s": 5.0
+  },
+  {
+   "cert": "good",
+   "expected": {
+    "data_for": null,
+    "refused": [],
+    "status": 502
+   },
+   "name": "data 550",
+   "recipients": [
+    "ok1@example.com",
+    "bad@example.com",
+    "ok2@example.com"
+   ],
+   "scenario": {
+    "data": 550
+   },
+   "starttls": true,
+   "timeout_s": 5.0
+  },
+  {
+   "cert": "good",
+   "expected": {
+    "data_for": [
+     "ok1@example.com",
+     "bad@example.com",
+     "ok2@example.com"
+    ],
+    "refused": [],
+    "status": 502
+   },
+   "name": "data_end 550",
+   "recipients": [
+    "ok1@example.com",
+    "bad@example.com",
+    "ok2@example.com"
+   ],
+   "scenario": {
+    "data_end": 550
+   },
+   "starttls": true,
+   "timeout_s": 5.0
+  },
+  {
+   "cert": "good",
+   "expected": {
+    "data_for": null,
+    "refused": [],
+    "status": 502
+   },
+   "name": "rcpt 550 single",
+   "recipients": [
+    "ok1@example.com"
+   ],
+   "scenario": {
+    "rcpt": {
+     "ok1": 550
+    }
+   },
+   "starttls": true,
+   "timeout_s": 5.0
+  },
+  {
+   "cert": "good",
+   "expected": {
+    "data_for": [
+     "ok1@example.com",
+     "ok2@example.com"
+    ],
+    "refused": [
+     [
+      "bad@example.com",
+      550
+     ]
+    ],
+    "status": 200
+   },
+   "name": "rcpt 550 partial",
+   "recipients": [
+    "ok1@example.com",
+    "bad@example.com",
+    "ok2@example.com"
+   ],
+   "scenario": {
+    "rcpt": {
+     "bad": 550
+    }
+   },
+   "starttls": true,
+   "timeout_s": 5.0
+  },
+  {
+   "cert": "good",
+   "expected": {
+    "data_for": null,
+    "refused": [],
+    "status": 502
+   },
+   "name": "banner 550 (starttls off)",
+   "recipients": [
+    "ok1@example.com",
+    "bad@example.com",
+    "ok2@example.com"
+   ],
+   "scenario": {
+    "banner": 550,
+    "offer_starttls": false
+   },
+   "starttls": false,
+   "timeout_s": 5.0
+  },
+  {
+   "cert": "good",
+   "expected": {
+    "data_for": null,
+    "refused": [],
+    "status": 502
+   },
+   "name": "ehlo 550 (starttls off)",
+   "recipients": [
+    "ok1@example.com",
+    "bad@example.com",
+    "ok2@example.com"
+   ],
+   "scenario": {
+    "ehlo": 550,
+    "offer_starttls": false
+   },
+   "starttls": false,
+   "timeout_s": 5.0
+  },
+  {
+   "cert": "good",
+   "expected": {
+    "data_for": [
+     "ok1@example.com",
+     "bad@example.com",
+     "ok2@example.com"
+    ],
+    "refused": [],
+    "status": 200
+   },
+   "name": "quit 550 after accepted",
+   "recipients": [
+    "ok1@example.com",
+    "bad@example.com",
+    "ok2@example.com"
+   ],
+   "scenario": {
+    "quit": 550
+   },
+   "starttls": true,
+   "timeout_s": 5.0
+  },
+  {
+   "cert": "good",
+   "expected": {
+    "data_for": null,
+    "refused": [],
+    "status": 502
+   },
+   "name": "banner 554",
+   "recipients": [
+    "ok1@example.com",
+    "bad@example.com",
+    "ok2@example.com"
+   ],
+   "scenario": {
+    "banner": 554
+   },
+   "starttls": true,
+   "timeout_s": 5.0
+  },
+  {
+   "cert": "good",
+   "expected": {
+    "data_for": null,
+    "refused": [],
+    "status": 503
+   },
+   "name": "ehlo 554",
+   "recipients": [
+    "ok1@example.com",
+    "bad@example.com",
+    "ok2@example.com"
+   ],
+   "scenario": {
+    "ehlo": 554
+   },
+   "starttls": true,
+   "timeout_s": 5.0
+  },
+  {
+   "cert": "good",
+   "expected": {
+    "data_for": null,
+    "refused": [],
+    "status": 503
+   },
+   "name": "ehlo_tls 554",
+   "recipients": [
+    "ok1@example.com",
+    "bad@example.com",
+    "ok2@example.com"
+   ],
+   "scenario": {
+    "ehlo_tls": 554
+   },
+   "starttls": true,
+   "timeout_s": 5.0
+  },
+  {
+   "cert": "good",
+   "expected": {
+    "data_for": null,
+    "refused": [],
+    "status": 502
+   },
+   "name": "starttls 554",
+   "recipients": [
+    "ok1@example.com",
+    "bad@example.com",
+    "ok2@example.com"
+   ],
+   "scenario": {
+    "starttls": 554
+   },
+   "starttls": true,
+   "timeout_s": 5.0
+  },
+  {
+   "cert": "good",
+   "expected": {
+    "data_for": null,
+    "refused": [],
+    "status": 502
+   },
+   "name": "auth 554",
+   "recipients": [
+    "ok1@example.com",
+    "bad@example.com",
+    "ok2@example.com"
+   ],
+   "scenario": {
+    "auth": 554
+   },
+   "starttls": true,
+   "timeout_s": 5.0
+  },
+  {
+   "cert": "good",
+   "expected": {
+    "data_for": null,
+    "refused": [],
+    "status": 502
+   },
+   "name": "mail 554",
+   "recipients": [
+    "ok1@example.com",
+    "bad@example.com",
+    "ok2@example.com"
+   ],
+   "scenario": {
+    "mail": 554
+   },
+   "starttls": true,
+   "timeout_s": 5.0
+  },
+  {
+   "cert": "good",
+   "expected": {
+    "data_for": null,
+    "refused": [],
+    "status": 502
+   },
+   "name": "data 554",
+   "recipients": [
+    "ok1@example.com",
+    "bad@example.com",
+    "ok2@example.com"
+   ],
+   "scenario": {
+    "data": 554
+   },
+   "starttls": true,
+   "timeout_s": 5.0
+  },
+  {
+   "cert": "good",
+   "expected": {
+    "data_for": [
+     "ok1@example.com",
+     "bad@example.com",
+     "ok2@example.com"
+    ],
+    "refused": [],
+    "status": 502
+   },
+   "name": "data_end 554",
+   "recipients": [
+    "ok1@example.com",
+    "bad@example.com",
+    "ok2@example.com"
+   ],
+   "scenario": {
+    "data_end": 554
+   },
+   "starttls": true,
+   "timeout_s": 5.0
+  },
+  {
+   "cert": "good",
+   "expected": {
+    "data_for": null,
+    "refused": [],
+    "status": 502
+   },
+   "name": "rcpt 554 single",
+   "recipients": [
+    "ok1@example.com"
+   ],
+   "scenario": {
+    "rcpt": {
+     "ok1": 554
+    }
+   },
+   "starttls": true,
+   "timeout_s": 5.0
+  },
+  {
+   "cert": "good",
+   "expected": {
+    "data_for": [
+     "ok1@example.com",
+     "ok2@example.com"
+    ],
+    "refused": [
+     [
+      "bad@example.com",
+      554
+     ]
+    ],
+    "status": 200
+   },
+   "name": "rcpt 554 partial",
+   "recipients": [
+    "ok1@example.com",
+    "bad@example.com",
+    "ok2@example.com"
+   ],
+   "scenario": {
+    "rcpt": {
+     "bad": 554
+    }
+   },
+   "starttls": true,
+   "timeout_s": 5.0
+  },
+  {
+   "cert": "good",
+   "expected": {
+    "data_for": null,
+    "refused": [],
+    "status": 502
+   },
+   "name": "banner 554 (starttls off)",
+   "recipients": [
+    "ok1@example.com",
+    "bad@example.com",
+    "ok2@example.com"
+   ],
+   "scenario": {
+    "banner": 554,
+    "offer_starttls": false
+   },
+   "starttls": false,
+   "timeout_s": 5.0
+  },
+  {
+   "cert": "good",
+   "expected": {
+    "data_for": null,
+    "refused": [],
+    "status": 502
+   },
+   "name": "ehlo 554 (starttls off)",
+   "recipients": [
+    "ok1@example.com",
+    "bad@example.com",
+    "ok2@example.com"
+   ],
+   "scenario": {
+    "ehlo": 554,
+    "offer_starttls": false
+   },
+   "starttls": false,
+   "timeout_s": 5.0
+  },
+  {
+   "cert": "good",
+   "expected": {
+    "data_for": [
+     "ok1@example.com",
+     "bad@example.com",
+     "ok2@example.com"
+    ],
+    "refused": [],
+    "status": 200
+   },
+   "name": "quit 554 after accepted",
+   "recipients": [
+    "ok1@example.com",
+    "bad@example.com",
+    "ok2@example.com"
+   ],
+   "scenario": {
+    "quit": 554
+   },
+   "starttls": true,
+   "timeout_s": 5.0
+  },
+  {
+   "cert": "good",
+   "expected": {
+    "data_for": null,
+    "refused": [],
+    "status": 502
+   },
+   "name": "auth 250",
+   "recipients": [
+    "ok1@example.com",
+    "bad@example.com",
+    "ok2@example.com"
+   ],
+   "scenario": {
+    "auth": 250
+   },
+   "starttls": true,
+   "timeout_s": 5.0
+  },
+  {
+   "cert": "good",
+   "expected": {
+    "data_for": null,
+    "refused": [],
+    "status": 502
+   },
+   "name": "mail 251",
+   "recipients": [
+    "ok1@example.com",
+    "bad@example.com",
+    "ok2@example.com"
+   ],
+   "scenario": {
+    "mail": 251
+   },
+   "starttls": true,
+   "timeout_s": 5.0
+  },
+  {
+   "cert": "good",
+   "expected": {
+    "data_for": null,
+    "refused": [],
+    "status": 502
+   },
+   "name": "rcpt 252 single",
+   "recipients": [
+    "ok1@example.com"
+   ],
+   "scenario": {
+    "rcpt": {
+     "ok1": 252
+    }
+   },
+   "starttls": true,
+   "timeout_s": 5.0
+  },
+  {
+   "cert": "good",
+   "expected": {
+    "data_for": [
+     "ok1@example.com",
+     "ok2@example.com"
+    ],
+    "refused": [
+     [
+      "bad@example.com",
+      252
+     ]
+    ],
+    "status": 200
+   },
+   "name": "rcpt 252 partial",
+   "recipients": [
+    "ok1@example.com",
+    "bad@example.com",
+    "ok2@example.com"
+   ],
+   "scenario": {
+    "rcpt": {
+     "bad": 252
+    }
+   },
+   "starttls": true,
+   "timeout_s": 5.0
+  },
+  {
+   "cert": "good",
+   "expected": {
+    "data_for": [
+     "ok1@example.com",
+     "bad@example.com",
+     "ok2@example.com"
+    ],
+    "refused": [],
+    "status": 200
+   },
+   "name": "rcpt 251 accepted",
+   "recipients": [
+    "ok1@example.com",
+    "bad@example.com",
+    "ok2@example.com"
+   ],
+   "scenario": {
+    "rcpt": {
+     "bad": 251
+    }
+   },
+   "starttls": true,
+   "timeout_s": 5.0
+  },
+  {
+   "cert": "good",
+   "expected": {
+    "data_for": null,
+    "refused": [],
+    "status": 502
+   },
+   "name": "data 250",
+   "recipients": [
+    "ok1@example.com",
+    "bad@example.com",
+    "ok2@example.com"
+   ],
+   "scenario": {
+    "data": 250
+   },
+   "starttls": true,
+   "timeout_s": 5.0
+  },
+  {
+   "cert": "good",
+   "expected": {
+    "data_for": [
+     "ok1@example.com",
+     "bad@example.com",
+     "ok2@example.com"
+    ],
+    "refused": [],
+    "status": 502
+   },
+   "name": "data_end 251",
+   "recipients": [
+    "ok1@example.com",
+    "bad@example.com",
+    "ok2@example.com"
+   ],
+   "scenario": {
+    "data_end": 251
+   },
+   "starttls": true,
+   "timeout_s": 5.0
+  },
+  {
+   "cert": "good",
+   "expected": {
+    "data_for": [
+     "ok1@example.com",
+     "bad@example.com",
+     "ok2@example.com"
+    ],
+    "refused": [],
+    "status": 200
+   },
+   "name": "quit 250 after accepted",
+   "recipients": [
+    "ok1@example.com",
+    "bad@example.com",
+    "ok2@example.com"
+   ],
+   "scenario": {
+    "quit": 250
+   },
+   "starttls": true,
+   "timeout_s": 5.0
+  },
+  {
+   "cert": "good",
+   "expected": {
+    "data_for": [
+     "ok1@example.com",
+     "bad@example.com",
+     "ok2@example.com"
+    ],
+    "refused": [],
+    "status": 200
+   },
+   "name": "quit close after accepted",
+   "recipients": [
+    "ok1@example.com",
+    "bad@example.com",
+    "ok2@example.com"
+   ],
+   "scenario": {
+    "fault": {
+     "quit": "close"
+    }
+   },
+   "starttls": true,
+   "timeout_s": 5.0
+  },
+  {
+   "cert": "good",
+   "expected": {
+    "data_for": [
+     "ok1@example.com",
+     "ok2@example.com"
+    ],
+    "refused": [
+     [
+      "bad@example.com",
+      550
+     ]
+    ],
+    "status": 200
+   },
+   "name": "partial refusal, quit 500",
+   "recipients": [
+    "ok1@example.com",
+    "bad@example.com",
+    "ok2@example.com"
+   ],
+   "scenario": {
+    "quit": 500,
+    "rcpt": {
+     "bad": 550
+    }
+   },
+   "starttls": true,
+   "timeout_s": 5.0
+  },
+  {
+   "cert": "good",
+   "expected": {
+    "data_for": null,
+    "refused": [],
+    "status": 503
+   },
+   "name": "data 451, quit 500",
+   "recipients": [
+    "ok1@example.com",
+    "bad@example.com",
+    "ok2@example.com"
+   ],
+   "scenario": {
+    "data": 451,
+    "quit": 500
+   },
+   "starttls": true,
+   "timeout_s": 5.0
+  }
+ ],
+ "credentials": true,
+ "defaults": {
+  "auth": 235,
+  "auth_offer": "PLAIN LOGIN",
+  "banner": 220,
+  "data": 354,
+  "data_end": 250,
+  "ehlo": 250,
+  "ehlo_tls": 250,
+  "fault": {},
+  "mail": 250,
+  "offer_starttls": true,
+  "quit": 221,
+  "rcpt": {},
+  "starttls": 220
+ },
+ "source": "mailgun_relay.smtp_client.submit against the scripted fake SMTP server"
+}

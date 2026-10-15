@@ -411,7 +411,7 @@ impl Handler<'_> {
                     let address = address.trim_matches(['<', '>']).to_owned();
                     let local = address.split('@').next().unwrap_or_default();
                     let code = self.script.rcpt.get(local).copied().unwrap_or(250);
-                    if code == 250 {
+                    if matches!(code, 250 | 251) {
                         self.rcpts.push(address.clone());
                     }
                     self.reply("rcpt", code, &["rcpt result".to_owned()]).await

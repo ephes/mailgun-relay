@@ -1,7 +1,9 @@
 //! Submission tests against the scripted fake SMTP server: the Rust
 //! counterparts of `tests/test_smtp_submission.py` and
-//! `tests/test_smtp_outcomes.py` (submit side), TLS with a test CA through
-//! `SMTP_CA_FILE`, and the cleanup rules of PLAN.md 2.4.
+//! `tests/test_smtp_outcomes.py` (submit side), the outcome matrix of
+//! `fixtures/smtp_outcomes.json` (Python's `submit` against the same
+//! scenarios), TLS with a test CA through `SMTP_CA_FILE`, and the cleanup
+//! rules of PLAN.md 2.4.
 
 use std::sync::LazyLock;
 use std::time::{Duration, Instant};
@@ -145,6 +147,62 @@ fn status_of(outcome: &Result<Vec<Refusal>, SubmitError>) -> u16 {
 
 const THREE: [&str; 3] = ["ok1@example.com", "bad@example.com", "ok2@example.com"];
 
+/// Every scenario of `fixtures/smtp_outcomes.json`: the status Python's
+/// `submit` maps to (D-3 and D-4 cases: the decided Rust status), the
+/// refused recipients with their codes, and who the message went to.
+#[tokio::test]
+async fn smtp_outcomes_fixture() {
+    let fixture: Json =
+        serde_json::from_str(include_str!("../fixtures/smtp_outcomes.json")).unwrap();
+    let cases = fixture["cases"].as_array().unwrap();
+    assert!(cases.len() >= 100, "{}", cases.len());
+    let mut mismatches = Vec::new();
+    for case in cases {
+        let recipients: Vec<&str> = case["recipients"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|r| r.as_str().unwrap())
+            .collect();
+        let started = Instant::now();
+        let result = run_with(
+            case["scenario"].clone(),
+            case["cert"].as_str().unwrap(),
+            &recipients,
+            case["starttls"].as_bool().unwrap(),
+            case["timeout_s"].as_f64().unwrap(),
+        )
+        .await;
+        let refused: Vec<Json> = match &result.outcome {
+            Ok(refused) => refused.iter().map(|r| json!([r.address, r.code])).collect(),
+            Err(_) => Vec::new(),
+        };
+        let data_for = result
+            .sessions
+            .iter()
+            .find_map(|s| s.data_for.clone())
+            .map_or(Json::Null, |d| json!(d));
+        let actual = json!({
+            "status": status_of(&result.outcome),
+            "refused": refused,
+            "data_for": data_for,
+        });
+        if actual != case["expected"] {
+            mismatches.push(format!(
+                "{}: {actual} != {}",
+                case["name"], case["expected"]
+            ));
+        }
+        // A hang is bounded by the per-operation timeout.
+        assert!(
+            started.elapsed() < Duration::from_secs(4),
+            "{}",
+            case["name"]
+        );
+    }
+    assert!(mismatches.is_empty(), "{mismatches:#?}");
+}
+
 /// `test_smtp_submission.py`: the happy path over STARTTLS with AUTH, the
 /// envelope, partial and complete refusal, no credentials in cleartext,
 /// connection refused and a timeout.
@@ -228,7 +286,7 @@ async fn python_smtp_submission_tests() {
 }
 
 /// One case per row of PLAN.md 2.4 (statuses as Python's `submit` maps
-/// the same server): STARTTLS on unless `"tls": false` is given, the
+/// the same server, see `smtp_outcomes_fixture`): STARTTLS on unless `"tls": false` is given, the
 /// three recipients unless `"single"` is set.
 #[tokio::test]
 async fn every_row_of_the_outcome_table() {
