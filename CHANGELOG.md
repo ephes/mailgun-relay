@@ -4,6 +4,19 @@ All notable changes to mailgun-relay are documented here.
 
 ## Unreleased
 
+### Rust port: `/health` and the startup record (slice S1d)
+
+- `mailgun-relay` without arguments now serves on `BIND_HOST:BIND_PORT`
+  (axum, one runtime thread; every address the host resolves to, IPv6
+  sockets IPv6-only, as uvicorn binds): `GET /health` → `{"status":"ok"}` without a
+  version, `HEAD`/`POST /health` → 405 with `allow: GET`, unknown paths → 404,
+  a trailing slash on a route → 307 as Starlette builds it, a declared
+  `Content-Length` above `MAX_BODY_BYTES` → 413 on every path. It logs the
+  Python startup record (plus `"impl":"rust"`, UTC `ts`) and stops gracefully
+  on SIGTERM/SIGINT. It still has no `POST /v3/{domain}/messages`.
+- Release builds use `opt-level = "s"`: idle RSS 2.6 MiB, binary 1.6 MB
+  (Linux, glibc). The Python service is unchanged.
+
 ### Rust port: secrets file (slice S1c)
 
 - The Rust binary loads the secrets YAML as the Python service does (same

@@ -6,11 +6,12 @@ exactly, what may differ (section 3), the slices and the switch of
 production. [`TESTMAP.md`](TESTMAP.md) maps every Python test to its Rust
 counterpart.
 
-**Status: slice S1c of PLAN.md section 6** (S1 is split into S1a, S1c and
-S1d by size). The binary loads and validates the `MAILGUN_RELAY_*`
-environment and the secrets file. Serving `/health` with the startup record
-(S1d) and `POST /v3/{domain}/messages` (S2–S5) follow; nothing deploys this
-code until the role is switched (PLAN.md section 9).
+**Status: slice S1 of PLAN.md section 6 is done** (merged as S1a, S1c and
+S1d). The binary loads and validates the configuration, answers
+`GET /health`, the 404/405/307 fallbacks and the 413 body-limit layer, and
+logs the startup record. `POST /v3/{domain}/messages` does not exist yet
+(S2–S5); nothing deploys this code until the role is switched (PLAN.md
+section 9).
 
 ## Build and check
 
@@ -32,6 +33,7 @@ build embeds the git commit (`MAILGUN_RELAY_GIT_COMMIT`, else
 ## Run
 
 ```bash
+mailgun-relay                  # serve (env and secrets as the Python service)
 mailgun-relay --check-config   # load env + secrets, bind nothing; exit 0 or 1
 mailgun-relay --version        # mailgun-relay 0.2.0 (<commit>)
 ```
@@ -58,6 +60,13 @@ PLAN.md section 3):
 
 Run `--check-config` against the production files before any switch.
 
+Logs are one JSON object per line on stdout. Every start writes
+`{"ts":…,"level":"INFO","logger":"mailgun_relay.service","event":"startup",…}`
+with the fields of the Python record plus `"impl":"rust"`; `ts` is UTC
+(D-13). `/health` and the fallbacks log nothing. SIGTERM and SIGINT stop the
+server after in-flight requests (exit 0); a configuration or bind failure
+exits 1.
+
 ## Fixtures
 
 Python is the oracle for the contract and the policy decisions.
@@ -77,11 +86,13 @@ differs from a fresh render.
 
 ```
 Cargo.toml  Cargo.lock  rust-toolchain.toml  deny.toml  build.rs
-src/main.rs     argv
+src/main.rs     argv, runtime, startup record, graceful shutdown
 src/config.rs   MAILGUN_RELAY_* settings
 src/secrets.rs  secrets file (mode check, schema)
 src/yaml.rs     YAML 1.1 subset of PyYAML safe_load
 src/domain.rs   domain/address normalisation of the configuration
+src/http.rs     413 layer, /health, 404/405/307 fallbacks
+src/log.rs      JSON line logger
 src/pystr.rs    Python str.strip() semantics
 tests/binary.rs process-level tests of the built binary
 fixtures/       generator + generated JSON

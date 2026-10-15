@@ -9,13 +9,18 @@ description = "Mailgun send API adapter for Anymail, submitting over SMTP (Rust 
 publish = false
 
 [dependencies]
+axum = { version = "0.8", default-features = false, features = ["http1", "tokio"] }
 idna = "1"
 regex = { version = "1", default-features = false, features = ["std"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+socket2 = "0.6"
+tokio = { version = "1", features = ["rt", "net", "time", "signal", "sync", "macros", "io-util"] }
 yaml-rust2 = { version = "0.13", default-features = false }
 
 [dev-dependencies]
-serde_json = "1"
 tempfile = "3"
+tower = { version = "0.5", default-features = false, features = ["util"] }
 
 [lints.rust]
 unsafe_code = "forbid"
@@ -23,7 +28,10 @@ unsafe_code = "forbid"
 [lints.clippy]
 dbg_macro = "warn"
 
+# opt-level "s" measured in S1 (PLAN.md 5): 1.58 MB and 2.6 MiB idle RSS
+# against 1.77 MB and 2.9 MiB for opt-level 3; S5 re-measures with TLS.
 [profile.release]
+opt-level = "s"
 lto = "thin"
 codegen-units = 1
 strip = true

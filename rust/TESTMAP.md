@@ -30,7 +30,7 @@ and fixture cases generated from the fixed Python.
 | `test_config.py::test_load_secrets_normalizes_idn_to_punycode`, `::test_token_policy_allowed_addresses_none_means_domain_only` | fixture `config_secrets.json` | done (S1c) |
 | new: corpus decisions (≥ 400 addresses, ≥ 100 domains), "Rust accepts ⇒ Python accepts" | property test over `address.json`/`domain.json` | pending (S2) |
 
-## Configuration and startup (S1a, S1c, S1d)
+## Configuration and startup (S1: S1a, S1c, S1d)
 
 | Python test | Rust counterpart | Status |
 | --- | --- | --- |
@@ -38,9 +38,11 @@ and fixture cases generated from the fixed Python.
 | `test_config.py::test_token_policy_allowed_addresses_none_means_domain_only` | fixture `config_secrets.json` (`addresses null`, `addresses empty`, absent) | done (S1c) |
 | `test_config.py::test_settings_reads_env`, `::test_envelope_sender_*`, `test_nonblocking_submit.py::test_smtp_max_concurrency_must_be_positive` | fixture `config_env.json` (160 env sets) via `config::tests::config_env_fixture` | done (S1a) |
 | `test_config.py::test_token_policy_repr_does_not_leak_sha` | unit `secrets::tests::debug_redacts_password_and_token_hash` | done (S1c) |
-| `test_logging.py` (all 4) | unit `log::tests`; process test reads stdout per line | pending (S1d) |
-| `test_health.py` (both) | unit + process test; harness `/health` cases | pending (S1d, S6) |
-| new: 404/405/307, `HEAD /health`, 413 on `/health` and a 404 path | unit + process test | pending (S1d) |
+| `test_logging.py::test_each_record_is_flushed_to_stdout_immediately` | process test `binary.rs::serves_health_logs_startup_and_stops_on_sigterm` (reads the startup line from a pipe while the process runs) | done (S1d) |
+| `test_logging.py::test_startup_line_records_effective_configuration`, `::test_startup_line_survives_a_raised_log_level`, `::test_startup_line_never_leaks_credentials` | same process test (fields, `impl`, sorted labels, level ERROR under `LOG_LEVEL=error`, no password or hash) and unit `log::tests` | done (S1d) |
+| `test_health.py` (both) | unit `http::tests::health_and_fallbacks`, process test; harness `/health` cases | done (S1d); harness pending (S6) |
+| new: 404/405/307, `HEAD /health`, 413 on `/health` and a 404 path, decoded-path routing | unit `http::tests` | done (S1d) |
+| new: bind failure exit 1, SIGTERM exit 0 | process tests `binary.rs` | done (S1d) |
 | new: `--version`, `--check-config` exit 0/1, unknown arguments exit 2 | process tests `binary.rs` | done (S1a, secrets S1c) |
 | new: YAML 1.1 plain scalars, D-6 parser rules, D-5/D-10/D-17 config cases | unit `yaml::tests` + fixture `config_secrets.json` | done (S1c) |
 

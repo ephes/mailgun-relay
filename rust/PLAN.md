@@ -7,7 +7,8 @@ with the Python fix slice S0-py (section 6), which is merged on `main` as
 and follows the 403 fix. The spike S1b is done (GO with
 conditions, section 6 "S1b result"). S1 is split by size into S1a
 (repository plumbing, environment settings, fixture generator), S1c (secrets
-file) and S1d (server, `/health`, startup record); S1a and S1c are merged.
+file) and S1d (server, `/health`, startup record); all three are merged, so
+S1 is done (report `handoff/s1-result.md`). S2 is next.
 
 This document is the contract for re-implementing the FastAPI service in
 `src/mailgun_relay` (1,744 lines, `origin/main` `13e274f`, run on macmini as
@@ -408,7 +409,7 @@ does not validate stops the process with exit status 1 and no bind.
 
 | Variable | Type | Default | Validation |
 | --- | --- | --- | --- |
-| `BIND_HOST` | str | `127.0.0.1` | bind failure → exit 1 |
+| `BIND_HOST` | str | `127.0.0.1` | bind failure → exit 1. Every resolved address is bound, IPv6 sockets IPv6-only (asyncio `create_server` under uvicorn: `localhost` serves 127.0.0.1 and ::1, `::` no IPv4) |
 | `BIND_PORT` | int | `8085` | bind failure → exit 1 |
 | `PUBLIC_HOST` | str | `mailgun.home.xn--wersdrfer-47a.de` | – (domain of the Message-Id) |
 | `SECRETS_PATH` | str | `/etc/mailgun-relay/secrets.yml` | file must load (2.8) |
@@ -659,8 +660,10 @@ re-implementation of Python libraries, no hand-rolled protocol code.
 | CLI | none (three flags, manual argv) | |
 | tests | `tempfile`, `rcgen` (test CA/certs), `tokio` test utilities; a scripted fake SMTP server in the tests | |
 
-Build profile: `opt-level = "s"` vs `3` decided by measurement in S1 (size
-and RSS), `lto = "thin"`, `codegen-units = 1`, `strip = true`,
+Build profile: `opt-level = "s"`, decided by measurement in S1 (Linux
+aarch64 container, glibc, release build of S1: 1.58 MB and 2.6 MiB idle RSS
+against 1.77 MB and 2.9 MiB with `opt-level = 3`; one thread; S5
+re-measures with TLS), `lto = "thin"`, `codegen-units = 1`, `strip = true`,
 `panic = "unwind"` (a panic in one request must not kill the process; it maps
 to 500).
 
@@ -696,7 +699,7 @@ changed lines per slice excluding generated fixtures.
 | # | Slice | Scope | Depends on |
 | --- | --- | --- | --- |
 | S0-py | Python fix before the port (Q1, Q2) | Python-only change in `src/mailgun_relay` (branch `fix/s0-py-idn-eai-empty-body`): empty `text`/`html` without another body → 400 (D-1); To/Cc display name decoding to CR/LF → 400 (D-16); IDN domains as A-labels in From/To/Cc/Reply-To and the envelope, so `smtplib` never switches to SMTPUTF8 (D-2); EAI local parts → 400 in `from` (policy step) and in `to`/`cc`/`bcc`/Reply-To (step 9); `ENVELOPE_SENDER` normalised at startup (IDN domain → A-label, non-ASCII local part → start failure, empty stays the null sender, D-15); tests for each (both encodings, the allauth-style external IDN recipient, multi-fault order); `docs/api-compatibility.md`, README if affected, CHANGELOG; own review, own deploy to macmini | – (first; parallel to S1). **Status: merged on `main` as `bc8880e`, deploy approved (after the 403 fix)** |
-| S1 | Skeleton, config, `/health` | MIT `LICENSE` at the repository root (Q6); package, toolchain, `deny.toml`, CI `rust` job; env settings (2.7), secrets loader with YAML 1.1 subset and mode check (2.8); `--version`, `--check-config`; startup record; axum server, `/health`, 404/405/307 fallbacks, 413 layer, graceful shutdown; fixture generator skeleton + drift test; `rust/README.md`; `.gitignore`; ops-library: `rust/target/` rsync exclude | – **Status: split by size into S1a (plumbing, CI, `LICENSE`, env settings, `--version`/`--check-config`, fixture generator + drift test, `.gitignore`, ops-library exclude; merged), S1c (secrets loader, YAML subset, D-17; merged), S1d (server, `/health`, fallbacks, 413, startup record, graceful shutdown); one review and merge each** |
+| S1 | Skeleton, config, `/health` | MIT `LICENSE` at the repository root (Q6); package, toolchain, `deny.toml`, CI `rust` job; env settings (2.7), secrets loader with YAML 1.1 subset and mode check (2.8); `--version`, `--check-config`; startup record; axum server, `/health`, 404/405/307 fallbacks, 413 layer, graceful shutdown; fixture generator skeleton + drift test; `rust/README.md`; `.gitignore`; ops-library: `rust/target/` rsync exclude | – **Status: split by size into S1a (plumbing, CI, `LICENSE`, env settings, `--version`/`--check-config`, fixture generator + drift test, `.gitignore`, ops-library exclude; merged), S1c (secrets loader, YAML subset, D-17; merged), S1d (server, `/health`, fallbacks, 413, startup record, graceful shutdown; merged); one review and merge each. Done** |
 | S1b | Spike: lettre and the live SMTP server | throwaway branch: lettre connection API can send MAIL + individual RCPT + DATA with partial refusal and expose reply codes; addresses the corpus accepts round-trip through lettre `Address`; feature names; **read-only** EHLO on macmini (`openssl s_client -starttls smtp`, EHLO, QUIT): `AUTH` mechanisms after STARTTLS, `SMTPUTF8`, `SIZE`. Result recorded in this plan. | – (parallel to S1). **Status: done, GO with conditions (`rust/spike-s1b` @ `78f3254`)** |
 | S2 | Auth and policy (security boundary) | `auth.rs`, `domain.rs`, `address.rs`, `policy.rs`; fixtures `auth.json`, `domain.json`, `address.json` (corpus), `policy.json`; Rust counterparts of `test_auth.py`, `test_policy.py`, the address parts of `test_headers.py`; Python tests added for every corpus case that pins a new boundary decision; config loader rejects allowlist entries with a non-ASCII local part (D-17; implemented with the secrets loader in S1c); the D-15 validity check of `ENVELOPE_SENDER` (S1 applies only the IDN/EAI rule; `config_env.json` then marks the invalid senders D-15) | S1, S0-py merged (the oracle must already carry the Q1/Q2 behaviour) |
 | S3 | Request parsing and pipeline | `form.rs` (both encodings, limits), `pipeline.rs` (2.3 steps 1–9 with a stub submitter), header/subject validation, error mapping, response JSON, `event=request` record; fixtures `headers.json`; counterparts of `test_messages_endpoint.py` (non-SMTP), `test_headers.py`, `test_body_limit.py` | S2 |
