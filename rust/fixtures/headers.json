@@ -810,26 +810,22 @@
    ]
   },
   {
-   "divergence": "D-19",
    "expected": "injection",
    "headers": [
     [
      "X-Foo\n",
      "ok"
     ]
-   ],
-   "python": "ok"
+   ]
   },
   {
-   "divergence": "D-19",
    "expected": "injection",
    "headers": [
     [
      "Bcc\n",
      "ok"
     ]
-   ],
-   "python": "ok"
+   ]
   },
   {
    "expected": "injection",
@@ -1594,7 +1590,6 @@
    ]
   },
   {
-   "divergence": "D-19",
    "expected": "injection",
    "headers": [
     [
@@ -1605,8 +1600,7 @@
      "Bcc",
      "x"
     ]
-   ],
-   "python": "dangerous"
+   ]
   }
  ],
  "max_length": 20,

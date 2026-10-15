@@ -881,3 +881,18 @@ def test_crlf_display_name_in_from_and_bcc_is_unchanged(
     r = client.post("/v3/mg.wersdoerfer.de/messages", headers=auth, data=form)
     assert r.status_code == 200, r.text
     assert b"\r\nb" not in bytes(recording_smtp.calls[0].message)
+
+
+@pytest.mark.parametrize("encoding", _ENCODINGS)
+@pytest.mark.parametrize("name", ["X-Foo\n", "Bcc\n"])
+def test_header_name_with_final_newline_returns_400(
+    client: TestClient,
+    auth: dict[str, str],
+    recording_smtp: RecordingSubmitter,
+    encoding: str,
+    name: str,
+) -> None:
+    """`h:X-Foo%0A` was 200 with an encoded-word header name (rust/PLAN.md D-19)."""
+    r = _post_form(client, auth, _with({f"h:{name}": ["x"]}), encoding=encoding)
+    assert r.status_code == 400, r.text
+    assert recording_smtp.calls == []

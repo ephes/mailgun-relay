@@ -97,13 +97,14 @@ def validate_custom_headers(
 ) -> dict[str, str]:
     """Return a new dict of validated header name → value.
 
-    - Names must match `^[A-Za-z][A-Za-z0-9-]*$`.
+    - Names must match `^[A-Za-z][A-Za-z0-9-]*$` in full (``fullmatch``: with
+      ``match``, ``$`` would also accept a final newline, ``X-Foo\n``).
     - Names on the dangerous list (case-insensitive) raise DangerousHeaderError.
     - Values must not contain CR/LF and must be <= max_value_length characters.
     """
     cleaned: dict[str, str] = {}
     for raw_name, raw_value in headers.items():
-        if not _HEADER_NAME_RE.match(raw_name):
+        if not _HEADER_NAME_RE.fullmatch(raw_name):
             raise HeaderInjectionError(f"invalid header name: {raw_name!r}")
         if _is_dangerous(raw_name):
             raise DangerousHeaderError(f"header {raw_name!r} is not accepted from clients")

@@ -138,6 +138,14 @@ def test_custom_headers_reject_bad_name() -> None:
         validate_custom_headers({"X Bad Name": "ok"}, max_value_length=998)
 
 
+@pytest.mark.parametrize("name", ["X-Foo\n", "Bcc\n", "Resent-From\n", "X-Foo\n\n", "X-Foo\r"])
+def test_custom_headers_reject_name_with_final_line_break(name: str) -> None:
+    # `$` in `re.match` also matches before a final newline; the name must
+    # match in full (rust/PLAN.md D-19).
+    with pytest.raises(HeaderInjectionError):
+        validate_custom_headers({name: "ok"}, max_value_length=998)
+
+
 def test_parse_address_list_basic() -> None:
     out = parse_address_list(["a@x.test", "b@y.test"])
     assert [str(a) for a in out] == ["a@x.test", "b@y.test"]

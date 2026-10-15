@@ -59,9 +59,8 @@ fn is_dangerous(name: &str) -> bool {
     DANGEROUS.contains(&lowered.as_str()) || lowered.starts_with("resent-")
 }
 
-/// `^[A-Za-z][A-Za-z0-9-]*$` as a full match. Python's `$` also matches
-/// before one final newline, so `X-Foo\n` passes there; it is refused here
-/// (D-19, fail closed).
+/// `^[A-Za-z][A-Za-z0-9-]*$` as a full match (`fullmatch` in Python, so a
+/// final newline is refused on both sides, D-19).
 fn is_header_name(name: &str) -> bool {
     let mut bytes = name.bytes();
     bytes.next().is_some_and(|b| b.is_ascii_alphabetic())

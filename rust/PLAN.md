@@ -333,8 +333,8 @@ the contract. Each step names its Python source.
 6. **Subject** (`relay:headers.py:85-90`): `strip()`; forbidden control
    characters → 400; more than `max_header_value_length` code points → 400.
 7. **Custom headers** (`headers.py:93-116`), in map order: name not
-   `^[A-Za-z][A-Za-z0-9-]*$` → 400 (Python's `$` also accepts one final
-   newline, `h:X-Foo%0A`; Rust refuses it, D-19); name on the denylist
+   `^[A-Za-z][A-Za-z0-9-]*$` as a full match → 400 (a final newline,
+   `h:X-Foo%0A`, included: D-19, fixed in Python); name on the denylist
    (case-insensitive: `bcc received return-path message-id date from to cc
    subject sender mime-version content-type content-transfer-encoding
    content-disposition content-id disposition-notification-to
@@ -687,7 +687,8 @@ Everything that differs and is not listed here or in 2.12 is a bug. The
 owner decided every entry on 2026-10-15 (section 13). D-1, D-2 and D-16 are
 fixed in Python first (slice S0-py), so after S0-py they are no longer
 differences between the implementations: the oracle, the fixtures and the
-harness use the fixed Python. Entries D-5 to D-12, D-15 and D-17 to D-20 only
+harness use the fixed Python; the same holds for D-19 (fixed in Python
+after S3). Entries D-5 to D-12, D-15, D-17, D-18 and D-20 only
 affect exotic input or configuration (Q4); their common rule is **fail closed**: where Rust
 and Python disagree, Rust may reject what Python accepts (or fail at start
 where Python starts), never the reverse.
@@ -712,7 +713,7 @@ where Python starts), never the reverse.
 | D-16 | A `to` or `cc` display name that decodes to CR or LF (`=?utf-8?B?YQ0KYg==?= <a@example.org>`) raises `ValueError` in the email package → **500**; the same in `h:Reply-To` is 400, in `from` 200 (measured). | **400** at the same position (step 9), like Reply-To. Same fix in Python (S0-py). | Decided 2026-10-15 (Q1); Python via S0-py |
 | D-17 | `allowed_from_addresses` entries with a non-ASCII (EAI) local part load fine (`normalize_address` only lowercases the local part), but since S0-py an EAI `from` is always 400 before the allowlist check, so such an entry can never match. Python stays unchanged. | The Rust config loader rejects such an entry and the start fails (`--check-config` reports it before any switch). Fail closed under Q4; the production policy contains no such entry today. Pinned in `config_secrets.json`. | Decided 2026-10-15 (coordinator, under Q4); implemented with the secrets loader (S1c) |
 | D-18 | pydantic accepts any integer size, any float (`inf`, `nan`, negatives) and any string; Python then fails per request or binds every interface: with `SMTP_PORT` outside 0–65535 every submission fails (`getaddrinfo` error → 503), a non-finite, negative or too large (from about 9.2e9 s) `SMTP_TIMEOUT_S` makes every submission raise `ValueError`/`OverflowError` (502), `BIND_HOST=""` binds all interfaces, huge integers are kept. | Startup failure for: empty `BIND_HOST`; `SMTP_PORT` outside 0–65535; integer settings outside 64-bit; `SMTP_TIMEOUT_S` not finite or outside 0–1e9 s; `SMTP_MAX_CONCURRENCY` above 2^32−1; a value that is not valid UTF-8. Pinned by `config_env.json`. | Q4 (fail closed), added in S1 |
-| D-19 | A custom header name is checked with `re.match("^[A-Za-z][A-Za-z0-9-]*$")`, whose `$` also matches before a final newline: `h:X-Foo%0A` (also `h:Bcc%0A`, which then is no denylisted name) passes step 7, and the email package writes the name as an encoded word (`=?utf-8?q?X-Foo=0A?=: …`), 200. | The name must match the pattern in full: a final newline → **400** at step 7 (Rust-stricter). Pinned by `headers.json`. | Q4 (fail closed), added in S3a; coordinator to confirm |
+| D-19 | A custom header name was checked with `re.match("^[A-Za-z][A-Za-z0-9-]*$")`, whose `$` also matches before a final newline: `h:X-Foo%0A` (also `h:Bcc%0A`, which then was no denylisted name) passed step 7, and the email package wrote the name as an encoded word (`=?utf-8?q?X-Foo=0A?=: …`), 200. | The name must match the pattern in full: a final newline → **400** at step 7, in both implementations (Python uses `fullmatch`). No longer a divergence; `headers.json` pins the 400 from the fixed Python. | Owner decision 2026-10-15 (Q1 rule): Python fixed after S3, behaviour change 200 → 400 |
 | D-20 | The form is parsed chunk by chunk as the body streams in, so some decisions depend on TCP segmentation: (a) a multipart body starting with CR or LF skips to the next `-` of the first chunk, so other bytes before the first boundary (`\ntext--boundary…`) are accepted when they arrive in one chunk with the boundary and refused (400) otherwise; (b) a chunked body (no `Content-Length`) over `max_body_bytes` that is also malformed answers 400 when the framing error arrives before the byte limit is crossed, else 413. | The body is buffered up to the limit and parsed whole, taking the refusing decision: (a) only CR and LF may precede the first boundary, anything else → **400**; (b) always **413**. Clients send `Content-Length` and no preamble (Anymail, recorder). | Q4 (fail closed), added in S3b; coordinator to confirm |
 | D-21 | Python's header registry decodes encoded words in every header value and re-encodes them, whatever the surrounding text; it decodes any charset Python has a codec for; `h:Orig-Date` is a date header (a parseable date is rewritten, any other value is sent as an empty header); header names have no length limit; an attachment content type that is not `token/token` (`a b/c`, `image/png/x`) is passed on raw with a header defect. | Rust refuses with **400** at step 9 (fail closed, exotic input; no client sends these): a display name, Subject, `h:*` value or inline Content-ID that needs encoding (non-ASCII, or a word too long for a line) and also holds an encoded word; in a forwarded value an encoded word whose charset is outside the ASCII-compatible set of 2.10, whose base64 needs repair, whose text holds `=?` or starts or ends with whitespace (in a display name also ASCII text with a special such as `,`), or that is longer than 75 characters without whitespace around it (or inside a quoted string); an encoded word in an address local part; an `h:In-Reply-To`/`h:References` value that is not a list of `<dot-atom@dot-atom>` ids (Python repairs `<a@b`, `<a@b>,<c@d>` and passes other forms with defects); `h:Orig-Date`; an `h:*` name longer than 76 characters (lettre's limit). A broken attachment content type (not two RFC 7230 tokens of at most 127 characters) becomes `application/octet-stream` (RFC-conformant, same data and filename). | Coordinator rule Q4 (fail closed), added in S4a |
 
@@ -965,7 +966,7 @@ stable inputs). Rust loads them with `include_str!`.
 | `domain.json` | `policy.normalize_domain` | input → A-label or invalid |
 | `address.json` | `policy.parse_email_strict`, `headers.parse_address_list`, `parse_header_address_list`, `policy.normalize_address` | input → accept/reject per function, normalised addr-spec (compared in A-label form), display name (exotic cases: decision only) |
 | `policy.json` | `policy.enforce_policy` | policy × path × from → ok / 400 / 403, with the 403 message or the policy address (S2c: 5 production-shaped policies × 13 paths × 22 senders, D-10/D-11 marked) |
-| `headers.json` | `headers.validate_subject`, `validate_custom_headers`, `contains_forbidden_control_chars` | value → stripped subject or error kind; header list → ok or error kind (D-19 marked); control character probes → bool |
+| `headers.json` | `headers.validate_subject`, `validate_custom_headers`, `contains_forbidden_control_chars` | value → stripped subject or error kind; header list → ok or error kind (a final newline in the name is 400, D-19); control character probes → bool |
 | `form_decoding.json` | Starlette `FormParser` / `MultiPartParser` decoding (`unquote_plus(x.decode("latin-1"))`, `_user_safe_decode`) | `Content-Type` × raw body × parser limits → ordered items (texts; files with filename, content type, bytes) or 400/413, exactly as `request.form(...)` with the route's mapping: decoding, request charsets (D-9 marked), framing, part headers, limits, truncation at every byte; the oracle runs each body in one piece and in four chunkings, a chunking-dependent decision is marked D-20 (S3b) |
 | `config_env.json` | `config.Settings` + the `__main__` reads | env set → settings or start failure (D-7 marked) |
 | `config_secrets.json` | `config.load_secrets` | YAML text × file mode → policies or failure (D-5, D-6 marked) |
@@ -1326,7 +1327,9 @@ The owner answered the questions of `handoff/p2-owner-questions.md` on
   rule, coordinator decision 2026-10-15: a non-ASCII character in the Basic
   credentials (Python 500 from an uncaught `ValueError`) is **401** at the
   auth step (2.3 step 2); Python fixed in S2a, deployed with the next relay
-  deploy.
+  deploy. Owner decision 2026-10-15 after S3: a custom header name with a
+  final newline (D-19, Python 200 with a mangled header) is **400** at step 7
+  in both implementations; Python fixed, deployed with the next relay deploy.
 - **Q2** IDN/EAI addresses (D-2, security-relevant, externally triggerable):
   **IDN as A-labels** in headers and envelope, no SMTPUTF8; **EAI local parts
   → 400** (fail closed); fixed in Python first (S0-py, own deploy).

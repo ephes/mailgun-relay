@@ -1670,18 +1670,6 @@ def _python_headers(headers: list[tuple[str, str]]) -> str:
     return "ok"
 
 
-def _rust_headers(headers: list[tuple[str, str]]) -> str:
-    """``headers::validate_custom_headers``: Python's rules, but a name must
-    match the pattern in full (D-19: no final newline)."""
-    for name, _ in dict(headers).items():
-        if name.endswith("\n") and headers_module._HEADER_NAME_RE.match(name):
-            return "injection"
-        python = _python_headers([(name, dict(headers)[name])])
-        if python != "ok":
-            return python
-    return "ok"
-
-
 def build_headers() -> dict[str, Any]:
     subjects = []
     for value in SUBJECTS:
@@ -1705,13 +1693,8 @@ def build_headers() -> dict[str, Any]:
     ]
     cases = []
     for headers in header_sets:
-        python = _python_headers(headers)
-        status = _rust_headers(headers)
-        case: dict[str, Any] = {"headers": [list(pair) for pair in headers], "expected": status}
-        if status != python:
-            case["python"] = python
-            case["divergence"] = "D-19"
-        cases.append(case)
+        status = _python_headers(headers)
+        cases.append({"headers": [list(pair) for pair in headers], "expected": status})
     control = [
         {"value": f"a{c}b", "expected": contains_forbidden_control_chars(f"a{c}b")}
         for c in CONTROL_PROBES

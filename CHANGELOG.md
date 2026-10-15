@@ -4,6 +4,16 @@ All notable changes to mailgun-relay are documented here.
 
 ## Unreleased
 
+### Custom header names with a final newline are 400 (D-19)
+
+- Behaviour change for clients: 200 → 400. An `h:*` field whose header
+  name ends in a line break (`h:X-Foo%0A`, also `h:Bcc%0A`) passed the
+  name check, because `re.match` with `$` also matches before a final
+  newline, and the message went out with the name written as an encoded
+  word. The name must now match `^[A-Za-z][A-Za-z0-9-]*$` in full and such
+  a request answers 400, as the Rust port already does. `rust/PLAN.md`
+  D-19 is no longer a divergence. Takes effect with the next relay deploy.
+
 ### Rust port: semantic MIME fixture (slice S4b)
 
 - `rust/fixtures/mime.json` (124 cases from the Python oracle) holds what a
