@@ -20,6 +20,7 @@ status mapping of PLAN.md 2.4, pinned by `fixtures/smtp_outcomes.json`
 (Python's `submit` against the same scripted server). At most
 `SMTP_MAX_CONCURRENCY` sessions run at once, further messages wait; a
 submission whose client went away is finished, and SIGTERM waits for it.
+S7 adds the release pipeline (see Release below).
 Nothing deploys this code until the role is switched (PLAN.md section 9).
 
 ## Build and check
@@ -35,9 +36,63 @@ cargo deny --locked check          # cargo-deny 0.20.2, policy in deny.toml
 cargo build --release --locked     # target/release/mailgun-relay
 ```
 
-CI runs the same steps in the `rust` job of `.github/workflows/ci.yml`. The
+CI runs the same steps in the `rust` job of `.github/workflows/ci.yml` (with a
+pinned, sha256-checked cargo-deny) and reports the release binary size. The
 build embeds the git commit (`MAILGUN_RELAY_GIT_COMMIT`, else
 `git rev-parse HEAD`, else `unknown`).
+
+## Release
+
+`.github/workflows/rust-release.yml` (PLAN.md section 8) builds on
+`ubuntu-22.04` (glibc 2.35) for `x86_64-unknown-linux-gnu` with the pinned
+toolchain and no cargo cache, and runs `scripts/release_checks.py`:
+
+- `version`: the tag must be `rs-v<crate version>` (semver without build
+  metadata);
+- `cargo fmt --check`, `clippy -D warnings`, `cargo test --locked`, then
+  `cargo build --release --locked --target x86_64-unknown-linux-gnu` with
+  `MAILGUN_RELAY_GIT_COMMIT` set to the full commit;
+- `glibc-floor --max 2.35`: no glibc symbol version above 2.35, `NEEDED`
+  only glibc and libgcc (macmini has 2.39);
+- `smoke`: `--version` prints exactly `mailgun-relay <version> (<commit>)`,
+  and `--check-config` with only a test environment (the variables of the
+  role's env file) and a test secrets file (mode 0600) exits 0 with the
+  expected summary;
+- `pack`: `mailgun-relay-<version>-x86_64-unknown-linux-gnu.tar.gz` with
+  exactly `mailgun-relay` (0755) and `LICENSE` (0644), root-owned, the commit
+  time as mtime, gzip without a file name, so a rebuild of the same binary
+  gives the same bytes; plus `<archive>.sha256`, checked with
+  `sha256sum --check`.
+
+A push of a tag `rs-v<semver>` then creates the GitHub release with both
+files (`gh release create --verify-tag`; a version with a pre-release part
+such as `0.3.0-rc.1` becomes a GitHub pre-release). The role downloads
+`https://github.com/ephes/mailgun-relay/releases/download/rs-v<ver>/mailgun-relay-<ver>-x86_64-unknown-linux-gnu.tar.gz`
+and pins its sha256 (PLAN.md 9.1). `workflow_dispatch` runs the same build
+and checks and uploads archive and checksum as a workflow artifact only (no
+tag check, no release):
+
+```bash
+gh workflow run rust-release.yml --ref main
+gh run download <run-id> -n mailgun-relay-<ver>-x86_64-unknown-linux-gnu -D <dir>
+```
+
+To release: bump `version` in `Cargo.toml` (and `Cargo.lock`), add the
+CHANGELOG entry, merge to `main`, then tag that commit:
+
+```bash
+git tag -a rs-v<ver> -m "mailgun-relay <ver> (Rust port)" <commit>
+git push origin rs-v<ver>
+```
+
+The release checks are tested in the Python suite
+(`tests/test_rust_release_checks.py`); locally, after a release build:
+
+```bash
+python3 -I scripts/release_checks.py smoke --binary target/release/mailgun-relay \
+  --version "$(cargo metadata --format-version 1 --no-deps --locked | python3 -I scripts/release_checks.py version --metadata /dev/stdin)" \
+  --commit "$(git rev-parse HEAD)"
+```
 
 ## Run
 
@@ -131,4 +186,5 @@ src/smtp.rs     SMTP submission (lettre connection API)
 tests/binary.rs process-level tests of the built binary
 tests/support/fake_smtp.rs  scripted fake SMTP server (unit and process tests)
 fixtures/       generator + generated JSON; check_mime.py (Python's parser on Rust messages)
+scripts/release_checks.py  release gate of .github/workflows/rust-release.yml
 ```

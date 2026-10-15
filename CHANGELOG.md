@@ -4,6 +4,22 @@ All notable changes to mailgun-relay are documented here.
 
 ## Unreleased
 
+### Rust port: release pipeline (slice S7)
+
+- `.github/workflows/rust-release.yml` builds the Rust binary on
+  ubuntu-22.04 (glibc 2.35) for `x86_64-unknown-linux-gnu` from a clean
+  state (pinned toolchain and action SHAs, no cargo cache) and gates it with
+  `rust/scripts/release_checks.py`: the tag `rs-v<semver>` must equal the
+  crate version, no glibc symbol above 2.35 and only glibc/libgcc linked,
+  `--version` names version and full commit, `--check-config` accepts a test
+  configuration in the role's shape. The archive
+  `mailgun-relay-<ver>-x86_64-unknown-linux-gnu.tar.gz` holds exactly
+  `mailgun-relay` and `LICENSE` and is deterministic for a given binary;
+  its `.sha256` is checked with `sha256sum --check`. A tag push publishes
+  both files as a GitHub release (a pre-release version as a pre-release);
+  `workflow_dispatch` uploads them as a workflow artifact only. No tag yet:
+  the first release `rs-v0.2.0` follows the parity harness (S6).
+
 ### Rust port: submission in the route (slice S5b)
 
 - The Rust port caps concurrent SMTP sessions at `SMTP_MAX_CONCURRENCY`

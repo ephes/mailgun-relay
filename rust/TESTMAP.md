@@ -98,6 +98,12 @@ and fixture cases generated from the fixed Python.
 | new: delivery end to end, shutdown | process tests `binary.rs::delivers_over_starttls_with_the_ca_file` (STARTTLS with a test CA from `SMTP_CA_FILE`, AUTH, partial refusal, records, `--check-config` with an unusable CA file), `::shutdown_waits_for_a_submission_whose_client_left` | done (S5b) |
 | new: TLS certificate/hostname failure → 503, `SMTP_CA_FILE` read at start (D-22), D-3 classes, exact positive codes, ASCII envelope, dot-stuffing across the 64 KiB pieces | units `smtp::tests::tls_with_the_ca_file`, `::every_row_of_the_outcome_table`, `::envelope_and_reply_codes`, `::long_messages_survive_chunking` | done (S5a) |
 
+## Release (S7)
+
+| Python test | Rust test | Status |
+| --- | --- | --- |
+| new: release gate (tag = crate version, glibc floor 2.35 and glibc/libgcc only, `--version` and `--check-config` smoke, deterministic archive with exactly `mailgun-relay` and `LICENSE`, the workflow runs every check) | `tests/test_rust_release_checks.py` (Python suite) for `rust/scripts/release_checks.py`; the real binary in `.github/workflows/rust-release.yml` | done (S7) |
+
 ## Not ported
 
 | Python test | Reason |

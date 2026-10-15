@@ -68,7 +68,8 @@ nyxmon (`nyxmon:agent-rs/`). Reasons:
   `https://github.com/ephes/mailgun-relay/releases/download/rs-v<ver>/mailgun-relay-<ver>-x86_64-unknown-linux-gnu.tar.gz`.
   The repository is public, so no token is needed to download.
 - **One CI and one CHANGELOG.** `.github/workflows/ci.yml` gains Rust jobs;
-  the release workflow is a separate file triggered by `rs-v*` tags only.
+  the release workflow is a separate file triggered by `rs-v*` tags (and by
+  `workflow_dispatch` for a workflow artifact without a release).
 
 Merging Rust code to `main` is safe at any time: nothing deploys `rust/`
 until the role is switched (section 9). One precondition: the role's rsync
@@ -857,7 +858,7 @@ changed lines per slice excluding generated fixtures.
 | S4 | MIME construction | `mime.rs` with lettre builder (2.10), envelope and de-duplication, Message-Id/Date, inline/related/mixed, container downgrade, Reply-To; IDN as A-labels, EAI rejected (Q2); semantic tests by parsing the output; counterparts of `test_mime_build.py` | S2 (parallel to S3). **Status: split by size into S4a (`mime.rs`, S3's step-9 stub replaced behind its interface (2.10), D-21, the Python fix of non-ASCII message-id headers; lettre with the `builder` feature only, `deny.toml` gains 0BSD for its `quoted_printable`) and S4b (`mime.json`, `check_mime.py`, the CI step); both merged. Done** |
 | S5 | SMTP submission | `smtp.rs` on lettre's connection API: STARTTLS with system roots + CA file, AUTH, per-recipient RCPT, partial refusal, classification of 2.4, QUIT/close cleanup records, concurrency semaphore, per-operation timeout, `recipients_refused` and `smtp_cleanup_failed` records; scripted fake SMTP server tests mirroring `test_smtp_submission.py`, `test_smtp_outcomes.py`, `test_nonblocking_submit.py`; the S1b conditions (see "S1b result") | S1b, S3, S4. **Status: split by size into S5a (`smtp.rs`: the submitter, the classification, cleanup records, TLS with the CA file read at start (D-22), the fake server and its unit tests, wired into the binary; merged) and S5b (the concurrency semaphore and the shutdown task tracker in the route, `test_nonblocking_submit.py`, `fixtures/smtp_outcomes.json` from Python's `submit`, process tests, RSS; merged). Done** |
 | S6 | Parity harness | `rust/parity/` (7.4): fake SMTP with STARTTLS/AUTH, case corpus, runner for both implementations, semantic MIME comparison, CI job `parity`; process-level tests of the binary | S5 |
-| S7 | Release pipeline | `.github/workflows/rust-release.yml`, `scripts/release_checks.py` + tests (adapted from nyxmon), first tag `rs-v0.2.0` after S6 | S6 (tag) |
+| S7 | Release pipeline | `.github/workflows/rust-release.yml`, `scripts/release_checks.py` + tests (adapted from nyxmon), first tag `rs-v0.2.0` after S6 | S6 (tag). **Status: workflow, `rust/scripts/release_checks.py` and `tests/test_rust_release_checks.py` merged; the first tag `rs-v0.2.0` waits for S6 on `main` and the owner's approval** |
 | S8 | Role and inventory | ops-library `mailgun_relay_deploy` changes (9.1) with tests and molecule; ops-control host vars (impl `python`, version pinned), playbook gate, runbook `docs/MAILGUN_RELAY_RUST.md`; deploy to macmini: binary installed, `--check-config` green against production files, nothing switched | S7 |
 | S9 | Shadow | section 10 phases A and B on macmini, report in ops-control docs | S8, S0-py deployed, E2E probe item |
 | S10 | Cutover and soak | sections 10.4–10.6 incl. rollback drill, docs final state in all three repos | S9 |
