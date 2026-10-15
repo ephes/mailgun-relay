@@ -58,7 +58,7 @@ and fixture cases generated from the fixed Python.
 | `test_body_limit.py` (declared, streamed, within limit) | unit + harness | pending (S3) |
 | `test_body_limit.py::test_invalid_or_negative_content_length_rejected` | harness against real uvicorn (D-12) | pending (S6) |
 | `test_body_limit.py::test_non_http_scope_passes_through` | n/a: ASGI lifespan scope has no Rust equivalent | n/a |
-| `test_headers.py::test_validate_subject_*`, `::test_custom_headers_*` | fixture `headers.json` | pending (S3) |
+| `test_headers.py::test_validate_subject_*`, `::test_custom_headers_*` | unit `headers::tests::python_header_tests` + fixture `headers.json` (196 subjects, 100 header lists, 168 control-character probes; D-19 marked) via `headers::tests::headers_fixture` | done (S3a) |
 | `test_messages_endpoint.py` 400/403/413 cases (`o:`, `v:`, `template`, `recipient-variables`, subject CRLF, `h:Bcc`, no recipients, no body, malformed from/to/Reply-To, injected CRLF, attachments too big/too many/flood, inline counting, huge text, malformed inline filename) | unit `pipeline::tests` + harness | pending (S3) |
 | `test_messages_endpoint.py` policy cases (path/from domain/from address, cross-domain, parent domain, foreign token) | unit + harness | pending (S3) |
 | `test_messages_endpoint.py::test_path_domain_logged_as_punycode`, `::test_log_redacts_token_and_smtp_password` | unit (captured log lines) | pending (S3) |

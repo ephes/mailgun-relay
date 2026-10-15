@@ -11,7 +11,9 @@ file) and S1d (server, `/health`, startup record); all three are merged, so
 S1 is done (report `handoff/s1-result.md`). S2 is split by size into S2a
 (authentication, path domains), S2b (addresses, `ENVELOPE_SENDER` validity)
 and S2c (the token policy); all three are merged, so S2 is done (report
-`handoff/s2-result.md`). S3 and S4 are next.
+`handoff/s2-result.md`). S3 is split by size into S3a (subject and header
+validation; merged), S3b (form parsing) and S3c (pipeline and route); S4
+runs in parallel.
 
 This document is the contract for re-implementing the FastAPI service in
 `src/mailgun_relay` (1,744 lines, `origin/main` `13e274f`, run on macmini as
@@ -300,10 +302,12 @@ the contract. Each step names its Python source.
 6. **Subject** (`relay:headers.py:85-90`): `strip()`; forbidden control
    characters → 400; more than `max_header_value_length` code points → 400.
 7. **Custom headers** (`headers.py:93-116`), in map order: name not
-   `^[A-Za-z][A-Za-z0-9-]*$` → 400; name on the denylist (case-insensitive:
-   `bcc received return-path message-id date from to cc subject sender
-   mime-version content-type content-transfer-encoding content-disposition
-   content-id disposition-notification-to return-receipt-to`, and every
+   `^[A-Za-z][A-Za-z0-9-]*$` → 400 (Python's `$` also accepts one final
+   newline, `h:X-Foo%0A`; Rust refuses it, D-19); name on the denylist
+   (case-insensitive: `bcc received return-path message-id date from to cc
+   subject sender mime-version content-type content-transfer-encoding
+   content-disposition content-id disposition-notification-to
+   return-receipt-to`, and every
    `resent-*`) → 400; control characters in the value → 400; value longer than
    `max_header_value_length` code points → 400.
 8. **Recipient count** (`routes.py:177-183`): `len(to)+len(cc)+len(bcc)`
@@ -594,7 +598,7 @@ Everything that differs and is not listed here or in 2.12 is a bug. The
 owner decided every entry on 2026-10-15 (section 13). D-1, D-2 and D-16 are
 fixed in Python first (slice S0-py), so after S0-py they are no longer
 differences between the implementations: the oracle, the fixtures and the
-harness use the fixed Python. Entries D-5 to D-12, D-15, D-17 and D-18 only
+harness use the fixed Python. Entries D-5 to D-12, D-15 and D-17 to D-19 only
 affect exotic input or configuration (Q4); their common rule is **fail closed**: where Rust
 and Python disagree, Rust may reject what Python accepts (or fail at start
 where Python starts), never the reverse.
@@ -619,6 +623,7 @@ where Python starts), never the reverse.
 | D-16 | A `to` or `cc` display name that decodes to CR or LF (`=?utf-8?B?YQ0KYg==?= <a@example.org>`) raises `ValueError` in the email package → **500**; the same in `h:Reply-To` is 400, in `from` 200 (measured). | **400** at the same position (step 9), like Reply-To. Same fix in Python (S0-py). | Decided 2026-10-15 (Q1); Python via S0-py |
 | D-17 | `allowed_from_addresses` entries with a non-ASCII (EAI) local part load fine (`normalize_address` only lowercases the local part), but since S0-py an EAI `from` is always 400 before the allowlist check, so such an entry can never match. Python stays unchanged. | The Rust config loader rejects such an entry and the start fails (`--check-config` reports it before any switch). Fail closed under Q4; the production policy contains no such entry today. Pinned in `config_secrets.json`. | Decided 2026-10-15 (coordinator, under Q4); implemented with the secrets loader (S1c) |
 | D-18 | pydantic accepts any integer size, any float (`inf`, `nan`, negatives) and any string; Python then fails per request or binds every interface: with `SMTP_PORT` outside 0–65535 every submission fails (`getaddrinfo` error → 503), a non-finite, negative or too large (from about 9.2e9 s) `SMTP_TIMEOUT_S` makes every submission raise `ValueError`/`OverflowError` (502), `BIND_HOST=""` binds all interfaces, huge integers are kept. | Startup failure for: empty `BIND_HOST`; `SMTP_PORT` outside 0–65535; integer settings outside 64-bit; `SMTP_TIMEOUT_S` not finite or outside 0–1e9 s; `SMTP_MAX_CONCURRENCY` above 2^32−1; a value that is not valid UTF-8. Pinned by `config_env.json`. | Q4 (fail closed), added in S1 |
+| D-19 | A custom header name is checked with `re.match("^[A-Za-z][A-Za-z0-9-]*$")`, whose `$` also matches before a final newline: `h:X-Foo%0A` (also `h:Bcc%0A`, which then is no denylisted name) passes step 7, and the email package writes the name as an encoded word (`=?utf-8?q?X-Foo=0A?=: …`), 200. | The name must match the pattern in full: a final newline → **400** at step 7 (Rust-stricter). Pinned by `headers.json`. | Q4 (fail closed), added in S3a; coordinator to confirm |
 
 Python 500s on client input fixed in Python by the same rule as D-1 and
 D-16 (Q1), so no divergence remains: a non-ASCII character in the Basic
@@ -729,7 +734,7 @@ changed lines per slice excluding generated fixtures.
 | S1 | Skeleton, config, `/health` | MIT `LICENSE` at the repository root (Q6); package, toolchain, `deny.toml`, CI `rust` job; env settings (2.7), secrets loader with YAML 1.1 subset and mode check (2.8); `--version`, `--check-config`; startup record; axum server, `/health`, 404/405/307 fallbacks, 413 layer, graceful shutdown; fixture generator skeleton + drift test; `rust/README.md`; `.gitignore`; ops-library: `rust/target/` rsync exclude | – **Status: split by size into S1a (plumbing, CI, `LICENSE`, env settings, `--version`/`--check-config`, fixture generator + drift test, `.gitignore`, ops-library exclude; merged), S1c (secrets loader, YAML subset, D-17; merged), S1d (server, `/health`, fallbacks, 413, startup record, graceful shutdown; merged); one review and merge each. Done** |
 | S1b | Spike: lettre and the live SMTP server | throwaway branch: lettre connection API can send MAIL + individual RCPT + DATA with partial refusal and expose reply codes; addresses the corpus accepts round-trip through lettre `Address`; feature names; **read-only** EHLO on macmini (`openssl s_client -starttls smtp`, EHLO, QUIT): `AUTH` mechanisms after STARTTLS, `SMTPUTF8`, `SIZE`. Result recorded in this plan. | – (parallel to S1). **Status: done, GO with conditions (`rust/spike-s1b` @ `78f3254`)** |
 | S2 | Auth and policy (security boundary) | Split by size: **S2a** `auth.rs`, `auth.json`, `domain.json` (runtime `normalize_domain`), Python fix of the auth 500 (2.3 step 2); **S2b** `address.rs`, `address.json`, the D-15 check; **S2c** `policy.rs`, `policy.json`, production shapes. Scope: `auth.rs`, `domain.rs`, `address.rs`, `policy.rs`; fixtures `auth.json`, `domain.json`, `address.json` (corpus), `policy.json`; Rust counterparts of `test_auth.py`, `test_policy.py`, the address parts of `test_headers.py`; Python tests added for every corpus case that pins a new boundary decision; config loader rejects allowlist entries with a non-ASCII local part (D-17; implemented with the secrets loader in S1c); the D-15 validity check of `ENVELOPE_SENDER` (S1 applies only the IDN/EAI rule; `config_env.json` then marks the invalid senders D-15) | S1, S0-py merged (the oracle must already carry the Q1/Q2 behaviour). **Status: S2a, S2b and S2c merged; done** |
-| S3 | Request parsing and pipeline | `form.rs` (both encodings, limits), `pipeline.rs` (2.3 steps 1–9 with a stub submitter), header/subject validation, error mapping, response JSON, `event=request` record; fixtures `headers.json`; counterparts of `test_messages_endpoint.py` (non-SMTP), `test_headers.py`, `test_body_limit.py` | S2 |
+| S3 | Request parsing and pipeline | `form.rs` (both encodings, limits), `pipeline.rs` (2.3 steps 1–9 with a stub submitter), header/subject validation, error mapping, response JSON, `event=request` record; fixtures `headers.json`; counterparts of `test_messages_endpoint.py` (non-SMTP), `test_headers.py`, `test_body_limit.py` | S2. **Status: split by size into S3a (`headers.rs`, `headers.json`; merged), S3b (`form.rs`, `form_decoding.json`) and S3c (`pipeline.rs`, the route, the request record, the endpoint tests)** |
 | S4 | MIME construction | `mime.rs` with lettre builder (2.10), envelope and de-duplication, Message-Id/Date, inline/related/mixed, container downgrade, Reply-To; IDN as A-labels, EAI rejected (Q2); semantic tests by parsing the output; counterparts of `test_mime_build.py` | S2 (parallel to S3) |
 | S5 | SMTP submission | `smtp.rs` on lettre's connection API: STARTTLS with system roots + CA file, AUTH, per-recipient RCPT, partial refusal, classification of 2.4, QUIT/close cleanup records, concurrency semaphore, per-operation timeout, `recipients_refused` and `smtp_cleanup_failed` records; scripted fake SMTP server tests mirroring `test_smtp_submission.py`, `test_smtp_outcomes.py`, `test_nonblocking_submit.py`; the S1b conditions (see "S1b result") | S1b, S3, S4 |
 | S6 | Parity harness | `rust/parity/` (7.4): fake SMTP with STARTTLS/AUTH, case corpus, runner for both implementations, semantic MIME comparison, CI job `parity`; process-level tests of the binary | S5 |
@@ -869,7 +874,7 @@ stable inputs). Rust loads them with `include_str!`.
 | `domain.json` | `policy.normalize_domain` | input → A-label or invalid |
 | `address.json` | `policy.parse_email_strict`, `headers.parse_address_list`, `parse_header_address_list`, `policy.normalize_address` | input → accept/reject per function, normalised addr-spec (compared in A-label form), display name (exotic cases: decision only) |
 | `policy.json` | `policy.enforce_policy` | policy × path × from → ok / 400 / 403, with the 403 message or the policy address (S2c: 5 production-shaped policies × 13 paths × 22 senders, D-10/D-11 marked) |
-| `headers.json` | `headers.validate_subject`, `validate_custom_headers`, `contains_forbidden_control_chars` | value → ok / 400 |
+| `headers.json` | `headers.validate_subject`, `validate_custom_headers`, `contains_forbidden_control_chars` | value → stripped subject or error kind; header list → ok or error kind (D-19 marked); control character probes → bool |
 | `form_decoding.json` | Starlette `FormParser` / `MultiPartParser` decoding (`unquote_plus(x.decode("latin-1"))`, `_user_safe_decode`) | raw urlencoded bodies and multipart bodies × request charset → ordered items (D-9 marked) |
 | `config_env.json` | `config.Settings` + the `__main__` reads | env set → settings or start failure (D-7 marked) |
 | `config_secrets.json` | `config.load_secrets` | YAML text × file mode → policies or failure (D-5, D-6 marked) |

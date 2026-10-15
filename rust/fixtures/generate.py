@@ -39,13 +39,18 @@ import uvicorn.config
 import yaml
 from email_validator import EmailNotValidError, validate_email
 
+from mailgun_relay import headers as headers_module
 from mailgun_relay.auth import AuthError, authenticate
 from mailgun_relay.config import Settings, TokenPolicy, load_secrets
 from mailgun_relay.headers import (
+    DangerousHeaderError,
     HeaderInjectionError,
+    HeaderTooLongError,
     contains_forbidden_control_chars,
     parse_address_list,
     parse_header_address_list,
+    validate_custom_headers,
+    validate_subject,
 )
 from mailgun_relay.policy import (
     InvalidAddressError,
@@ -1537,6 +1542,176 @@ def build_policy() -> dict[str, Any]:
     }
 
 
+# ----------------------------------------------------------------- headers
+
+HEADER_MAX = 20
+
+# Every character the control-character rule distinguishes, and neighbours.
+CONTROL_PROBES = [chr(c) for c in range(0xA1)] + [
+    "\u2027",
+    LINE_SEPARATOR,
+    "\u2029",
+    "\u202a",
+    "\u00ad",
+    "\ufeff",
+    "\U0001f600",
+]
+
+SUBJECTS = [
+    "Hello there",
+    "  Hello  ",
+    "Hello\tthere",
+    "\tHello\t",
+    "",
+    "   ",
+    "Hi\nBcc: evil@x.com",
+    "Hi\rEvil",
+    "Hi\r\n",
+    "Hi\n",
+    "\nHi",
+    "\x1cHi\x1f",
+    "Hi\x1cthere",
+    "\x85Hi\xa0",
+    "Hi\x85there",
+    "Hi\xa0there",
+    "Hi\u2028",
+    "\u2029",
+    "Hi\u3000",
+    "[Django] ERROR (EXTERNAL IP)",
+    "Passwort zurücksetzen",
+    "=?utf-8?B?YQ0KYg==?=",
+    "a" * HEADER_MAX,
+    "a" * (HEADER_MAX + 1),
+    "ü" * HEADER_MAX,
+    "ü" * (HEADER_MAX + 1),
+    "\U0001f600" * HEADER_MAX,
+    " " + "a" * HEADER_MAX + " ",
+] + [f"Hi{c}World" for c in CONTROL_PROBES]
+
+HEADER_NAMES = [
+    "Reply-To",
+    "X-Mailer",
+    "Auto-Submitted",
+    "X1",
+    "X",
+    "x-y-z",
+    "In-Reply-To",
+    "References",
+    "List-Unsubscribe",
+    "X Bad Name",
+    "X_Bad",
+    "1X",
+    "-X",
+    "",
+    "X-Ä",
+    "X-Foo\n",
+    "Bcc\n",
+    "X-Foo\r",
+    "X-Foo\n\n",
+    "X-Foo:",
+    "X-Foo\t",
+    "Resent-From",
+    "resent-x",
+    "RESENT-",
+    "Resent",
+    "Resentx",
+    "X-Bcc",
+    "Bcc-X",
+] + [
+    variant
+    for name in sorted(headers_module._DANGEROUS_HEADER_NAMES)
+    for variant in (name, name.upper(), name.title())
+]
+
+HEADER_VALUES = [
+    "support@example.test",
+    "auto-generated",
+    "",
+    " padded ",
+    "a\tb",
+    "a\x00b",
+    "ok\nBcc: evil@x.com",
+    "a\rb",
+    "a\x7fb",
+    "a\x85b",
+    "a\u2028b",
+    "x" * HEADER_MAX,
+    "x" * (HEADER_MAX + 1),
+    "ö" * HEADER_MAX,
+    "ö" * (HEADER_MAX + 1),
+]
+
+
+def _python_headers(headers: list[tuple[str, str]]) -> str:
+    try:
+        validate_custom_headers(dict(headers), max_value_length=HEADER_MAX)
+    except DangerousHeaderError:
+        return "dangerous"
+    except HeaderTooLongError:
+        return "too_long"
+    except HeaderInjectionError:
+        return "injection"
+    return "ok"
+
+
+def _rust_headers(headers: list[tuple[str, str]]) -> str:
+    """``headers::validate_custom_headers``: Python's rules, but a name must
+    match the pattern in full (D-19: no final newline)."""
+    for name, _ in dict(headers).items():
+        if name.endswith("\n") and headers_module._HEADER_NAME_RE.match(name):
+            return "injection"
+        python = _python_headers([(name, dict(headers)[name])])
+        if python != "ok":
+            return python
+    return "ok"
+
+
+def build_headers() -> dict[str, Any]:
+    subjects = []
+    for value in SUBJECTS:
+        try:
+            expected: dict[str, Any] = {"subject": validate_subject(value, max_length=HEADER_MAX)}
+        except HeaderInjectionError:
+            expected = {"error": "injection"}
+        except HeaderTooLongError:
+            expected = {"error": "too_long"}
+        subjects.append({"value": value, "expected": expected})
+    header_sets: list[list[tuple[str, str]]] = [[(name, "ok")] for name in HEADER_NAMES]
+    header_sets += [[("X-Custom", value)] for value in HEADER_VALUES]
+    header_sets += [
+        # Map order decides which error wins.
+        [("X-Long", "x" * (HEADER_MAX + 1)), ("Bcc", "a@b.de")],
+        [("Bcc", "a@b.de"), ("X-Long", "x" * (HEADER_MAX + 1))],
+        [("X-A", "a\nb"), ("X Bad", "ok")],
+        [("X-A", "ok"), ("X-B", "ok"), ("X-C", "a\x00b")],
+        [("Reply-To", "a@b.de"), ("reply-to", "c@d.de")],
+        [("X-Foo\n", "ok"), ("Bcc", "x")],
+    ]
+    cases = []
+    for headers in header_sets:
+        python = _python_headers(headers)
+        status = _rust_headers(headers)
+        case: dict[str, Any] = {"headers": [list(pair) for pair in headers], "expected": status}
+        if status != python:
+            case["python"] = python
+            case["divergence"] = "D-19"
+        cases.append(case)
+    control = [
+        {"value": f"a{c}b", "expected": contains_forbidden_control_chars(f"a{c}b")}
+        for c in CONTROL_PROBES
+    ]
+    return {
+        "source": (
+            "mailgun_relay.headers validate_subject, validate_custom_headers, "
+            "contains_forbidden_control_chars"
+        ),
+        "max_length": HEADER_MAX,
+        "subjects": subjects,
+        "headers": cases,
+        "control": control,
+    }
+
+
 # ------------------------------------------------------------------ driver
 
 GENERATORS: dict[str, Callable[[], Mapping[str, Any]]] = {
@@ -1545,6 +1720,7 @@ GENERATORS: dict[str, Callable[[], Mapping[str, Any]]] = {
     "config_env.json": build_config_env,
     "config_secrets.json": build_config_secrets,
     "domain.json": build_domain,
+    "headers.json": build_headers,
     "policy.json": build_policy,
 }
 

@@ -1,0 +1,2792 @@
+{
+ "control": [
+  {
+   "expected": true,
+   "value": "a\u0000b"
+  },
+  {
+   "expected": true,
+   "value": "a\u0001b"
+  },
+  {
+   "expected": true,
+   "value": "a\u0002b"
+  },
+  {
+   "expected": true,
+   "value": "a\u0003b"
+  },
+  {
+   "expected": true,
+   "value": "a\u0004b"
+  },
+  {
+   "expected": true,
+   "value": "a\u0005b"
+  },
+  {
+   "expected": true,
+   "value": "a\u0006b"
+  },
+  {
+   "expected": true,
+   "value": "a\u0007b"
+  },
+  {
+   "expected": true,
+   "value": "a\bb"
+  },
+  {
+   "expected": false,
+   "value": "a\tb"
+  },
+  {
+   "expected": true,
+   "value": "a\nb"
+  },
+  {
+   "expected": true,
+   "value": "a\u000bb"
+  },
+  {
+   "expected": true,
+   "value": "a\fb"
+  },
+  {
+   "expected": true,
+   "value": "a\rb"
+  },
+  {
+   "expected": true,
+   "value": "a\u000eb"
+  },
+  {
+   "expected": true,
+   "value": "a\u000fb"
+  },
+  {
+   "expected": true,
+   "value": "a\u0010b"
+  },
+  {
+   "expected": true,
+   "value": "a\u0011b"
+  },
+  {
+   "expected": true,
+   "value": "a\u0012b"
+  },
+  {
+   "expected": true,
+   "value": "a\u0013b"
+  },
+  {
+   "expected": true,
+   "value": "a\u0014b"
+  },
+  {
+   "expected": true,
+   "value": "a\u0015b"
+  },
+  {
+   "expected": true,
+   "value": "a\u0016b"
+  },
+  {
+   "expected": true,
+   "value": "a\u0017b"
+  },
+  {
+   "expected": true,
+   "value": "a\u0018b"
+  },
+  {
+   "expected": true,
+   "value": "a\u0019b"
+  },
+  {
+   "expected": true,
+   "value": "a\u001ab"
+  },
+  {
+   "expected": true,
+   "value": "a\u001bb"
+  },
+  {
+   "expected": true,
+   "value": "a\u001cb"
+  },
+  {
+   "expected": true,
+   "value": "a\u001db"
+  },
+  {
+   "expected": true,
+   "value": "a\u001eb"
+  },
+  {
+   "expected": true,
+   "value": "a\u001fb"
+  },
+  {
+   "expected": false,
+   "value": "a b"
+  },
+  {
+   "expected": false,
+   "value": "a!b"
+  },
+  {
+   "expected": false,
+   "value": "a\"b"
+  },
+  {
+   "expected": false,
+   "value": "a#b"
+  },
+  {
+   "expected": false,
+   "value": "a$b"
+  },
+  {
+   "expected": false,
+   "value": "a%b"
+  },
+  {
+   "expected": false,
+   "value": "a&b"
+  },
+  {
+   "expected": false,
+   "value": "a'b"
+  },
+  {
+   "expected": false,
+   "value": "a(b"
+  },
+  {
+   "expected": false,
+   "value": "a)b"
+  },
+  {
+   "expected": false,
+   "value": "a*b"
+  },
+  {
+   "expected": false,
+   "value": "a+b"
+  },
+  {
+   "expected": false,
+   "value": "a,b"
+  },
+  {
+   "expected": false,
+   "value": "a-b"
+  },
+  {
+   "expected": false,
+   "value": "a.b"
+  },
+  {
+   "expected": false,
+   "value": "a/b"
+  },
+  {
+   "expected": false,
+   "value": "a0b"
+  },
+  {
+   "expected": false,
+   "value": "a1b"
+  },
+  {
+   "expected": false,
+   "value": "a2b"
+  },
+  {
+   "expected": false,
+   "value": "a3b"
+  },
+  {
+   "expected": false,
+   "value": "a4b"
+  },
+  {
+   "expected": false,
+   "value": "a5b"
+  },
+  {
+   "expected": false,
+   "value": "a6b"
+  },
+  {
+   "expected": false,
+   "value": "a7b"
+  },
+  {
+   "expected": false,
+   "value": "a8b"
+  },
+  {
+   "expected": false,
+   "value": "a9b"
+  },
+  {
+   "expected": false,
+   "value": "a:b"
+  },
+  {
+   "expected": false,
+   "value": "a;b"
+  },
+  {
+   "expected": false,
+   "value": "a<b"
+  },
+  {
+   "expected": false,
+   "value": "a=b"
+  },
+  {
+   "expected": false,
+   "value": "a>b"
+  },
+  {
+   "expected": false,
+   "value": "a?b"
+  },
+  {
+   "expected": false,
+   "value": "a@b"
+  },
+  {
+   "expected": false,
+   "value": "aAb"
+  },
+  {
+   "expected": false,
+   "value": "aBb"
+  },
+  {
+   "expected": false,
+   "value": "aCb"
+  },
+  {
+   "expected": false,
+   "value": "aDb"
+  },
+  {
+   "expected": false,
+   "value": "aEb"
+  },
+  {
+   "expected": false,
+   "value": "aFb"
+  },
+  {
+   "expected": false,
+   "value": "aGb"
+  },
+  {
+   "expected": false,
+   "value": "aHb"
+  },
+  {
+   "expected": false,
+   "value": "aIb"
+  },
+  {
+   "expected": false,
+   "value": "aJb"
+  },
+  {
+   "expected": false,
+   "value": "aKb"
+  },
+  {
+   "expected": false,
+   "value": "aLb"
+  },
+  {
+   "expected": false,
+   "value": "aMb"
+  },
+  {
+   "expected": false,
+   "value": "aNb"
+  },
+  {
+   "expected": false,
+   "value": "aOb"
+  },
+  {
+   "expected": false,
+   "value": "aPb"
+  },
+  {
+   "expected": false,
+   "value": "aQb"
+  },
+  {
+   "expected": false,
+   "value": "aRb"
+  },
+  {
+   "expected": false,
+   "value": "aSb"
+  },
+  {
+   "expected": false,
+   "value": "aTb"
+  },
+  {
+   "expected": false,
+   "value": "aUb"
+  },
+  {
+   "expected": false,
+   "value": "aVb"
+  },
+  {
+   "expected": false,
+   "value": "aWb"
+  },
+  {
+   "expected": false,
+   "value": "aXb"
+  },
+  {
+   "expected": false,
+   "value": "aYb"
+  },
+  {
+   "expected": false,
+   "value": "aZb"
+  },
+  {
+   "expected": false,
+   "value": "a[b"
+  },
+  {
+   "expected": false,
+   "value": "a\\b"
+  },
+  {
+   "expected": false,
+   "value": "a]b"
+  },
+  {
+   "expected": false,
+   "value": "a^b"
+  },
+  {
+   "expected": false,
+   "value": "a_b"
+  },
+  {
+   "expected": false,
+   "value": "a`b"
+  },
+  {
+   "expected": false,
+   "value": "aab"
+  },
+  {
+   "expected": false,
+   "value": "abb"
+  },
+  {
+   "expected": false,
+   "value": "acb"
+  },
+  {
+   "expected": false,
+   "value": "adb"
+  },
+  {
+   "expected": false,
+   "value": "aeb"
+  },
+  {
+   "expected": false,
+   "value": "afb"
+  },
+  {
+   "expected": false,
+   "value": "agb"
+  },
+  {
+   "expected": false,
+   "value": "ahb"
+  },
+  {
+   "expected": false,
+   "value": "aib"
+  },
+  {
+   "expected": false,
+   "value": "ajb"
+  },
+  {
+   "expected": false,
+   "value": "akb"
+  },
+  {
+   "expected": false,
+   "value": "alb"
+  },
+  {
+   "expected": false,
+   "value": "amb"
+  },
+  {
+   "expected": false,
+   "value": "anb"
+  },
+  {
+   "expected": false,
+   "value": "aob"
+  },
+  {
+   "expected": false,
+   "value": "apb"
+  },
+  {
+   "expected": false,
+   "value": "aqb"
+  },
+  {
+   "expected": false,
+   "value": "arb"
+  },
+  {
+   "expected": false,
+   "value": "asb"
+  },
+  {
+   "expected": false,
+   "value": "atb"
+  },
+  {
+   "expected": false,
+   "value": "aub"
+  },
+  {
+   "expected": false,
+   "value": "avb"
+  },
+  {
+   "expected": false,
+   "value": "awb"
+  },
+  {
+   "expected": false,
+   "value": "axb"
+  },
+  {
+   "expected": false,
+   "value": "ayb"
+  },
+  {
+   "expected": false,
+   "value": "azb"
+  },
+  {
+   "expected": false,
+   "value": "a{b"
+  },
+  {
+   "expected": false,
+   "value": "a|b"
+  },
+  {
+   "expected": false,
+   "value": "a}b"
+  },
+  {
+   "expected": false,
+   "value": "a~b"
+  },
+  {
+   "expected": true,
+   "value": "a\u007fb"
+  },
+  {
+   "expected": true,
+   "value": "a\u0080b"
+  },
+  {
+   "expected": true,
+   "value": "a\u0081b"
+  },
+  {
+   "expected": true,
+   "value": "a\u0082b"
+  },
+  {
+   "expected": true,
+   "value": "a\u0083b"
+  },
+  {
+   "expected": true,
+   "value": "a\u0084b"
+  },
+  {
+   "expected": true,
+   "value": "a\u0085b"
+  },
+  {
+   "expected": true,
+   "value": "a\u0086b"
+  },
+  {
+   "expected": true,
+   "value": "a\u0087b"
+  },
+  {
+   "expected": true,
+   "value": "a\u0088b"
+  },
+  {
+   "expected": true,
+   "value": "a\u0089b"
+  },
+  {
+   "expected": true,
+   "value": "a\u008ab"
+  },
+  {
+   "expected": true,
+   "value": "a\u008bb"
+  },
+  {
+   "expected": true,
+   "value": "a\u008cb"
+  },
+  {
+   "expected": true,
+   "value": "a\u008db"
+  },
+  {
+   "expected": true,
+   "value": "a\u008eb"
+  },
+  {
+   "expected": true,
+   "value": "a\u008fb"
+  },
+  {
+   "expected": true,
+   "value": "a\u0090b"
+  },
+  {
+   "expected": true,
+   "value": "a\u0091b"
+  },
+  {
+   "expected": true,
+   "value": "a\u0092b"
+  },
+  {
+   "expected": true,
+   "value": "a\u0093b"
+  },
+  {
+   "expected": true,
+   "value": "a\u0094b"
+  },
+  {
+   "expected": true,
+   "value": "a\u0095b"
+  },
+  {
+   "expected": true,
+   "value": "a\u0096b"
+  },
+  {
+   "expected": true,
+   "value": "a\u0097b"
+  },
+  {
+   "expected": true,
+   "value": "a\u0098b"
+  },
+  {
+   "expected": true,
+   "value": "a\u0099b"
+  },
+  {
+   "expected": true,
+   "value": "a\u009ab"
+  },
+  {
+   "expected": true,
+   "value": "a\u009bb"
+  },
+  {
+   "expected": true,
+   "value": "a\u009cb"
+  },
+  {
+   "expected": true,
+   "value": "a\u009db"
+  },
+  {
+   "expected": true,
+   "value": "a\u009eb"
+  },
+  {
+   "expected": true,
+   "value": "a\u009fb"
+  },
+  {
+   "expected": false,
+   "value": "a\u00a0b"
+  },
+  {
+   "expected": false,
+   "value": "a\u2027b"
+  },
+  {
+   "expected": true,
+   "value": "a\u2028b"
+  },
+  {
+   "expected": true,
+   "value": "a\u2029b"
+  },
+  {
+   "expected": false,
+   "value": "a\u202ab"
+  },
+  {
+   "expected": false,
+   "value": "a\u00adb"
+  },
+  {
+   "expected": false,
+   "value": "a\ufeffb"
+  },
+  {
+   "expected": false,
+   "value": "a\ud83d\ude00b"
+  }
+ ],
+ "headers": [
+  {
+   "expected": "ok",
+   "headers": [
+    [
+     "Reply-To",
+     "ok"
+    ]
+   ]
+  },
+  {
+   "expected": "ok",
+   "headers": [
+    [
+     "X-Mailer",
+     "ok"
+    ]
+   ]
+  },
+  {
+   "expected": "ok",
+   "headers": [
+    [
+     "Auto-Submitted",
+     "ok"
+    ]
+   ]
+  },
+  {
+   "expected": "ok",
+   "headers": [
+    [
+     "X1",
+     "ok"
+    ]
+   ]
+  },
+  {
+   "expected": "ok",
+   "headers": [
+    [
+     "X",
+     "ok"
+    ]
+   ]
+  },
+  {
+   "expected": "ok",
+   "headers": [
+    [
+     "x-y-z",
+     "ok"
+    ]
+   ]
+  },
+  {
+   "expected": "ok",
+   "headers": [
+    [
+     "In-Reply-To",
+     "ok"
+    ]
+   ]
+  },
+  {
+   "expected": "ok",
+   "headers": [
+    [
+     "References",
+     "ok"
+    ]
+   ]
+  },
+  {
+   "expected": "ok",
+   "headers": [
+    [
+     "List-Unsubscribe",
+     "ok"
+    ]
+   ]
+  },
+  {
+   "expected": "injection",
+   "headers": [
+    [
+     "X Bad Name",
+     "ok"
+    ]
+   ]
+  },
+  {
+   "expected": "injection",
+   "headers": [
+    [
+     "X_Bad",
+     "ok"
+    ]
+   ]
+  },
+  {
+   "expected": "injection",
+   "headers": [
+    [
+     "1X",
+     "ok"
+    ]
+   ]
+  },
+  {
+   "expected": "injection",
+   "headers": [
+    [
+     "-X",
+     "ok"
+    ]
+   ]
+  },
+  {
+   "expected": "injection",
+   "headers": [
+    [
+     "",
+     "ok"
+    ]
+   ]
+  },
+  {
+   "expected": "injection",
+   "headers": [
+    [
+     "X-\u00c4",
+     "ok"
+    ]
+   ]
+  },
+  {
+   "divergence": "D-19",
+   "expected": "injection",
+   "headers": [
+    [
+     "X-Foo\n",
+     "ok"
+    ]
+   ],
+   "python": "ok"
+  },
+  {
+   "divergence": "D-19",
+   "expected": "injection",
+   "headers": [
+    [
+     "Bcc\n",
+     "ok"
+    ]
+   ],
+   "python": "ok"
+  },
+  {
+   "expected": "injection",
+   "headers": [
+    [
+     "X-Foo\r",
+     "ok"
+    ]
+   ]
+  },
+  {
+   "expected": "injection",
+   "headers": [
+    [
+     "X-Foo\n\n",
+     "ok"
+    ]
+   ]
+  },
+  {
+   "expected": "injection",
+   "headers": [
+    [
+     "X-Foo:",
+     "ok"
+    ]
+   ]
+  },
+  {
+   "expected": "injection",
+   "headers": [
+    [
+     "X-Foo\t",
+     "ok"
+    ]
+   ]
+  },
+  {
+   "expected": "dangerous",
+   "headers": [
+    [
+     "Resent-From",
+     "ok"
+    ]
+   ]
+  },
+  {
+   "expected": "dangerous",
+   "headers": [
+    [
+     "resent-x",
+     "ok"
+    ]
+   ]
+  },
+  {
+   "expected": "dangerous",
+   "headers": [
+    [
+     "RESENT-",
+     "ok"
+    ]
+   ]
+  },
+  {
+   "expected": "ok",
+   "headers": [
+    [
+     "Resent",
+     "ok"
+    ]
+   ]
+  },
+  {
+   "expected": "ok",
+   "headers": [
+    [
+     "Resentx",
+     "ok"
+    ]
+   ]
+  },
+  {
+   "expected": "ok",
+   "headers": [
+    [
+     "X-Bcc",
+     "ok"
+    ]
+   ]
+  },
+  {
+   "expected": "ok",
+   "headers": [
+    [
+     "Bcc-X",
+     "ok"
+    ]
+   ]
+  },
+  {
+   "expected": "dangerous",
+   "headers": [
+    [
+     "bcc",
+     "ok"
+    ]
+   ]
+  },
+  {
+   "expected": "dangerous",
+   "headers": [
+    [
+     "BCC",
+     "ok"
+    ]
+   ]
+  },
+  {
+   "expected": "dangerous",
+   "headers": [
+    [
+     "Bcc",
+     "ok"
+    ]
+   ]
+  },
+  {
+   "expected": "dangerous",
+   "headers": [
+    [
+     "cc",
+     "ok"
+    ]
+   ]
+  },
+  {
+   "expected": "dangerous",
+   "headers": [
+    [
+     "CC",
+     "ok"
+    ]
+   ]
+  },
+  {
+   "expected": "dangerous",
+   "headers": [
+    [
+     "Cc",
+     "ok"
+    ]
+   ]
+  },
+  {
+   "expected": "dangerous",
+   "headers": [
+    [
+     "content-disposition",
+     "ok"
+    ]
+   ]
+  },
+  {
+   "expected": "dangerous",
+   "headers": [
+    [
+     "CONTENT-DISPOSITION",
+     "ok"
+    ]
+   ]
+  },
+  {
+   "expected": "dangerous",
+   "headers": [
+    [
+     "Content-Disposition",
+     "ok"
+    ]
+   ]
+  },
+  {
+   "expected": "dangerous",
+   "headers": [
+    [
+     "content-id",
+     "ok"
+    ]
+   ]
+  },
+  {
+   "expected": "dangerous",
+   "headers": [
+    [
+     "CONTENT-ID",
+     "ok"
+    ]
+   ]
+  },
+  {
+   "expected": "dangerous",
+   "headers": [
+    [
+     "Content-Id",
+     "ok"
+    ]
+   ]
+  },
+  {
+   "expected": "dangerous",
+   "headers": [
+    [
+     "content-transfer-encoding",
+     "ok"
+    ]
+   ]
+  },
+  {
+   "expected": "dangerous",
+   "headers": [
+    [
+     "CONTENT-TRANSFER-ENCODING",
+     "ok"
+    ]
+   ]
+  },
+  {
+   "expected": "dangerous",
+   "headers": [
+    [
+     "Content-Transfer-Encoding",
+     "ok"
+    ]
+   ]
+  },
+  {
+   "expected": "dangerous",
+   "headers": [
+    [
+     "content-type",
+     "ok"
+    ]
+   ]
+  },
+  {
+   "expected": "dangerous",
+   "headers": [
+    [
+     "CONTENT-TYPE",
+     "ok"
+    ]
+   ]
+  },
+  {
+   "expected": "dangerous",
+   "headers": [
+    [
+     "Content-Type",
+     "ok"
+    ]
+   ]
+  },
+  {
+   "expected": "dangerous",
+   "headers": [
+    [
+     "date",
+     "ok"
+    ]
+   ]
+  },
+  {
+   "expected": "dangerous",
+   "headers": [
+    [
+     "DATE",
+     "ok"
+    ]
+   ]
+  },
+  {
+   "expected": "dangerous",
+   "headers": [
+    [
+     "Date",
+     "ok"
+    ]
+   ]
+  },
+  {
+   "expected": "dangerous",
+   "headers": [
+    [
+     "disposition-notification-to",
+     "ok"
+    ]
+   ]
+  },
+  {
+   "expected": "dangerous",
+   "headers": [
+    [
+     "DISPOSITION-NOTIFICATION-TO",
+     "ok"
+    ]
+   ]
+  },
+  {
+   "expected": "dangerous",
+   "headers": [
+    [
+     "Disposition-Notification-To",
+     "ok"
+    ]
+   ]
+  },
+  {
+   "expected": "dangerous",
+   "headers": [
+    [
+     "from",
+     "ok"
+    ]
+   ]
+  },
+  {
+   "expected": "dangerous",
+   "headers": [
+    [
+     "FROM",
+     "ok"
+    ]
+   ]
+  },
+  {
+   "expected": "dangerous",
+   "headers": [
+    [
+     "From",
+     "ok"
+    ]
+   ]
+  },
+  {
+   "expected": "dangerous",
+   "headers": [
+    [
+     "message-id",
+     "ok"
+    ]
+   ]
+  },
+  {
+   "expected": "dangerous",
+   "headers": [
+    [
+     "MESSAGE-ID",
+     "ok"
+    ]
+   ]
+  },
+  {
+   "expected": "dangerous",
+   "headers": [
+    [
+     "Message-Id",
+     "ok"
+    ]
+   ]
+  },
+  {
+   "expected": "dangerous",
+   "headers": [
+    [
+     "mime-version",
+     "ok"
+    ]
+   ]
+  },
+  {
+   "expected": "dangerous",
+   "headers": [
+    [
+     "MIME-VERSION",
+     "ok"
+    ]
+   ]
+  },
+  {
+   "expected": "dangerous",
+   "headers": [
+    [
+     "Mime-Version",
+     "ok"
+    ]
+   ]
+  },
+  {
+   "expected": "dangerous",
+   "headers": [
+    [
+     "received",
+     "ok"
+    ]
+   ]
+  },
+  {
+   "expected": "dangerous",
+   "headers": [
+    [
+     "RECEIVED",
+     "ok"
+    ]
+   ]
+  },
+  {
+   "expected": "dangerous",
+   "headers": [
+    [
+     "Received",
+     "ok"
+    ]
+   ]
+  },
+  {
+   "expected": "dangerous",
+   "headers": [
+    [
+     "return-path",
+     "ok"
+    ]
+   ]
+  },
+  {
+   "expected": "dangerous",
+   "headers": [
+    [
+     "RETURN-PATH",
+     "ok"
+    ]
+   ]
+  },
+  {
+   "expected": "dangerous",
+   "headers": [
+    [
+     "Return-Path",
+     "ok"
+    ]
+   ]
+  },
+  {
+   "expected": "dangerous",
+   "headers": [
+    [
+     "return-receipt-to",
+     "ok"
+    ]
+   ]
+  },
+  {
+   "expected": "dangerous",
+   "headers": [
+    [
+     "RETURN-RECEIPT-TO",
+     "ok"
+    ]
+   ]
+  },
+  {
+   "expected": "dangerous",
+   "headers": [
+    [
+     "Return-Receipt-To",
+     "ok"
+    ]
+   ]
+  },
+  {
+   "expected": "dangerous",
+   "headers": [
+    [
+     "sender",
+     "ok"
+    ]
+   ]
+  },
+  {
+   "expected": "dangerous",
+   "headers": [
+    [
+     "SENDER",
+     "ok"
+    ]
+   ]
+  },
+  {
+   "expected": "dangerous",
+   "headers": [
+    [
+     "Sender",
+     "ok"
+    ]
+   ]
+  },
+  {
+   "expected": "dangerous",
+   "headers": [
+    [
+     "subject",
+     "ok"
+    ]
+   ]
+  },
+  {
+   "expected": "dangerous",
+   "headers": [
+    [
+     "SUBJECT",
+     "ok"
+    ]
+   ]
+  },
+  {
+   "expected": "dangerous",
+   "headers": [
+    [
+     "Subject",
+     "ok"
+    ]
+   ]
+  },
+  {
+   "expected": "dangerous",
+   "headers": [
+    [
+     "to",
+     "ok"
+    ]
+   ]
+  },
+  {
+   "expected": "dangerous",
+   "headers": [
+    [
+     "TO",
+     "ok"
+    ]
+   ]
+  },
+  {
+   "expected": "dangerous",
+   "headers": [
+    [
+     "To",
+     "ok"
+    ]
+   ]
+  },
+  {
+   "expected": "ok",
+   "headers": [
+    [
+     "X-Custom",
+     "support@example.test"
+    ]
+   ]
+  },
+  {
+   "expected": "ok",
+   "headers": [
+    [
+     "X-Custom",
+     "auto-generated"
+    ]
+   ]
+  },
+  {
+   "expected": "ok",
+   "headers": [
+    [
+     "X-Custom",
+     ""
+    ]
+   ]
+  },
+  {
+   "expected": "ok",
+   "headers": [
+    [
+     "X-Custom",
+     " padded "
+    ]
+   ]
+  },
+  {
+   "expected": "ok",
+   "headers": [
+    [
+     "X-Custom",
+     "a\tb"
+    ]
+   ]
+  },
+  {
+   "expected": "injection",
+   "headers": [
+    [
+     "X-Custom",
+     "a\u0000b"
+    ]
+   ]
+  },
+  {
+   "expected": "injection",
+   "headers": [
+    [
+     "X-Custom",
+     "ok\nBcc: evil@x.com"
+    ]
+   ]
+  },
+  {
+   "expected": "injection",
+   "headers": [
+    [
+     "X-Custom",
+     "a\rb"
+    ]
+   ]
+  },
+  {
+   "expected": "injection",
+   "headers": [
+    [
+     "X-Custom",
+     "a\u007fb"
+    ]
+   ]
+  },
+  {
+   "expected": "injection",
+   "headers": [
+    [
+     "X-Custom",
+     "a\u0085b"
+    ]
+   ]
+  },
+  {
+   "expected": "injection",
+   "headers": [
+    [
+     "X-Custom",
+     "a\u2028b"
+    ]
+   ]
+  },
+  {
+   "expected": "ok",
+   "headers": [
+    [
+     "X-Custom",
+     "xxxxxxxxxxxxxxxxxxxx"
+    ]
+   ]
+  },
+  {
+   "expected": "too_long",
+   "headers": [
+    [
+     "X-Custom",
+     "xxxxxxxxxxxxxxxxxxxxx"
+    ]
+   ]
+  },
+  {
+   "expected": "ok",
+   "headers": [
+    [
+     "X-Custom",
+     "\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6"
+    ]
+   ]
+  },
+  {
+   "expected": "too_long",
+   "headers": [
+    [
+     "X-Custom",
+     "\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6"
+    ]
+   ]
+  },
+  {
+   "expected": "too_long",
+   "headers": [
+    [
+     "X-Long",
+     "xxxxxxxxxxxxxxxxxxxxx"
+    ],
+    [
+     "Bcc",
+     "a@b.de"
+    ]
+   ]
+  },
+  {
+   "expected": "dangerous",
+   "headers": [
+    [
+     "Bcc",
+     "a@b.de"
+    ],
+    [
+     "X-Long",
+     "xxxxxxxxxxxxxxxxxxxxx"
+    ]
+   ]
+  },
+  {
+   "expected": "injection",
+   "headers": [
+    [
+     "X-A",
+     "a\nb"
+    ],
+    [
+     "X Bad",
+     "ok"
+    ]
+   ]
+  },
+  {
+   "expected": "injection",
+   "headers": [
+    [
+     "X-A",
+     "ok"
+    ],
+    [
+     "X-B",
+     "ok"
+    ],
+    [
+     "X-C",
+     "a\u0000b"
+    ]
+   ]
+  },
+  {
+   "expected": "ok",
+   "headers": [
+    [
+     "Reply-To",
+     "a@b.de"
+    ],
+    [
+     "reply-to",
+     "c@d.de"
+    ]
+   ]
+  },
+  {
+   "divergence": "D-19",
+   "expected": "injection",
+   "headers": [
+    [
+     "X-Foo\n",
+     "ok"
+    ],
+    [
+     "Bcc",
+     "x"
+    ]
+   ],
+   "python": "dangerous"
+  }
+ ],
+ "max_length": 20,
+ "source": "mailgun_relay.headers validate_subject, validate_custom_headers, contains_forbidden_control_chars",
+ "subjects": [
+  {
+   "expected": {
+    "subject": "Hello there"
+   },
+   "value": "Hello there"
+  },
+  {
+   "expected": {
+    "subject": "Hello"
+   },
+   "value": "  Hello  "
+  },
+  {
+   "expected": {
+    "subject": "Hello\tthere"
+   },
+   "value": "Hello\tthere"
+  },
+  {
+   "expected": {
+    "subject": "Hello"
+   },
+   "value": "\tHello\t"
+  },
+  {
+   "expected": {
+    "subject": ""
+   },
+   "value": ""
+  },
+  {
+   "expected": {
+    "subject": ""
+   },
+   "value": "   "
+  },
+  {
+   "expected": {
+    "error": "injection"
+   },
+   "value": "Hi\nBcc: evil@x.com"
+  },
+  {
+   "expected": {
+    "error": "injection"
+   },
+   "value": "Hi\rEvil"
+  },
+  {
+   "expected": {
+    "subject": "Hi"
+   },
+   "value": "Hi\r\n"
+  },
+  {
+   "expected": {
+    "subject": "Hi"
+   },
+   "value": "Hi\n"
+  },
+  {
+   "expected": {
+    "subject": "Hi"
+   },
+   "value": "\nHi"
+  },
+  {
+   "expected": {
+    "subject": "Hi"
+   },
+   "value": "\u001cHi\u001f"
+  },
+  {
+   "expected": {
+    "error": "injection"
+   },
+   "value": "Hi\u001cthere"
+  },
+  {
+   "expected": {
+    "subject": "Hi"
+   },
+   "value": "\u0085Hi\u00a0"
+  },
+  {
+   "expected": {
+    "error": "injection"
+   },
+   "value": "Hi\u0085there"
+  },
+  {
+   "expected": {
+    "subject": "Hi\u00a0there"
+   },
+   "value": "Hi\u00a0there"
+  },
+  {
+   "expected": {
+    "subject": "Hi"
+   },
+   "value": "Hi\u2028"
+  },
+  {
+   "expected": {
+    "subject": ""
+   },
+   "value": "\u2029"
+  },
+  {
+   "expected": {
+    "subject": "Hi"
+   },
+   "value": "Hi\u3000"
+  },
+  {
+   "expected": {
+    "error": "too_long"
+   },
+   "value": "[Django] ERROR (EXTERNAL IP)"
+  },
+  {
+   "expected": {
+    "error": "too_long"
+   },
+   "value": "Passwort zur\u00fccksetzen"
+  },
+  {
+   "expected": {
+    "subject": "=?utf-8?B?YQ0KYg==?="
+   },
+   "value": "=?utf-8?B?YQ0KYg==?="
+  },
+  {
+   "expected": {
+    "subject": "aaaaaaaaaaaaaaaaaaaa"
+   },
+   "value": "aaaaaaaaaaaaaaaaaaaa"
+  },
+  {
+   "expected": {
+    "error": "too_long"
+   },
+   "value": "aaaaaaaaaaaaaaaaaaaaa"
+  },
+  {
+   "expected": {
+    "subject": "\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc"
+   },
+   "value": "\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc"
+  },
+  {
+   "expected": {
+    "error": "too_long"
+   },
+   "value": "\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc"
+  },
+  {
+   "expected": {
+    "subject": "\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00"
+   },
+   "value": "\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00"
+  },
+  {
+   "expected": {
+    "subject": "aaaaaaaaaaaaaaaaaaaa"
+   },
+   "value": " aaaaaaaaaaaaaaaaaaaa "
+  },
+  {
+   "expected": {
+    "error": "injection"
+   },
+   "value": "Hi\u0000World"
+  },
+  {
+   "expected": {
+    "error": "injection"
+   },
+   "value": "Hi\u0001World"
+  },
+  {
+   "expected": {
+    "error": "injection"
+   },
+   "value": "Hi\u0002World"
+  },
+  {
+   "expected": {
+    "error": "injection"
+   },
+   "value": "Hi\u0003World"
+  },
+  {
+   "expected": {
+    "error": "injection"
+   },
+   "value": "Hi\u0004World"
+  },
+  {
+   "expected": {
+    "error": "injection"
+   },
+   "value": "Hi\u0005World"
+  },
+  {
+   "expected": {
+    "error": "injection"
+   },
+   "value": "Hi\u0006World"
+  },
+  {
+   "expected": {
+    "error": "injection"
+   },
+   "value": "Hi\u0007World"
+  },
+  {
+   "expected": {
+    "error": "injection"
+   },
+   "value": "Hi\bWorld"
+  },
+  {
+   "expected": {
+    "subject": "Hi\tWorld"
+   },
+   "value": "Hi\tWorld"
+  },
+  {
+   "expected": {
+    "error": "injection"
+   },
+   "value": "Hi\nWorld"
+  },
+  {
+   "expected": {
+    "error": "injection"
+   },
+   "value": "Hi\u000bWorld"
+  },
+  {
+   "expected": {
+    "error": "injection"
+   },
+   "value": "Hi\fWorld"
+  },
+  {
+   "expected": {
+    "error": "injection"
+   },
+   "value": "Hi\rWorld"
+  },
+  {
+   "expected": {
+    "error": "injection"
+   },
+   "value": "Hi\u000eWorld"
+  },
+  {
+   "expected": {
+    "error": "injection"
+   },
+   "value": "Hi\u000fWorld"
+  },
+  {
+   "expected": {
+    "error": "injection"
+   },
+   "value": "Hi\u0010World"
+  },
+  {
+   "expected": {
+    "error": "injection"
+   },
+   "value": "Hi\u0011World"
+  },
+  {
+   "expected": {
+    "error": "injection"
+   },
+   "value": "Hi\u0012World"
+  },
+  {
+   "expected": {
+    "error": "injection"
+   },
+   "value": "Hi\u0013World"
+  },
+  {
+   "expected": {
+    "error": "injection"
+   },
+   "value": "Hi\u0014World"
+  },
+  {
+   "expected": {
+    "error": "injection"
+   },
+   "value": "Hi\u0015World"
+  },
+  {
+   "expected": {
+    "error": "injection"
+   },
+   "value": "Hi\u0016World"
+  },
+  {
+   "expected": {
+    "error": "injection"
+   },
+   "value": "Hi\u0017World"
+  },
+  {
+   "expected": {
+    "error": "injection"
+   },
+   "value": "Hi\u0018World"
+  },
+  {
+   "expected": {
+    "error": "injection"
+   },
+   "value": "Hi\u0019World"
+  },
+  {
+   "expected": {
+    "error": "injection"
+   },
+   "value": "Hi\u001aWorld"
+  },
+  {
+   "expected": {
+    "error": "injection"
+   },
+   "value": "Hi\u001bWorld"
+  },
+  {
+   "expected": {
+    "error": "injection"
+   },
+   "value": "Hi\u001cWorld"
+  },
+  {
+   "expected": {
+    "error": "injection"
+   },
+   "value": "Hi\u001dWorld"
+  },
+  {
+   "expected": {
+    "error": "injection"
+   },
+   "value": "Hi\u001eWorld"
+  },
+  {
+   "expected": {
+    "error": "injection"
+   },
+   "value": "Hi\u001fWorld"
+  },
+  {
+   "expected": {
+    "subject": "Hi World"
+   },
+   "value": "Hi World"
+  },
+  {
+   "expected": {
+    "subject": "Hi!World"
+   },
+   "value": "Hi!World"
+  },
+  {
+   "expected": {
+    "subject": "Hi\"World"
+   },
+   "value": "Hi\"World"
+  },
+  {
+   "expected": {
+    "subject": "Hi#World"
+   },
+   "value": "Hi#World"
+  },
+  {
+   "expected": {
+    "subject": "Hi$World"
+   },
+   "value": "Hi$World"
+  },
+  {
+   "expected": {
+    "subject": "Hi%World"
+   },
+   "value": "Hi%World"
+  },
+  {
+   "expected": {
+    "subject": "Hi&World"
+   },
+   "value": "Hi&World"
+  },
+  {
+   "expected": {
+    "subject": "Hi'World"
+   },
+   "value": "Hi'World"
+  },
+  {
+   "expected": {
+    "subject": "Hi(World"
+   },
+   "value": "Hi(World"
+  },
+  {
+   "expected": {
+    "subject": "Hi)World"
+   },
+   "value": "Hi)World"
+  },
+  {
+   "expected": {
+    "subject": "Hi*World"
+   },
+   "value": "Hi*World"
+  },
+  {
+   "expected": {
+    "subject": "Hi+World"
+   },
+   "value": "Hi+World"
+  },
+  {
+   "expected": {
+    "subject": "Hi,World"
+   },
+   "value": "Hi,World"
+  },
+  {
+   "expected": {
+    "subject": "Hi-World"
+   },
+   "value": "Hi-World"
+  },
+  {
+   "expected": {
+    "subject": "Hi.World"
+   },
+   "value": "Hi.World"
+  },
+  {
+   "expected": {
+    "subject": "Hi/World"
+   },
+   "value": "Hi/World"
+  },
+  {
+   "expected": {
+    "subject": "Hi0World"
+   },
+   "value": "Hi0World"
+  },
+  {
+   "expected": {
+    "subject": "Hi1World"
+   },
+   "value": "Hi1World"
+  },
+  {
+   "expected": {
+    "subject": "Hi2World"
+   },
+   "value": "Hi2World"
+  },
+  {
+   "expected": {
+    "subject": "Hi3World"
+   },
+   "value": "Hi3World"
+  },
+  {
+   "expected": {
+    "subject": "Hi4World"
+   },
+   "value": "Hi4World"
+  },
+  {
+   "expected": {
+    "subject": "Hi5World"
+   },
+   "value": "Hi5World"
+  },
+  {
+   "expected": {
+    "subject": "Hi6World"
+   },
+   "value": "Hi6World"
+  },
+  {
+   "expected": {
+    "subject": "Hi7World"
+   },
+   "value": "Hi7World"
+  },
+  {
+   "expected": {
+    "subject": "Hi8World"
+   },
+   "value": "Hi8World"
+  },
+  {
+   "expected": {
+    "subject": "Hi9World"
+   },
+   "value": "Hi9World"
+  },
+  {
+   "expected": {
+    "subject": "Hi:World"
+   },
+   "value": "Hi:World"
+  },
+  {
+   "expected": {
+    "subject": "Hi;World"
+   },
+   "value": "Hi;World"
+  },
+  {
+   "expected": {
+    "subject": "Hi<World"
+   },
+   "value": "Hi<World"
+  },
+  {
+   "expected": {
+    "subject": "Hi=World"
+   },
+   "value": "Hi=World"
+  },
+  {
+   "expected": {
+    "subject": "Hi>World"
+   },
+   "value": "Hi>World"
+  },
+  {
+   "expected": {
+    "subject": "Hi?World"
+   },
+   "value": "Hi?World"
+  },
+  {
+   "expected": {
+    "subject": "Hi@World"
+   },
+   "value": "Hi@World"
+  },
+  {
+   "expected": {
+    "subject": "HiAWorld"
+   },
+   "value": "HiAWorld"
+  },
+  {
+   "expected": {
+    "subject": "HiBWorld"
+   },
+   "value": "HiBWorld"
+  },
+  {
+   "expected": {
+    "subject": "HiCWorld"
+   },
+   "value": "HiCWorld"
+  },
+  {
+   "expected": {
+    "subject": "HiDWorld"
+   },
+   "value": "HiDWorld"
+  },
+  {
+   "expected": {
+    "subject": "HiEWorld"
+   },
+   "value": "HiEWorld"
+  },
+  {
+   "expected": {
+    "subject": "HiFWorld"
+   },
+   "value": "HiFWorld"
+  },
+  {
+   "expected": {
+    "subject": "HiGWorld"
+   },
+   "value": "HiGWorld"
+  },
+  {
+   "expected": {
+    "subject": "HiHWorld"
+   },
+   "value": "HiHWorld"
+  },
+  {
+   "expected": {
+    "subject": "HiIWorld"
+   },
+   "value": "HiIWorld"
+  },
+  {
+   "expected": {
+    "subject": "HiJWorld"
+   },
+   "value": "HiJWorld"
+  },
+  {
+   "expected": {
+    "subject": "HiKWorld"
+   },
+   "value": "HiKWorld"
+  },
+  {
+   "expected": {
+    "subject": "HiLWorld"
+   },
+   "value": "HiLWorld"
+  },
+  {
+   "expected": {
+    "subject": "HiMWorld"
+   },
+   "value": "HiMWorld"
+  },
+  {
+   "expected": {
+    "subject": "HiNWorld"
+   },
+   "value": "HiNWorld"
+  },
+  {
+   "expected": {
+    "subject": "HiOWorld"
+   },
+   "value": "HiOWorld"
+  },
+  {
+   "expected": {
+    "subject": "HiPWorld"
+   },
+   "value": "HiPWorld"
+  },
+  {
+   "expected": {
+    "subject": "HiQWorld"
+   },
+   "value": "HiQWorld"
+  },
+  {
+   "expected": {
+    "subject": "HiRWorld"
+   },
+   "value": "HiRWorld"
+  },
+  {
+   "expected": {
+    "subject": "HiSWorld"
+   },
+   "value": "HiSWorld"
+  },
+  {
+   "expected": {
+    "subject": "HiTWorld"
+   },
+   "value": "HiTWorld"
+  },
+  {
+   "expected": {
+    "subject": "HiUWorld"
+   },
+   "value": "HiUWorld"
+  },
+  {
+   "expected": {
+    "subject": "HiVWorld"
+   },
+   "value": "HiVWorld"
+  },
+  {
+   "expected": {
+    "subject": "HiWWorld"
+   },
+   "value": "HiWWorld"
+  },
+  {
+   "expected": {
+    "subject": "HiXWorld"
+   },
+   "value": "HiXWorld"
+  },
+  {
+   "expected": {
+    "subject": "HiYWorld"
+   },
+   "value": "HiYWorld"
+  },
+  {
+   "expected": {
+    "subject": "HiZWorld"
+   },
+   "value": "HiZWorld"
+  },
+  {
+   "expected": {
+    "subject": "Hi[World"
+   },
+   "value": "Hi[World"
+  },
+  {
+   "expected": {
+    "subject": "Hi\\World"
+   },
+   "value": "Hi\\World"
+  },
+  {
+   "expected": {
+    "subject": "Hi]World"
+   },
+   "value": "Hi]World"
+  },
+  {
+   "expected": {
+    "subject": "Hi^World"
+   },
+   "value": "Hi^World"
+  },
+  {
+   "expected": {
+    "subject": "Hi_World"
+   },
+   "value": "Hi_World"
+  },
+  {
+   "expected": {
+    "subject": "Hi`World"
+   },
+   "value": "Hi`World"
+  },
+  {
+   "expected": {
+    "subject": "HiaWorld"
+   },
+   "value": "HiaWorld"
+  },
+  {
+   "expected": {
+    "subject": "HibWorld"
+   },
+   "value": "HibWorld"
+  },
+  {
+   "expected": {
+    "subject": "HicWorld"
+   },
+   "value": "HicWorld"
+  },
+  {
+   "expected": {
+    "subject": "HidWorld"
+   },
+   "value": "HidWorld"
+  },
+  {
+   "expected": {
+    "subject": "HieWorld"
+   },
+   "value": "HieWorld"
+  },
+  {
+   "expected": {
+    "subject": "HifWorld"
+   },
+   "value": "HifWorld"
+  },
+  {
+   "expected": {
+    "subject": "HigWorld"
+   },
+   "value": "HigWorld"
+  },
+  {
+   "expected": {
+    "subject": "HihWorld"
+   },
+   "value": "HihWorld"
+  },
+  {
+   "expected": {
+    "subject": "HiiWorld"
+   },
+   "value": "HiiWorld"
+  },
+  {
+   "expected": {
+    "subject": "HijWorld"
+   },
+   "value": "HijWorld"
+  },
+  {
+   "expected": {
+    "subject": "HikWorld"
+   },
+   "value": "HikWorld"
+  },
+  {
+   "expected": {
+    "subject": "HilWorld"
+   },
+   "value": "HilWorld"
+  },
+  {
+   "expected": {
+    "subject": "HimWorld"
+   },
+   "value": "HimWorld"
+  },
+  {
+   "expected": {
+    "subject": "HinWorld"
+   },
+   "value": "HinWorld"
+  },
+  {
+   "expected": {
+    "subject": "HioWorld"
+   },
+   "value": "HioWorld"
+  },
+  {
+   "expected": {
+    "subject": "HipWorld"
+   },
+   "value": "HipWorld"
+  },
+  {
+   "expected": {
+    "subject": "HiqWorld"
+   },
+   "value": "HiqWorld"
+  },
+  {
+   "expected": {
+    "subject": "HirWorld"
+   },
+   "value": "HirWorld"
+  },
+  {
+   "expected": {
+    "subject": "HisWorld"
+   },
+   "value": "HisWorld"
+  },
+  {
+   "expected": {
+    "subject": "HitWorld"
+   },
+   "value": "HitWorld"
+  },
+  {
+   "expected": {
+    "subject": "HiuWorld"
+   },
+   "value": "HiuWorld"
+  },
+  {
+   "expected": {
+    "subject": "HivWorld"
+   },
+   "value": "HivWorld"
+  },
+  {
+   "expected": {
+    "subject": "HiwWorld"
+   },
+   "value": "HiwWorld"
+  },
+  {
+   "expected": {
+    "subject": "HixWorld"
+   },
+   "value": "HixWorld"
+  },
+  {
+   "expected": {
+    "subject": "HiyWorld"
+   },
+   "value": "HiyWorld"
+  },
+  {
+   "expected": {
+    "subject": "HizWorld"
+   },
+   "value": "HizWorld"
+  },
+  {
+   "expected": {
+    "subject": "Hi{World"
+   },
+   "value": "Hi{World"
+  },
+  {
+   "expected": {
+    "subject": "Hi|World"
+   },
+   "value": "Hi|World"
+  },
+  {
+   "expected": {
+    "subject": "Hi}World"
+   },
+   "value": "Hi}World"
+  },
+  {
+   "expected": {
+    "subject": "Hi~World"
+   },
+   "value": "Hi~World"
+  },
+  {
+   "expected": {
+    "error": "injection"
+   },
+   "value": "Hi\u007fWorld"
+  },
+  {
+   "expected": {
+    "error": "injection"
+   },
+   "value": "Hi\u0080World"
+  },
+  {
+   "expected": {
+    "error": "injection"
+   },
+   "value": "Hi\u0081World"
+  },
+  {
+   "expected": {
+    "error": "injection"
+   },
+   "value": "Hi\u0082World"
+  },
+  {
+   "expected": {
+    "error": "injection"
+   },
+   "value": "Hi\u0083World"
+  },
+  {
+   "expected": {
+    "error": "injection"
+   },
+   "value": "Hi\u0084World"
+  },
+  {
+   "expected": {
+    "error": "injection"
+   },
+   "value": "Hi\u0085World"
+  },
+  {
+   "expected": {
+    "error": "injection"
+   },
+   "value": "Hi\u0086World"
+  },
+  {
+   "expected": {
+    "error": "injection"
+   },
+   "value": "Hi\u0087World"
+  },
+  {
+   "expected": {
+    "error": "injection"
+   },
+   "value": "Hi\u0088World"
+  },
+  {
+   "expected": {
+    "error": "injection"
+   },
+   "value": "Hi\u0089World"
+  },
+  {
+   "expected": {
+    "error": "injection"
+   },
+   "value": "Hi\u008aWorld"
+  },
+  {
+   "expected": {
+    "error": "injection"
+   },
+   "value": "Hi\u008bWorld"
+  },
+  {
+   "expected": {
+    "error": "injection"
+   },
+   "value": "Hi\u008cWorld"
+  },
+  {
+   "expected": {
+    "error": "injection"
+   },
+   "value": "Hi\u008dWorld"
+  },
+  {
+   "expected": {
+    "error": "injection"
+   },
+   "value": "Hi\u008eWorld"
+  },
+  {
+   "expected": {
+    "error": "injection"
+   },
+   "value": "Hi\u008fWorld"
+  },
+  {
+   "expected": {
+    "error": "injection"
+   },
+   "value": "Hi\u0090World"
+  },
+  {
+   "expected": {
+    "error": "injection"
+   },
+   "value": "Hi\u0091World"
+  },
+  {
+   "expected": {
+    "error": "injection"
+   },
+   "value": "Hi\u0092World"
+  },
+  {
+   "expected": {
+    "error": "injection"
+   },
+   "value": "Hi\u0093World"
+  },
+  {
+   "expected": {
+    "error": "injection"
+   },
+   "value": "Hi\u0094World"
+  },
+  {
+   "expected": {
+    "error": "injection"
+   },
+   "value": "Hi\u0095World"
+  },
+  {
+   "expected": {
+    "error": "injection"
+   },
+   "value": "Hi\u0096World"
+  },
+  {
+   "expected": {
+    "error": "injection"
+   },
+   "value": "Hi\u0097World"
+  },
+  {
+   "expected": {
+    "error": "injection"
+   },
+   "value": "Hi\u0098World"
+  },
+  {
+   "expected": {
+    "error": "injection"
+   },
+   "value": "Hi\u0099World"
+  },
+  {
+   "expected": {
+    "error": "injection"
+   },
+   "value": "Hi\u009aWorld"
+  },
+  {
+   "expected": {
+    "error": "injection"
+   },
+   "value": "Hi\u009bWorld"
+  },
+  {
+   "expected": {
+    "error": "injection"
+   },
+   "value": "Hi\u009cWorld"
+  },
+  {
+   "expected": {
+    "error": "injection"
+   },
+   "value": "Hi\u009dWorld"
+  },
+  {
+   "expected": {
+    "error": "injection"
+   },
+   "value": "Hi\u009eWorld"
+  },
+  {
+   "expected": {
+    "error": "injection"
+   },
+   "value": "Hi\u009fWorld"
+  },
+  {
+   "expected": {
+    "subject": "Hi\u00a0World"
+   },
+   "value": "Hi\u00a0World"
+  },
+  {
+   "expected": {
+    "subject": "Hi\u2027World"
+   },
+   "value": "Hi\u2027World"
+  },
+  {
+   "expected": {
+    "error": "injection"
+   },
+   "value": "Hi\u2028World"
+  },
+  {
+   "expected": {
+    "error": "injection"
+   },
+   "value": "Hi\u2029World"
+  },
+  {
+   "expected": {
+    "subject": "Hi\u202aWorld"
+   },
+   "value": "Hi\u202aWorld"
+  },
+  {
+   "expected": {
+    "subject": "Hi\u00adWorld"
+   },
+   "value": "Hi\u00adWorld"
+  },
+  {
+   "expected": {
+    "subject": "Hi\ufeffWorld"
+   },
+   "value": "Hi\ufeffWorld"
+  },
+  {
+   "expected": {
+    "subject": "Hi\ud83d\ude00World"
+   },
+   "value": "Hi\ud83d\ude00World"
+  }
+ ]
+}

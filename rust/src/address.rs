@@ -14,6 +14,7 @@
 //! message headers.
 
 use crate::domain::address_domain;
+use crate::headers::contains_forbidden_control_chars;
 
 /// One mailbox: the display name as Python's parser returns it (comments
 /// included as Python includes them) and the addr-spec with an A-label
@@ -42,14 +43,6 @@ impl Mailbox {
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct InvalidAddress;
-
-/// `relay:headers.py` `_FORBIDDEN_CONTROL_RE`: C0 and C1 controls except
-/// TAB, DEL, U+2028 and U+2029.
-pub fn contains_forbidden_control_chars(value: &str) -> bool {
-    value.chars().any(|c| {
-        matches!(c, '\0'..='\x08' | '\n'..='\x1f' | '\x7f'..='\u{9f}' | '\u{2028}' | '\u{2029}')
-    })
-}
 
 /// One mailbox per value (`from`, `to`, `cc`, `bcc`): `addr`,
 /// `Name <addr>`, `"Quoted, Name" <addr>`, `<addr>`, `addr (comment)`.

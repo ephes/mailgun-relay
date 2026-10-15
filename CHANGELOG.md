@@ -4,6 +4,19 @@ All notable changes to mailgun-relay are documented here.
 
 ## Unreleased
 
+### Rust port: subject and header validation (slice S3a)
+
+- `rust/src/headers.rs` validates the subject and the `h:*` headers as the
+  Python service does (control characters, the denylist including every
+  `resent-*` name, the name pattern, lengths in code points; the first error
+  in map order wins). The control-character rule moves there from
+  `address.rs`. Not wired to a route yet (S3c).
+- A header name with a final newline (`h:X-Foo%0A`), which Python's pattern
+  lets through, is refused (`rust/PLAN.md` D-19, fail closed). The Python
+  service is unchanged.
+- New fixture from the Python oracle: `headers.json` (196 subjects, 100
+  header lists, 168 control-character probes).
+
 ### Rust port: the token policy (slice S2c)
 
 - `rust/src/policy.rs` enforces the token policy in Python's order and with

@@ -7,7 +7,9 @@ production. [`TESTMAP.md`](TESTMAP.md) maps every Python test to its Rust
 counterpart.
 
 **Status: slice S1 of PLAN.md section 6 is done** (merged as S1a, S1c and
-S1d); S2 is done (authentication, addresses, the token policy; not yet wired to a route). The binary
+S1d); S2 is done (authentication, addresses, the token policy) and S3a
+adds subject and header validation; none of it is wired to a route yet. The
+binary
 loads and validates the configuration, answers `GET /health`, the
 404/405/307 fallbacks and the 413 body-limit layer, and logs the startup
 record. `POST /v3/{domain}/messages` does not exist yet (S3–S5); nothing
