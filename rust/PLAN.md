@@ -518,6 +518,12 @@ What must arrive the same (checked by the semantic comparison of 7.4):
 
 ### 2.11 Logging (minimum contract, section 4)
 
+Treated as **exact** because the decommission runbook depends on it
+(`ops-control:runbooks/mailgun-decommission.md:1008-1024,1144-1166`): unit
+and `SyslogIdentifier` `mailgun-relay`, compact JSON lines, `event=request`
+with `token_label` and `result` (`ok` on success), and `event=startup` on
+every start.
+
 One compact JSON object per line on stdout, flushed per record; the unit keeps
 `SyslogIdentifier=mailgun-relay`. Records `event=startup` (each start, at
 INFO or the configured level if higher), `event=request` (exactly one per
@@ -553,7 +559,7 @@ Python accepts (or fail at start where Python starts), never the reverse.
 | # | Python behaviour | Rust proposal | Status |
 | --- | --- | --- | --- |
 | D-1 | `text=""` (or `html=""`) with no other non-empty body passes step 4, then `build_message` raises `ValueError` → **500** (`mime_build.py:103-104`; measured). Reachable from Anymail: a Django message with an empty body sends `text=""`. `text=""` together with a non-empty `html` is accepted and the empty text is dropped (200, html only). | **400** at the same position (step 9), so every other decision is unchanged; the empty-text-plus-html case stays 200 html-only. Python gets the same fix in a separate change so both sides agree. Alternatives: bug-compatible 500; accept and send an empty `text/plain`. | Owner Q1 |
-| D-2 | IDN recipient domains are normalised to U-labels: the header gets an RFC-violating encoded word in the domain (`foo@=?utf-8?q?wersd=C3=B6rfer?=.de`), the envelope gets the U-label, `smtplib` switches the whole message to SMTPUTF8 (raw UTF-8 headers); without server SMTPUTF8 → 503. The same applies to an IDN `from` in the header. Non-ASCII local parts (EAI) behave the same way and genuinely need SMTPUTF8. Reachable by an attacker through allauth's "unknown account" mail. | IDN domains as A-labels in every header address and in the envelope (no SMTPUTF8 needed; same acceptance; 200 where Python needs SMTPUTF8). EAI local parts → **400** at the address check (fail closed). Alternatives: EAI via SMTPUTF8 like Python (200 if offered, 503 otherwise) if lettre can carry it; fully bug-compatible U-label envelope. | Owner Q2 |
+| D-2 | IDN recipient domains are normalised to U-labels: the header gets an RFC-violating encoded word in the domain (`foo@=?utf-8?q?wersd=C3=B6rfer?=.de`), the envelope gets the U-label, `smtplib` switches the whole message to SMTPUTF8 (raw UTF-8 headers); without server SMTPUTF8 → 503. The same applies to an IDN `from` in the header. Non-ASCII local parts (EAI) behave the same way and genuinely need SMTPUTF8. **Security-relevant: externally triggerable.** allauth's "unknown account" mail (`ACCOUNT_EMAIL_UNKNOWN_ACCOUNTS=True`) goes to any address an outside visitor types into the password-reset form of homepage or python-podcast, so anyone can make the relay emit RFC-violating headers and take the SMTPUTF8 path (or a 503) on demand. It does not bypass the token/domain/sender policy. | IDN domains as A-labels in every header address and in the envelope (no SMTPUTF8 needed; same acceptance; 200 where Python needs SMTPUTF8). EAI local parts → **400** at the address check (fail closed). **Timing:** fix Python the same way in a small separate change **before** the cutover, so the exposure closes now rather than at cutover and the shadow comparison has no D-2 difference left. Alternatives: Rust only (Python keeps the bug until cutover); EAI via SMTPUTF8 like Python (200 if offered, 503 otherwise) if lettre can carry it; fully bug-compatible. | Owner Q2 |
 | D-3 | Every `OSError` is TEMPORARY → 503, including `SMTPException` subclasses: STARTTLS not offered, no AUTH, no common mechanism, SMTPUTF8 unsupported, certificate or hostname failure (`smtp_client.py:83-84`). | **Keep 503** (bug-compatible): every lettre error without an SMTP reply code maps to 503. Alternative: 502 for the configuration-type failures. | Owner Q3 (default: no divergence) |
 | D-4 | `smtplib.login` prefers CRAM-MD5 > PLAIN > LOGIN. | lettre offers PLAIN and LOGIN only. A server offering only CRAM-MD5 would give Rust 503 where Python logs in. Gate: the read-only EHLO pre-flight on `smtp.home…:587` (S1b) must show PLAIN or LOGIN after STARTTLS; otherwise stop and escalate. | expected no-op |
 | D-5 | Unquoted all-digit `token_sha256` is a YAML int and is converted with `format(x, "064x")` (`config.py:135-136`), i.e. a different hash than written. The ops template quotes the value. | Startup failure (`--check-config` catches it before any switch). | Owner Q4 |
@@ -1098,7 +1104,9 @@ Bundled in `handoff/p2-owner-questions.md` with options; recommendations:
 - **Q1** Python 500s on client input (D-1 empty `text`/`html`, D-16 CR/LF
   decoded from a To/Cc display name): 400 at the same position, Python fixed
   in parallel.
-- **Q2** IDN/EAI addresses (D-2): A-labels everywhere; EAI local parts 400.
+- **Q2** IDN/EAI addresses (D-2, security-relevant, externally triggerable):
+  A-labels everywhere, EAI local parts 400, fixed in Python before the
+  cutover as well as in Rust.
 - **Q3** transport-level SMTP failures (D-3): keep 503.
 - **Q4** exotic input and configuration (D-5–D-11, D-15): corpus-pinned with
   the fail-closed rule.
