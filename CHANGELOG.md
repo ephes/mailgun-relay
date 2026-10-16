@@ -4,6 +4,19 @@ All notable changes to mailgun-relay are documented here.
 
 ## Unreleased
 
+### Parity harness: folded Message-ID in the shadow run (S9)
+
+- `run_parity.py` compared the parsed `Message-ID` of a captured message
+  with the response `id` as is. With the production `PUBLIC_HOST` the Python
+  relay folds that header (the line is longer than 78 characters), and the
+  parser of Python 3.12.3, the `python3` of the shadow host, keeps the
+  folding space. So every queued case of the first shadow run on macmini
+  failed on Python's side. The check now ignores surrounding white space.
+  No relay change.
+- `rust/PLAN.md` 10.1 and 10.2: the Rust shadow uses port 8089 (8086 is taken
+  on macmini by the graphyard InfluxDB container). The shadows' stdout goes
+  only to the log files. The sinks' certificates are valid for two days.
+
 ### Custom header names with a final newline are 400 (D-19)
 
 - Behaviour change for clients: 200 → 400. An `h:*` field whose header

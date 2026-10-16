@@ -36,7 +36,7 @@ Against two running instances (the shadow of PLAN.md 10.1), whose SMTP
 goes to two capture sinks (``smtp_fake.py --record-dir``) and whose secrets
 come from ``--write-secrets``::
 
-    python3 rust/parity/run_parity.py --targets http://127.0.0.1:8087,http://127.0.0.1:8086 \\
+    python3 rust/parity/run_parity.py --targets http://127.0.0.1:8087,http://127.0.0.1:8089 \\
         --sinks /var/lib/shadow/py,/var/lib/shadow/rs [--logs PY.log,RS.log]
 
 That mode runs the cases of the default profile whose SMTP scenario is the
@@ -359,7 +359,9 @@ def _compare_http(py: Response, rs: Response) -> list[str]:
 def _message_problems(name: str, raw: bytes, response: Response) -> list[str]:
     message = semantic.parse(raw)
     problems = []
-    if response.status == 200 and str(message["Message-ID"]) != response.json()["id"]:
+    # Python folds the Message-ID with the production PUBLIC_HOST; the parser
+    # of Python 3.12.3 (the shadow host's python3) keeps the folding space.
+    if response.status == 200 and str(message["Message-ID"]).strip() != response.json()["id"]:
         problems.append(f"{name}: Message-Id {message['Message-ID']} is not the response id")
     if message["Date"] is None:
         problems.append(f"{name}: no Date")

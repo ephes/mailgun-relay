@@ -186,6 +186,7 @@ def test_free_details_are_not_differences() -> None:
         assert rust.records is not None
         rust.records[0].update(ts="2026-10-15T12:00:00Z", error_class="Rust")
         _set_message(rust, b"Subject: s", b"Subject:  s")
+        _set_message(rust, b"Message-ID: <1@x.test>", b"Message-ID:\r\n <1@x.test>")
 
     assert _differences(change) == []
     error = _response(400, '{"message":"free text"}')

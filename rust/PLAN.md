@@ -1272,30 +1272,36 @@ service user:
   file itself is checked with the binary's `--check-config` (S8).
 - `mailgun-relay-shadow-py` (venv `python -m mailgun_relay`, port 8087) and
   `mailgun-relay-shadow-rs` (`/opt/mailgun-relay/<v>/mailgun-relay`, port
-  8086), each with `EnvironmentFile=/etc/mailgun-relay/mailgun-relay.env` plus
-  overrides `BIND_PORT`, `SECRETS_PATH`, `SMTP_HOST=localhost`, `SMTP_PORT`,
-  `SMTP_CA_FILE`.
-- `run_parity.py --targets http://127.0.0.1:8087,http://127.0.0.1:8086
+  8089; 8086 is taken on macmini by the graphyard InfluxDB container), each
+  with `EnvironmentFile=/etc/mailgun-relay/mailgun-relay.env` plus a second
+  environment file with the overrides `BIND_PORT`, `SECRETS_PATH`,
+  `SMTP_HOST=localhost`, `SMTP_PORT`, `SMTP_CA_FILE` (`EnvironmentFile=`
+  wins over `Environment=`/`systemd-run -E`).
+- `run_parity.py --targets http://127.0.0.1:8087,http://127.0.0.1:8089
   --sinks <py dir>,<rs dir> --logs <py log>,<rs log>` (7.4) replays the
   corpus against both and compares exactly as in CI, but with the
   production env and the real host (glibc resolver, systemd hardening, file
   modes); the sinks only accept, so the cases with a scripted SMTP reply or
-  another profile are skipped (they ran in CI). The units write stdout to
-  the log files (`StandardOutput=append:`) besides the journal.
+  another profile are skipped (they ran in CI). The relays' stdout goes to
+  the log files (`StandardOutput=append:`) instead of the journal; stderr
+  stays in the journal under `SyslogIdentifier=mailgun-relay-shadow-*`, so
+  no shadow record shows up in `journalctl -t mailgun-relay`.
 - The Rust shadow then stays up for ≥ 24 h idle with a light synthetic load
-  (one corpus pass per hour) to measure RSS/CPU (section 12).
+  (one corpus pass per hour) to measure RSS/CPU (section 12). The sinks'
+  throwaway certificates are valid for two days (`smtp_fake.py`), so the
+  shadow is evaluated and torn down within 48 h of creating the CA.
 
 Acceptance: zero unexplained differences; RSS/CPU targets of section 1 met
 or a measured explanation; `--check-config` and startup record correct.
 
 ### 10.2 Phase B: controlled real mails through Rust
 
-The Rust shadow is restarted on port 8086 with the production SMTP settings
+The Rust shadow is restarted on port 8089 with the production SMTP settings
 (real Postfix, real STARTTLS/AUTH). Only the probe token is used, and only to
 the monitor mailbox:
 
 - the probe request itself (the probe item exposes its POST as a script with
-  a URL override; it is run once against `127.0.0.1:8086`);
+  a URL override; it is run once against `127.0.0.1:8089`);
 - four further shapes from the same probe sender to the monitor mailbox:
   text only with German umlauts and a long subject; text + html; one
   attachment with a non-ASCII filename; an inline image with HTML.
