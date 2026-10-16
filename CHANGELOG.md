@@ -4,83 +4,6 @@ All notable changes to mailgun-relay are documented here.
 
 ## Unreleased
 
-### Rust port: parity harness (slice S6b)
-
-- `rust/parity/run_parity.py` starts the Python relay (real uvicorn) and
-  the Rust release binary as processes, each with a fake SMTP server
-  (STARTTLS with a throwaway CA, AUTH, scripted replies), sends 474 request
-  cases byte for byte to both and compares what the parity contract fixes:
-  status, contract headers and JSON, the SMTP envelope, the message as
-  Python's parser reads it, and the `request`/`recipients_refused` and
-  `startup` records. The corpus covers every production client shape
-  (Anymail urlencoded and multipart, the recorder's multipart in random
-  field order), the twelve production policies with fake tokens, every
-  decision of `rust/PLAN.md` 2.3, every limit at N and N+1, all SMTP
-  scenarios of `smtp_outcomes.json` through the endpoint, and 8 startup
-  configurations. Expected differences name their divergence (D-3, D-4,
-  D-9 to D-11, D-20 to D-22); any other difference fails. CI runs it in
-  the new `parity` job (about 30 s). With `--targets` it runs against two
-  running instances whose SMTP goes to capture sinks, for the shadow run.
-- Found by the harness: `MAILGUN_RELAY_LOG_LEVEL=trace` starts the Python
-  service (uvicorn registers the level before the app sets it), but the
-  Rust port refused to start. The Rust port now accepts `TRACE` too; the
-  fixture model of the Python start includes it.
-
-### Rust port: shared parity harness modules (slice S6a)
-
-- `rust/parity/smtp_fake.py` (the scripted fake SMTP server, now also
-  recording TLS, login, envelope and the message, and usable as a capture
-  sink) and `rust/parity/semantic.py` (the semantic view of a message and
-  the RFC checks) move out of `rust/fixtures/generate.py` and
-  `check_mime.py`, standard library only, for the parity harness of S6b.
-  The fixtures are unchanged.
-
-### Rust port: release pipeline (slice S7)
-
-- `.github/workflows/rust-release.yml` builds the Rust binary on
-  ubuntu-22.04 (glibc 2.35) for `x86_64-unknown-linux-gnu` from a clean
-  state (pinned toolchain and action SHAs, no cargo cache) and gates it with
-  `rust/scripts/release_checks.py`: the tag `rs-v<semver>` must equal the
-  crate version, no glibc symbol above 2.35 and only glibc/libgcc linked,
-  `--version` names version and full commit, `--check-config` accepts a test
-  configuration in the role's shape. The archive
-  `mailgun-relay-<ver>-x86_64-unknown-linux-gnu.tar.gz` holds exactly
-  `mailgun-relay` and `LICENSE` and is deterministic for a given binary;
-  its `.sha256` is checked with `sha256sum --check`. A tag push publishes
-  both files as a GitHub release (a pre-release version as a pre-release);
-  `workflow_dispatch` uploads them as a workflow artifact only. No tag yet:
-  the first release `rs-v0.2.0` follows the parity harness (S6).
-
-### Rust port: submission in the route (slice S5b)
-
-- The Rust port caps concurrent SMTP sessions at `SMTP_MAX_CONCURRENCY`
-  (further messages wait, `/health` never does) and finishes a submission
-  whose client went away; SIGTERM waits for it, as uvicorn does.
-- `rust/fixtures/smtp_outcomes.json` pins the status of 109 SMTP scenarios
-  (every row of `rust/PLAN.md` 2.4) from the Python client run against a
-  scripted fake server; the Rust tests run the same scenarios. Process tests
-  deliver a message end to end over STARTTLS with a test CA.
-- Memory: the message is not copied again for SMTP or for its head. A
-  request at the 25 MiB limit peaks at 73 MiB when glibc's dynamic mmap
-  threshold is fixed (`MALLOC_MMAP_THRESHOLD_=131072`, planned for the
-  systemd drop-in); with glibc's defaults it peaks at 100–135 MiB and keeps
-  up to 100 MiB resident.
-
-### Rust port: SMTP submission (slice S5a)
-
-- `rust/src/smtp.rs` submits the built message with lettre's
-  connection-level API, so the Rust binary now delivers: STARTTLS with
-  chain and hostname verification against the system roots plus
-  `SMTP_CA_FILE`, AUTH PLAIN or LOGIN (never without TLS), one `RCPT` per
-  recipient, so a partly refused message reaches the others as in Python,
-  and the statuses of PLAN.md 2.4 (a reply code decides 503 or 502, every
-  failure without one is 503). `QUIT` failures never change the outcome
-  and are logged as `smtp_cleanup_failed`; no `QUIT` after 421 or a lost
-  connection. The timeout applies per socket operation.
-- The Rust port reads `SMTP_CA_FILE` at start; an unusable file stops the
-  start and `--check-config` (PLAN.md D-22, fail closed). Python reads it
-  per message and answers 503.
-
 ### Custom header names with a final newline are 400 (D-19)
 
 - Behaviour change for clients: 200 → 400. An `h:*` field whose header
@@ -91,133 +14,12 @@ All notable changes to mailgun-relay are documented here.
   a request answers 400, as the Rust port already does. `rust/PLAN.md`
   D-19 is no longer a divergence. Takes effect with the next relay deploy.
 
-### Rust port: semantic MIME fixture (slice S4b)
-
-- `rust/fixtures/mime.json` (124 cases from the Python oracle) holds what a
-  receiver's parser reads from the message Python builds for each input:
-  decoded headers, the MIME tree, decoded bodies, attachments and inline
-  parts, the envelope, or the 400. The Rust tests build every case and
-  compare; `rust/fixtures/check_mime.py` reads the Rust messages with
-  Python's parser and checks that they arrive the same, 7-bit, CRLF only,
-  lines of at most 998 octets, encoded words of at most 75 characters and
-  no parser defects beyond Python's own. CI runs both in the `rust` job.
-
-### Rust port: message construction (slice S4a)
-
-- `rust/src/mime.rs` builds the message with lettre as the Python service
-  does (PLAN.md 2.10): text, html and amp-html alternatives, inline parts
-  with the html part in `multipart/related` (or in `multipart/mixed`
-  without html), attachments, Reply-To lists, custom headers, Message-Id and
-  Date, Bcc in the envelope only, the envelope de-duplicated. IDN domains are
-  A-labels and EAI local parts are refused (Q2). Header values that are
-  printable ASCII are written as received, so encoded words arrive decoded
-  exactly as Python decodes them; other values become RFC 2047 encoded
-  words. The output is 7-bit, CRLF only, lines of at most 998 octets. It
-  replaces the step-9 stub of S3 behind the same interface; the SMTP
-  submitter follows in S5.
-- Exotic header input the Python service rewrites is refused with 400 by
-  the Rust port (PLAN.md D-21, fail closed): text that needs encoding mixed
-  with encoded words, encoded words Rust cannot check (other charsets than
-  UTF-8, ASCII and the ISO-8859/windows-125x families, broken base64) or
-  whose text Python would change (`=?` inside, whitespace at the ends, an
-  ASCII special like `,` in a display name), encoded words in local parts,
-  `h:In-Reply-To` and `h:References` that are not plain message-id lists,
-  `h:Orig-Date`, header names over 76 characters. Encoded words longer than
-  RFC 2047 allows are split; an ASCII attachment filename with a line break
-  is 400 as in Python.
-
 ### Custom message-id headers: non-ASCII values are 400 (slice S4a)
 
 - `h:In-Reply-To` or `h:References` whose value is not ASCII after RFC 2047
   decoding now answers 400 when the message is built. It answered 502 after
   the SMTP login before: the message could not be serialised without
   SMTPUTF8. No request that was delivered before is affected.
-
-### Rust port: route tests (slice S3d)
-
-- The remaining Rust counterparts of `test_messages_endpoint.py` (without
-  SMTP) and `test_body_limit.py`: the 413 limits at N and N+1, body reading
-  (non-form content types, malformed multipart, a chunked body over the
-  limit), multi-fault cases for the decision order in both encodings,
-  records and their information boundary, route matching, the production
-  client shapes (Anymail urlencoded, the recorder's multipart in every field
-  order) and a panicking request (500, one record). This completes S3.
-
-### Rust port: the messages route (slice S3c)
-
-- `POST /v3/{domain}/messages` exists in the Rust binary
-  (`rust/src/pipeline.rs`): the decision order of the Python route
-  (authentication, form, field rules, policy, subject, custom headers,
-  recipient count, message checks), its statuses and JSON shapes, and one
-  `event=request` record per request with Python's fields and `result`
-  values, also when a request task panics (500). Partial refusals log
-  `event=recipients_refused` with domains and codes only.
-- Message construction is a stub (`rust/src/mime.rs`) that makes the
-  step-9 decisions without MIME encoding until slice S4; the SMTP
-  submitter comes with S5. Until then the binary answers every accepted
-  message with 503, so it never reports a message as queued that was not
-  sent.
-
-### Rust port: form parsing (slice S3b)
-
-- `rust/src/form.rs` parses request bodies as the Python service does:
-  urlencoded with Starlette's decoding (latin-1, then `unquote_plus`) and
-  multipart with python-multipart's framing (strict first boundary, token
-  header names, at most 8 headers of 4,224 bytes per part, a truncated body
-  keeps the completed parts), the request charset, and the 413 limits for
-  files, fields and part size. It is its own parser rather than `multer`,
-  which would accept bodies Python refuses (`rust/PLAN.md` section 5).
-  Where Python's decision depends on how the body arrives in chunks (bytes
-  other than CR/LF before the first boundary; a chunked body over the size
-  limit that is also malformed), Rust refuses (D-20). Not wired to a route
-  yet (S3c).
-- New fixture from the Python oracle: `form_decoding.json` (the real
-  `request.form(...)` with the route's 400/413 mapping on 350 bodies, each
-  delivered in one piece and in four chunkings, among them a body cut at
-  every byte).
-
-### Rust port: subject and header validation (slice S3a)
-
-- `rust/src/headers.rs` validates the subject and the `h:*` headers as the
-  Python service does (control characters, the denylist including every
-  `resent-*` name, the name pattern, lengths in code points; the first error
-  in map order wins). The control-character rule moves there from
-  `address.rs`. Not wired to a route yet (S3c).
-- A header name with a final newline (`h:X-Foo%0A`), which Python's pattern
-  lets through, is refused (`rust/PLAN.md` D-19, fail closed). The Python
-  service is unchanged.
-- New fixture from the Python oracle: `headers.json` (196 subjects, 100
-  header lists, 168 control-character probes).
-
-### Rust port: the token policy (slice S2c)
-
-- `rust/src/policy.rs` enforces the token policy in Python's order and with
-  Python's statuses: path domain invalid 400, not allowed 403; `from`
-  invalid 400; from domain or address not allowed 403, with the 403 texts
-  kept verbatim. It returns the parsed `from` mailbox for the headers. Not
-  wired to a route yet (S3).
-- `policy.json` (1,430 cases from the Python oracle) runs the production
-  policy shapes (homepage with its two senders, python-podcast with a
-  second from domain, registry, a domain-only token, an IDN allowlist)
-  against production-like paths and senders; Python tests pin the same
-  shapes. This completes S2.
-
-### Rust port: addresses and the envelope sender (slice S2b)
-
-- `rust/src/address.rs` parses `from`/`to`/`cc`/`bcc` values and Reply-To
-  lists once for policy and headers: a strict subset of Python's
-  `parseaddr`/`getaddresses` plus the `email_validator` rules (ASCII
-  dot-atom local parts, IDN domains as A-labels, special-use names, lengths),
-  with Python's display names for phrases, quoted strings and comments. Not
-  wired to a route yet (S3).
-- `address.json` (1,570 values from the Python oracle) pins every decision;
-  the Rust tests check that whatever Rust accepts, Python accepts with the
-  same address and display name. Exotic forms Python accepts (whitespace
-  inside the address, unclosed `<`, groups, address domains outside the
-  Latin set) are refused (`rust/PLAN.md` D-11, fail closed).
-- The Rust binary refuses to start with an `ENVELOPE_SENDER` that is not a
-  valid bare address (D-15); production's value passes. The Python service
-  is unchanged.
 
 ### Authentication: malformed non-ASCII credentials are 401 (slice S2a)
 
@@ -227,70 +29,6 @@ All notable changes to mailgun-relay are documented here.
   malformed credential. It answered 500 before: `base64.b64decode` raised a
   plain `ValueError` that the auth check did not catch. No request that
   authenticated before is affected.
-
-### Rust port: authentication and path domains (slice S2a)
-
-- `rust/src/auth.rs` authenticates as the Python service does (`Basic `
-  prefix, `str.strip()` whitespace, strict base64 with canonical padding and
-  lenient trailing bits, strict UTF-8, username `api`, constant-time
-  comparison of the SHA-256 against every token, the last match wins). It is
-  not wired to a route yet (S3).
-- New fixtures from the Python oracle: `auth.json` (121 headers) and
-  `domain.json` (1,003 path-domain inputs, among them every character of the
-  Latin set configured domains may use). Path domains Python refuses but the
-  `idna` crate maps (symbols, emoji, CONTEXTO characters) keep the decided
-  403 instead of 400 (`rust/PLAN.md` D-10).
-- `rust/PLAN.md` D-7 now says plainly that several case variants of a
-  variable fail the start even when one is the exact name.
-
-### Rust port: `/health` and the startup record (slice S1d)
-
-- `mailgun-relay` without arguments now serves on `BIND_HOST:BIND_PORT`
-  (axum, one runtime thread; every address the host resolves to, IPv6
-  sockets IPv6-only, as uvicorn binds): `GET /health` → `{"status":"ok"}` without a
-  version, `HEAD`/`POST /health` → 405 with `allow: GET`, unknown paths → 404,
-  a trailing slash on a route → 307 as Starlette builds it, a declared
-  `Content-Length` above `MAX_BODY_BYTES` → 413 on every path. It logs the
-  Python startup record (plus `"impl":"rust"`, UTC `ts`) and stops gracefully
-  on SIGTERM/SIGINT. It still has no `POST /v3/{domain}/messages`.
-- Release builds use `opt-level = "s"`: idle RSS 2.6 MiB, binary 1.6 MB
-  (Linux, glibc). The Python service is unchanged.
-
-### Rust port: secrets file (slice S1c)
-
-- The Rust binary loads the secrets YAML as the Python service does (same
-  schema, placeholders, duplicate labels, IDN domains as A-labels, the mode
-  check before reading) with the YAML 1.1 types of PyYAML's `safe_load`
-  (`yes`, `0777`, `2026-10-15` are never strings). `--check-config` now
-  validates the environment and the secrets file.
-- Fail closed where Python would start (`rust/PLAN.md` D-5, D-6, D-10, D-17):
-  a non-string `token_sha256`, merge keys, tags other than `!!str`,
-  directives, recursive aliases, deep nesting, empty plain keys, TAB and
-  NEL/LS/PS characters, domains outside the Latin set (also after IDNA
-  mapping), and non-ASCII local parts in `allowed_from_addresses`. Error
-  messages name fields by position and never repeat a configured value.
-- `rust/fixtures/config_secrets.json` (130 documents from the Python oracle)
-  pins the decisions. The Python service is unchanged.
-
-### Rust port: skeleton and environment settings (slice S1a)
-
-- The repository is now MIT-licensed (`LICENSE`).
-- `rust/` holds the Rust port as one Cargo package (`mailgun-relay` 0.2.0,
-  pinned toolchain 1.99.0, `cargo-deny` policy). So far the binary reads the
-  same `MAILGUN_RELAY_*` settings as the Python service: `--version`, and
-  `--check-config` validates the environment and exits 0 or 1. It cannot
-  serve yet and is not deployed. Exotic settings Python would accept make it
-  refuse to start (fail closed; `rust/PLAN.md` D-7, D-10, D-18).
-- Fixtures generated from the Python code (`rust/fixtures/generate.py`) pin
-  the settings decisions; `tests/test_rust_fixtures.py` fails when they are
-  stale. CI gains a `rust` job (fmt, clippy, cargo-deny, tests, release
-  build).
-- `rust/PLAN.md` records the S1b spike result (lettre connection API, live
-  EHLO of the SMTP backend: `AUTH PLAIN LOGIN`, no `SMTPUTF8`), its
-  conditions for the SMTP slice, the broken-reply case of D-3, the new
-  entries D-17 and D-18, and the split of S1 into S1a, S1c and S1d.
-  `.gitignore` ignores `rust/target/`.
-- The Python service is unchanged.
 
 ### Rust port plan
 
@@ -535,6 +273,278 @@ public request/response contract changes except the two noted under *Behavior*.
   pytest config ignores exactly that warning so `filterwarnings = error` keeps
   catching everything else; no new dependency is added.
 - No code or API changes. Redeploy the relay to pick up the new lock.
+
+## rs-v0.2.0 — 2026-10-16
+
+First release of the Rust port in `rust/` (crate version 0.2.0), tag
+`rs-v0.2.0` on `2e845a5`. The GitHub release carries
+`mailgun-relay-0.2.0-x86_64-unknown-linux-gnu.tar.gz` and its `.sha256`.
+Nothing runs it in production yet: production stays on the Python service
+until the role is switched (`rust/PLAN.md` section 9). The Python service
+keeps its own version (0.1.0); its changes since then are under
+"Unreleased" above.
+
+### Rust port: parity harness (slice S6b)
+
+- `rust/parity/run_parity.py` starts the Python relay (real uvicorn) and
+  the Rust release binary as processes, each with a fake SMTP server
+  (STARTTLS with a throwaway CA, AUTH, scripted replies), sends 474 request
+  cases byte for byte to both and compares what the parity contract fixes:
+  status, contract headers and JSON, the SMTP envelope, the message as
+  Python's parser reads it, and the `request`/`recipients_refused` and
+  `startup` records. The corpus covers every production client shape
+  (Anymail urlencoded and multipart, the recorder's multipart in random
+  field order), the twelve production policies with fake tokens, every
+  decision of `rust/PLAN.md` 2.3, every limit at N and N+1, all SMTP
+  scenarios of `smtp_outcomes.json` through the endpoint, and 8 startup
+  configurations. Expected differences name their divergence (D-3, D-4,
+  D-9 to D-11, D-20 to D-22); any other difference fails. CI runs it in
+  the new `parity` job (about 30 s). With `--targets` it runs against two
+  running instances whose SMTP goes to capture sinks, for the shadow run.
+- Found by the harness: `MAILGUN_RELAY_LOG_LEVEL=trace` starts the Python
+  service (uvicorn registers the level before the app sets it), but the
+  Rust port refused to start. The Rust port now accepts `TRACE` too; the
+  fixture model of the Python start includes it.
+
+### Rust port: shared parity harness modules (slice S6a)
+
+- `rust/parity/smtp_fake.py` (the scripted fake SMTP server, now also
+  recording TLS, login, envelope and the message, and usable as a capture
+  sink) and `rust/parity/semantic.py` (the semantic view of a message and
+  the RFC checks) move out of `rust/fixtures/generate.py` and
+  `check_mime.py`, standard library only, for the parity harness of S6b.
+  The fixtures are unchanged.
+
+### Rust port: release pipeline (slice S7)
+
+- `.github/workflows/rust-release.yml` builds the Rust binary on
+  ubuntu-22.04 (glibc 2.35) for `x86_64-unknown-linux-gnu` from a clean
+  state (pinned toolchain and action SHAs, no cargo cache) and gates it with
+  `rust/scripts/release_checks.py`: the tag `rs-v<semver>` must equal the
+  crate version, no glibc symbol above 2.35 and only glibc/libgcc linked,
+  `--version` names version and full commit, `--check-config` accepts a test
+  configuration in the role's shape. The archive
+  `mailgun-relay-<ver>-x86_64-unknown-linux-gnu.tar.gz` holds exactly
+  `mailgun-relay` and `LICENSE` and is deterministic for a given binary;
+  its `.sha256` is checked with `sha256sum --check`. A tag push publishes
+  both files as a GitHub release (a pre-release version as a pre-release);
+  `workflow_dispatch` uploads them as a workflow artifact only. The first
+  release is `rs-v0.2.0` (this section).
+
+### Rust port: submission in the route (slice S5b)
+
+- The Rust port caps concurrent SMTP sessions at `SMTP_MAX_CONCURRENCY`
+  (further messages wait, `/health` never does) and finishes a submission
+  whose client went away; SIGTERM waits for it, as uvicorn does.
+- `rust/fixtures/smtp_outcomes.json` pins the status of 109 SMTP scenarios
+  (every row of `rust/PLAN.md` 2.4) from the Python client run against a
+  scripted fake server; the Rust tests run the same scenarios. Process tests
+  deliver a message end to end over STARTTLS with a test CA.
+- Memory: the message is not copied again for SMTP or for its head. A
+  request at the 25 MiB limit peaks at 73 MiB when glibc's dynamic mmap
+  threshold is fixed (`MALLOC_MMAP_THRESHOLD_=131072`, planned for the
+  systemd drop-in); with glibc's defaults it peaks at 100–135 MiB and keeps
+  up to 100 MiB resident.
+
+### Rust port: SMTP submission (slice S5a)
+
+- `rust/src/smtp.rs` submits the built message with lettre's
+  connection-level API, so the Rust binary now delivers: STARTTLS with
+  chain and hostname verification against the system roots plus
+  `SMTP_CA_FILE`, AUTH PLAIN or LOGIN (never without TLS), one `RCPT` per
+  recipient, so a partly refused message reaches the others as in Python,
+  and the statuses of PLAN.md 2.4 (a reply code decides 503 or 502, every
+  failure without one is 503). `QUIT` failures never change the outcome
+  and are logged as `smtp_cleanup_failed`; no `QUIT` after 421 or a lost
+  connection. The timeout applies per socket operation.
+- The Rust port reads `SMTP_CA_FILE` at start; an unusable file stops the
+  start and `--check-config` (PLAN.md D-22, fail closed). Python reads it
+  per message and answers 503.
+
+### Rust port: semantic MIME fixture (slice S4b)
+
+- `rust/fixtures/mime.json` (124 cases from the Python oracle) holds what a
+  receiver's parser reads from the message Python builds for each input:
+  decoded headers, the MIME tree, decoded bodies, attachments and inline
+  parts, the envelope, or the 400. The Rust tests build every case and
+  compare; `rust/fixtures/check_mime.py` reads the Rust messages with
+  Python's parser and checks that they arrive the same, 7-bit, CRLF only,
+  lines of at most 998 octets, encoded words of at most 75 characters and
+  no parser defects beyond Python's own. CI runs both in the `rust` job.
+
+### Rust port: message construction (slice S4a)
+
+- `rust/src/mime.rs` builds the message with lettre as the Python service
+  does (PLAN.md 2.10): text, html and amp-html alternatives, inline parts
+  with the html part in `multipart/related` (or in `multipart/mixed`
+  without html), attachments, Reply-To lists, custom headers, Message-Id and
+  Date, Bcc in the envelope only, the envelope de-duplicated. IDN domains are
+  A-labels and EAI local parts are refused (Q2). Header values that are
+  printable ASCII are written as received, so encoded words arrive decoded
+  exactly as Python decodes them; other values become RFC 2047 encoded
+  words. The output is 7-bit, CRLF only, lines of at most 998 octets. It
+  replaces the step-9 stub of S3 behind the same interface; the SMTP
+  submitter follows in S5.
+- Exotic header input the Python service rewrites is refused with 400 by
+  the Rust port (PLAN.md D-21, fail closed): text that needs encoding mixed
+  with encoded words, encoded words Rust cannot check (other charsets than
+  UTF-8, ASCII and the ISO-8859/windows-125x families, broken base64) or
+  whose text Python would change (`=?` inside, whitespace at the ends, an
+  ASCII special like `,` in a display name), encoded words in local parts,
+  `h:In-Reply-To` and `h:References` that are not plain message-id lists,
+  `h:Orig-Date`, header names over 76 characters. Encoded words longer than
+  RFC 2047 allows are split; an ASCII attachment filename with a line break
+  is 400 as in Python.
+
+### Rust port: route tests (slice S3d)
+
+- The remaining Rust counterparts of `test_messages_endpoint.py` (without
+  SMTP) and `test_body_limit.py`: the 413 limits at N and N+1, body reading
+  (non-form content types, malformed multipart, a chunked body over the
+  limit), multi-fault cases for the decision order in both encodings,
+  records and their information boundary, route matching, the production
+  client shapes (Anymail urlencoded, the recorder's multipart in every field
+  order) and a panicking request (500, one record). This completes S3.
+
+### Rust port: the messages route (slice S3c)
+
+- `POST /v3/{domain}/messages` exists in the Rust binary
+  (`rust/src/pipeline.rs`): the decision order of the Python route
+  (authentication, form, field rules, policy, subject, custom headers,
+  recipient count, message checks), its statuses and JSON shapes, and one
+  `event=request` record per request with Python's fields and `result`
+  values, also when a request task panics (500). Partial refusals log
+  `event=recipients_refused` with domains and codes only.
+- Message construction is a stub (`rust/src/mime.rs`) that makes the
+  step-9 decisions without MIME encoding until slice S4; the SMTP
+  submitter comes with S5. Until then the binary answers every accepted
+  message with 503, so it never reports a message as queued that was not
+  sent.
+
+### Rust port: form parsing (slice S3b)
+
+- `rust/src/form.rs` parses request bodies as the Python service does:
+  urlencoded with Starlette's decoding (latin-1, then `unquote_plus`) and
+  multipart with python-multipart's framing (strict first boundary, token
+  header names, at most 8 headers of 4,224 bytes per part, a truncated body
+  keeps the completed parts), the request charset, and the 413 limits for
+  files, fields and part size. It is its own parser rather than `multer`,
+  which would accept bodies Python refuses (`rust/PLAN.md` section 5).
+  Where Python's decision depends on how the body arrives in chunks (bytes
+  other than CR/LF before the first boundary; a chunked body over the size
+  limit that is also malformed), Rust refuses (D-20). Not wired to a route
+  yet (S3c).
+- New fixture from the Python oracle: `form_decoding.json` (the real
+  `request.form(...)` with the route's 400/413 mapping on 350 bodies, each
+  delivered in one piece and in four chunkings, among them a body cut at
+  every byte).
+
+### Rust port: subject and header validation (slice S3a)
+
+- `rust/src/headers.rs` validates the subject and the `h:*` headers as the
+  Python service does (control characters, the denylist including every
+  `resent-*` name, the name pattern, lengths in code points; the first error
+  in map order wins). The control-character rule moves there from
+  `address.rs`. Not wired to a route yet (S3c).
+- A header name with a final newline (`h:X-Foo%0A`), which Python's pattern
+  lets through, is refused (`rust/PLAN.md` D-19, fail closed). The Python
+  service is unchanged.
+- New fixture from the Python oracle: `headers.json` (196 subjects, 100
+  header lists, 168 control-character probes).
+
+### Rust port: the token policy (slice S2c)
+
+- `rust/src/policy.rs` enforces the token policy in Python's order and with
+  Python's statuses: path domain invalid 400, not allowed 403; `from`
+  invalid 400; from domain or address not allowed 403, with the 403 texts
+  kept verbatim. It returns the parsed `from` mailbox for the headers. Not
+  wired to a route yet (S3).
+- `policy.json` (1,430 cases from the Python oracle) runs the production
+  policy shapes (homepage with its two senders, python-podcast with a
+  second from domain, registry, a domain-only token, an IDN allowlist)
+  against production-like paths and senders; Python tests pin the same
+  shapes. This completes S2.
+
+### Rust port: addresses and the envelope sender (slice S2b)
+
+- `rust/src/address.rs` parses `from`/`to`/`cc`/`bcc` values and Reply-To
+  lists once for policy and headers: a strict subset of Python's
+  `parseaddr`/`getaddresses` plus the `email_validator` rules (ASCII
+  dot-atom local parts, IDN domains as A-labels, special-use names, lengths),
+  with Python's display names for phrases, quoted strings and comments. Not
+  wired to a route yet (S3).
+- `address.json` (1,570 values from the Python oracle) pins every decision;
+  the Rust tests check that whatever Rust accepts, Python accepts with the
+  same address and display name. Exotic forms Python accepts (whitespace
+  inside the address, unclosed `<`, groups, address domains outside the
+  Latin set) are refused (`rust/PLAN.md` D-11, fail closed).
+- The Rust binary refuses to start with an `ENVELOPE_SENDER` that is not a
+  valid bare address (D-15); production's value passes. The Python service
+  is unchanged.
+
+### Rust port: authentication and path domains (slice S2a)
+
+- `rust/src/auth.rs` authenticates as the Python service does (`Basic `
+  prefix, `str.strip()` whitespace, strict base64 with canonical padding and
+  lenient trailing bits, strict UTF-8, username `api`, constant-time
+  comparison of the SHA-256 against every token, the last match wins). It is
+  not wired to a route yet (S3).
+- New fixtures from the Python oracle: `auth.json` (121 headers) and
+  `domain.json` (1,003 path-domain inputs, among them every character of the
+  Latin set configured domains may use). Path domains Python refuses but the
+  `idna` crate maps (symbols, emoji, CONTEXTO characters) keep the decided
+  403 instead of 400 (`rust/PLAN.md` D-10).
+- `rust/PLAN.md` D-7 now says plainly that several case variants of a
+  variable fail the start even when one is the exact name.
+
+### Rust port: `/health` and the startup record (slice S1d)
+
+- `mailgun-relay` without arguments now serves on `BIND_HOST:BIND_PORT`
+  (axum, one runtime thread; every address the host resolves to, IPv6
+  sockets IPv6-only, as uvicorn binds): `GET /health` → `{"status":"ok"}` without a
+  version, `HEAD`/`POST /health` → 405 with `allow: GET`, unknown paths → 404,
+  a trailing slash on a route → 307 as Starlette builds it, a declared
+  `Content-Length` above `MAX_BODY_BYTES` → 413 on every path. It logs the
+  Python startup record (plus `"impl":"rust"`, UTC `ts`) and stops gracefully
+  on SIGTERM/SIGINT. It still has no `POST /v3/{domain}/messages`.
+- Release builds use `opt-level = "s"`: idle RSS 2.6 MiB, binary 1.6 MB
+  (Linux, glibc). The Python service is unchanged.
+
+### Rust port: secrets file (slice S1c)
+
+- The Rust binary loads the secrets YAML as the Python service does (same
+  schema, placeholders, duplicate labels, IDN domains as A-labels, the mode
+  check before reading) with the YAML 1.1 types of PyYAML's `safe_load`
+  (`yes`, `0777`, `2026-10-15` are never strings). `--check-config` now
+  validates the environment and the secrets file.
+- Fail closed where Python would start (`rust/PLAN.md` D-5, D-6, D-10, D-17):
+  a non-string `token_sha256`, merge keys, tags other than `!!str`,
+  directives, recursive aliases, deep nesting, empty plain keys, TAB and
+  NEL/LS/PS characters, domains outside the Latin set (also after IDNA
+  mapping), and non-ASCII local parts in `allowed_from_addresses`. Error
+  messages name fields by position and never repeat a configured value.
+- `rust/fixtures/config_secrets.json` (130 documents from the Python oracle)
+  pins the decisions. The Python service is unchanged.
+
+### Rust port: skeleton and environment settings (slice S1a)
+
+- The repository is now MIT-licensed (`LICENSE`).
+- `rust/` holds the Rust port as one Cargo package (`mailgun-relay` 0.2.0,
+  pinned toolchain 1.99.0, `cargo-deny` policy). So far the binary reads the
+  same `MAILGUN_RELAY_*` settings as the Python service: `--version`, and
+  `--check-config` validates the environment and exits 0 or 1. It cannot
+  serve yet and is not deployed. Exotic settings Python would accept make it
+  refuse to start (fail closed; `rust/PLAN.md` D-7, D-10, D-18).
+- Fixtures generated from the Python code (`rust/fixtures/generate.py`) pin
+  the settings decisions; `tests/test_rust_fixtures.py` fails when they are
+  stale. CI gains a `rust` job (fmt, clippy, cargo-deny, tests, release
+  build).
+- `rust/PLAN.md` records the S1b spike result (lettre connection API, live
+  EHLO of the SMTP backend: `AUTH PLAIN LOGIN`, no `SMTPUTF8`), its
+  conditions for the SMTP slice, the broken-reply case of D-3, the new
+  entries D-17 and D-18, and the split of S1 into S1a, S1c and S1d.
+  `.gitignore` ignores `rust/target/`.
+- The Python service is unchanged.
 
 ## 0.1.0 — 2026-05-25
 
