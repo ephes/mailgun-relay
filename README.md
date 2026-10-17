@@ -6,17 +6,29 @@ The goal is compatibility with the Mailgun send API surface Anymail needs, not a
 
 ## Status
 
-`0.1.0` — Implementation complete. The FastAPI service, ops-library role
-(`mailgun_relay_deploy` + `mailgun_relay_ingress_deploy`), and ops-control
-playbook (`deploy-mailgun-relay.yml`) are in place. The homepage and
-python-podcast deploy playbooks accept a `mailgun_api_url` override that
-flips Anymail's Mailgun backend at the relay.
+Rust **0.2.1** (`rs-v0.2.1`) was switched into production on macmini on
+2026-10-17. The HTTP contract, token/domain/sender policy, environment and
+secrets interfaces remain compatible with the Python service; MIME is
+compared semantically, not byte for byte. The Python 0.1.0 implementation
+remains available as the rollback path for at least 30 days after cutover.
 
-See [`CHANGELOG.md`](./CHANGELOG.md) for the pre-deploy operator checklist,
-per-app migration steps, rollback procedure, and acceptance evidence
-template.
+The cutover verification includes local and ingress health, controlled mail
+delivery with DKIM pass, and the 401/403 policy checks. The seven-day soak
+remains **open**; natural application traffic and production resource
+checkpoints are separate acceptance evidence. See
+[`rust/PLAN.md`](rust/PLAN.md#106-soak-and-abort-criteria) for the current
+S10 state and follow-up checks, and [`rust/README.md`](rust/README.md) for
+Rust build and release instructions.
 
-## Quickstart (development)
+The `mailgun_relay_deploy` role in ops-library selects the implementation;
+ops-control owns inventory, the deployment playbook and the operator runbook
+`docs/MAILGUN_RELAY_RUST.md`. Existing Django projects keep their Anymail
+Mailgun backend and scoped relay tokens.
+
+See [`CHANGELOG.md`](./CHANGELOG.md) for changes and the earlier per-app
+migration and rollback evidence.
+
+## Quickstart (Python development)
 
 ```bash
 uv sync

@@ -862,8 +862,8 @@ changed lines per slice excluding generated fixtures.
 | S6 | Parity harness | `rust/parity/` (7.4): fake SMTP with STARTTLS/AUTH, case corpus, runner for both implementations, semantic MIME comparison, CI job `parity`; process-level tests of the binary | S5. **Status: merged. 474 request cases and 8 startup cases, 0 unexplained differences; the harness found `LOG_LEVEL=trace` (Python starts, Rust refused; fixed in Rust and in the fixture model). Done** |
 | S7 | Release pipeline | `.github/workflows/rust-release.yml`, `scripts/release_checks.py` + tests (adapted from nyxmon), first tag `rs-v0.2.0` after S6 | S6 (tag). **Status: done (rs-v0.2.0).** Workflow, `rust/scripts/release_checks.py` and `tests/test_rust_release_checks.py` merged; tag `rs-v0.2.0` on `2e845a5` (S6b), GitHub release with archive and `.sha256` published 2026-10-16 |
 | S8 | Role and inventory | ops-library `mailgun_relay_deploy` changes (9.1) with tests and molecule; ops-control host vars (impl `python`, version pinned), playbook gate, runbook `docs/MAILGUN_RELAY_RUST.md`; deploy to macmini: binary installed, `--check-config` green against production files, nothing switched | S7 |
-| S9 | Shadow | section 10 phases A and B on macmini, report in ops-control docs | S8, S0-py deployed, E2E probe item. **Status: phase A (2026-10-16, Rust shadow on 8089) 335 cases with 0 unexplained differences after a harness fix (folded Message-ID under Python 3.12.3); phase B 5/5 mails delivered with DKIM pass. The section 12 load profile showed a Nagle delay on the SMTP socket (two small writes before a read: end of the STARTTLS handshake and of DATA, about 40 ms each against Linux's delayed ACK); fixed with `TCP_NODELAY` in 0.2.1, released as `rs-v0.2.1` (2026-10-17)** |
-| S10 | Cutover and soak | sections 10.4–10.6 incl. rollback drill, docs final state in all three repos | S9 |
+| S9 | Shadow | section 10 phases A and B on macmini, report in ops-control docs | S8, S0-py deployed, E2E probe item. **Status: done. Phase A ran from 2026-10-16 09:29 UTC to 2026-10-17 09:30 UTC: 26 corpus passes, 0 unexplained differences. Phase B: 5/5 mails delivered with DKIM pass. Rust 0.2.0 idle RSS 5.4 MiB / 0.00 CPU-s/h versus production Python 70.9 MiB / 3.61 CPU-s/h. The SMTP Nagle delay found under load is fixed in 0.2.1, released as `rs-v0.2.1` (2026-10-17).** |
+| S10 | Cutover and soak | sections 10.4–10.6 incl. rollback drill, docs final state in all three repos | S9. **Status: Rust 0.2.1 cutover and Python rollback drill verified on 2026-10-17; final Rust return at 15:51:36 UTC. Seven-day soak OPEN, until 2026-10-24 15:51:36 UTC; production checkpoints and natural application traffic remain open.** |
 
 Acceptance criteria (in addition to the green checks):
 
@@ -1321,6 +1321,26 @@ and mail content would reach the shadow process).
 
 ### 10.4 Cutover
 
+**Execution record (2026-10-17, macmini):** the shadow units were removed
+before cutover. The first Rust 0.2.1 start was at 15:45:48 UTC
+(17:45:48 CEST). The rollback drill returned to Python at 15:49:19 UTC,
+then to Rust 0.2.1 at **15:51:36 UTC (17:51:36 CEST)**. This final return
+is the soak start T0. All three role deploys completed without failures
+or ignored failures. The Python intermediate state had no Rust drop-in;
+the final state had the expected Rust executable and drop-in, with
+`NRestarts=0`.
+
+At each stage, local and ingress health returned 200, unauthenticated sends
+returned 401 with the realm, and a valid token with a foreign sender
+returned 403. Two controlled probe mails per stage were each received
+exactly once with DKIM pass. This verifies probe delivery and the rollback
+path; **natural application traffic has not yet been observed**. The estate
+probe uses the unit check rather than the Python package version check.
+Operator evidence and deploy logs belong in ops-control's
+`docs/MAILGUN_RELAY_RUST.md`.
+
+The procedure used for this cutover remains:
+
 1. Announce, owner approves the deploy (restarts the relay for all clients;
    ~1–2 s; Anymail does not retry, so a send in that window is lost; at a few
    mails a week acceptable).
@@ -1347,9 +1367,29 @@ and mail content would reach the shadow process).
 
 ### 10.6 Soak and abort criteria
 
+**OPEN:** T0 is 2026-10-17 15:51:36 UTC, after the final Rust return.
+The seven-day window ends no earlier than **2026-10-24 15:51:36 UTC**
+(17:51:36 CEST). Passing the cutover and rollback checks does not complete
+this window.
+
+Outstanding production resource checkpoints (section 12):
+
+| Checkpoint | Due (UTC; CEST is UTC+2) | Status |
+| --- | --- | --- |
+| T0 + 1 hour | 2026-10-17 16:51:36 | Open |
+| T0 + 24 hours | 2026-10-18 15:51:36 | Open |
+| T0 + 7 days | 2026-10-24 15:51:36 | Open |
+
+The existing 15-minute E2E probe and nyxmon checks run continuously.
+Daily journal, client-status and RSS reviews remain explicit follow-up
+work; no verified scheduler covers these reviews or the resource
+checkpoints. Natural application delivery also remains an open acceptance
+criterion. Keep the Python venv and its deploy path for at least 30 days
+after cutover; retirement requires its own item, even after a clean soak.
+
 Soak 7 days, daily: probe history, Traefik 5xx count on the relay router,
-`NRestarts`, RSS trend, `result` distribution in the journal (≈ 19 h
-retention, so read daily). Roll back immediately on: a probe failure not
+`NRestarts`, RSS trend, `result` distribution in the journal (read daily).
+Roll back immediately on: a probe failure not
 explained by Postfix/Dovecot, any 500, a 502/503 not explained by the SMTP
 backend, a status for a real client request that differs from what Python
 would answer (judged against the harness), `NRestarts > 0`, RSS above budget
@@ -1382,6 +1422,35 @@ Precondition for all of them: the Python venv is still built by every deploy
 ---
 
 ## 12. Resource measurement (before and after)
+
+### S9 measured baseline (2026-10-16–17)
+
+The 24-hour shadow evaluation used Rust **0.2.0**, not the production
+0.2.1 release. Rust idle RSS was 5.4 MiB versus production Python
+70.9 MiB (about 92% lower); idle CPU was 0.00 versus 3.61 CPU-s/h.
+The Rust 25-MiB request reached VmHWM 73.8 MiB and returned to 5.6 MiB
+RSS after 60 s; the Python shadow reached 261.9 MiB and retained 94.9 MiB.
+Rust used one thread and had no restarts.
+
+The 40-MiB MemoryPeak target was missed with the maximum-size request
+(75.2 MiB); without that load profile MemoryPeak was 7.4 MiB. Buffering
+the request and base64-encoded mail explains this result; the separate
+120-MiB VmHWM maximum-request budget and 30-MiB recovery budget were met.
+These are shadow measurements; the production +1 h, +24 h and +7 day
+measurements remain separate S10 checkpoints.
+
+### Initial S10 production sample (before +1 hour)
+
+After the final Rust 0.2.1 return, 13 samples from 2026-10-17
+15:51:52–15:53:52 UTC showed a stable PID and `NRestarts=0`.
+RSS min/median/max was 5392/5400/5400 kB (5.27 MiB median),
+PSS 3360 kB and Private_Dirty 736 kB. The first sample immediately
+after the probe had two threads; the remaining twelve had one.
+CPU usage over this short 120-second window was 0.0162 CPU-s/h.
+This is an initial observation, not a long-term rate or the +1-hour
+checkpoint; the scheduled checkpoints above remain open.
+
+### Measurement procedure
 
 Same commands for both implementations, read-only, recorded in the ops-control
 runbook's deploy log:
@@ -1450,8 +1519,9 @@ Risks:
   S1b spike with a hard stop instead of hand-rolled SMTP.
 - **R3 No production traffic to observe**: synthetic corpus, phase B mails and
   the E2E probe replace it.
-- **R4 Journal retention ≈ 19 h** on macmini: soak checks must be daily; a
-  retention change is a host topic outside this campaign.
+- **R4 Journal history**: the separate macmini retention change has been
+  deployed; keep daily soak checks and verify the available history rather
+  than assuming the former approximately 19-hour horizon still applies.
 - **R5 Restarts by Python deploys while Rust runs**: the venv is still
   synced, so Python code changes restart the unit; documented in the runbook.
 - **R6 Path confusion** `/opt/mailgun-relay` (Rust) vs

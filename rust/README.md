@@ -23,7 +23,8 @@ status mapping of PLAN.md 2.4, pinned by `fixtures/smtp_outcomes.json`
 submission whose client went away is finished, and SIGTERM waits for it.
 S7 adds the release pipeline (see Release below). The parity harness (S6,
 below) runs both implementations as processes against the same requests.
-Nothing deploys this code until the role is switched (PLAN.md section 9).
+The role was switched to Rust 0.2.1 on macmini on 2026-10-17; the
+seven-day production soak remains open (PLAN.md sections 10.4–10.6).
 
 ## Build and check
 

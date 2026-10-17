@@ -4,6 +4,30 @@ All notable changes to mailgun-relay are documented here.
 
 ## Unreleased
 
+### Rust production cutover and rollback drill (S10)
+
+- Switched macmini to the existing Rust 0.2.1 release on 2026-10-17,
+  exercised a role-managed return to Python, and returned to Rust at
+  15:51:36 UTC (17:51:36 CEST). Health and 401/403 policy checks passed
+  at all three stages; two controlled probe mails per stage each arrived
+  exactly once with DKIM pass. Natural application delivery remains open.
+- The seven-day soak is **open**, starting at the final Rust return and
+  ending no earlier than 2026-10-24 15:51:36 UTC. The +1 hour, +24 hour
+  and +7 day production resource checks and daily reviews remain follow-up
+  work; continuous 15-minute probe monitoring does not replace them.
+  Python remains the rollback path for at least 30 days after cutover.
+- The initial 120-second production sample after the final Rust return
+  had 5.27 MiB median RSS and no restarts. It precedes the +1-hour
+  checkpoint and does not complete any soak measurement.
+- Recorded the preceding 24-hour S9 shadow baseline (Rust 0.2.0):
+  26 corpus passes with no unexplained differences; 5.4 MiB idle RSS
+  versus Python's 70.9 MiB (about 92% lower), and 0.00 versus
+  3.61 idle CPU-s/h. The 25-MiB request reached 73.8 MiB VmHWM and
+  recovered to 5.6 MiB RSS after 60 seconds. Its 75.2-MiB MemoryPeak
+  exceeded the 40-MiB target; the separate maximum-request and recovery
+  budgets passed. These shadow results are separate from the open
+  production measurements.
+
 ### Custom header names with a final newline are 400 (D-19)
 
 - Behaviour change for clients: 200 → 400. An `h:*` field whose header
