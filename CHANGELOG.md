@@ -4,6 +4,18 @@ All notable changes to mailgun-relay are documented here.
 
 ## Unreleased
 
+### Rust port 0.2.1: SMTP without Nagle delay (S9)
+
+- The Rust relay opens its SMTP connection with `TCP_NODELAY`. lettre writes
+  the end of DATA (`CRLF . CRLF`) and rustls the end of the STARTTLS
+  handshake as separate small writes before reading the reply; with Nagle,
+  each of them waited for the server's delayed ACK. On macmini's load
+  profile that added about 40-90 ms per message (text+html request p50
+  86.8 ms against Python's 14.7 ms). Measured on Linux against the capture
+  sink: 90.0 ms -> 2.8 ms (text+html), 47.7 ms -> 3.7 ms (35 KB error
+  mail). Contract, responses and messages are unchanged.
+- The crate version is 0.2.1 for the next release; it is not tagged yet.
+
 ### Parity harness: folded Message-ID in the shadow run (S9)
 
 - `run_parity.py` compared the parsed `Message-ID` of a captured message

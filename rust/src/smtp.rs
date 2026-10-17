@@ -269,7 +269,14 @@ impl SmtpSubmitter {
         let mut last = io::Error::new(io::ErrorKind::NotFound, "no address");
         for address in tokio::net::lookup_host((config.host.as_str(), config.port)).await? {
             match tokio::time::timeout(config.timeout, TcpStream::connect(address)).await {
-                Ok(Ok(tcp)) => return Ok(RelayStream::new(tcp, config.timeout, written)),
+                Ok(Ok(tcp)) => {
+                    // lettre writes the end of DATA and rustls the end of the
+                    // handshake as separate small writes before it reads; with
+                    // Nagle each waits for the server's delayed ACK (40 ms on
+                    // Linux). Best effort: a socket without it still works.
+                    let _ = tcp.set_nodelay(true);
+                    return Ok(RelayStream::new(tcp, config.timeout, written));
+                }
                 Ok(Err(error)) => last = error,
                 Err(_) => last = io::ErrorKind::TimedOut.into(),
             }

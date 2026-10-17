@@ -101,7 +101,7 @@ python3 -I scripts/release_checks.py smoke --binary target/release/mailgun-relay
 ```bash
 mailgun-relay                  # serve (env and secrets as the Python service)
 mailgun-relay --check-config   # load env + secrets, bind nothing; exit 0 or 1
-mailgun-relay --version        # mailgun-relay 0.2.0 (<commit>)
+mailgun-relay --version        # mailgun-relay 0.2.1 (<commit>)
 ```
 
 Unknown arguments exit 2. The configuration interface is the Python one

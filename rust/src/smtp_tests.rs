@@ -590,3 +590,18 @@ async fn long_messages_survive_chunking() {
         Some(&formatted[..])
     );
 }
+
+/// The SMTP socket has TCP_NODELAY: lettre ends DATA and rustls the
+/// handshake with separate small writes, which Nagle held back for the
+/// server's delayed ACK (S9: about 2 x 40 ms per message on Linux).
+#[tokio::test]
+async fn the_smtp_socket_sends_without_delay() {
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let port = listener.local_addr().unwrap().port();
+    let (logger, _) = Logger::capturing(Level::Info);
+    let stream = submitter(port, false, 5.0, logger)
+        .connect(Arc::new(AtomicBool::new(false)))
+        .await
+        .unwrap();
+    assert!(stream.inner.get_ref().nodelay().unwrap());
+}
