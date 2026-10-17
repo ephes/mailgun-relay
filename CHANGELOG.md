@@ -4,31 +4,6 @@ All notable changes to mailgun-relay are documented here.
 
 ## Unreleased
 
-### Rust port 0.2.1: SMTP without Nagle delay (S9)
-
-- The Rust relay opens its SMTP connection with `TCP_NODELAY`. lettre writes
-  the end of DATA (`CRLF . CRLF`) and rustls the end of the STARTTLS
-  handshake as separate small writes before reading the reply; with Nagle,
-  each of them waited for the server's delayed ACK. On macmini's load
-  profile that added about 40-90 ms per message (text+html request p50
-  86.8 ms against Python's 14.7 ms). Measured on Linux against the capture
-  sink: 90.0 ms -> 2.8 ms (text+html), 47.7 ms -> 3.7 ms (35 KB error
-  mail). Contract, responses and messages are unchanged.
-- The crate version is 0.2.1 for the next release; it is not tagged yet.
-
-### Parity harness: folded Message-ID in the shadow run (S9)
-
-- `run_parity.py` compared the parsed `Message-ID` of a captured message
-  with the response `id` as is. With the production `PUBLIC_HOST` the Python
-  relay folds that header (the line is longer than 78 characters), and the
-  parser of Python 3.12.3, the `python3` of the shadow host, keeps the
-  folding space. So every queued case of the first shadow run on macmini
-  failed on Python's side. The check now ignores surrounding white space.
-  No relay change.
-- `rust/PLAN.md` 10.1 and 10.2: the Rust shadow uses port 8089 (8086 is taken
-  on macmini by the graphyard InfluxDB container). The shadows' stdout goes
-  only to the log files. The sinks' certificates are valid for two days.
-
 ### Custom header names with a final newline are 400 (D-19)
 
 - Behaviour change for clients: 200 → 400. An `h:*` field whose header
@@ -298,6 +273,38 @@ public request/response contract changes except the two noted under *Behavior*.
   pytest config ignores exactly that warning so `filterwarnings = error` keeps
   catching everything else; no new dependency is added.
 - No code or API changes. Redeploy the relay to pick up the new lock.
+
+## rs-v0.2.1 — 2026-10-17
+
+Bug-fix release of the Rust port (crate version 0.2.1), tag `rs-v0.2.1`
+on `88170df`. The GitHub release carries
+`mailgun-relay-0.2.1-x86_64-unknown-linux-gnu.tar.gz` and its `.sha256`.
+Production still runs the Python service until the cutover (`rust/PLAN.md`
+S10).
+
+### Rust port 0.2.1: SMTP without Nagle delay (S9)
+
+- The Rust relay opens its SMTP connection with `TCP_NODELAY`. lettre writes
+  the end of DATA (`CRLF . CRLF`) and rustls the end of the STARTTLS
+  handshake as separate small writes before reading the reply; with Nagle,
+  each of them waited for the server's delayed ACK. On macmini's load
+  profile that added about 40-90 ms per message (text+html request p50
+  86.8 ms against Python's 14.7 ms). Measured on Linux against the capture
+  sink: 90.0 ms -> 2.8 ms (text+html), 47.7 ms -> 3.7 ms (35 KB error
+  mail). Contract, responses and messages are unchanged.
+
+### Parity harness: folded Message-ID in the shadow run (S9)
+
+- `run_parity.py` compared the parsed `Message-ID` of a captured message
+  with the response `id` as is. With the production `PUBLIC_HOST` the Python
+  relay folds that header (the line is longer than 78 characters), and the
+  parser of Python 3.12.3, the `python3` of the shadow host, keeps the
+  folding space. So every queued case of the first shadow run on macmini
+  failed on Python's side. The check now ignores surrounding white space.
+  No relay change.
+- `rust/PLAN.md` 10.1 and 10.2: the Rust shadow uses port 8089 (8086 is taken
+  on macmini by the graphyard InfluxDB container). The shadows' stdout goes
+  only to the log files. The sinks' certificates are valid for two days.
 
 ## rs-v0.2.0 — 2026-10-16
 
