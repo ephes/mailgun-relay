@@ -863,7 +863,7 @@ changed lines per slice excluding generated fixtures.
 | S7 | Release pipeline | `.github/workflows/rust-release.yml`, `scripts/release_checks.py` + tests (adapted from nyxmon), first tag `rs-v0.2.0` after S6 | S6 (tag). **Status: done (rs-v0.2.0).** Workflow, `rust/scripts/release_checks.py` and `tests/test_rust_release_checks.py` merged; tag `rs-v0.2.0` on `2e845a5` (S6b), GitHub release with archive and `.sha256` published 2026-10-16 |
 | S8 | Role and inventory | ops-library `mailgun_relay_deploy` changes (9.1) with tests and molecule; ops-control host vars (impl `python`, version pinned), playbook gate, runbook `docs/MAILGUN_RELAY_RUST.md`; deploy to macmini: binary installed, `--check-config` green against production files, nothing switched | S7 |
 | S9 | Shadow | section 10 phases A and B on macmini, report in ops-control docs | S8, S0-py deployed, E2E probe item. **Status: done. Phase A ran from 2026-10-16 09:29 UTC to 2026-10-17 09:30 UTC: 26 corpus passes, 0 unexplained differences. Phase B: 5/5 mails delivered with DKIM pass. Rust 0.2.0 idle RSS 5.4 MiB / 0.00 CPU-s/h versus production Python 70.9 MiB / 3.61 CPU-s/h. The SMTP Nagle delay found under load is fixed in 0.2.1, released as `rs-v0.2.1` (2026-10-17).** |
-| S10 | Cutover and soak | sections 10.4–10.6 incl. rollback drill, docs final state in all three repos | S9. **Status: Rust 0.2.1 cutover and Python rollback drill verified on 2026-10-17; final Rust return at 15:51:36 UTC. Seven-day soak OPEN, until 2026-10-24 15:51:36 UTC; production checkpoints and natural application traffic remain open.** |
+| S10 | Cutover and soak | sections 10.4–10.6 incl. rollback drill, docs final state in all three repos | S9. **Status: Rust 0.2.1 cutover and Python rollback drill verified on 2026-10-17; final Rust return at 15:51:36 UTC. Acceptance OPEN: clean 24-hour review no earlier than 2026-10-18 15:51:36 UTC plus a real application mail; the owner replaced the seven-day gate on 2026-10-18.** |
 
 Acceptance criteria (in addition to the green checks):
 
@@ -1361,41 +1361,46 @@ The procedure used for this cutover remains:
   token and a foreign from → 403 (no mail).
 - Traefik log after T1: statuses of real clients (200 for Django error mails
   after the fix).
-- RSS/CPU after 1 h and 24 h (section 12).
+- RSS/CPU and restart/error/probe review at or after 24 h (section 12).
 - **Rollback drill**: flip to `python`, deploy, probe green; flip back to
   `rust`, deploy, probe green.
 
 ### 10.6 Soak and abort criteria
 
-**OPEN:** T0 is 2026-10-17 15:51:36 UTC, after the final Rust return.
-The seven-day window ends no earlier than **2026-10-24 15:51:36 UTC**
-(17:51:36 CEST). Passing the cutover and rollback checks does not complete
-this window.
+**Acceptance OPEN (owner decision, 2026-10-18):** T0 remains
+2026-10-17 15:51:36 UTC, after the final Rust return. Acceptance is
+sufficiently supported only after both of these are verified:
 
-Outstanding production resource checkpoints (section 12):
+- A clean 24-hour review, no earlier than **2026-10-18 15:51:36 UTC**
+  (17:51:36 CEST): production resources, errors, regular probe history and
+  `NRestarts` are unremarkable.
+- At least one real application mail is traced from the client through
+  relay acceptance to Postfix delivery. Controlled probe mails alone do
+  not satisfy this criterion.
 
-| Checkpoint | Due (UTC; CEST is UTC+2) | Status |
-| --- | --- | --- |
-| T0 + 1 hour | 2026-10-17 16:51:36 | Open |
-| T0 + 24 hours | 2026-10-18 15:51:36 | Open |
-| T0 + 7 days | 2026-10-24 15:51:36 | Open |
+These conditions were approved, not passed. The current internal host
+state has not been reverified on 2026-10-18 because SSH authentication is
+unavailable; a green public health check alone does not establish them.
+No verified scheduler covers the acceptance review or resource measurement.
+The existing 15-minute E2E probe and nyxmon monitoring continue normally.
 
-The existing 15-minute E2E probe and nyxmon checks run continuously.
-Daily journal, client-status and RSS reviews remain explicit follow-up
-work; no verified scheduler covers these reviews or the resource
-checkpoints. Natural application delivery also remains an open acceptance
-criterion. Keep the Python venv and its deploy path for at least 30 days
-after cutover; retirement requires its own item, even after a clean soak.
+The original seven-day acceptance window and mandatory +7-day measurement
+are historical planning, superseded by this decision. The following week
+is normal operation with the existing monitoring, not an acceptance wait.
+The +1-hour checkpoint at 2026-10-17 16:51:36 UTC was missed; there is no
+retrospective measurement. The initial 120-second sample in section 12
+remains an initial observation and does not replace it.
 
-Soak 7 days, daily: probe history, Traefik 5xx count on the relay router,
-`NRestarts`, RSS trend, `result` distribution in the journal (read daily).
-Roll back immediately on: a probe failure not
-explained by Postfix/Dovecot, any 500, a 502/503 not explained by the SMTP
-backend, a status for a real client request that differs from what Python
-would answer (judged against the harness), `NRestarts > 0`, RSS above budget
-trend. After the soak, retirement of the Python implementation is a separate
-step (Q8: the venv stays the rollback path for 30 days after cutover,
-then a separate item sets `mailgun_relay_python_enabled: false`).
+Continue reviewing probe history, Traefik 5xx counts, `NRestarts`, RSS
+trend and journal results during normal operation. Roll back immediately
+on a probe failure not explained by Postfix/Dovecot, any 500, an unexplained
+502/503, a real-client status that violates the parity contract,
+`NRestarts > 0`, or RSS above budget trend.
+
+Keep the Python venv and deploy path for at least 30 days after cutover,
+until at least **2026-11-16 15:51:36 UTC**. Retirement is a separate item
+that sets `mailgun_relay_python_enabled: false`; acceptance does not retire
+this rollback path.
 
 ---
 
@@ -1436,8 +1441,9 @@ The 40-MiB MemoryPeak target was missed with the maximum-size request
 (75.2 MiB); without that load profile MemoryPeak was 7.4 MiB. Buffering
 the request and base64-encoded mail explains this result; the separate
 120-MiB VmHWM maximum-request budget and 30-MiB recovery budget were met.
-These are shadow measurements; the production +1 h, +24 h and +7 day
-measurements remain separate S10 checkpoints.
+These are shadow measurements; the production 24-hour acceptance review
+remains separate. The originally planned +1-hour and +7-day checkpoints
+are addressed in section 10.6.
 
 ### Initial S10 production sample (before +1 hour)
 
@@ -1448,7 +1454,8 @@ PSS 3360 kB and Private_Dirty 736 kB. The first sample immediately
 after the probe had two threads; the remaining twelve had one.
 CPU usage over this short 120-second window was 0.0162 CPU-s/h.
 This is an initial observation, not a long-term rate or the +1-hour
-checkpoint; the scheduled checkpoints above remain open.
+checkpoint. The 24-hour acceptance review remains open and is not
+automatically scheduled.
 
 ### Measurement procedure
 
@@ -1467,8 +1474,10 @@ runbook's deploy log:
   shadow under the same load profile, so peak values are compared like for like.
 - Decision on `MALLOC_*` environment (section 5) from the "60 s after"
   numbers.
-- After cutover: idle at 1 h, 24 h, 7 days; the numbers go into the campaign
-  report and the relay CHANGELOG.
+- After cutover: measure idle resources at or after 24 hours as part of
+  the acceptance review (10.6); record the results in the campaign report
+  and relay CHANGELOG. The original +1-hour point was missed and the
+  +7-day measurement is no longer mandatory.
 
 ---
 

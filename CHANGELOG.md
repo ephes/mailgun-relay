@@ -11,11 +11,15 @@ All notable changes to mailgun-relay are documented here.
   15:51:36 UTC (17:51:36 CEST). Health and 401/403 policy checks passed
   at all three stages; two controlled probe mails per stage each arrived
   exactly once with DKIM pass. Natural application delivery remains open.
-- The seven-day soak is **open**, starting at the final Rust return and
-  ending no earlier than 2026-10-24 15:51:36 UTC. The +1 hour, +24 hour
-  and +7 day production resource checks and daily reviews remain follow-up
-  work; continuous 15-minute probe monitoring does not replace them.
-  Python remains the rollback path for at least 30 days after cutover.
+- On 2026-10-18 the owner replaced the original seven-day acceptance
+  wait with a clean 24-hour resource/error/probe/restart review no earlier
+  than 2026-10-18 15:51:36 UTC, plus at least one real application mail
+  traced from client through relay acceptance to Postfix delivery.
+  **Acceptance remains open**; these are approved criteria, not passed
+  checks. The following week is normal operation with existing 15-minute
+  monitoring; there is no mandatory +7-day measurement or verified review
+  scheduler. The +1-hour checkpoint was missed and is not reconstructed.
+  Python remains the rollback path until at least 2026-11-16 15:51:36 UTC.
 - The initial 120-second production sample after the final Rust return
   had 5.27 MiB median RSS and no restarts. It precedes the +1-hour
   checkpoint and does not complete any soak measurement.

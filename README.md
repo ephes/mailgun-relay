@@ -10,12 +10,18 @@ Rust **0.2.1** (`rs-v0.2.1`) was switched into production on macmini on
 2026-10-17. The HTTP contract, token/domain/sender policy, environment and
 secrets interfaces remain compatible with the Python service; MIME is
 compared semantically, not byte for byte. The Python 0.1.0 implementation
-remains available as the rollback path for at least 30 days after cutover.
+remains available as the rollback path for at least 30 days after cutover
+(until at least 2026-11-16 15:51:36 UTC).
 
 The cutover verification includes local and ingress health, controlled mail
-delivery with DKIM pass, and the 401/403 policy checks. The seven-day soak
-remains **open**; natural application traffic and production resource
-checkpoints are separate acceptance evidence. See
+delivery with DKIM pass, and the 401/403 policy checks. Acceptance remains
+**open**: the owner-approved criteria are a clean 24-hour review no earlier
+than 2026-10-18 15:51:36 UTC (17:51:36 CEST), plus at least one real
+application mail traced from client through relay acceptance to Postfix
+delivery. The review covers resources, errors, regular probes and restarts.
+There is no mandatory seven-day wait; the following week is normal
+operation with the existing 15-minute monitoring. These checks are not
+automatically scheduled. See
 [`rust/PLAN.md`](rust/PLAN.md#106-soak-and-abort-criteria) for the current
 S10 state and follow-up checks, and [`rust/README.md`](rust/README.md) for
 Rust build and release instructions.
