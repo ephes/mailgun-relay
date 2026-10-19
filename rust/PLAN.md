@@ -863,7 +863,7 @@ changed lines per slice excluding generated fixtures.
 | S7 | Release pipeline | `.github/workflows/rust-release.yml`, `scripts/release_checks.py` + tests (adapted from nyxmon), first tag `rs-v0.2.0` after S6 | S6 (tag). **Status: done (rs-v0.2.0).** Workflow, `rust/scripts/release_checks.py` and `tests/test_rust_release_checks.py` merged; tag `rs-v0.2.0` on `2e845a5` (S6b), GitHub release with archive and `.sha256` published 2026-10-16 |
 | S8 | Role and inventory | ops-library `mailgun_relay_deploy` changes (9.1) with tests and molecule; ops-control host vars (impl `python`, version pinned), playbook gate, runbook `docs/MAILGUN_RELAY_RUST.md`; deploy to macmini: binary installed, `--check-config` green against production files, nothing switched | S7 |
 | S9 | Shadow | section 10 phases A and B on macmini, report in ops-control docs | S8, S0-py deployed, E2E probe item. **Status: done. Phase A ran from 2026-10-16 09:29 UTC to 2026-10-17 09:30 UTC: 26 corpus passes, 0 unexplained differences. Phase B: 5/5 mails delivered with DKIM pass. Rust 0.2.0 idle RSS 5.4 MiB / 0.00 CPU-s/h versus production Python 70.9 MiB / 3.61 CPU-s/h. The SMTP Nagle delay found under load is fixed in 0.2.1, released as `rs-v0.2.1` (2026-10-17).** |
-| S10 | Cutover and soak | sections 10.4–10.6 incl. rollback drill, docs final state in all three repos | S9. **Status: Rust 0.2.1 cutover and Python rollback drill verified on 2026-10-17; final Rust return at 15:51:36 UTC. 2026-10-19 +40.39-hour review verified stable operation; a controlled Homepage test verified application transport. Full mail and owner acceptance remain OPEN: authoritative DKIM DNS is corrected, but normal verification of the original mail awaits macmini cache expiry. The owner replaced the seven-day gate on 2026-10-18.** |
+| S10 | Cutover and soak | sections 10.4–10.6 incl. rollback drill, docs final state in all three repos | S9. **Status: Rust 0.2.1 cutover and Python rollback drill verified on 2026-10-17; final Rust return at 15:51:36 UTC. 2026-10-19 +40.39-hour review verified stable operation; a controlled Homepage test verified application transport. Normal DKIM verification of the original mail passed at 2026-10-19 11:28:49 UTC. Technical stability/transport/DKIM criteria are fulfilled; final owner acceptance remains OPEN. The owner replaced the seven-day gate on 2026-10-18.** |
 
 Acceptance criteria (in addition to the green checks):
 
@@ -1402,7 +1402,7 @@ from Homepage production via Django/Anymail on 2026-10-19
 and Postfix recorded the relay's SASL login and one successful delivery
 (queue `1ED3A561E92`). IMAP found exactly one matching message (UID 31930).
 This is application-path test evidence, not naturally occurring traffic.
-DKIM verification remains open. At 09:11 UTC on 2026-10-19 the existing
+DKIM verification history: at 09:11 UTC on 2026-10-19 the existing
 BIND role deployed the public key to production and staging (ops-control
 `07626162f5466ff65c497cb65c63de71f26165f2`). Both authoritative
 nameservers returned serial `2026101901` and the TXT key matching the
@@ -1410,20 +1410,38 @@ configured source; all 19 configured primary/secondary zone checks returned
 NOERROR/authoritative answers.
 
 The same original mail (UID 31930, queue `1ED3A561E92`) was rechecked,
-with exactly one matching message. Normal `opendkim-testmsg` still exited
-70 (`key retrieval failed`): macmini's resolver at `127.0.0.1` retained
+with exactly one matching message. Normal `opendkim-testmsg` at that
+recheck still exited 70 (`key retrieval failed`): macmini's resolver at `127.0.0.1` retained
 the old negative answer with SOA serial `2026101501` and 3311 seconds
-remaining TTL at 09:11:48 UTC. Authoritative publication is verified;
-a successful normal verification after cache expiry is still required.
-Neither DKIM pass nor a bad signature has been established for this mail.
+remaining TTL at 09:11:48 UTC. Authoritative publication was verified;
+successful normal verification was still outstanding at that point. This failure did not establish a
+bad signature.
 
 The relay remained PID 50819, active, `NRestarts=0`, with health OK.
 No new mail, resolver flush, key rotation or relay restart was performed.
-Stability and application transport remain verified; full mail and owner
-acceptance remain open. The cache result does not establish a Rust
-regression. Operator evidence is recorded in ops-control and the campaign
-reports `handoff/s10-soak-20261019.md` and
-`handoff/s10-dkim-dns-rollout-20261019-evidence/`.
+Stability and application transport remained verified while DKIM was open.
+
+**Successful normal DKIM recheck (2026-10-19 11:28:49 UTC):** the same
+original stored mail (UID 31930, queue `1ED3A561E92`, exactly one match)
+was read with `EXAMINE` / `BODY.PEEK[]`. Its 1661-byte RFC822 content had
+SHA256 `1ea1e5764f85cc0776ae8970ac53fd4484b0db5ce61e46e4635c7cd856eb1f91`.
+Unmodified `opendkim-testmsg` exited 0 with empty stdout/stderr:
+DKIM passed for `d=wersdoerfer.de`, `s=mail`, `a=rsa-sha256`.
+Default DNS resolution and `127.0.0.1` returned the TXT key and SOA serial
+`2026101901`; both authoritative nameservers were consistent.
+
+The first recheck at 11:27:18 UTC had still exited 70. The precise reason
+for that brief transition is unresolved; no new cache defect is inferred.
+No resolver override, configuration/DNS/cache change, new mail or relay
+restart was used for the successful recheck. PID 50819, `NRestarts=0`,
+health OK and RSS 5428 kB were unchanged.
+
+**Technical stability, application transport and DKIM criteria are
+fulfilled; final owner acceptance remains OPEN.** Operator evidence is
+recorded in ops-control and the campaign reports
+`handoff/s10-soak-20261019.md`,
+`handoff/s10-dkim-dns-rollout-20261019-evidence/` and
+`handoff/s10-dkim-recheck-20261019-evidence/`.
 
 No verified scheduler covers the acceptance review or resource measurement.
 The existing 15-minute E2E probe and nyxmon monitoring continue normally.

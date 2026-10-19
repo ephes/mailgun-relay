@@ -20,14 +20,13 @@ controlled Homepage production test traversed Django/Anymail, relay
 acceptance, Postfix delivery and IMAP exactly once. This establishes the
 stability and application transport path; it was not natural user traffic.
 
-**Full mail acceptance and owner acceptance remain open:** the additional
-DKIM check still cannot retrieve the signing key through macmini’s stale
-negative DNS cache. The public key was deployed and verified on both
-authoritative nameservers on 2026-10-19; the original mail still needs a
-successful normal verification after cache expiry. No bad signature or
-Rust regression has been established; DKIM pass is not yet claimed.
-There is no mandatory seven-day wait. Normal
-15-minute monitoring continues; no review scheduler is configured. See
+**The technical stability, application transport and DKIM criteria are
+fulfilled; final owner acceptance remains open.** Normal, unmodified
+`opendkim-testmsg` verified the same original Homepage mail successfully
+on 2026-10-19 at 11:28:49 UTC. Earlier key-retrieval failures remain part
+of the verification history. No new mail or relay restart was needed.
+There is no mandatory seven-day wait. Normal 15-minute monitoring
+continues; no review scheduler is configured. See
 [`rust/PLAN.md`](rust/PLAN.md#106-soak-and-abort-criteria) for the current
 S10 state and follow-up checks, and [`rust/README.md`](rust/README.md) for
 Rust build and release instructions.

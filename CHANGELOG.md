@@ -29,18 +29,26 @@ All notable changes to mailgun-relay are documented here.
 - One controlled Homepage production test on 2026-10-19 at
   08:19:26–08:19:29 UTC verified Django/Anymail → relay HTTP 200 →
   Postfix delivery → exactly one IMAP message. It establishes application
-  transport, not natural user traffic. **Full mail and owner acceptance
-  remain open:** the additional DKIM verification could not retrieve the
-  DNS key. Neither DKIM pass nor a bad signature is established for this
-  test; the missing key alone does not establish a Rust regression.
+  transport, not natural user traffic. The additional DKIM verification
+  initially could not retrieve the DNS key. At that stage neither DKIM
+  pass nor a bad signature was established;
+  the missing key alone did not establish a Rust regression.
 - On 2026-10-19 at 09:11 UTC the existing BIND role published the DKIM
   public key; both authoritative nameservers returned serial 2026101901
   and the configured key. Normal verification of the same original
   application mail still failed key retrieval because macmini retained a
   negative DNS answer (3311 seconds TTL remaining at 09:11:48 UTC).
-  Full DKIM and owner acceptance remain open until normal verification
-  succeeds after cache expiry. No further mail or relay restart occurred;
+  DKIM verification was still open at that recheck. No further mail or
+  relay restart occurred;
   the +40-hour resource and transport evidence above remains unchanged.
+- Normal, unmodified DKIM verification of the same original Homepage
+  mail passed on 2026-10-19 at 11:28:49 UTC (`opendkim-testmsg` exit 0,
+  empty stdout/stderr; `d=wersdoerfer.de`, `s=mail`, `a=rsa-sha256`).
+  The first recheck at 11:27:18 UTC had still failed key retrieval; the
+  brief transition is not fully explained. No new mail, resolver override,
+  cache/configuration change or relay restart was used. Technical
+  stability, application transport and DKIM criteria are now fulfilled;
+  **final owner acceptance remains open**.
 - The initial 120-second production sample after the final Rust return
   had 5.27 MiB median RSS and no restarts. It precedes the +1-hour
   checkpoint and does not complete any soak measurement.
