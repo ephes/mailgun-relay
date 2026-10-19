@@ -863,7 +863,7 @@ changed lines per slice excluding generated fixtures.
 | S7 | Release pipeline | `.github/workflows/rust-release.yml`, `scripts/release_checks.py` + tests (adapted from nyxmon), first tag `rs-v0.2.0` after S6 | S6 (tag). **Status: done (rs-v0.2.0).** Workflow, `rust/scripts/release_checks.py` and `tests/test_rust_release_checks.py` merged; tag `rs-v0.2.0` on `2e845a5` (S6b), GitHub release with archive and `.sha256` published 2026-10-16 |
 | S8 | Role and inventory | ops-library `mailgun_relay_deploy` changes (9.1) with tests and molecule; ops-control host vars (impl `python`, version pinned), playbook gate, runbook `docs/MAILGUN_RELAY_RUST.md`; deploy to macmini: binary installed, `--check-config` green against production files, nothing switched | S7 |
 | S9 | Shadow | section 10 phases A and B on macmini, report in ops-control docs | S8, S0-py deployed, E2E probe item. **Status: done. Phase A ran from 2026-10-16 09:29 UTC to 2026-10-17 09:30 UTC: 26 corpus passes, 0 unexplained differences. Phase B: 5/5 mails delivered with DKIM pass. Rust 0.2.0 idle RSS 5.4 MiB / 0.00 CPU-s/h versus production Python 70.9 MiB / 3.61 CPU-s/h. The SMTP Nagle delay found under load is fixed in 0.2.1, released as `rs-v0.2.1` (2026-10-17).** |
-| S10 | Cutover and soak | sections 10.4–10.6 incl. rollback drill, docs final state in all three repos | S9. **Status: Rust 0.2.1 cutover and Python rollback drill verified on 2026-10-17; final Rust return at 15:51:36 UTC. Acceptance OPEN: clean 24-hour review no earlier than 2026-10-18 15:51:36 UTC plus a real application mail; the owner replaced the seven-day gate on 2026-10-18.** |
+| S10 | Cutover and soak | sections 10.4–10.6 incl. rollback drill, docs final state in all three repos | S9. **Status: Rust 0.2.1 cutover and Python rollback drill verified on 2026-10-17; final Rust return at 15:51:36 UTC. 2026-10-19 +40.39-hour review verified stable operation; a controlled Homepage test verified application transport. Full mail and owner acceptance remain OPEN: DKIM key retrieval is unresolved. The owner replaced the seven-day gate on 2026-10-18.** |
 
 Acceptance criteria (in addition to the green checks):
 
@@ -1368,8 +1368,7 @@ The procedure used for this cutover remains:
 ### 10.6 Soak and abort criteria
 
 **Acceptance OPEN (owner decision, 2026-10-18):** T0 remains
-2026-10-17 15:51:36 UTC, after the final Rust return. Acceptance is
-sufficiently supported only after both of these are verified:
+2026-10-17 15:51:36 UTC, after the final Rust return. The owner-approved stability and transport criteria are:
 
 - A clean 24-hour review, no earlier than **2026-10-18 15:51:36 UTC**
   (17:51:36 CEST): production resources, errors, regular probe history and
@@ -1378,9 +1377,39 @@ sufficiently supported only after both of these are verified:
   relay acceptance to Postfix delivery. Controlled probe mails alone do
   not satisfy this criterion.
 
-These conditions were approved, not passed. The current internal host
-state has not been reverified on 2026-10-18 because SSH authentication is
-unavailable; a green public health check alone does not establish them.
+**Current evidence (2026-10-19):** the production snapshot at 08:15:10 UTC,
+about 40.39 hours after T0, showed the same Rust 0.2.1 process (PID 50819),
+`NRestarts=0`, one thread, RSS/VmHWM 5428 kB (5.30 MiB), PSS 3385 kB
+and 0.533 CPU seconds total (about 0.0132 CPU-s/h over the elapsed window).
+This is a current snapshot after more than 24 hours, not a reconstructed
+measurement at the original +24-hour or missed +1-hour time.
+
+The complete relay journal since T0, checked before the application test,
+had 164 successful probe requests, the deliberate 401/403 checks, and no
+application requests, warnings or errors. All 162 regular probe runs had
+HTTP 200 and curl exit 0. The complete Traefik history in that review had
+173 responses with 200, one 401, one 403 and no 5xx.
+
+The retained nyxmon history is shorter: check 79 had 293 successful results
+from 2026-10-18 07:34:54 to 2026-10-19 08:11:58 UTC; check 80 had 99
+from 2026-10-18 07:31:23 to 2026-10-19 08:05:40 UTC.
+Neither retained series had failures; older history was unavailable.
+These counts do not claim full nyxmon coverage since T0.
+
+One controlled application test used the native `sendtestemail` command
+from Homepage production via Django/Anymail on 2026-10-19
+08:19:26–08:19:29 UTC. It exited 0, the relay accepted it with HTTP 200,
+and Postfix recorded the relay's SASL login and one successful delivery
+(queue `1ED3A561E92`). IMAP found exactly one matching message (UID 31930).
+This is application-path test evidence, not naturally occurring traffic.
+DKIM verification is still open: a signature is present, but the additional
+verification could not retrieve its public key. Neither DKIM pass nor a
+bad signature has been established. Stability and application transport
+are verified; full mail acceptance and owner acceptance remain open. The
+missing DNS key alone does not establish a Rust regression. Operator
+evidence is recorded in ops-control and the campaign report
+`handoff/s10-soak-20261019.md`.
+
 No verified scheduler covers the acceptance review or resource measurement.
 The existing 15-minute E2E probe and nyxmon monitoring continue normally.
 
@@ -1454,8 +1483,8 @@ PSS 3360 kB and Private_Dirty 736 kB. The first sample immediately
 after the probe had two threads; the remaining twelve had one.
 CPU usage over this short 120-second window was 0.0162 CPU-s/h.
 This is an initial observation, not a long-term rate or the +1-hour
-checkpoint. The 24-hour acceptance review remains open and is not
-automatically scheduled.
+checkpoint. The later +40.39-hour review is recorded in section 10.6;
+no historical +24-hour measurement is inferred from it.
 
 ### Measurement procedure
 

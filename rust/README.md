@@ -24,9 +24,11 @@ submission whose client went away is finished, and SIGTERM waits for it.
 S7 adds the release pipeline (see Release below). The parity harness (S6,
 below) runs both implementations as processes against the same requests.
 The role was switched to Rust 0.2.1 on macmini on 2026-10-17; the
-production acceptance remains open: a clean 24-hour review and a real
-application mail are required (PLAN.md sections 10.4–10.6). The owner
-replaced the original seven-day acceptance wait on 2026-10-18.
+2026-10-19 review after about 40 hours found stable operation, and one
+controlled Homepage test verified the application transport path. Full mail
+and owner acceptance remain open because DKIM key retrieval is unresolved
+(PLAN.md sections 10.4–10.6). The owner replaced the original seven-day
+acceptance wait on 2026-10-18.
 
 ## Build and check
 

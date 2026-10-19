@@ -10,16 +10,29 @@ All notable changes to mailgun-relay are documented here.
   exercised a role-managed return to Python, and returned to Rust at
   15:51:36 UTC (17:51:36 CEST). Health and 401/403 policy checks passed
   at all three stages; two controlled probe mails per stage each arrived
-  exactly once with DKIM pass. Natural application delivery remains open.
+  exactly once with DKIM pass. These were controlled probe mails.
 - On 2026-10-18 the owner replaced the original seven-day acceptance
   wait with a clean 24-hour resource/error/probe/restart review no earlier
   than 2026-10-18 15:51:36 UTC, plus at least one real application mail
   traced from client through relay acceptance to Postfix delivery.
-  **Acceptance remains open**; these are approved criteria, not passed
-  checks. The following week is normal operation with existing 15-minute
+  The later evidence review is recorded below; owner acceptance remains
+  open. The following week is normal operation with existing 15-minute
   monitoring; there is no mandatory +7-day measurement or verified review
   scheduler. The +1-hour checkpoint was missed and is not reconstructed.
   Python remains the rollback path until at least 2026-11-16 15:51:36 UTC.
+- The 2026-10-19 08:15:10 UTC review, 40.39 hours after the final Rust
+  return, found the same process with no restarts, 5.30 MiB RSS/VmHWM,
+  one thread and 0.533 CPU seconds total (about 0.0132 CPU-s/h). The
+  relay/probe and Traefik history since T0 was clean; retained nyxmon
+  history starts on 2026-10-18 and also had no failures. This is a current
+  review, not an invented historical +24-hour measurement.
+- One controlled Homepage production test on 2026-10-19 at
+  08:19:26–08:19:29 UTC verified Django/Anymail → relay HTTP 200 →
+  Postfix delivery → exactly one IMAP message. It establishes application
+  transport, not natural user traffic. **Full mail and owner acceptance
+  remain open:** the additional DKIM verification could not retrieve the
+  DNS key. Neither DKIM pass nor a bad signature is established for this
+  test; the missing key alone does not establish a Rust regression.
 - The initial 120-second production sample after the final Rust return
   had 5.27 MiB median RSS and no restarts. It precedes the +1-hour
   checkpoint and does not complete any soak measurement.
@@ -29,8 +42,8 @@ All notable changes to mailgun-relay are documented here.
   3.61 idle CPU-s/h. The 25-MiB request reached 73.8 MiB VmHWM and
   recovered to 5.6 MiB RSS after 60 seconds. Its 75.2-MiB MemoryPeak
   exceeded the 40-MiB target; the separate maximum-request and recovery
-  budgets passed. These shadow results are separate from the open
-  production measurements.
+  budgets passed. These shadow results are separate from the later
+  production observations.
 
 ### Custom header names with a final newline are 400 (D-19)
 

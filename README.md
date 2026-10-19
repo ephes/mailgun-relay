@@ -13,15 +13,18 @@ compared semantically, not byte for byte. The Python 0.1.0 implementation
 remains available as the rollback path for at least 30 days after cutover
 (until at least 2026-11-16 15:51:36 UTC).
 
-The cutover verification includes local and ingress health, controlled mail
-delivery with DKIM pass, and the 401/403 policy checks. Acceptance remains
-**open**: the owner-approved criteria are a clean 24-hour review no earlier
-than 2026-10-18 15:51:36 UTC (17:51:36 CEST), plus at least one real
-application mail traced from client through relay acceptance to Postfix
-delivery. The review covers resources, errors, regular probes and restarts.
-There is no mandatory seven-day wait; the following week is normal
-operation with the existing 15-minute monitoring. These checks are not
-automatically scheduled. See
+The cutover and rollback checks passed on 2026-10-17. A review on
+2026-10-19, about 40 hours after the final Rust return, found stable
+resources, no restarts and no unexplained relay or probe errors. One
+controlled Homepage production test traversed Django/Anymail, relay
+acceptance, Postfix delivery and IMAP exactly once. This establishes the
+stability and application transport path; it was not natural user traffic.
+
+**Full mail acceptance and owner acceptance remain open:** the additional
+DKIM check could not retrieve the signing key from DNS. A bad signature
+or Rust regression has not been established; DKIM pass is not claimed for
+this application test. There is no mandatory seven-day wait. Normal
+15-minute monitoring continues; no review scheduler is configured. See
 [`rust/PLAN.md`](rust/PLAN.md#106-soak-and-abort-criteria) for the current
 S10 state and follow-up checks, and [`rust/README.md`](rust/README.md) for
 Rust build and release instructions.
