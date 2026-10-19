@@ -28,7 +28,8 @@ The role was switched to Rust 0.2.1 on macmini on 2026-10-17; the
 controlled Homepage test verified the application transport path. Normal
 DKIM verification of that same stored mail passed on 2026-10-19 at
 11:28:49 UTC. Technical stability, transport and DKIM criteria are
-fulfilled; final owner acceptance remains open (PLAN.md 10.6). The owner
+fulfilled and were accepted by the owner on 2026-10-19; S10 is complete
+(PLAN.md 10.6). The owner
 replaced the original seven-day acceptance wait on 2026-10-18.
 
 ## Build and check

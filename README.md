@@ -21,7 +21,8 @@ acceptance, Postfix delivery and IMAP exactly once. This establishes the
 stability and application transport path; it was not natural user traffic.
 
 **The technical stability, application transport and DKIM criteria are
-fulfilled; final owner acceptance remains open.** Normal, unmodified
+fulfilled and were accepted by the owner on 2026-10-19. S10 is complete.**
+Normal, unmodified
 `opendkim-testmsg` verified the same original Homepage mail successfully
 on 2026-10-19 at 11:28:49 UTC. Earlier key-retrieval failures remain part
 of the verification history. No new mail or relay restart was needed.

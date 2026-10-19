@@ -863,7 +863,7 @@ changed lines per slice excluding generated fixtures.
 | S7 | Release pipeline | `.github/workflows/rust-release.yml`, `scripts/release_checks.py` + tests (adapted from nyxmon), first tag `rs-v0.2.0` after S6 | S6 (tag). **Status: done (rs-v0.2.0).** Workflow, `rust/scripts/release_checks.py` and `tests/test_rust_release_checks.py` merged; tag `rs-v0.2.0` on `2e845a5` (S6b), GitHub release with archive and `.sha256` published 2026-10-16 |
 | S8 | Role and inventory | ops-library `mailgun_relay_deploy` changes (9.1) with tests and molecule; ops-control host vars (impl `python`, version pinned), playbook gate, runbook `docs/MAILGUN_RELAY_RUST.md`; deploy to macmini: binary installed, `--check-config` green against production files, nothing switched | S7 |
 | S9 | Shadow | section 10 phases A and B on macmini, report in ops-control docs | S8, S0-py deployed, E2E probe item. **Status: done. Phase A ran from 2026-10-16 09:29 UTC to 2026-10-17 09:30 UTC: 26 corpus passes, 0 unexplained differences. Phase B: 5/5 mails delivered with DKIM pass. Rust 0.2.0 idle RSS 5.4 MiB / 0.00 CPU-s/h versus production Python 70.9 MiB / 3.61 CPU-s/h. The SMTP Nagle delay found under load is fixed in 0.2.1, released as `rs-v0.2.1` (2026-10-17).** |
-| S10 | Cutover and soak | sections 10.4–10.6 incl. rollback drill, docs final state in all three repos | S9. **Status: Rust 0.2.1 cutover and Python rollback drill verified on 2026-10-17; final Rust return at 15:51:36 UTC. 2026-10-19 +40.39-hour review verified stable operation; a controlled Homepage test verified application transport. Normal DKIM verification of the original mail passed at 2026-10-19 11:28:49 UTC. Technical stability/transport/DKIM criteria are fulfilled; final owner acceptance remains OPEN. The owner replaced the seven-day gate on 2026-10-18.** |
+| S10 | Cutover and soak | sections 10.4–10.6 incl. rollback drill, docs final state in all three repos | S9. **Status: Rust 0.2.1 cutover and Python rollback drill verified on 2026-10-17; final Rust return at 15:51:36 UTC. 2026-10-19 +40.39-hour review verified stable operation; a controlled Homepage test verified application transport. Normal DKIM verification of the original mail passed at 2026-10-19 11:28:49 UTC. Technical stability/transport/DKIM criteria were accepted by the owner on 2026-10-19; S10 is complete. The owner replaced the seven-day gate on 2026-10-18.** |
 
 Acceptance criteria (in addition to the green checks):
 
@@ -1367,7 +1367,11 @@ The procedure used for this cutover remains:
 
 ### 10.6 Soak and abort criteria
 
-**Acceptance OPEN (owner decision, 2026-10-18):** T0 remains
+**Owner ACCEPTED on 2026-10-19; S10 is complete.** The owner explicitly
+accepted the Rust migration and DKIM fix after the evidence below. Normal
+monitoring continues; Python retirement remains a separate later task.
+
+The acceptance criteria were revised by the owner on 2026-10-18. T0 remains
 2026-10-17 15:51:36 UTC, after the final Rust return. The owner-approved stability and transport criteria are:
 
 - A clean 24-hour review, no earlier than **2026-10-18 15:51:36 UTC**
@@ -1437,7 +1441,8 @@ restart was used for the successful recheck. PID 50819, `NRestarts=0`,
 health OK and RSS 5428 kB were unchanged.
 
 **Technical stability, application transport and DKIM criteria are
-fulfilled; final owner acceptance remains OPEN.** Operator evidence is
+fulfilled and were explicitly accepted by the owner on 2026-10-19.
+S10 is complete.** Operator evidence is
 recorded in ops-control and the campaign reports
 `handoff/s10-soak-20261019.md`,
 `handoff/s10-dkim-dns-rollout-20261019-evidence/` and

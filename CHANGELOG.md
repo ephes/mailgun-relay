@@ -15,8 +15,8 @@ All notable changes to mailgun-relay are documented here.
   wait with a clean 24-hour resource/error/probe/restart review no earlier
   than 2026-10-18 15:51:36 UTC, plus at least one real application mail
   traced from client through relay acceptance to Postfix delivery.
-  The later evidence review is recorded below; owner acceptance remains
-  open. The following week is normal operation with existing 15-minute
+  The later evidence review and owner acceptance are recorded below.
+  The following week is normal operation with existing 15-minute
   monitoring; there is no mandatory +7-day measurement or verified review
   scheduler. The +1-hour checkpoint was missed and is not reconstructed.
   Python remains the rollback path until at least 2026-11-16 15:51:36 UTC.
@@ -48,7 +48,10 @@ All notable changes to mailgun-relay are documented here.
   brief transition is not fully explained. No new mail, resolver override,
   cache/configuration change or relay restart was used. Technical
   stability, application transport and DKIM criteria are now fulfilled;
-  **final owner acceptance remains open**.
+  the owner explicitly accepted the Rust migration and DKIM fix on
+  2026-10-19. **S10 is complete.** Normal monitoring continues; the Python
+  rollback path remains until at least 2026-11-16 15:51:36 UTC and
+  retirement is a separate task.
 - The initial 120-second production sample after the final Rust return
   had 5.27 MiB median RSS and no restarts. It precedes the +1-hour
   checkpoint and does not complete any soak measurement.
