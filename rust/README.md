@@ -26,7 +26,9 @@ below) runs both implementations as processes against the same requests.
 The role was switched to Rust 0.2.1 on macmini on 2026-10-17; the
 2026-10-19 review after about 40 hours found stable operation, and one
 controlled Homepage test verified the application transport path. Full mail
-and owner acceptance remain open because DKIM key retrieval is unresolved
+and owner acceptance remain open: the DKIM public key is now verified on
+both authoritative nameservers, but the original mail still awaits normal
+verification after macmini’s negative DNS cache expires
 (PLAN.md sections 10.4–10.6). The owner replaced the original seven-day
 acceptance wait on 2026-10-18.
 

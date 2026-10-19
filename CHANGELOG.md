@@ -33,6 +33,14 @@ All notable changes to mailgun-relay are documented here.
   remain open:** the additional DKIM verification could not retrieve the
   DNS key. Neither DKIM pass nor a bad signature is established for this
   test; the missing key alone does not establish a Rust regression.
+- On 2026-10-19 at 09:11 UTC the existing BIND role published the DKIM
+  public key; both authoritative nameservers returned serial 2026101901
+  and the configured key. Normal verification of the same original
+  application mail still failed key retrieval because macmini retained a
+  negative DNS answer (3311 seconds TTL remaining at 09:11:48 UTC).
+  Full DKIM and owner acceptance remain open until normal verification
+  succeeds after cache expiry. No further mail or relay restart occurred;
+  the +40-hour resource and transport evidence above remains unchanged.
 - The initial 120-second production sample after the final Rust return
   had 5.27 MiB median RSS and no restarts. It precedes the +1-hour
   checkpoint and does not complete any soak measurement.

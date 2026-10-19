@@ -21,9 +21,12 @@ acceptance, Postfix delivery and IMAP exactly once. This establishes the
 stability and application transport path; it was not natural user traffic.
 
 **Full mail acceptance and owner acceptance remain open:** the additional
-DKIM check could not retrieve the signing key from DNS. A bad signature
-or Rust regression has not been established; DKIM pass is not claimed for
-this application test. There is no mandatory seven-day wait. Normal
+DKIM check still cannot retrieve the signing key through macmini’s stale
+negative DNS cache. The public key was deployed and verified on both
+authoritative nameservers on 2026-10-19; the original mail still needs a
+successful normal verification after cache expiry. No bad signature or
+Rust regression has been established; DKIM pass is not yet claimed.
+There is no mandatory seven-day wait. Normal
 15-minute monitoring continues; no review scheduler is configured. See
 [`rust/PLAN.md`](rust/PLAN.md#106-soak-and-abort-criteria) for the current
 S10 state and follow-up checks, and [`rust/README.md`](rust/README.md) for
