@@ -4,6 +4,13 @@ All notable changes to mailgun-relay are documented here.
 
 ## Unreleased
 
+### Security
+
+- Update the locked certifi CA bundle of the Python implementation to
+  2026.10.19 for the eMudhra/emSign CA compromise
+  ([GHSA-6q48-6c7w-9gw2](https://github.com/certifi/python-certifi/security/advisories/GHSA-6q48-6c7w-9gw2)). Lock-only change; it applies when the
+  Python implementation is deployed, for example on a rollback from Rust.
+
 ### Rust production cutover and rollback drill (S10)
 
 - Switched macmini to the existing Rust 0.2.1 release on 2026-10-17,
