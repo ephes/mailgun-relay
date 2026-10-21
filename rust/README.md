@@ -7,7 +7,7 @@ production. [`TESTMAP.md`](TESTMAP.md) maps every Python test to its Rust
 counterpart.
 
 **Status: slices S1 to S7 of PLAN.md section 6 are done; the current
-release is `rs-v0.2.1`**;
+release is [`rs-v0.2.2`](https://github.com/ephes/mailgun-relay/releases/tag/rs-v0.2.2)**;
 S3 adds subject and header validation, form parsing and
 `POST /v3/{domain}/messages` with every decision of the Python route. The
 binary loads and validates the configuration, answers `GET /health`, the
@@ -44,8 +44,9 @@ allow them. Updating the verifier complements system/custom CA remediation;
 it is not evidence that the currently deployed relay accepts those paths.
 
 The incident patch changes only this transitive package's lock version and
-checksum. Existing release 0.2.1 remains unchanged until a separately approved
-new binary release and controller pin are deployed. Keep the previous Rust
+checksum. Release 0.2.2 was published on 2026-10-21 from
+`9fd78bf88bbe488d3d27ef81030ee89364f58b6c`; selecting it through the controller
+and verifying the running process are separate steps. Keep the previous Rust
 release and Python fallback available through the existing rollout procedure.
 
 ## Build and check
@@ -257,12 +258,16 @@ scripts/release_checks.py  release gate of .github/workflows/rust-release.yml
 parity/         process-level parity harness: run_parity.py, cases.py, smtp_fake.py, semantic.py
 ```
 
-## Prepared security patch 0.2.2
+## Published security patch 0.2.2
 
 Rust 0.2.2 retains the released 0.2.1 application source plus the reviewed
 certificate-verifier fix, secure hosted bootstrap and maintained documentation.
-Only the local package version changes for this preparation. The exact candidate
-commit must pass CI (including cargo-deny/parity) and the artifact-only Linux
-workflow before any separately approved tag/release or managed deployment.
+The local package version and two version assertions also change.
+[Exact-source CI](https://github.com/ephes/mailgun-relay/actions/runs/39641003007),
+including cargo-deny/parity, and the [tag release build](https://github.com/ephes/mailgun-relay/actions/runs/39642666568)
+passed. The Linux binary embeds `9fd78bf88bbe488d3d27ef81030ee89364f58b6c`;
+the published archive `mailgun-relay-0.2.2-x86_64-unknown-linux-gnu.tar.gz`
+and its `.sha256` carry archive SHA256
+`6da71db3eb4f70c9a9d178e41220fd6afd36223531b4c25683a542dfc6e3bc7a`.
 Python source/version, SMTP/API semantics and database/configuration remain
-unchanged. No release publication or live protection is claimed by this note.
+unchanged. Publication is not evidence of running-process protection.

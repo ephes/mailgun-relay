@@ -4,23 +4,7 @@ All notable changes to mailgun-relay are documented here.
 
 ## Unreleased
 
-### Rust 0.2.2 security candidate
-
-- Prepare Rust patch 0.2.2 from the reviewed verifier/bootstrap source. Only the
-  local package version changes; native/configured trust selection and SMTP/API
-  behavior remain unchanged. No tag/release or deployment is implied.
-
 ### Security
-
-- Update the Rust SMTP certificate verifier `rustls-webpki` from 0.103.15 to
-  0.103.16 for [RUSTSEC-2026-0382](https://rustsec.org/advisories/RUSTSEC-2026-0382.html).
-  This rejects compromised emSign intermediate keys even when configured trust
-  anchors permit a path. The Rust relay uses native/configured roots, not a
-  bundled Mozilla store; the dependency change does not prove live exposure.
-- Use uv 0.13.4 in all CI jobs and establish the hosted Rust runner's patched
-  trust/Rustup baseline before any toolchain download. Hosted Ubuntu22/24 CA
-  bootstrap now permits only the signed, exact fixed CA-package transaction,
-  retaining strict root admission and non-target package parity.
 
 - Update the locked certifi CA bundle of the Python implementation to
   2026.10.19 for the eMudhra/emSign CA compromise
@@ -356,6 +340,24 @@ public request/response contract changes except the two noted under *Behavior*.
   pytest config ignores exactly that warning so `filterwarnings = error` keeps
   catching everything else; no new dependency is added.
 - No code or API changes. Redeploy the relay to pick up the new lock.
+
+## rs-v0.2.2 — 2026-10-21
+
+- Update the Rust SMTP certificate verifier `rustls-webpki` from 0.103.15 to
+  0.103.16 for [RUSTSEC-2026-0382](https://rustsec.org/advisories/RUSTSEC-2026-0382.html).
+  This rejects compromised emSign intermediate keys even when configured trust
+  anchors permit a path. The Rust relay uses native/configured roots, not a
+  bundled Mozilla store; the dependency change does not prove live exposure.
+- Use uv 0.13.4 in all CI jobs and establish the hosted Rust runner's patched
+  trust/Rustup baseline before any toolchain download. Hosted Ubuntu22/24 CA
+  bootstrap now permits only the signed, exact fixed CA-package transaction,
+  retaining strict root admission and non-target package parity.
+
+- Exact-source CI (including cargo-deny/parity) and the tag Linux build passed.
+  The binary embeds `9fd78bf88bbe488d3d27ef81030ee89364f58b6c`.
+- The release carries `mailgun-relay-0.2.2-x86_64-unknown-linux-gnu.tar.gz`
+  and its `.sha256`. Archive SHA256: `6da71db3eb4f70c9a9d178e41220fd6afd36223531b4c25683a542dfc6e3bc7a`.
+  Controller selection and running-process verification remain separate steps.
 
 ## rs-v0.2.1 — 2026-10-17
 

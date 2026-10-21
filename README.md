@@ -6,6 +6,10 @@ The goal is compatibility with the Mailgun send API surface Anymail needs, not a
 
 ## Status
 
+The current published security release is [`rs-v0.2.2`](https://github.com/ephes/mailgun-relay/releases/tag/rs-v0.2.2),
+published on 2026-10-21 from `9fd78bf88bbe488d3d27ef81030ee89364f58b6c`.
+Publication is separate from controller selection and running-process verification.
+
 Rust **0.2.1** (`rs-v0.2.1`) was switched into production on macmini on
 2026-10-17. The HTTP contract, token/domain/sender policy, environment and
 secrets interfaces remain compatible with the Python service; MIME is
