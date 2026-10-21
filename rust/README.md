@@ -143,7 +143,7 @@ python3 -I scripts/release_checks.py smoke --binary target/release/mailgun-relay
 ```bash
 mailgun-relay                  # serve (env and secrets as the Python service)
 mailgun-relay --check-config   # load env + secrets, bind nothing; exit 0 or 1
-mailgun-relay --version        # mailgun-relay 0.2.1 (<commit>)
+mailgun-relay --version        # mailgun-relay <version> (<commit>)
 ```
 
 Unknown arguments exit 2. The configuration interface is the Python one
@@ -256,3 +256,13 @@ fixtures/       generator + generated JSON; check_mime.py (Python's parser on Ru
 scripts/release_checks.py  release gate of .github/workflows/rust-release.yml
 parity/         process-level parity harness: run_parity.py, cases.py, smtp_fake.py, semantic.py
 ```
+
+## Prepared security patch 0.2.2
+
+Rust 0.2.2 retains the released 0.2.1 application source plus the reviewed
+certificate-verifier fix, secure hosted bootstrap and maintained documentation.
+Only the local package version changes for this preparation. The exact candidate
+commit must pass CI (including cargo-deny/parity) and the artifact-only Linux
+workflow before any separately approved tag/release or managed deployment.
+Python source/version, SMTP/API semantics and database/configuration remain
+unchanged. No release publication or live protection is claimed by this note.

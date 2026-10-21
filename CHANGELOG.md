@@ -4,6 +4,12 @@ All notable changes to mailgun-relay are documented here.
 
 ## Unreleased
 
+### Rust 0.2.2 security candidate
+
+- Prepare Rust patch 0.2.2 from the reviewed verifier/bootstrap source. Only the
+  local package version changes; native/configured trust selection and SMTP/API
+  behavior remain unchanged. No tag/release or deployment is implied.
+
 ### Security
 
 - Update the Rust SMTP certificate verifier `rustls-webpki` from 0.103.15 to
