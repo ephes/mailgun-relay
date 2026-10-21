@@ -12,7 +12,9 @@ All notable changes to mailgun-relay are documented here.
   anchors permit a path. The Rust relay uses native/configured roots, not a
   bundled Mozilla store; the dependency change does not prove live exposure.
 - Use uv 0.13.4 in all CI jobs and establish the hosted Rust runner's patched
-  trust/Rustup baseline before any toolchain download.
+  trust/Rustup baseline before any toolchain download. Hosted Ubuntu22/24 CA
+  bootstrap now permits only the signed, exact fixed CA-package transaction,
+  retaining strict root admission and non-target package parity.
 
 - Update the locked certifi CA bundle of the Python implementation to
   2026.10.19 for the eMudhra/emSign CA compromise

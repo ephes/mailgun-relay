@@ -63,8 +63,18 @@ cargo build --release --locked     # target/release/mailgun-relay
 
 CI bootstraps Rustup 1.29.2 using the SHA-pinned official updater over verified
 OS trust before any SDK download in the Rust, parity and release jobs. The
-bootstrap is restricted to disposable GitHub-hosted Linux x86_64 runners and
-refuses an OS CA bundle that still includes either incident root. It clears
+bootstrap is restricted to disposable GitHub-hosted Linux x86_64 Ubuntu22.04/24.04
+runners. Rust/parity CI pins Ubuntu24.04; release remains Ubuntu22.04. It uses
+standard signed APT to upgrade only an older installed `ca-certificates` to the
+exact [USN-8944-1](https://ubuntu.com/security/notices/USN-8944-1) fixed revision
+(`20260816ubuntu0.22.04.1` / `20260816ubuntu0.24.04.1`). Current/newer packages
+skip installation. Simulation permits only that exact CA upgrade/configuration;
+the matching transaction refuses removals/new/unrelated packages, then verifies
+installed state and non-target package parity. Existing sources/keys/proxies
+remain; ambient `APT_CONFIG` is cleared and signature/TLS checks stay enabled.
+Locks/network failures are bounded; no broad upgrade or custom root reconstruction.
+Strict admission still refuses either incident root after the package refresh,
+before curl/manager/SDK execution. Package/update/admission failures stop the job. It clears
 ambient Rustup/compiler dispatch overrides and fixes the CA/TLS settings for
 later Bash steps. It is not a local developer or production-host updater.
 All three CI uv installations use 0.13.4. Supply-chain approval remains the

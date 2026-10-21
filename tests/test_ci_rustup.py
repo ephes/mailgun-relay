@@ -20,6 +20,12 @@ bootstrap = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(bootstrap)
 
 
+@pytest.fixture(autouse=True)
+def package_refresh_fixture(monkeypatch: pytest.MonkeyPatch) -> None:
+    """These original stage tests isolate APT; APT caller tests live separately."""
+    monkeypatch.setattr(bootstrap, "refresh_runner_ca", lambda env: None)
+
+
 @pytest.fixture
 def hosted(tmp_path: Path) -> dict[str, str]:
     home = tmp_path / "home"
