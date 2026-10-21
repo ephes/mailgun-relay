@@ -1,0 +1,5 @@
+# Preserve the shared, independently reviewed bootstrap's Python 3.10/88-column
+# formatting byte for byte across repositories.
+extend = "../ruff.toml"
+target-version = "py310"
+line-length = 88

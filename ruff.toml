@@ -1,6 +1,6 @@
 target-version = "py314"
 # The parity harness also runs with a host's bare python3 (PLAN.md 10.1).
-per-file-target-version = { "rust/parity/*.py" = "py312" }
+per-file-target-version = { "rust/parity/*.py" = "py312", "scripts/ci_rustup.py" = "py310" }
 line-length = 100
 src = ["src", "tests"]
 
@@ -22,6 +22,11 @@ ignore = [
 
 [lint.per-file-ignores]
 "tests/**" = ["S105", "S106"]
+
+# Reused hosted-runner bootstrap: constant curl/Bash argv and SHA-verified vendor
+# bytes; long Bash case patterns/string literals remain intact for readability.
+"scripts/ci_rustup.py" = ["E501", "S603"]
+"tests/test_ci_rustup.py" = ["S105", "S106", "E501", "S603"]
 
 [format]
 quote-style = "double"

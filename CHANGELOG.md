@@ -6,6 +6,14 @@ All notable changes to mailgun-relay are documented here.
 
 ### Security
 
+- Update the Rust SMTP certificate verifier `rustls-webpki` from 0.103.15 to
+  0.103.16 for [RUSTSEC-2026-0382](https://rustsec.org/advisories/RUSTSEC-2026-0382.html).
+  This rejects compromised emSign intermediate keys even when configured trust
+  anchors permit a path. The Rust relay uses native/configured roots, not a
+  bundled Mozilla store; the dependency change does not prove live exposure.
+- Use uv 0.13.4 in all CI jobs and establish the hosted Rust runner's patched
+  trust/Rustup baseline before any toolchain download.
+
 - Update the locked certifi CA bundle of the Python implementation to
   2026.10.19 for the eMudhra/emSign CA compromise
   ([GHSA-6q48-6c7w-9gw2](https://github.com/certifi/python-certifi/security/advisories/GHSA-6q48-6c7w-9gw2)). Lock-only change; it applies when the

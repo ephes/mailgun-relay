@@ -32,6 +32,22 @@ fulfilled and were accepted by the owner on 2026-10-19; S10 is complete
 (PLAN.md 10.6). The owner
 replaced the original seven-day acceptance wait on 2026-10-18.
 
+## TLS dependency security
+
+The SMTP transport uses lettre's Rustls backend with native roots plus any
+`SMTP_CA_FILE` certificates. It does not use `webpki-roots` or
+`webpki-root-certs`. Its verifier must resolve to `rustls-webpki` 0.103.16 or
+newer in the supported 0.103 line: [RUSTSEC-2026-0382](https://rustsec.org/advisories/RUSTSEC-2026-0382.html)
+adds explicit rejection of compromised emSign intermediate public keys.
+Affected older verifiers can accept such paths when the configured anchors
+allow them. Updating the verifier complements system/custom CA remediation;
+it is not evidence that the currently deployed relay accepts those paths.
+
+The incident patch changes only this transitive package's lock version and
+checksum. Existing release 0.2.1 remains unchanged until a separately approved
+new binary release and controller pin are deployed. Keep the previous Rust
+release and Python fallback available through the existing rollout procedure.
+
 ## Build and check
 
 The toolchain is pinned in `rust-toolchain.toml`; `rustup` installs it on the
@@ -44,6 +60,15 @@ cargo test --locked
 cargo deny --locked check          # cargo-deny 0.20.2, policy in deny.toml
 cargo build --release --locked     # target/release/mailgun-relay
 ```
+
+CI bootstraps Rustup 1.29.2 using the SHA-pinned official updater over verified
+OS trust before any SDK download in the Rust, parity and release jobs. The
+bootstrap is restricted to disposable GitHub-hosted Linux x86_64 runners and
+refuses an OS CA bundle that still includes either incident root. It clears
+ambient Rustup/compiler dispatch overrides and fixes the CA/TLS settings for
+later Bash steps. It is not a local developer or production-host updater.
+All three CI uv installations use 0.13.4. Supply-chain approval remains the
+separate `cargo deny --locked check` CI gate; the release job does not replace it.
 
 CI runs the same steps in the `rust` job of `.github/workflows/ci.yml` (with a
 pinned, sha256-checked cargo-deny) and reports the release binary size. The
