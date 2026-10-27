@@ -36,10 +36,23 @@ continues; no review scheduler is configured. See
 S10 state and follow-up checks, and [`rust/README.md`](rust/README.md) for
 Rust build and release instructions.
 
-The `mailgun_relay_deploy` role in ops-library selects the implementation;
-ops-control owns inventory, the deployment playbook and the operator runbook
-`docs/MAILGUN_RELAY_RUST.md`. Existing Django projects keep their Anymail
-Mailgun backend and scoped relay tokens.
+Ordinary deployment starts in `ops-control` with
+`just deploy-one mailgun_relay` (`mailgun-relay` is an alias). Its service
+metadata selects the deployment engine, and host inventory selects the
+implementation and Rust release/checksum. The pyinfra implementation lives in
+`ops_deploy.services.mailgun_relay`; the original ops-library roles and Ansible
+playbook remain available explicitly. The operator runbook is
+`ops-control/docs/MAILGUN_RELAY_RUST.md`.
+
+When pyinfra is selected, the existing macmini installation uses
+`python_deploy="preserve"`: its Python source, interpreter, venv, dependencies
+and trust configuration stay in place, including beyond the minimum retention
+deadline above until explicit retirement. There is no automatic removal or
+source/runtime refresh. A Python implementation rollback uses that retained
+installation even when the pinned Rust candidate is unavailable. Explicit
+fresh-host Python installation/update remains a controller choice; directly
+invoking the retained Ansible play keeps its original source/uv behavior.
+Existing Django projects keep their Anymail backend and scoped relay tokens.
 
 See [`CHANGELOG.md`](./CHANGELOG.md) for changes and the earlier per-app
 migration and rollback evidence.
@@ -126,7 +139,7 @@ Out of scope:
 
 - `POST /v3/{domain}/messages.mime` (raw MIME submission) — verified unused by current Anymail callers.
 - Mailgun domains API, events API, webhooks, tracking, templates, suppressions, inbound routing, analytics, message search, or account management.
-- Deployment roles, playbooks, secrets, DNS, TLS, or Django app settings changes in this repository. Deployment lives in `ops-library` (`mailgun_relay_deploy`, `mailgun_relay_ingress_deploy`) and `ops-control` (`playbooks/deploy-mailgun-relay.yml`).
+- Deployment implementation, inventory, secrets, DNS, TLS, or Django app settings changes in this repository. Reusable pyinfra deployment lives in `ops_deploy.services.mailgun_relay`; retained Ansible roles live in `ops-library`, and `ops-control` owns engine dispatch, inventory and secrets.
 - Adding new sender domains to the live mail stack.
 
 ## Alternatives Considered

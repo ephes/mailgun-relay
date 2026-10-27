@@ -2,8 +2,43 @@
 
 This repo defines the service contract and runtime expectations. Deployment implementation lives in the ops repositories:
 
-- `ops-library`: public deployment role logic and role documentation. The `mailgun_relay_deploy` and `mailgun_relay_ingress_deploy` roles implement the deploy.
-- `ops-control`: private playbooks, inventory, host-specific config, and SOPS secrets. `playbooks/deploy-mailgun-relay.yml` and `secrets/prod/mailgun-relay.yml` are the active artifacts.
+- `ops-deploy`: public typed pyinfra relay and ingress implementation, `ops_deploy.services.mailgun_relay`.
+- `ops-library`: retained public Ansible roles `mailgun_relay_deploy` and `mailgun_relay_ingress_deploy`, with their role documentation.
+- `ops-control`: engine dispatch, private controller adapter/playbook, inventory, host configuration and SOPS secrets. The central dispatcher chooses the engine; `secrets/prod/mailgun-relay.yml` and host inventory provide the same policy and implementation pins.
+
+## Ordinary Deployment and Python Retention
+
+Run from the selected `ops-control` workspace:
+
+```bash
+just deploy-one mailgun_relay
+# Equivalent alias: just deploy-one mailgun-relay
+```
+
+There is no application-local deploy wrapper. Use this dispatcher so the
+controller's `services-metadata.yml` selects pyinfra or the retained Ansible
+path. The host inventory remains the authority for `mailgun_relay_impl` and the
+Rust version/archive checksum; this application repository does not choose or
+upgrade the deployed implementation.
+
+The existing macmini pyinfra adapter selects `python_deploy="preserve"`. It
+retains Python source, interpreter, venv, dependencies and trust configuration
+through at least 2026-11-16 15:51:36 UTC and beyond until explicit retirement,
+with no automatic expiry or refresh. Changing inventory to Python and using
+the same dispatcher starts the preserved rollback installation independently
+of a failed Rust release. A bad shared environment/policy still needs correction
+and redeployment; changing implementations alone cannot repair it.
+
+Public pyinfra supports explicit fresh-host Python installation/update via
+`rsync` or `git`; the retained macmini adapter does not select either. The
+Ansible play remains available with its original source synchronization and uv
+dependency behavior. The role variable reference below describes that retained
+Ansible interface. The deployment and rollback steps in `rust/PLAN.md` §11
+describe that original Ansible path, including its per-deploy venv build;
+the pyinfra preservation contract above governs the retained installation
+when that engine is selected. Operator details and deployment receipts belong in
+`ops-control/docs/MAILGUN_RELAY_RUST.md`, and the typed public API is documented
+in the [ops-deploy repository](https://github.com/ephes/ops-deploy).
 
 ## Existing Mail Stack Context
 
@@ -103,7 +138,8 @@ explicit ops decision with firewall and TLS implications documented.
 
 ## `ops-control` Playbook and Secrets Shape
 
-Responsibilities (implemented in `playbooks/deploy-mailgun-relay.yml`):
+Responsibilities (the private pyinfra adapter and retained
+`playbooks/deploy-mailgun-relay.yml`):
 
 - Select target host.
 - Provide hostname and reverse proxy/TLS settings.
@@ -112,7 +148,7 @@ Responsibilities (implemented in `playbooks/deploy-mailgun-relay.yml`):
 - Deploy and verify the service using the ops workflow.
 
 SOPS-backed secret shape (matches `ops-control/secrets/prod/mailgun-relay.yml`
-and what `playbooks/deploy-mailgun-relay.yml` consumes — top-level keys, no
+and what both controller paths consume — top-level keys, no
 outer `mailgun_relay:` wrapper):
 
 ```yaml

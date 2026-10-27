@@ -4,7 +4,7 @@
 
 This repository owns the `mailgun-relay` application code and local project documentation.
 
-Deployment roles belong in `ops-library`. Inventory, playbooks, and secrets belong in `ops-control`. Do not add deployment automation, SOPS files, private credentials, or live host configuration here unless explicitly requested.
+Reusable deployment logic belongs in `ops-deploy` (pyinfra) and the retained `ops-library` Ansible roles. Inventory, controller adapters/playbooks, engine dispatch and secrets belong in `ops-control`. Do not add deployment automation, SOPS files, private credentials, or live host configuration here unless explicitly requested.
 
 ## Documentation
 
