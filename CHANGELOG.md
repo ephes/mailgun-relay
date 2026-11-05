@@ -6,6 +6,17 @@ All notable changes to mailgun-relay are documented here.
 
 ### Security
 
+- Add the threat model `docs/security.md`: open relay, authentication
+  bypass, token leakage and scope, sender spoofing, SMTP sender/login
+  binding and envelope `MAIL FROM`, header injection, SSRF, log leakage,
+  secret files, replay and volume abuse, each mapped to the code that
+  enforces it and the tests that cover it, plus a runbook for token
+  rotation, token revocation and SMTP credential rotation. Rate limiting
+  remains unenforced and is listed as an open point.
+- Add bypass tests (`rust/src/security_tests.rs`, 12 tests) for credential
+  variants, token scope, sender spoofing, header injection, the SMTP
+  envelope, remote content, log contents and replay. They found no bypass;
+  relay behaviour is unchanged.
 - Update the locked certifi CA bundle of the Python implementation to
   2026.10.19 for the eMudhra/emSign CA compromise
   ([GHSA-6q48-6c7w-9gw2](https://github.com/certifi/python-certifi/security/advisories/GHSA-6q48-6c7w-9gw2)). Lock-only change; it applies when the

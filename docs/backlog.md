@@ -170,6 +170,8 @@ Acceptance criteria:
 - Tests cover auth bypass and sender/domain bypass attempts.
 - Deployment docs describe secret rotation and token revocation.
 
+Status: done (2026-11-05). `docs/security.md` holds the threat model, maps each risk to its enforcing code and tests, and has the rotation and revocation runbook; the bypass tests are in `rust/src/security_tests.rs`. No bypass was found. Rate limiting stays with *Rate limiting and abuse controls*; the remaining open points are listed at the end of `docs/security.md`.
+
 Notes/dependencies: Review before exposing the service beyond local trusted networks.
 
 ### Delivery reliability

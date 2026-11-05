@@ -1362,3 +1362,7 @@ async fn health_answers_while_an_smtp_session_hangs() {
     assert_eq!(health.status(), 200);
     assert!(!pending.is_finished());
 }
+
+/// Bypass attempts of the threat model (`docs/security.md`).
+#[path = "security_tests.rs"]
+mod security;

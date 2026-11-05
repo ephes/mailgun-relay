@@ -213,8 +213,8 @@ Operational docs should explain:
 - How to inspect logs safely.
 - How to test SMTP connectivity from the service host.
 - How to send a controlled test message without leaking tokens.
-- How to rotate or revoke a token.
-- How to rotate SMTP submission credentials.
+- How to rotate or revoke a token (done: `docs/security.md`, runbook).
+- How to rotate SMTP submission credentials (done: `docs/security.md`, runbook).
 - How to distinguish adapter errors from backend Postfix queue or relay errors.
 - How to temporarily point a Django app back to real Mailgun.
 

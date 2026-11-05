@@ -113,6 +113,12 @@ and fixture cases generated from the fixed Python.
 | --- | --- | --- |
 | new: release gate (tag = crate version, glibc floor 2.35 and glibc/libgcc only, `--version` and `--check-config` smoke, deterministic archive with exactly `mailgun-relay` and `LICENSE`, the workflow runs every check) | `tests/test_rust_release_checks.py` (Python suite) for `rust/scripts/release_checks.py`; the real binary in `.github/workflows/rust-release.yml` | done (S7) |
 
+## Security review (no Python counterpart)
+
+| Test | Kind | Status |
+| --- | --- | --- |
+| new: bypass attempts of the threat model in `docs/security.md` (credential spellings, a second `Authorization` header, tokens outside their scope, sender spoofing with display names, comments, lookalike and confusable domains, identity and structure headers, line breaks in every header field and in upload metadata, envelope sender and recipients through the fake SMTP server, no remote fetch, no content or recipients in the records, replay) | units `pipeline::tests::security::*` (`rust/src/security_tests.rs`) | done |
+
 ## Not ported
 
 | Python test | Reason |
