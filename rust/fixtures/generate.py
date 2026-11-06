@@ -49,6 +49,7 @@ import idna
 import uvicorn.config
 import yaml
 from email_validator import EmailNotValidError, validate_email
+from pydantic import TypeAdapter
 from python_multipart.multipart import parse_options_header
 from starlette.requests import Request
 
@@ -366,11 +367,32 @@ def _rust_start(env: Env) -> tuple[dict[str, Any] | None, str | None]:
             return None, "D-7"
         if names:
             canonical.append((exact, values[names[0]]))
-    result = _python_start(canonical)
+    # Rust retains its original numeric bounds. Parse the primitive values
+    # separately so stricter Python startup bounds cannot change its oracle.
+    numeric: dict[str, int | float] = {}
+    remaining: Env = []
+    for name, value in canonical:
+        field = name.removeprefix(PREFIX).lower()
+        if field in (*INT_FIELDS, "bind_port", "smtp_port", "smtp_timeout_s"):
+            try:
+                numeric[field] = (
+                    int(value)
+                    if field == "bind_port"
+                    else TypeAdapter(float if field == "smtp_timeout_s" else int).validate_python(
+                        value
+                    )
+                )
+            except ValueError:
+                return None, None
+        else:
+            remaining.append((name, value))
+    result = _python_start(remaining)
     if result is None:
         return None, None
+    result.update(numeric)
     if (
         result["bind_host"] == ""
+        or not 0 <= result["bind_port"] <= 65535
         or not 0 <= result["smtp_port"] <= 65535
         or not 1 <= result["smtp_max_concurrency"] <= 2**32 - 1
         or not 0 <= result["smtp_timeout_s"] <= 1e9
@@ -383,7 +405,7 @@ def _rust_start(env: Env) -> tuple[dict[str, Any] | None, str | None]:
         return None, "D-10"
     if result["envelope_sender"] and rust_addr_spec(result["envelope_sender"]) is None:
         return None, "D-15"
-    return result, None
+    return result, "D-18" if _python_start(canonical) is None else None
 
 
 def _env_cases() -> list[tuple[str, Env]]:

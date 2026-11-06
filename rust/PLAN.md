@@ -380,8 +380,10 @@ the contract. Each step names its Python source.
    multi-fault case "To display name decoding to CR/LF plus an invalid Cc"
    (Python before S0-py: 400; with a valid Cc: 500) stays in the parity
    corpus to show both now give 400.
-10. **SMTP submission** (2.4), capped by `smtp_max_concurrency` (waiters
-    queue without timeout). A client disconnect does not cancel a submission
+10. **SMTP submission** (2.4). Admission is reserved after authentication,
+    before body parsing, through completion, capped by `smtp_max_concurrency`.
+    Excess requests receive 503 (`Relay busy; retry later`) immediately without
+    reading their bodies or attempting SMTP; no application wait queue. A client disconnect does not cancel a submission
     already started; the access record is still written.
 11. **Success**: 200 `{"id":"<message-id>","message":"Queued. Thank you."}`;
     the `Message-Id` header of the sent mail equals `id`.
@@ -470,7 +472,7 @@ network operation, not to the whole session.
 - **Allowlist** entries in the secrets are normalised with
   `normalize_address` (`policy.py:37-45`): `strip`, split at the last `@`,
   local part lowercased, domain normalised.
-- **Control characters** (`headers.py:28`): `[\x00-\x08\x0a-\x1f\x7f-\x9f  ]`;
+- **Control characters** (`headers.py:28`): `[\x00-\x08\x0a-\x1f\x7f-\x9f\u2028\u2029]`;
   TAB allowed. Applies to subject, `h:*` values, `from` and address list
   values. Lengths are counted in code points.
 
@@ -503,6 +505,13 @@ does not validate stops the process with exit status 1 and no bind.
 | `MAX_RECIPIENTS` | int | `100` | – |
 | `MAX_HEADER_VALUE_LENGTH` | int | `998` | – |
 | `LOG_LEVEL` | str | `INFO` | case-insensitive one of `CRITICAL ERROR WARNING INFO DEBUG TRACE` (the intersection uvicorn and `logging` accept; uvicorn registers `TRACE` with `logging` before the app sets its level, measured by the harness in S6); else exit 1 |
+
+Python rollback startup bounds (round 42): ports 1–65535, finite timeout
+`0 < SMTP_TIMEOUT_S <= 1e9`, positive body/recipient limits, and nonnegative
+attachment count/bytes and header length. The Rust numeric parser is unchanged:
+it still accepts zero SMTP port/timeout and signed size limits. `config_env.json`
+records these differences as D-18; the table above describes the original
+Rust-compatible baseline, not the stricter Python rollback configuration.
 
 Production sets every variable except `SMTP_CA_FILE`,
 `SMTP_MAX_CONCURRENCY` and `FAIL_ON_PARTIAL_REFUSAL`
@@ -728,7 +737,7 @@ where Python starts), never the reverse.
 | D-15 | `ENVELOPE_SENDER` is not validated; any string is sent in `MAIL FROM:<…>`; an IDN or non-ASCII value switches `smtplib` to SMTPUTF8 even for ASCII recipients (verified in the final review). | Empty → null sender (as Python). Python since S0-py: an ASCII value passes unchanged; a non-ASCII value has its domain converted to an A-label and a non-ASCII local part fails the start, so Q2's "no SMTPUTF8" also holds for `MAIL FROM`. Rust applies the same IDN/EAI rule and **additionally** requires a syntactically valid address (fail at start), the remaining divergence: a bare addr-spec by the address rules of 2.6 (no display name, angle brackets or whitespace; special-use names such as `localhost` and dotless domains refused); an ASCII value is used unchanged (no lowercasing). Production renders `mailgun-relay@xn--wersdrfer-47a.de`. `config_env.json` marks the senders Python accepts and Rust refuses `D-15` (S2b). | Decided 2026-10-15 (Q2, Q4); IDN/EAI part via S0-py; validity check S2b |
 | D-16 | A `to` or `cc` display name that decodes to CR or LF (`=?utf-8?B?YQ0KYg==?= <a@example.org>`) raises `ValueError` in the email package → **500**; the same in `h:Reply-To` is 400, in `from` 200 (measured). | **400** at the same position (step 9), like Reply-To. Same fix in Python (S0-py). | Decided 2026-10-15 (Q1); Python via S0-py |
 | D-17 | `allowed_from_addresses` entries with a non-ASCII (EAI) local part load fine (`normalize_address` only lowercases the local part), but since S0-py an EAI `from` is always 400 before the allowlist check, so such an entry can never match. Python stays unchanged. | The Rust config loader rejects such an entry and the start fails (`--check-config` reports it before any switch). Fail closed under Q4; the production policy contains no such entry today. Pinned in `config_secrets.json`. | Decided 2026-10-15 (coordinator, under Q4); implemented with the secrets loader (S1c) |
-| D-18 | pydantic accepts any integer size, any float (`inf`, `nan`, negatives) and any string; Python then fails per request or binds every interface: with `SMTP_PORT` outside 0–65535 every submission fails (`getaddrinfo` error → 503), a non-finite, negative or too large (from about 9.2e9 s) `SMTP_TIMEOUT_S` makes every submission raise `ValueError`/`OverflowError` (502), `BIND_HOST=""` binds all interfaces, huge integers are kept. | Startup failure for: empty `BIND_HOST`; `SMTP_PORT` outside 0–65535; integer settings outside 64-bit; `SMTP_TIMEOUT_S` not finite or outside 0–1e9 s; `SMTP_MAX_CONCURRENCY` above 2^32−1; a value that is not valid UTF-8. Pinned by `config_env.json`. | Q4 (fail closed), added in S1 |
+| D-18 | Python rollback now requires ports 1–65535, finite `0 < SMTP_TIMEOUT_S <= 1e9`, positive body/recipient limits, and nonnegative attachment/header limits. It still accepts arbitrary-size integers and an empty bind host. | Rust retains its original startup bounds: nonempty `BIND_HOST`, ports 0–65535, signed 64-bit size settings (including negative values), finite timeout 0–1e9 s, concurrency 1–2^32−1, valid UTF-8. `config_env.json` pins both sets of decisions. | Q4 from S1; Python bounds tightened in round 42 without changing Rust validation |
 | D-19 | A custom header name was checked with `re.match("^[A-Za-z][A-Za-z0-9-]*$")`, whose `$` also matches before a final newline: `h:X-Foo%0A` (also `h:Bcc%0A`, which then was no denylisted name) passed step 7, and the email package wrote the name as an encoded word (`=?utf-8?q?X-Foo=0A?=: …`), 200. | The name must match the pattern in full: a final newline → **400** at step 7, in both implementations (Python uses `fullmatch`). No longer a divergence; `headers.json` pins the 400 from the fixed Python. | Owner decision 2026-10-15 (Q1 rule): Python fixed after S3, behaviour change 200 → 400 |
 | D-20 | The form is parsed chunk by chunk as the body streams in, so some decisions depend on TCP segmentation: (a) a multipart body starting with CR or LF skips to the next `-` of the first chunk, so other bytes before the first boundary (`\ntext--boundary…`) are accepted when they arrive in one chunk with the boundary and refused (400) otherwise; (b) a chunked body (no `Content-Length`) over `max_body_bytes` that is also malformed answers 400 when the framing error arrives before the byte limit is crossed, else 413. | The body is buffered up to the limit and parsed whole, taking the refusing decision: (a) only CR and LF may precede the first boundary, anything else → **400**; (b) always **413**. Clients send `Content-Length` and no preamble (Anymail, recorder). | Q4 (fail closed), added in S3b; coordinator to confirm |
 | D-21 | Python's header registry decodes encoded words in every header value and re-encodes them, whatever the surrounding text; it decodes any charset Python has a codec for; `h:Orig-Date` is a date header (a parseable date is rewritten, any other value is sent as an empty header); header names have no length limit; an attachment content type that is not `token/token` (`a b/c`, `image/png/x`) is passed on raw with a header defect. | Rust refuses with **400** at step 9 (fail closed, exotic input; no client sends these): a display name, Subject, `h:*` value or inline Content-ID that needs encoding (non-ASCII, or a word too long for a line) and also holds an encoded word; in a forwarded value an encoded word whose charset is outside the ASCII-compatible set of 2.10, whose base64 needs repair, whose text holds `=?` or starts or ends with whitespace (in a display name also ASCII text with a special such as `,`), or that is longer than 75 characters without whitespace around it (or inside a quoted string); an encoded word in an address local part; an `h:In-Reply-To`/`h:References` value that is not a list of `<dot-atom@dot-atom>` ids (Python repairs `<a@b`, `<a@b>,<c@d>` and passes other forms with defects); `h:Orig-Date`; an `h:*` name longer than 76 characters (lettre's limit). A broken attachment content type (not two RFC 7230 tokens of at most 127 characters) becomes `application/octet-stream` (RFC-conformant, same data and filename). | Coordinator rule Q4 (fail closed), added in S4a |
@@ -768,7 +777,7 @@ client repositories (`phase1-code-clients.md` 3.3, re-checked for this plan).
 Decision: the Rust logger keeps every event name, every field name and every
 `result` value of Python (`ok`, `partial_refusal`, `auth_error`,
 `bad_request`, `policy_error`, `too_large`, `smtp_temporary`,
-`smtp_permanent`, `error`, `internal_error`), the field order and compact
+`smtp_permanent`, `error`, `internal_error`, `overloaded`), the field order and compact
 separators. `error_class` carries Rust error names (free; values are
 documented, not consumed). Only D-13 differs. Before cutover the coordinator
 asks once whether any generic journald forwarding filters on relay fields
@@ -915,7 +924,7 @@ Acceptance criteria (in addition to the green checks):
   statuses taken from the Python run of the same script, all-refused mixtures, QUIT failure after accepted DATA,
   already closed connection, TLS with an `rcgen` CA via `SMTP_CA_FILE`,
   wrong hostname → 503, no TLS with credentials → 502; `/health` answers
-  while a submission hangs; the concurrency cap queues. The S1b conditions
+  while a submission hangs; excess sends receive 503 before body parsing. The S1b conditions
   hold: the 42 scenarios of `rust/spikes/s1b/fake/run_matrix.py` (branch
   `rust/spike-s1b`) are the template and give Python's status except the
   documented D-3 and D-4 cases; positive replies are checked for the exact

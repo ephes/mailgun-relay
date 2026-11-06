@@ -153,6 +153,7 @@ table below is therefore the contract the relay implements:
 | Unsupported required feature | 400 | Avoid pretending unsupported Mailgun behavior worked. |
 | Request too large | 413 | Body, attachment, or recipient limits. |
 | Rate limited | 429 | Per-token or global. |
+| Admission capacity exhausted before body parsing | 503 | `Relay busy; retry later`; no send attempted. Retry with backoff. No application wait queue. |
 | SMTP temporary failure (4xx sender/HELO/DATA or any all-refused recipient reply), timeout/connection refused | 503 | Anymail does not retry on its own; the caller surfaces the status as `AnymailRequestsAPIError.status_code`. |
 | SMTP permanent rejection (5xx response; all recipients refused without any 4xx reply) | 502 | Same Anymail exception shape; permanent vs. temporary is informational for callers that inspect `.status_code`. |
 | Some (not all) recipients refused | 200 (default) or 502 | 200 with the normal success body plus a `recipients_refused` WARNING log; 502 only with `MAILGUN_RELAY_FAIL_ON_PARTIAL_REFUSAL=true`. See *Partial recipient refusal*. |

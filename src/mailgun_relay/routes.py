@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from typing import Any
 
 import anyio.to_thread
-from anyio import CapacityLimiter
+from anyio import CapacityLimiter, WouldBlock
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from starlette.datastructures import UploadFile
@@ -76,6 +76,7 @@ def register_routes(app: FastAPI) -> None:
     # Created lazily on first use: an anyio CapacityLimiter belongs to the
     # running event loop, which does not exist yet when the app is built.
     smtp_limiter: CapacityLimiter | None = None
+    admission_limiter: CapacityLimiter | None = None
 
     def _smtp_limiter(state: AppState) -> CapacityLimiter:
         nonlocal smtp_limiter
@@ -91,7 +92,9 @@ def register_routes(app: FastAPI) -> None:
 
     @app.post("/v3/{domain}/messages")
     async def post_messages(domain: str, request: Request) -> JSONResponse:
+        nonlocal admission_limiter
         state: AppState = app.state.app_state
+        admitted = False
         log = access_logger()
         request_id = uuid.uuid4().hex
         start = time.monotonic()
@@ -118,6 +121,17 @@ def register_routes(app: FastAPI) -> None:
             )
             token_label = policy.label
 
+            if admission_limiter is None:
+                admission_limiter = CapacityLimiter(state.settings.smtp_max_concurrency)
+            try:
+                admission_limiter.acquire_nowait()
+            except WouldBlock:
+                result = "overloaded"
+                error_class = "AdmissionLimitError"
+                status_code = 503
+                return _err_response(status_code, "Relay busy; retry later")
+            admitted = True
+
             try:
                 # Bound the multipart parser to the relay's own policy so it
                 # cannot spool far more parts/bytes than we will ever accept.
@@ -141,95 +155,99 @@ def register_routes(app: FastAPI) -> None:
                     raise PayloadTooLargeError("request exceeds multipart limits") from exc
                 raise BadRequestError(f"malformed multipart form: {type(exc).__name__}") from exc
 
-            parsed = _parse_form(form, state.settings)
-            # Cap the logged (attacker-controlled, pre-validation) value so a
-            # huge `from` cannot bloat each log line. JSON encoding already
-            # neutralizes control chars, so truncation is the only gap left.
-            from_for_log = parsed.from_address[:_FROM_LOG_MAX_LEN]
+            try:
+                parsed = _parse_form(form, state.settings)
+                # Cap the logged (attacker-controlled, pre-validation) value so a
+                # huge `from` cannot bloat each log line. JSON encoding already
+                # neutralizes control chars, so truncation is the only gap left.
+                from_for_log = parsed.from_address[:_FROM_LOG_MAX_LEN]
 
-            enforce_policy(
-                policy,
-                path_domain=domain,
-                from_address=parsed.from_address,
-            )
-
-            payload = MessageInput(
-                from_address=parsed.from_address,
-                to=parsed.to,
-                cc=parsed.cc,
-                bcc=parsed.bcc,
-                subject=validate_subject(
-                    parsed.subject,
-                    max_length=state.settings.max_header_value_length,
-                ),
-                text=parsed.text,
-                html=parsed.html,
-                amp_html=parsed.amp_html,
-                custom_headers=validate_custom_headers(
-                    parsed.custom_headers,
-                    max_value_length=state.settings.max_header_value_length,
-                ),
-                attachments=parsed.attachments,
-                inline=parsed.inline,
-                public_host=state.settings.public_host,
-            )
-
-            envelope_count = len(parsed.to) + len(parsed.cc) + len(parsed.bcc)
-            if envelope_count == 0:
-                raise BadRequestError("at least one of to/cc/bcc is required")
-            if envelope_count > state.settings.max_recipients:
-                raise PayloadTooLargeError(
-                    f"too many recipients (max {state.settings.max_recipients})"
+                enforce_policy(
+                    policy,
+                    path_domain=domain,
+                    from_address=parsed.from_address,
                 )
 
-            msg, message_id, envelope_recipients = build_message(payload)
-            recipient_count = len(envelope_recipients)
-
-            submitter = state.smtp_submit or submit
-            # The submitter is blocking smtplib I/O (up to smtp_timeout_s per
-            # SMTP step). Run it in a worker thread so a slow or unreachable
-            # backend cannot stall the event loop, /health, or other requests.
-            # The dedicated limiter caps concurrent SMTP sessions; requests
-            # beyond the cap wait for a free slot. A client disconnect does
-            # not abandon a submission already handed to the thread.
-            refused: RefusedRecipients | None = await anyio.to_thread.run_sync(
-                functools.partial(
-                    submitter,
-                    msg,
-                    envelope_sender=state.settings.envelope_sender,
-                    recipients=envelope_recipients,
-                    transport=state.transport,
-                ),
-                limiter=_smtp_limiter(state),
-            )
-
-            if refused:
-                # The server accepted the message for the other recipients;
-                # smtplib reports the refused ones only through this return
-                # value. Never let them vanish behind a plain 200.
-                refused_count = len(refused)
-                _log_partial_refusal(
-                    log,
-                    request_id=request_id,
-                    token_label=token_label,
-                    path_domain=path_domain_log,
-                    message_id=message_id,
-                    recipient_count=recipient_count,
-                    refused=refused,
+                payload = MessageInput(
+                    from_address=parsed.from_address,
+                    to=parsed.to,
+                    cc=parsed.cc,
+                    bcc=parsed.bcc,
+                    subject=validate_subject(
+                        parsed.subject,
+                        max_length=state.settings.max_header_value_length,
+                    ),
+                    text=parsed.text,
+                    html=parsed.html,
+                    amp_html=parsed.amp_html,
+                    custom_headers=validate_custom_headers(
+                        parsed.custom_headers,
+                        max_value_length=state.settings.max_header_value_length,
+                    ),
+                    attachments=parsed.attachments,
+                    inline=parsed.inline,
+                    public_host=state.settings.public_host,
                 )
-                result = "partial_refusal"
-                if state.settings.fail_on_partial_refusal:
-                    status_code = 502
-                    return _err_response(
-                        status_code,
-                        f"Upstream SMTP refused {refused_count} of {recipient_count} "
-                        "recipients; the message was sent to the others",
+
+                envelope_count = len(parsed.to) + len(parsed.cc) + len(parsed.bcc)
+                if envelope_count == 0:
+                    raise BadRequestError("at least one of to/cc/bcc is required")
+                if envelope_count > state.settings.max_recipients:
+                    raise PayloadTooLargeError(
+                        f"too many recipients (max {state.settings.max_recipients})"
                     )
 
-            return JSONResponse(
-                {"id": message_id, "message": "Queued. Thank you."},
-                status_code=200,
-            )
+                msg, message_id, envelope_recipients = build_message(payload)
+                recipient_count = len(envelope_recipients)
+
+                submitter = state.smtp_submit or submit
+                # The submitter is blocking smtplib I/O (up to smtp_timeout_s per
+                # SMTP step). Run it in a worker thread so a slow or unreachable
+                # backend cannot stall the event loop, /health, or other requests.
+                # Admission already reserves capacity; this worker limiter cannot
+                # accumulate an unbounded request queue. A client disconnect does
+                # not abandon a submission already handed to the thread.
+                refused: RefusedRecipients | None = await anyio.to_thread.run_sync(
+                    functools.partial(
+                        submitter,
+                        msg,
+                        envelope_sender=state.settings.envelope_sender,
+                        recipients=envelope_recipients,
+                        transport=state.transport,
+                    ),
+                    limiter=_smtp_limiter(state),
+                )
+
+                if refused:
+                    # The server accepted the message for the other recipients;
+                    # smtplib reports the refused ones only through this return
+                    # value. Never let them vanish behind a plain 200.
+                    refused_count = len(refused)
+                    _log_partial_refusal(
+                        log,
+                        request_id=request_id,
+                        token_label=token_label,
+                        path_domain=path_domain_log,
+                        message_id=message_id,
+                        recipient_count=recipient_count,
+                        refused=refused,
+                    )
+                    result = "partial_refusal"
+                    if state.settings.fail_on_partial_refusal:
+                        status_code = 502
+                        return _err_response(
+                            status_code,
+                            f"Upstream SMTP refused {refused_count} of {recipient_count} "
+                            "recipients; the message was sent to the others",
+                        )
+
+                return JSONResponse(
+                    {"id": message_id, "message": "Queued. Thank you."},
+                    status_code=200,
+                )
+            finally:
+                with anyio.CancelScope(shield=True):
+                    await form.close()
 
         except AuthError as exc:
             error_class = type(exc).__name__
@@ -286,6 +304,9 @@ def register_routes(app: FastAPI) -> None:
             status_code = 500
             return _err_response(status_code, "Internal Server Error")
         finally:
+            if admitted:
+                assert admission_limiter is not None
+                admission_limiter.release()
             duration_ms = int((time.monotonic() - start) * 1000)
             log.info(
                 "request",

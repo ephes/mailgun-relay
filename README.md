@@ -72,7 +72,13 @@ and pull request. It needs no secrets.
 
 The service starts with `uv run python -m mailgun_relay` and reads runtime
 config from environment variables prefixed `MAILGUN_RELAY_` (see
-`src/mailgun_relay/config.py::Settings`). Token policy and SMTP credentials
+`src/mailgun_relay/config.py::Settings`). Python startup rejects ports outside 1–65535 and SMTP timeouts that are not
+finite or outside `(0, 1e9]` seconds. Body and recipient limits must be positive;
+attachment count/size and header length limits must be nonnegative. Zero
+attachments disables uploads; a zero attachment byte limit permits only empty
+files, and a zero header length permits only empty subject/header values.
+Defaults remain unchanged. Rust retains its separately documented parser bounds.
+Token policy and SMTP credentials
 load from the YAML file at `MAILGUN_RELAY_SECRETS_PATH`.
 
 ## Intended Flow

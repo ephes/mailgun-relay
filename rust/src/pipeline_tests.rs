@@ -1241,35 +1241,50 @@ async fn health_and_other_sends_stay_responsive_while_a_send_hangs() {
     );
 }
 
-/// `test_nonblocking_submit.py`: `SMTP_MAX_CONCURRENCY` queues submissions,
-/// not `/health`.
+/// Overload is rejected before reading a body or constructing MIME.
 #[tokio::test]
-async fn concurrency_cap_queues_sends_but_not_health() {
+async fn admission_rejects_before_body_but_not_health() {
     let (h, gate) = gated(Settings {
         smtp_max_concurrency: 1,
         ..settings()
     });
     let slow = post_to(&h, SLOW);
     entered(&gate).await;
-    let queued = post_to(&h, "admin@wersdoerfer.de");
-    let health = tokio::time::timeout(Duration::from_secs(5), h.health())
-        .await
-        .unwrap();
-    assert_eq!(health.status(), 200);
-    // The only SMTP slot is held: the second send waits before the submitter.
-    tokio::time::sleep(Duration::from_millis(100)).await;
-    assert!(!queued.is_finished());
+    for _ in 0..3 {
+        let body = Body::from_stream(futures_util::stream::poll_fn(
+            |_| -> std::task::Poll<Option<Result<Vec<u8>, std::io::Error>>> {
+                panic!("overloaded request body was read")
+            },
+        ));
+        let request = Request::builder()
+            .method("POST")
+            .uri("/v3/mg.wersdoerfer.de/messages")
+            .header("authorization", basic("api", HOMEPAGE_TOKEN))
+            .header("content-type", "application/x-www-form-urlencoded")
+            .body(body)
+            .unwrap();
+        let reply = tokio::time::timeout(Duration::from_secs(5), h.send(request))
+            .await
+            .unwrap();
+        assert_eq!(reply.status(), 503);
+        assert_eq!(reply.json, json!({"message": "Relay busy; retry later"}));
+    }
+    assert_eq!(h.health().await.status(), 200);
     assert_eq!(*gate.recipients.lock().unwrap(), [vec![SLOW.to_owned()]]);
     gate.release.send_replace(true);
     assert_queued(&slow.await.unwrap());
-    assert_queued(&queued.await.unwrap());
-    assert_eq!(
-        *gate.recipients.lock().unwrap(),
-        [
-            vec![SLOW.to_owned()],
-            vec!["admin@wersdoerfer.de".to_owned()]
-        ]
-    );
+    assert_queued(&post_to(&h, "admin@wersdoerfer.de").await.unwrap());
+    assert_eq!(gate.recipients.lock().unwrap().len(), 2);
+    let overloaded: Vec<_> = h
+        .records("request")
+        .into_iter()
+        .filter(|record| record["result"] == "overloaded")
+        .collect();
+    assert_eq!(overloaded.len(), 3);
+    for record in overloaded {
+        assert_eq!(record["status_code"], 503);
+        assert_eq!(record["error_class"], "AdmissionLimitError");
+    }
 }
 
 /// The route with the SMTP submitter against the fake server.
