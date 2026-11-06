@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 import pytest
@@ -316,3 +317,65 @@ def test_small_transport_boundaries_are_supported() -> None:
     )
     assert settings.smtp_timeout_s == 0.001
     assert settings.max_attachments == 0
+
+
+def test_secret_file_read_cap(tmp_path: Path) -> None:
+    path = write_secrets(tmp_path, _VALID_BODY + "#" + "x" * 1_048_576)
+    with pytest.raises(InvalidPolicyError, match="exceeds"):
+        load_secrets(path)
+
+
+def test_secret_file_special_files_and_symlinks(tmp_path: Path) -> None:
+    fifo = tmp_path / "fifo"
+    os.mkfifo(fifo, 0o600)
+    directory = tmp_path / "directory"
+    directory.mkdir(mode=0o700)
+    valid = write_secrets(tmp_path, _VALID_BODY)
+    link = tmp_path / "link"
+    link.symlink_to(valid)
+    for path in (fifo, directory, link):
+        with pytest.raises(InvalidPolicyError):
+            load_secrets(path)
+    valid.write_bytes(b"\xff")
+    with pytest.raises(InvalidPolicyError, match="UTF-8"):
+        load_secrets(valid)
+
+
+def test_secret_file_validates_and_reads_the_open_descriptor(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    path = write_secrets(tmp_path, _VALID_BODY)
+    opened = os.open
+    calls = []
+
+    def replace_after_open(name: str | Path, flags: int) -> int:
+        fd = opened(name, flags)
+        calls.append(fd)
+        path.rename(tmp_path / "original")
+        path.write_text("smtp: {password: replacement-marker}")
+        path.chmod(0o644)
+        return fd
+
+    monkeypatch.setattr(os, "open", replace_after_open)
+    assert load_secrets(path).smtp.password == "hunter2"
+    assert len(calls) == 1
+    monkeypatch.setattr(os, "open", opened)
+    with pytest.raises(InvalidPolicyError):
+        load_secrets(path)
+
+
+@pytest.mark.parametrize("reverse", [False, True])
+def test_duplicate_normalized_token_digest_refused(tmp_path: Path, reverse: bool) -> None:
+    digest = "ab" * 32
+    first = _VALID_BODY.replace("0" * 64, f'"{digest}"')
+    prefix, token = first.split("tokens:\n")
+    other = (
+        token.replace("label: t", "label: synthetic-label-marker")
+        .replace(f'"{digest}"', f'"  {digest.upper()}  "')
+        .replace("wersdoerfer.de", "example.test")
+    )
+    text = prefix + "tokens:\n" + (other + token if reverse else token + other)
+    with pytest.raises(InvalidPolicyError, match="duplicate token digest") as caught:
+        load_secrets(write_secrets(tmp_path, text))
+    assert digest not in str(caught.value).lower()
+    assert "synthetic-label-marker" not in str(caught.value)

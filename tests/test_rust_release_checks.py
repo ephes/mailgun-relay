@@ -335,3 +335,13 @@ def test_release_workflow_runs_every_check() -> None:
     ):
         assert needle in workflow, needle
     assert "actions/cache" not in workflow
+
+
+def test_smoke_secrets_load_with_distinct_credentials(checks: ModuleType, tmp_path: Path) -> None:
+    from mailgun_relay.config import load_secrets
+
+    path = tmp_path / "smoke.yml"
+    path.write_text(checks.SMOKE_SECRETS)
+    path.chmod(0o600)
+    policies = load_secrets(path).tokens
+    assert len({policy.token_sha256 for policy in policies}) == 2

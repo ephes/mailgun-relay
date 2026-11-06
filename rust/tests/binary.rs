@@ -16,9 +16,10 @@ fn secrets_file(dir: &Path, mode: u32) -> PathBuf {
     let path = dir.join("secrets.yml");
     let body = format!(
         "smtp: {{username: relay, password: hunter2}}\ntokens:\n  - label: zeta\n    \
-         token_sha256: '{SHA}'\n    mailgun_domains: [mg.example.org]\n    \
+         token_sha256: '{}'\n    mailgun_domains: [mg.example.org]\n    \
          allowed_from_domains: [example.org]\n  - label: alpha\n    token_sha256: '{SHA}'\n    \
-         mailgun_domains: [mg.example.org]\n    allowed_from_domains: [example.org]\n"
+         mailgun_domains: [mg.example.org]\n    allowed_from_domains: [example.org]\n",
+        "cd".repeat(32)
     );
     std::fs::write(&path, body).unwrap();
     std::fs::set_permissions(&path, std::fs::Permissions::from_mode(mode)).unwrap();

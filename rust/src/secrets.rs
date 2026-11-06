@@ -8,6 +8,7 @@
 
 use std::collections::BTreeSet;
 use std::fmt;
+use std::io::Read;
 use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
 
@@ -65,23 +66,50 @@ fn invalid(message: impl Into<String>) -> ConfigError {
     ConfigError(message.into())
 }
 
-/// Check the mode, then read and validate the file.
+/// Open without following a final symlink or blocking on a FIFO, then check
+/// and read only that descriptor. Parent directories remain operator-owned.
 pub fn load(path: &Path) -> Result<Secrets, ConfigError> {
-    let shown = path.display();
-    let metadata =
-        std::fs::metadata(path).map_err(|e| invalid(format!("secrets file {shown}: {e}")))?;
+    use rustix::fs::{Mode, OFlags, open};
+    let fd = open(
+        path,
+        OFlags::RDONLY | OFlags::NONBLOCK | OFlags::NOFOLLOW | OFlags::CLOEXEC,
+        Mode::empty(),
+    )
+    .map_err(|e| {
+        invalid(format!(
+            "secrets file cannot be opened (errno {})",
+            e.raw_os_error()
+        ))
+    })?;
+    let text = read_opened(std::fs::File::from(fd))?;
+    from_yaml(&text)
+}
+
+/// Generous bound for startup policy documents, shared with Python.
+const MAX_SECRET_BYTES: u64 = 1_048_576;
+
+fn read_opened(file: std::fs::File) -> Result<String, ConfigError> {
+    let metadata = file
+        .metadata()
+        .map_err(|e| invalid(format!("cannot inspect secrets file: {}", e.kind())))?;
+    if !metadata.is_file() {
+        return Err(invalid("secrets file must be a regular file"));
+    }
     let mode = metadata.permissions().mode();
     if mode & FORBIDDEN_MODE_BITS != 0 {
         return Err(invalid(format!(
-            "secrets file {shown} is world-accessible or group-writable (mode {:o}); \
-             restrict it to 0640 or stricter",
+            "secrets file is world-accessible or group-writable (mode {:o}); restrict it to 0640 or stricter",
             mode & 0o777
         )));
     }
-    let bytes = std::fs::read(path).map_err(|e| invalid(format!("secrets file {shown}: {e}")))?;
-    let text = String::from_utf8(bytes)
-        .map_err(|_| invalid(format!("secrets file {shown} is not valid UTF-8")))?;
-    from_yaml(&text)
+    let mut bytes = Vec::new();
+    file.take(MAX_SECRET_BYTES + 1)
+        .read_to_end(&mut bytes)
+        .map_err(|e| invalid(format!("cannot read secrets file: {}", e.kind())))?;
+    if bytes.len() as u64 > MAX_SECRET_BYTES {
+        return Err(invalid("secrets file exceeds 1048576 bytes"));
+    }
+    String::from_utf8(bytes).map_err(|_| invalid("secrets file is not valid UTF-8"))
 }
 
 pub fn from_yaml(text: &str) -> Result<Secrets, ConfigError> {
@@ -99,6 +127,9 @@ pub fn from_yaml(text: &str) -> Result<Secrets, ConfigError> {
         let policy = load_policy(entry, &format!("tokens[{index}]"))?;
         if tokens.iter().any(|t| t.label == policy.label) {
             return Err(invalid(format!("tokens[{index}]: duplicate token label")));
+        }
+        if tokens.iter().any(|t| t.token_sha256 == policy.token_sha256) {
+            return Err(invalid(format!("tokens[{index}]: duplicate token digest")));
         }
         tokens.push(policy);
     }
@@ -231,6 +262,78 @@ mod tests {
 
     use super::*;
 
+    fn minimal_document() -> String {
+        format!(
+            "smtp: {{username: relay, password: synthetic-password}}\ntokens:\n  - label: first\n    token_sha256: '{}'\n    mailgun_domains: [example.test]\n    allowed_from_domains: [example.test]\n",
+            "ab".repeat(32)
+        )
+    }
+
+    #[test]
+    fn secret_file_read_cap() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("input.yml");
+        std::fs::write(&path, minimal_document() + "#" + &"x".repeat(1_048_576)).unwrap();
+        std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o600)).unwrap();
+        assert!(load(&path).unwrap_err().0.contains("exceeds"));
+    }
+
+    #[test]
+    fn secret_special_files_symlinks_and_descriptor_identity() {
+        let dir = tempfile::tempdir().unwrap();
+        let fifo = dir.path().join("fifo");
+        assert!(
+            std::process::Command::new("python3")
+                .args(["-c", "import os,sys; os.mkfifo(sys.argv[1], 0o600)"])
+                .arg(&fifo)
+                .status()
+                .unwrap()
+                .success()
+        );
+        let path = dir.path().join("input.yml");
+        std::fs::write(&path, minimal_document()).unwrap();
+        std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o640)).unwrap();
+        let link = dir.path().join("link");
+        std::os::unix::fs::symlink(&path, &link).unwrap();
+        for special in [&fifo, dir.path(), &link] {
+            assert!(load(special).is_err());
+        }
+        let original = std::fs::File::open(&path).unwrap();
+        std::fs::rename(&path, dir.path().join("original")).unwrap();
+        std::fs::write(&path, "replacement-marker").unwrap();
+        std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o644)).unwrap();
+        assert_eq!(read_opened(original).unwrap(), minimal_document());
+        assert!(load(&path).is_err());
+        std::fs::write(&path, [0xff]).unwrap();
+        std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o600)).unwrap();
+        assert!(load(&path).unwrap_err().0.contains("UTF-8"));
+    }
+
+    #[test]
+    fn duplicate_normalized_token_digest_refused() {
+        let doc = minimal_document();
+        let (prefix, token) = doc.split_once("tokens:\n").unwrap();
+        let other = token
+            .replace("label: first", "label: synthetic-label-marker")
+            .replace(&"ab".repeat(32), &format!("  {}  ", "AB".repeat(32)))
+            .replace("example.test", "other.test");
+        for entries in [format!("{token}{other}"), format!("{other}{token}")] {
+            let error = from_yaml(&format!("{prefix}tokens:\n{entries}"))
+                .unwrap_err()
+                .0;
+            assert!(error.contains("duplicate token digest"));
+            assert!(!error.to_lowercase().contains(&"ab".repeat(32)));
+            assert!(!error.contains("synthetic-label-marker"));
+        }
+        assert!(
+            from_yaml(&format!(
+                "{doc}{}",
+                other.replace(&"AB".repeat(32), &"cd".repeat(32))
+            ))
+            .is_ok()
+        );
+    }
+
     fn secrets_json(secrets: &Secrets) -> Value {
         let tokens: Vec<Value> = secrets
             .tokens
@@ -260,8 +363,9 @@ mod tests {
             format!(
                 "smtp: {{username: relay, password: &pw '{pw}'}}\ntokens:\n  - label: first\n    \
                  token_sha256: &sha '{sha}'\n    mailgun_domains: [a.de]\n    \
-                 allowed_from_domains: [a.de]\n  - {{label: second, token_sha256: '{sha}', \
-                 mailgun_domains: [a.de], allowed_from_domains: [a.de], {second}}}\n"
+                 allowed_from_domains: [a.de]\n  - {{label: second, token_sha256: '{}', \
+                 mailgun_domains: [a.de], allowed_from_domains: [a.de], {second}}}\n",
+                "cd".repeat(32)
             )
         };
         let cases = [
