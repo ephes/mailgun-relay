@@ -88,7 +88,7 @@ tokens:
     allowed_from_domains:
       - "example.org"
   - label: "smoke-b"
-    token_sha256: "{SMOKE_TOKEN_SHA256}"
+    token_sha256: "{hashlib.sha256(b"release-smoke-token-b").hexdigest()}"
     mailgun_domains:
       - "mg.xn--wersdrfer-47a.de"
     allowed_from_domains:

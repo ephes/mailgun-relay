@@ -134,3 +134,18 @@ and fixture cases generated from the fixed Python.
   These are intentional Rust/Python differences, using synthetic futures only.
 - `smtp::tests::connection_budget_reserves_time_for_fallback`: a pending first
   address yields to a succeeding second address within the shared budget.
+
+## Secret descriptor and policy identity
+
+- Python `test_secret_file_read_cap`, `test_secret_file_special_files_and_symlinks`,
+  `test_secret_file_validates_and_reads_the_open_descriptor`; Rust
+  `secret_file_read_cap`, `secret_special_files_symlinks_and_descriptor_identity`:
+  synthetic FIFO/directory/symlink/oversize/UTF-8 refusal and descriptor identity.
+- `duplicate_normalized_token_digest_refused` in both runtimes: reordered,
+  differently scoped credentials cannot share a normalized digest; independent
+  digests load. Shared config fixtures pin the intentional startup refusal.
+  Low-level authentication fixtures still exercise matching in isolation;
+  duplicate digest policies cannot enter either server through the loader.
+- Binary and release smoke fixtures use independent synthetic credentials;
+  `test_smoke_secrets_load_with_distinct_credentials` checks startup schema
+  compatibility, and `release_checks.py smoke` exercises the actual binary.

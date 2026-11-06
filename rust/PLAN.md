@@ -1618,3 +1618,20 @@ Risks:
   runbook names both paths.
 - **R7 Supply chain**: `Cargo.lock`, `--locked`, `cargo deny`, pinned action
   SHAs, sha256 pinned in ops-control.
+
+## Secret-loader hardening (round 48)
+
+Both runtimes open secrets once with nonblocking and no-follow flags, validate
+that descriptor is a regular file with mode 0640 or stricter, and read at most
+1 MiB (1,048,576 bytes). Oversize/invalid UTF-8 documents fail startup with
+value-free errors. A final-component symlink is refused; operator-controlled
+parent directories may contain symlinks. Path replacement after open cannot
+substitute unchecked file bytes. This interface targets the supported POSIX
+relay environments; it performs no real secret or host access in tests.
+
+Each token digest must be unique after trimming and lowercase normalization,
+even across labels with different scopes. Use one credential per policy identity;
+rotation must use a new digest. Duplicate digests fail startup with positional, value-free diagnostics;
+this check never prints a digest. This intentionally rejects
+previously ambiguous configurations. Adoption requires a runtime update/restart;
+these source changes do not deploy anything.

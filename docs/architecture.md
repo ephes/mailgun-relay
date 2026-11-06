@@ -101,7 +101,7 @@ The backend uses a PostfixAdmin-style schema and exposes sender/login binding th
 
 ### mailgun-relay to local secret storage
 
-Deployment secrets are expected to be rendered by `ops-control` to a root/service-readable file or equivalent secret mechanism. The service host must protect token verifiers and SMTP credentials at rest with restrictive owner and mode settings. This is **enforced at load**: the service refuses to read a secrets file that is world-accessible or group-writable, requiring `0640` (the deployment's `root:mailgun-relay` layout) or stricter. Startup and validation errors must not print secret values or full decrypted secret content (the permission error names only the path and octal mode).
+Deployment secrets are expected to be rendered by `ops-control` to a root/service-readable file or equivalent secret mechanism. The service host must protect token verifiers and SMTP credentials at rest with restrictive owner and mode settings. This is **enforced at load**: the service refuses to read a secrets file that is world-accessible or group-writable, requiring `0640` (the deployment's `root:mailgun-relay` layout) or stricter. Startup and validation errors must not print secret values or full decrypted secret content (descriptor errors contain only fixed context and OS error codes/kinds).
 
 ### mailgun-relay logs and monitoring
 

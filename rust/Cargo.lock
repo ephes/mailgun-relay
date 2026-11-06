@@ -728,6 +728,7 @@ dependencies = [
  "mail-parser",
  "rcgen",
  "regex",
+ "rustix",
  "rustls-pki-types",
  "serde",
  "serde_json",

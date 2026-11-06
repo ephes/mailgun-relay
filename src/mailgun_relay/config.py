@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import re
+import stat
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -195,29 +196,40 @@ def _load_smtp(raw: object) -> SmtpCredentials:
 _FORBIDDEN_SECRET_MODE_BITS = 0o037
 
 
-def _check_secret_file_permissions(path: Path) -> None:
-    """Refuse to load a secrets file that is world-accessible or group-writable.
+# One MiB, matching Rust; reject a final symlink, allow operator-owned parents.
+MAX_SECRET_BYTES = 1_048_576
 
-    The file holds the SMTP password and token hashes; an over-permissive mode
-    (e.g. ``0644`` or ``0660``) would expose or allow tampering with them. We
-    require ``0640`` or stricter (``0600``/``0400`` also fine). POSIX only; the
-    mode bits are not meaningful elsewhere. The error names only the path and
-    mode — never the secret content.
-    """
-    if os.name != "posix":
-        return
-    mode = path.stat().st_mode
-    if mode & _FORBIDDEN_SECRET_MODE_BITS:
-        raise InvalidPolicyError(
-            f"secrets file {str(path)!r} is world-accessible or group-writable "
-            f"(mode {oct(mode & 0o777)}); restrict it to 0640 or stricter"
-        )
+
+def _read_secret_file(path: Path) -> str:
+    flags = os.O_RDONLY | os.O_NONBLOCK | os.O_NOFOLLOW | os.O_CLOEXEC
+    try:
+        fd = os.open(path, flags)
+    except OSError as exc:
+        raise InvalidPolicyError(f"secrets file cannot be opened (errno {exc.errno})") from None
+    try:
+        metadata = os.fstat(fd)
+        if not stat.S_ISREG(metadata.st_mode):
+            raise InvalidPolicyError("secrets file must be a regular file")
+        if metadata.st_mode & _FORBIDDEN_SECRET_MODE_BITS:
+            raise InvalidPolicyError(
+                "secrets file is world-accessible or group-writable; restrict to 0640 or stricter"
+            )
+        with os.fdopen(fd, "rb", closefd=False) as stream:
+            data = stream.read(MAX_SECRET_BYTES + 1)
+    except OSError as exc:
+        raise InvalidPolicyError(f"cannot read secrets file (errno {exc.errno})") from None
+    finally:
+        os.close(fd)
+    if len(data) > MAX_SECRET_BYTES:
+        raise InvalidPolicyError("secrets file exceeds 1048576 bytes")
+    try:
+        return data.decode("utf-8")
+    except UnicodeDecodeError:
+        raise InvalidPolicyError("secrets file is not valid UTF-8") from None
 
 
 def load_secrets(path: str | Path) -> Secrets:
-    resolved = Path(path)
-    _check_secret_file_permissions(resolved)
-    data_text = resolved.read_text(encoding="utf-8")
+    data_text = _read_secret_file(Path(path))
     try:
         data = yaml.safe_load(data_text)
     except yaml.YAMLError as exc:
@@ -233,10 +245,14 @@ def load_secrets(path: str | Path) -> Secrets:
 
     tokens: list[TokenPolicy] = []
     seen_labels: set[str] = set()
-    for entry in tokens_raw:
+    seen_digests: set[str] = set()
+    for index, entry in enumerate(tokens_raw):
         policy = _load_policy_entry(entry)
         if policy.label in seen_labels:
             raise InvalidPolicyError(f"duplicate token label: {policy.label}")
+        if policy.token_sha256 in seen_digests:
+            raise InvalidPolicyError(f"tokens[{index}]: duplicate token digest")
+        seen_digests.add(policy.token_sha256)
         seen_labels.add(policy.label)
         tokens.append(policy)
 

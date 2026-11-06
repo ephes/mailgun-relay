@@ -21,6 +21,12 @@ All notable changes to mailgun-relay are documented here.
 
 ### Security
 
+- Validate secret permissions and regular-file type on the descriptor being
+  read in both runtimes; refuse final symlinks and special files without
+  blocking, and cap startup reads at 1 MiB.
+- Refuse duplicate normalized token digests across policy labels in both
+  runtimes, preventing policy changes from token-list reordering.
+
 - Gate Python CI on a frozen runtime/dev dependency export audited with pinned
   pip-audit 2.9.0, separately from Rust's cargo-deny checks. Document the local
   command and audit scope; export and auditor errors fail the gate.

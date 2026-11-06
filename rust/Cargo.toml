@@ -9,6 +9,7 @@ description = "Mailgun send API adapter for Anymail, submitting over SMTP (Rust 
 publish = false
 
 [dependencies]
+rustix = { version = "1", features = ["fs"] }
 axum = { version = "0.8", default-features = false, features = ["http1", "tokio"] }
 base64 = { version = "0.22", default-features = false, features = ["std"] }
 email-encoding = "0.4"

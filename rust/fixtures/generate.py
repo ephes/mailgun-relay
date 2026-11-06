@@ -575,7 +575,7 @@ def _secrets_cases() -> list[tuple[str, str, int, str | None]]:
             + "    mailgun_domains: [mg.wersdoerfer.de, mg.homepage.example]\n"
             + "    allowed_from_domains: [wersdoerfer.de, WERSDÖRFER.DE]\n"
             + "    allowed_from_addresses: [Info@Wersdörfer.de, noreply@wersdoerfer.de]\n"
-            + f'  - label: python-podcast\n    token_sha256: "{SHA.upper()}"\n'
+            + f'  - label: python-podcast\n    token_sha256: "{("cd" * 32).upper()}"\n'
             + "    mailgun_domains:\n      - mg.python-podcast.de\n"
             + "    allowed_from_domains:\n      - python-podcast.de\n"
             + "    allowed_from_addresses:\n",
@@ -606,6 +606,13 @@ def _secrets_cases() -> list[tuple[str, str, int, str | None]]:
         (
             "duplicate labels",
             _doc() + _doc().split("tokens:\n", 1)[1],
+            ok,
+            None,
+        ),
+        (
+            "duplicate normalized digests",
+            _doc()
+            + _doc(f"label: other\ntoken_sha256: '  {SHA.upper()}  '").split("tokens:\n", 1)[1],
             ok,
             None,
         ),
