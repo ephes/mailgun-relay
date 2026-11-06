@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 import os
+import subprocess
+import sys
+import traceback
 from pathlib import Path
 
 import pytest
@@ -379,3 +382,165 @@ def test_duplicate_normalized_token_digest_refused(tmp_path: Path, reverse: bool
         load_secrets(write_secrets(tmp_path, text))
     assert digest not in str(caught.value).lower()
     assert "synthetic-label-marker" not in str(caught.value)
+
+
+@pytest.mark.parametrize("case", ["syntax", "label", "address", "domain", "duplicate-label"])
+def test_config_errors_never_disclose_secret_values(tmp_path: Path, case: str) -> None:
+    password = "SYNTHETIC-PASSWORD-MARKER!"
+    digest = "ab" * 32
+    text = _VALID_BODY.replace("password: hunter2", f"password: &pw '{password}'").replace(
+        "0" * 64, f"&sha '{digest}'"
+    )
+    if case == "syntax":
+        text = f"smtp: {{password: {password}"
+    elif case == "label":
+        text = text.replace("username: relay@example.test", f"username: &hash '{digest}'")
+        text = text.replace("label: t", "label: *hash").replace(
+            "mailgun_domains: [wersdoerfer.de]", "mailgun_domains: false"
+        )
+    elif case == "address":
+        text += "    allowed_from_addresses: [*pw]\n"
+    elif case == "domain":
+        text = text.replace("allowed_from_domains: [wersdoerfer.de]", "allowed_from_domains: [*pw]")
+    else:
+        text = text.replace("label: t", "label: *pw")
+        text += (
+            f"  - label: *pw\n    token_sha256: '{'cd' * 32}'\n"
+            "    mailgun_domains: [example.test]\n    allowed_from_domains: [example.test]\n"
+        )
+    path = write_secrets(tmp_path, text)
+    with pytest.raises(InvalidPolicyError) as caught:
+        load_secrets(path)
+    shown = "".join(traceback.format_exception(caught.value))
+    assert password not in shown and digest not in shown
+    result = subprocess.run(
+        [sys.executable, "-c", "from mailgun_relay.app import create_app; create_app()"],
+        env={"MAILGUN_RELAY_SECRETS_PATH": str(path)},
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode != 0
+    assert "InvalidPolicyError" in result.stderr
+    assert password not in result.stdout + result.stderr
+    assert digest not in result.stdout + result.stderr
+
+
+@pytest.mark.parametrize(
+    "field", ["root", "smtp", "policy", "root-nonstring", "smtp-nonstring", "policy-nonstring"]
+)
+def test_secret_schema_rejects_unknown_or_nonstring_keys(tmp_path: Path, field: str) -> None:
+    text = _VALID_BODY
+    if field == "root":
+        text += "synthetic-secret-key: hidden\n"
+    elif field == "root-nonstring":
+        text += "12: hidden\n"
+    elif field.startswith("smtp"):
+        text = text.replace(
+            "  password: hunter2",
+            "  password: hunter2\n  "
+            + ("false" if field.endswith("nonstring") else "synthetic-secret-key")
+            + ": hidden",
+        )
+    else:
+        text += (
+            "    "
+            + ("12" if field.endswith("nonstring") else "allowed_from_address")
+            + ": hidden\n"
+        )
+    with pytest.raises(InvalidPolicyError, match="unknown or non-string field") as caught:
+        load_secrets(write_secrets(tmp_path, text))
+    assert "synthetic-secret-key" not in str(caught.value)
+
+
+@pytest.mark.parametrize("section", ["root", "smtp", "policy"])
+@pytest.mark.parametrize("reverse", [False, True])
+def test_duplicate_yaml_keys_refused(tmp_path: Path, section: str, reverse: bool) -> None:
+    marker = "SYNTHETIC-DUPLICATE-MARKER"
+    if section == "root":
+        extra = f"tokens: [{marker}]\n"
+        text = extra + _VALID_BODY if reverse else _VALID_BODY + extra
+    elif section == "smtp":
+        lines = ["  password: hunter2", f"  password: {marker}"]
+        text = _VALID_BODY.replace(
+            "  password: hunter2", "\n".join(reversed(lines) if reverse else lines)
+        )
+    else:
+        lines = [
+            "    allowed_from_domains: [wersdoerfer.de]",
+            "    allowed_from_domains: [example.test]",
+        ]
+        text = _VALID_BODY.replace(lines[0], "\n".join(reversed(lines) if reverse else lines))
+    with pytest.raises(InvalidPolicyError, match="duplicate mapping key") as caught:
+        load_secrets(write_secrets(tmp_path, text))
+    assert marker not in str(caught.value)
+
+
+def test_distinct_yaml_keys_and_aliases_still_load(tmp_path: Path) -> None:
+    text = _VALID_BODY.replace(
+        "mailgun_domains: [wersdoerfer.de]", "mailgun_domains: &domains [example.test]"
+    )
+    text = text.replace("allowed_from_domains: [wersdoerfer.de]", "allowed_from_domains: *domains")
+    assert load_secrets(write_secrets(tmp_path, text)).tokens[0].allowed_from_domains == {
+        "example.test"
+    }
+
+
+def test_yaml_alias_keys_and_merge_conflicts_are_value_free(tmp_path: Path) -> None:
+    marker = "SYNTHETIC-KEY-SECRET"
+    alias_keys = _VALID_BODY.replace(
+        "  username: relay@example.test\n  password: hunter2",
+        f"  username: &key '{marker}'\n  password: hunter2\n  *key: a\n  *key: b",
+    )
+    with pytest.raises(InvalidPolicyError, match="duplicate mapping key") as caught:
+        load_secrets(write_secrets(tmp_path, alias_keys))
+    assert marker not in str(caught.value)
+    distinct = _VALID_BODY.replace(
+        "  username: relay@example.test", "  <<: &smtp_defaults {username: relay@example.test}"
+    )
+    assert load_secrets(write_secrets(tmp_path, distinct)).smtp.password == "hunter2"
+    conflict = distinct.replace(
+        "{username: relay@example.test}", "{username: relay@example.test, password: first}"
+    )
+    with pytest.raises(InvalidPolicyError, match="duplicate mapping key"):
+        load_secrets(write_secrets(tmp_path, conflict))
+
+
+@pytest.mark.parametrize(
+    "merge",
+    [
+        "  <<: {username: relay@example.test}\n  <<: {password: hunter2}",
+        "  <<:\n    <<: {username: relay@example.test}\n    <<: {password: hunter2}",
+        "  <<: [{<<: {username: relay@example.test}, <<: {password: hunter2}}]",
+        "  <<: &base {<<: {username: relay@example.test}, <<: {password: hunter2}}",
+    ],
+)
+def test_repeated_yaml_merge_keys_refused(tmp_path: Path, merge: str) -> None:
+    text = _VALID_BODY.replace(
+        "  username: relay@example.test\n  password: hunter2",
+        merge,
+    )
+    with pytest.raises(InvalidPolicyError, match="duplicate mapping key"):
+        load_secrets(write_secrets(tmp_path, text))
+
+
+@pytest.mark.parametrize(
+    "field",
+    [
+        "allowed_from_addresses: invalid",
+        "allowed_from_addresses: [null]",
+        "allowed_from_addresses: [not-an-address]",
+    ],
+)
+def test_address_errors_use_token_and_entry_positions(tmp_path: Path, field: str) -> None:
+    expected = r"tokens\[0\]\.allowed_from_addresses"
+    if field != "allowed_from_addresses: invalid":
+        expected += r"\[0\]"
+    with pytest.raises(InvalidPolicyError, match=expected):
+        load_secrets(write_secrets(tmp_path, _VALID_BODY + f"    {field}\n"))
+
+
+def test_scalar_token_error_uses_position(tmp_path: Path) -> None:
+    text = _VALID_BODY.split("tokens:")[0] + "tokens: [invalid]\n"
+    with pytest.raises(InvalidPolicyError, match=r"tokens\[0\]: each token entry"):
+        load_secrets(write_secrets(tmp_path, text))

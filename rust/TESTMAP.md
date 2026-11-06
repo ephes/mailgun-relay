@@ -149,3 +149,27 @@ and fixture cases generated from the fixed Python.
 - Binary and release smoke fixtures use independent synthetic credentials;
   `test_smoke_secrets_load_with_distinct_credentials` checks startup schema
   compatibility, and `release_checks.py smoke` exercises the actual binary.
+
+## Fail-closed schema and YAML diagnostics
+
+- Python `test_config_errors_never_disclose_secret_values`: malformed syntax,
+  aliased labels, invalid domains/addresses, duplicate labels; exception traces
+  and real app-initialization subprocess stdout/stderr contain no invented
+  password/hash markers.
+- Python `test_secret_schema_rejects_unknown_or_nonstring_keys`, Rust
+  `schema_unknown_and_nonstring_fields_refused`: root, SMTP and token allowlists
+  reject misspellings/non-string keys with no key/value disclosure.
+- `duplicate_yaml_keys_refused` in both runtimes: root tokens, SMTP password
+  and policy scopes in either order fail before lookup; ordinary aliases load.
+  Rust parser tests cover aliased duplicate keys. Shared config fixtures record
+  these intentional startup refusals; unsupported Rust YAML features still use D-6.
+- Python `test_repeated_yaml_merge_keys_refused` pins duplicate merge markers
+  before flattening; the config fixture confirms both runtimes reject them.
+
+- `yaml_parser.json` and `yaml::tests::parser_fixtures_before_schema_validation`
+  compare direct parser acceptance before schema allowlists: merges, tags,
+  recursive/deep aliases, NEL/LS/tab and large scalar limits remain exercised.
+  Python drift tests pin the accepted digit-limit and Rust-stricter D-6 cases.
+  Alias duplicate-key tests assert the actual duplicate-key diagnostic.
+- Repeated merge-marker tests include nested, sequence and inline-anchor sources;
+  Python address/scalar-token diagnostics pin trusted token and entry positions.

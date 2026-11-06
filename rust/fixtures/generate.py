@@ -56,7 +56,7 @@ from starlette.requests import Request
 from mailgun_relay import headers as headers_module
 from mailgun_relay import routes
 from mailgun_relay.auth import AuthError, authenticate
-from mailgun_relay.config import Settings, TokenPolicy, load_secrets
+from mailgun_relay.config import Settings, TokenPolicy, _UniqueKeyLoader, load_secrets
 from mailgun_relay.errors import BadRequestError
 from mailgun_relay.headers import (
     DangerousHeaderError,
@@ -616,6 +616,55 @@ def _secrets_cases() -> list[tuple[str, str, int, str | None]]:
             ok,
             None,
         ),
+        (
+            "unknown SMTP field",
+            _doc(smtp="smtp: {username: relay, password: synthetic, passwrod: hidden}\n"),
+            ok,
+            None,
+        ),
+        (
+            "misspelled sender restriction",
+            _doc("allowed_from_address: [only@example.test]"),
+            ok,
+            None,
+        ),
+        ("non-string root field", _doc(extra="12: hidden\n"), ok, None),
+        (
+            "duplicate policy field",
+            _doc("allowed_from_domains: [a.de]\nallowed_from_domains: [b.de]"),
+            ok,
+            None,
+        ),
+        (
+            "duplicate SMTP password",
+            _doc(smtp="smtp: {username: relay, password: first, password: second}\n"),
+            ok,
+            None,
+        ),
+        (
+            "duplicate merge keys",
+            _doc(smtp="smtp:\n  <<: {username: relay}\n  <<: {password: synthetic}\n"),
+            ok,
+            None,
+        ),
+        (
+            "nested duplicate merge keys",
+            _doc(smtp="smtp:\n  <<:\n    <<: {username: relay}\n    <<: {password: synthetic}\n"),
+            ok,
+            None,
+        ),
+        (
+            "sequence nested duplicate merge keys",
+            _doc(smtp="smtp:\n  <<: [{<<: {username: relay}, <<: {password: synthetic}}]\n"),
+            ok,
+            None,
+        ),
+        (
+            "inline anchored duplicate merge keys",
+            _doc(smtp="smtp:\n  <<: &base {<<: {username: relay}, <<: {password: synthetic}}\n"),
+            ok,
+            None,
+        ),
         ("tokens empty", SMTP + "tokens: []\n", ok, None),
         ("tokens missing", SMTP, ok, None),
         ("tokens mapping", SMTP + "tokens: {label: x}\n", ok, None),
@@ -695,8 +744,13 @@ def _secrets_cases() -> list[tuple[str, str, int, str | None]]:
             ok,
             None,
         ),
-        ("unknown keys ignored", _doc("comment: x", extra="other: [1, 2]\n"), ok, None),
-        ("duplicate key last wins", _doc() + "smtp: {username: second, password: pw2}\n", ok, None),
+        ("unknown keys refused", _doc("comment: x", extra="other: [1, 2]\n"), ok, None),
+        (
+            "duplicate mapping key refused",
+            _doc() + "smtp: {username: second, password: pw2}\n",
+            ok,
+            None,
+        ),
         (
             "anchors and aliases",
             _doc("mailgun_domains: &d [a.de]\nallowed_from_domains: *d"),
@@ -806,6 +860,32 @@ def _schema_divergence(text: str) -> str | None:
     return None
 
 
+def build_yaml_parser() -> dict[str, Any]:
+    """Parser decisions independent of the startup schema allowlists."""
+    cases = []
+    for name, text, _, divergence in _secrets_cases():
+        if name == "username blank":
+            # The quoted tab is a parser difference even though both schemas
+            # reject a blank username.
+            divergence = "D-6"
+        try:
+            yaml.load(text, Loader=_UniqueKeyLoader)  # noqa: S506 - SafeLoader subclass
+            python = True
+        except Exception:  # parser/constructor refusal, without exposing values
+            python = False
+        assert divergence is None or python, f"{name}: Python parser rejects it already"
+        case: dict[str, Any] = {
+            "name": name,
+            "yaml": text,
+            "python_accepts": python,
+            "expected": python and divergence is None,
+        }
+        if divergence:
+            case["divergence"] = divergence
+        cases.append(case)
+    return {"source": "mailgun_relay.config._UniqueKeyLoader (before schema)", "cases": cases}
+
+
 def build_config_secrets() -> dict[str, Any]:
     cases = []
     for name, text, mode, parser_divergence in _secrets_cases():
@@ -816,8 +896,8 @@ def build_config_secrets() -> dict[str, Any]:
             divergence = _schema_divergence(text)
             assert divergence is None or parser_divergence is None, name
             divergence = divergence or parser_divergence
-        else:
-            assert parser_divergence is None, f"{name}: Python rejects it already"
+        # Raw parser decisions (including positive scalar-limit probes) are
+        # separately pinned by yaml_parser.json before schema validation.
         case["expected"] = None if divergence else python
         if divergence:
             case["divergence"] = divergence
@@ -3122,6 +3202,7 @@ GENERATORS: dict[str, Callable[[], Mapping[str, Any]]] = {
     "mime.json": build_mime,
     "policy.json": build_policy,
     "smtp_outcomes.json": build_smtp_outcomes,
+    "yaml_parser.json": build_yaml_parser,
 }
 
 
