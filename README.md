@@ -70,6 +70,13 @@ uv run mypy
 GitHub Actions (`.github/workflows/ci.yml`) runs the same checks on every push
 and pull request. It needs no secrets.
 
+The Python lockfile constrains email-validator's dnspython dependency to 2.9.0
+or newer for [CVE-2026-114605](https://github.com/rthalley/dnspython/security/advisories/GHSA-45c3-73f7-pv4m).
+Sender and recipient validation disable DNS deliverability checks; the affected
+DNS wire parser is not used by those paths. The floor still protects Python
+runtime consumers when their environment is refreshed. The Rust implementation
+and any already retained Python installation are unaffected by this source change.
+
 The service starts with `uv run python -m mailgun_relay` and reads runtime
 config from environment variables prefixed `MAILGUN_RELAY_` (see
 `src/mailgun_relay/config.py::Settings`). Python startup rejects ports outside 1–65535 and SMTP timeouts that are not

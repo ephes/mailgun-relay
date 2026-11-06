@@ -17,6 +17,10 @@ All notable changes to mailgun-relay are documented here.
 
 ### Security
 
+- Constrain and lock Python's transitive dnspython dependency to >=2.9.0 for
+  CVE-2026-114605. Email validation disables DNS deliverability checks; Rust is
+  unaffected. Python consumers need an environment refresh to pick up the fix.
+
 - Add the threat model `docs/security.md`: open relay, authentication
   bypass, token leakage and scope, sender spoofing, SMTP sender/login
   binding and envelope `MAIL FROM`, header injection, SSRF, log leakage,

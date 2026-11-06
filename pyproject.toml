@@ -36,6 +36,10 @@ dev = [
 requires = ["uv_build>=0.11.16,<0.12.0"]
 build-backend = "uv_build"
 
+# Security floor for email-validator's transitive DNS dependency.
+[tool.uv]
+constraint-dependencies = ["dnspython>=2.9.0"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-ra"
