@@ -124,3 +124,13 @@ and fixture cases generated from the fixed Python.
 | Python test | Reason |
 | --- | --- |
 | `test_messages_endpoint.py::test_mypy_without_arguments_checks_the_tests` | Python tooling check |
+
+## Acquisition deadlines
+
+- `pipeline::tests::body_total_deadline_releases_admission`: paused-clock stalled
+  and trickling bodies expire with 408, no SMTP, and recovered admission.
+- `smtp::tests::connection_budget_includes_resolution_and_all_attempts`: pending
+  DNS and delayed address attempts share one budget; timely connection succeeds.
+  These are intentional Rust/Python differences, using synthetic futures only.
+- `smtp::tests::connection_budget_reserves_time_for_fallback`: a pending first
+  address yields to a succeeding second address within the shared budget.

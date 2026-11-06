@@ -272,3 +272,21 @@ and its `.sha256` carry archive SHA256
 `6da71db3eb4f70c9a9d178e41220fd6afd36223531b4c25683a542dfc6e3bc7a`.
 Python source/version, SMTP/API semantics and database/configuration remain
 unchanged. Publication is not evidence of running-process protection.
+
+## Rust acquisition deadlines
+
+Rust bounds form-body acquisition to 30 seconds total after admission, including
+trickling uploads. A full 25 MiB upload needs roughly 7 Mbit/s sustained throughput. Expiry returns HTTP 408 (`BodyTimeoutError`), drops the body
+and releases the admission slot before MIME or SMTP. Overload still returns 503
+before reading the body. Python rollback has no application body deadline.
+Rust also uses one `MAILGUN_RELAY_SMTP_TIMEOUT_S` budget for DNS resolution and
+all TCP connection attempts together, sharing remaining time equally among
+remaining addresses so a stalled address permits fallback; expiry is retryable HTTP 503. Later SMTP
+socket operations retain their individual timeouts, including DATA and QUIT;
+this is not a total SMTP-session deadline. Python retains its resolver and
+per-address connect behavior. These changes require a future runtime update;
+no deployment is performed by the source changes.
+
+Tokio's system resolver may keep a blocking `getaddrinfo` call alive after its
+waiting future expires. The deadline releases request admission but cannot
+cancel that OS call; repeated resolver stalls can pressure the blocking pool.
