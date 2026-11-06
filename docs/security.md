@@ -3,7 +3,8 @@
 This document is the threat model of the Rust relay (`rust/`), the
 implementation in production. The retained Python implementation (`src/`)
 enforces the same boundary: the Rust port is pinned to it by the fixtures and
-the parity harness (`rust/TESTMAP.md`) and never accepts what Python refuses.
+the parity harness (`rust/TESTMAP.md`) for request policy. Startup numeric
+bounds differ as documented in `rust/PLAN.md` D-18.
 The bypass tests below run against the Rust relay only.
 
 It covers the risks of the backlog item *Phase 2 → Security review*. Each

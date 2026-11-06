@@ -70,8 +70,20 @@ SMTP submission is blocking `smtplib` I/O, bounded per step by
 `MAILGUN_RELAY_SMTP_TIMEOUT_S` (default 30 s). The route runs it in a worker
 thread so a slow or unreachable backend never blocks the event loop: `/health`
 and other requests keep answering while a send is in flight. At most
-`MAILGUN_RELAY_SMTP_MAX_CONCURRENCY` (default 8) submissions run at once;
-further sends wait for a free slot rather than opening more SMTP sessions.
+`MAILGUN_RELAY_SMTP_MAX_CONCURRENCY` (default 8) requests are admitted at once, from body parsing through SMTP completion.
+After authentication, excess requests receive `503` with
+`{"message":"Relay busy; retry later"}` before their bodies are read or MIME
+is built. Admission has no wait queue (zero waiting time); validation failures
+and all submission outcomes return the permit. Accepted SMTP submissions are
+not abandoned on client disconnect. This bounds retained application message
+bodies by the concurrency cap and per-request size limits in both implementations.
+Callers may retry this overload response with backoff: no SMTP send was attempted.
+Do not blindly retry a disconnected or timed-out accepted request, whose delivery
+may already have occurred.
+
+In the Python rollback implementation, every successfully parsed multipart form
+is closed after validation, MIME construction and submission, including error
+paths; all uploaded temporary files are closed even when an earlier field fails.
 
 When the backend refuses some recipients but accepts the message for the
 others, the relay still answers `200` (a retry would duplicate the message for

@@ -954,6 +954,7 @@
    "name": "int '+5'"
   },
   {
+   "divergence": "D-18",
    "env": [
     [
      "MAILGUN_RELAY_MAX_BODY_BYTES",
@@ -980,9 +981,11 @@
     "smtp_starttls": true,
     "smtp_timeout_s": 30.0
    },
-   "name": "int '-1'"
+   "name": "int '-1'",
+   "python_starts": false
   },
   {
+   "divergence": "D-18",
    "env": [
     [
      "MAILGUN_RELAY_MAX_BODY_BYTES",
@@ -1009,7 +1012,8 @@
     "smtp_starttls": true,
     "smtp_timeout_s": 30.0
    },
-   "name": "int '0'"
+   "name": "int '0'",
+   "python_starts": false
   },
   {
    "env": [
@@ -1157,6 +1161,7 @@
    "name": "int '8085.00'"
   },
   {
+   "divergence": "D-18",
    "env": [
     [
      "MAILGUN_RELAY_MAX_BODY_BYTES",
@@ -1183,7 +1188,8 @@
     "smtp_starttls": true,
     "smtp_timeout_s": 30.0
    },
-   "name": "int '-0.0'"
+   "name": "int '-0.0'",
+   "python_starts": false
   },
   {
    "env": [
@@ -1442,6 +1448,7 @@
    "name": "int '9223372036854775807'"
   },
   {
+   "divergence": "D-18",
    "env": [
     [
      "MAILGUN_RELAY_MAX_BODY_BYTES",
@@ -1468,7 +1475,8 @@
     "smtp_starttls": true,
     "smtp_timeout_s": 30.0
    },
-   "name": "int '-9223372036854775808'"
+   "name": "int '-9223372036854775808'",
+   "python_starts": false
   },
   {
    "divergence": "D-18",
@@ -1495,6 +1503,7 @@
    "python_starts": true
   },
   {
+   "divergence": "D-18",
    "env": [
     [
      "MAILGUN_RELAY_MAX_ATTACHMENTS",
@@ -1521,7 +1530,8 @@
     "smtp_starttls": true,
     "smtp_timeout_s": 30.0
    },
-   "name": "other int fields '-3'"
+   "name": "other int fields '-3'",
+   "python_starts": false
   },
   {
    "env": [
@@ -1553,6 +1563,7 @@
    "name": "other int fields '1_048_576'"
   },
   {
+   "divergence": "D-18",
    "env": [
     [
      "MAILGUN_RELAY_MAX_RECIPIENTS",
@@ -1579,7 +1590,8 @@
     "smtp_starttls": true,
     "smtp_timeout_s": 30.0
    },
-   "name": "other int fields '0'"
+   "name": "other int fields '0'",
+   "python_starts": false
   },
   {
    "env": [
@@ -1708,6 +1720,7 @@
    "name": "bind port '8085.0'"
   },
   {
+   "divergence": "D-18",
    "env": [
     [
      "MAILGUN_RELAY_BIND_PORT",
@@ -1734,7 +1747,8 @@
     "smtp_starttls": true,
     "smtp_timeout_s": 30.0
    },
-   "name": "bind port '0'"
+   "name": "bind port '0'",
+   "python_starts": false
   },
   {
    "env": [
@@ -1854,6 +1868,7 @@
    "name": "smtp port '465.0'"
   },
   {
+   "divergence": "D-18",
    "env": [
     [
      "MAILGUN_RELAY_SMTP_PORT",
@@ -1880,7 +1895,8 @@
     "smtp_starttls": true,
     "smtp_timeout_s": 30.0
    },
-   "name": "smtp port '0'"
+   "name": "smtp port '0'",
+   "python_starts": false
   },
   {
    "env": [
@@ -1912,7 +1928,6 @@
    "name": "smtp port '65535'"
   },
   {
-   "divergence": "D-18",
    "env": [
     [
      "MAILGUN_RELAY_SMTP_PORT",
@@ -1920,11 +1935,9 @@
     ]
    ],
    "expected": null,
-   "name": "smtp port '65536'",
-   "python_starts": true
+   "name": "smtp port '65536'"
   },
   {
-   "divergence": "D-18",
    "env": [
     [
      "MAILGUN_RELAY_SMTP_PORT",
@@ -1932,8 +1945,7 @@
     ]
    ],
    "expected": null,
-   "name": "smtp port '-25'",
-   "python_starts": true
+   "name": "smtp port '-25'"
   },
   {
    "env": [
@@ -2255,6 +2267,7 @@
    "name": "float '1_e1'"
   },
   {
+   "divergence": "D-18",
    "env": [
     [
      "MAILGUN_RELAY_SMTP_TIMEOUT_S",
@@ -2281,9 +2294,11 @@
     "smtp_starttls": true,
     "smtp_timeout_s": 0.0
    },
-   "name": "float '0'"
+   "name": "float '0'",
+   "python_starts": false
   },
   {
+   "divergence": "D-18",
    "env": [
     [
      "MAILGUN_RELAY_SMTP_TIMEOUT_S",
@@ -2310,9 +2325,11 @@
     "smtp_starttls": true,
     "smtp_timeout_s": -0.0
    },
-   "name": "float '-0.0'"
+   "name": "float '-0.0'",
+   "python_starts": false
   },
   {
+   "divergence": "D-18",
    "env": [
     [
      "MAILGUN_RELAY_SMTP_TIMEOUT_S",
@@ -2339,7 +2356,8 @@
     "smtp_starttls": true,
     "smtp_timeout_s": 0.0
    },
-   "name": "float '1e-400'"
+   "name": "float '1e-400'",
+   "python_starts": false
   },
   {
    "env": [
@@ -2412,7 +2430,6 @@
    "name": "float '\u0663'"
   },
   {
-   "divergence": "D-18",
    "env": [
     [
      "MAILGUN_RELAY_SMTP_TIMEOUT_S",
@@ -2420,11 +2437,9 @@
     ]
    ],
    "expected": null,
-   "name": "float 'inf'",
-   "python_starts": true
+   "name": "float 'inf'"
   },
   {
-   "divergence": "D-18",
    "env": [
     [
      "MAILGUN_RELAY_SMTP_TIMEOUT_S",
@@ -2432,11 +2447,9 @@
     ]
    ],
    "expected": null,
-   "name": "float '-inf'",
-   "python_starts": true
+   "name": "float '-inf'"
   },
   {
-   "divergence": "D-18",
    "env": [
     [
      "MAILGUN_RELAY_SMTP_TIMEOUT_S",
@@ -2444,11 +2457,9 @@
     ]
    ],
    "expected": null,
-   "name": "float 'nan'",
-   "python_starts": true
+   "name": "float 'nan'"
   },
   {
-   "divergence": "D-18",
    "env": [
     [
      "MAILGUN_RELAY_SMTP_TIMEOUT_S",
@@ -2456,11 +2467,9 @@
     ]
    ],
    "expected": null,
-   "name": "float 'Infinity'",
-   "python_starts": true
+   "name": "float 'Infinity'"
   },
   {
-   "divergence": "D-18",
    "env": [
     [
      "MAILGUN_RELAY_SMTP_TIMEOUT_S",
@@ -2468,8 +2477,7 @@
     ]
    ],
    "expected": null,
-   "name": "float '-1'",
-   "python_starts": true
+   "name": "float '-1'"
   },
   {
    "env": [
@@ -2501,7 +2509,6 @@
    "name": "float '1e9'"
   },
   {
-   "divergence": "D-18",
    "env": [
     [
      "MAILGUN_RELAY_SMTP_TIMEOUT_S",
@@ -2509,11 +2516,9 @@
     ]
    ],
    "expected": null,
-   "name": "float '1e10'",
-   "python_starts": true
+   "name": "float '1e10'"
   },
   {
-   "divergence": "D-18",
    "env": [
     [
      "MAILGUN_RELAY_SMTP_TIMEOUT_S",
@@ -2521,8 +2526,7 @@
     ]
    ],
    "expected": null,
-   "name": "float '1.7976931348623157e309'",
-   "python_starts": true
+   "name": "float '1.7976931348623157e309'"
   },
   {
    "env": [

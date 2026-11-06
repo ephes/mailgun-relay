@@ -82,8 +82,7 @@ pub struct Relay {
     pub tokens: Vec<TokenPolicy>,
     pub logger: Logger,
     pub submitter: Box<dyn Submitter>,
-    /// `SMTP_MAX_CONCURRENCY` sessions at a time; further submissions wait
-    /// without a timeout (`_smtp_limiter`).
+    /// Admission cap from body parsing through SMTP; excess sends fail immediately.
     smtp_slots: Semaphore,
     /// Every request runs in a task of its own; shutdown waits for them, so
     /// a submission whose client went away is still finished.
@@ -328,6 +327,15 @@ async fn decide(
     })?;
     record.token_label.clone_from(&policy.label);
 
+    // No application wait queue: reserve before retaining the body or MIME.
+    // RAII releases on validation failures, SMTP outcomes and unwinding.
+    let _slot = relay.smtp_slots.try_acquire().map_err(|_| Failure {
+        status: StatusCode::SERVICE_UNAVAILABLE,
+        result: "overloaded",
+        class: "AdmissionLimitError",
+        message: "Relay busy; retry later".to_owned(),
+    })?;
+
     // Step 3: the content type decides whether and how the body is read.
     let content_type = headers.get(header::CONTENT_TYPE).map(HeaderValue::as_bytes);
     let encoding = form::encoding(content_type).map_err(form_failure)?;
@@ -413,10 +421,8 @@ async fn decide(
     record.message_id = Some(message_id.clone());
     record.recipient_count = message.envelope.len();
 
-    // Step 10, behind the concurrency cap (never closed).
-    let slot = relay.smtp_slots.acquire().await;
+    // Step 10: the admission permit remains held until the outcome is known.
     let submitted = relay.submitter.submit(message).await;
-    drop(slot);
     let refused = submitted.map_err(|error| match error {
         SubmitError::Temporary => Failure {
             status: StatusCode::SERVICE_UNAVAILABLE,

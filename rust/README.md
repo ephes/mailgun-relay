@@ -19,7 +19,8 @@ system roots plus `SMTP_CA_FILE`, AUTH PLAIN or LOGIN, one `RCPT` per
 recipient (a partly refused message is delivered to the others), and the
 status mapping of PLAN.md 2.4, pinned by `fixtures/smtp_outcomes.json`
 (Python's `submit` against the same scripted server). At most
-`SMTP_MAX_CONCURRENCY` sessions run at once, further messages wait; a
+`SMTP_MAX_CONCURRENCY` requests are admitted at once, before body/MIME retention; excess requests
+receive 503 immediately without attempting SMTP (retry with backoff). A
 submission whose client went away is finished, and SIGTERM waits for it.
 S7 adds the release pipeline (see Release below). The parity harness (S6,
 below) runs both implementations as processes against the same requests.

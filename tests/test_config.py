@@ -269,3 +269,50 @@ def test_envelope_sender_from_env_fails_startup(monkeypatch: pytest.MonkeyPatch)
     monkeypatch.setenv("MAILGUN_RELAY_ENVELOPE_SENDER", "jörg@example.test")
     with pytest.raises(ValueError, match="envelope_sender"):
         Settings()
+
+
+@pytest.mark.parametrize(
+    "field,value",
+    [
+        ("smtp_timeout_s", value)
+        for value in [float("nan"), float("inf"), float("-inf"), 0, -1, 1e10]
+    ]
+    + [(field, value) for field in ["smtp_port", "bind_port"] for value in [-1, 0, 65536]]
+    + [
+        (field, -1)
+        for field in [
+            "max_body_bytes",
+            "max_attachments",
+            "max_attachment_bytes",
+            "max_recipients",
+            "max_header_value_length",
+        ]
+    ],
+)
+def test_invalid_transport_settings_fail_before_app_start(
+    monkeypatch: pytest.MonkeyPatch, field: str, value: float
+) -> None:
+    from mailgun_relay.app import create_app
+
+    monkeypatch.setenv(f"MAILGUN_RELAY_{field.upper()}", str(value))
+    monkeypatch.setattr(
+        "mailgun_relay.app._app_state_from_settings",
+        lambda *_: pytest.fail("invalid settings reached secret/transport initialization"),
+    )
+    with pytest.raises(ValueError, match=field):
+        create_app()
+
+
+def test_small_transport_boundaries_are_supported() -> None:
+    settings = Settings(
+        bind_port=1,
+        smtp_port=65535,
+        smtp_timeout_s=0.001,
+        max_body_bytes=1,
+        max_attachments=0,
+        max_attachment_bytes=0,
+        max_recipients=1,
+        max_header_value_length=0,
+    )
+    assert settings.smtp_timeout_s == 0.001
+    assert settings.max_attachments == 0

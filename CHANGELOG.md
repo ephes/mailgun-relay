@@ -4,6 +4,17 @@ All notable changes to mailgun-relay are documented here.
 
 ## Unreleased
 
+### Fixed
+
+- Bound admitted sends in Rust and Python by `SMTP_MAX_CONCURRENCY` before
+  body parsing and MIME construction. Excess authenticated requests receive
+  503 immediately; accepted SMTP submissions still finish without abandonment.
+- Close every parsed multipart upload on all Python rollback request exits,
+  including validation errors and unexpected failures.
+- Reject invalid Python transport ports, non-finite/nonpositive or excessive
+  SMTP timeouts, and invalid body, recipient, attachment and header limits at
+  startup. Rust configuration bounds remain unchanged.
+
 ### Security
 
 - Add the threat model `docs/security.md`: open relay, authentication

@@ -10,7 +10,9 @@ from __future__ import annotations
 import asyncio
 import base64
 import dataclasses
+import logging
 import threading
+from collections.abc import AsyncIterator
 from email.message import EmailMessage
 
 import httpx
@@ -120,9 +122,13 @@ def test_health_and_other_sends_stay_responsive_while_a_send_hangs(
     assert submitter.recipients == [[_SLOW_RECIPIENT], ["admin@wersdoerfer.de"]]
 
 
-def test_concurrency_cap_queues_sends_but_not_health(
-    app_state: AppState, homepage_token: str
+def test_admission_rejects_before_body_or_mime_but_not_health(
+    app_state: AppState,
+    homepage_token: str,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
+    caplog.set_level(logging.INFO, logger="mailgun_relay.access")
     submitter = GatedSubmitter()
 
     async def scenario() -> None:
@@ -133,28 +139,54 @@ def test_concurrency_cap_queues_sends_but_not_health(
             )
             try:
                 await _wait_entered(submitter)
-                queued = asyncio.create_task(
-                    client.post(
-                        path, headers=_auth(homepage_token), data=_form("admin@wersdoerfer.de")
+
+                async def unread_body() -> AsyncIterator[bytes]:
+                    raise AssertionError("overloaded request body was read")
+                    yield b"x" * 524_288
+
+                with monkeypatch.context() as patch:
+                    patch.setattr(
+                        "mailgun_relay.routes.build_message",
+                        lambda *_: pytest.fail("overloaded request built MIME"),
                     )
-                )
+                    for _ in range(3):
+                        response = await asyncio.wait_for(
+                            client.post(
+                                path,
+                                headers={
+                                    **_auth(homepage_token),
+                                    "Content-Type": "application/x-www-form-urlencoded",
+                                },
+                                content=unread_body(),
+                            ),
+                            _TIMEOUT_S,
+                        )
+                        assert response.status_code == 503
+                        assert response.json() == {"message": "Relay busy; retry later"}
                 health = await asyncio.wait_for(client.get("/health"), _TIMEOUT_S)
                 assert health.status_code == 200
-                # The only SMTP slot is held, so the second send has not
-                # reached the submitter yet.
-                await asyncio.sleep(0.1)
-                assert not queued.done()
                 assert submitter.recipients == [[_SLOW_RECIPIENT]]
             finally:
                 submitter.release.set()
-
-            first = await asyncio.wait_for(slow, _TIMEOUT_S)
-            second = await asyncio.wait_for(queued, _TIMEOUT_S)
-            assert first.status_code == 200, first.text
-            assert second.status_code == 200, second.text
+            assert (await asyncio.wait_for(slow, _TIMEOUT_S)).status_code == 200
+            # The permit is returned after submission, allowing a retry.
+            assert (
+                await client.post(
+                    path, headers=_auth(homepage_token), data=_form("admin@wersdoerfer.de")
+                )
+            ).status_code == 200
 
     asyncio.run(scenario())
     assert submitter.recipients == [[_SLOW_RECIPIENT], ["admin@wersdoerfer.de"]]
+    overloaded = [
+        record for record in caplog.records if getattr(record, "result", None) == "overloaded"
+    ]
+    assert len(overloaded) == 3
+    assert all(
+        getattr(record, "status_code", None) == 503
+        and getattr(record, "error_class", None) == "AdmissionLimitError"
+        for record in overloaded
+    )
 
 
 @pytest.mark.parametrize(
@@ -190,3 +222,38 @@ def test_smtp_errors_from_the_worker_thread_keep_their_mapping(
 def test_smtp_max_concurrency_must_be_positive(test_settings: Settings) -> None:
     with pytest.raises(ValueError, match="smtp_max_concurrency"):
         Settings(**{**test_settings.model_dump(), "smtp_max_concurrency": 0})
+
+
+@pytest.mark.parametrize("failure", ["validation", "mime", "smtp"])
+def test_admission_is_returned_after_failures(
+    app_state: AppState, homepage_token: str, monkeypatch: pytest.MonkeyPatch, failure: str
+) -> None:
+    submitter = GatedSubmitter()
+    submitter.release.set()
+
+    async def scenario() -> None:
+        async with _client(app_state, submitter, smtp_max_concurrency=1) as client:
+            path = "/v3/mg.wersdoerfer.de/messages"
+            form = _form("recipient@example.test")
+            with monkeypatch.context() as patch:
+                if failure == "validation":
+                    form.pop("subject")
+                elif failure == "mime":
+
+                    def fail(*args: object) -> None:
+                        raise RuntimeError("synthetic MIME failure")
+
+                    patch.setattr("mailgun_relay.routes.build_message", fail)
+                else:
+                    submitter.raise_with = RuntimeError("synthetic SMTP failure")
+                    form = _form(_SLOW_RECIPIENT)
+                for _ in range(3):
+                    response = await client.post(path, headers=_auth(homepage_token), data=form)
+                    assert response.status_code == (400 if failure == "validation" else 500)
+            submitter.raise_with = None
+            response = await client.post(
+                path, headers=_auth(homepage_token), data=_form("recipient@example.test")
+            )
+            assert response.status_code == 200
+
+    asyncio.run(scenario())

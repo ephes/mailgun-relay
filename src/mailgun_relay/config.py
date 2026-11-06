@@ -48,19 +48,19 @@ class Settings(BaseSettings):
     )
 
     bind_host: str = "127.0.0.1"
-    bind_port: int = 8085
+    bind_port: int = Field(default=8085, ge=1, le=65535)
     public_host: str = "mailgun.home.xn--wersdrfer-47a.de"
     secrets_path: str = "/etc/mailgun-relay/secrets.yml"
 
     smtp_host: str = "smtp.home.xn--wersdrfer-47a.de"
-    smtp_port: int = 587
+    smtp_port: int = Field(default=587, ge=1, le=65535)
     smtp_starttls: bool = True
-    smtp_timeout_s: float = 30.0
+    smtp_timeout_s: float = Field(default=30.0, gt=0, le=1e9, allow_inf_nan=False)
     # Optional CA bundle for verifying the SMTP server certificate. Empty means
     # "use the system trust store"; certificate verification is never disabled.
     smtp_ca_file: str = ""
     # Upper bound on concurrent SMTP submissions (each runs in a worker
-    # thread); further sends queue until a slot frees up.
+    # thread), including body/MIME preparation; excess sends receive 503.
     smtp_max_concurrency: int = Field(default=8, ge=1)
     envelope_sender: str = ""
     # When the SMTP server accepts the message for some recipients but refuses
@@ -70,11 +70,11 @@ class Settings(BaseSettings):
     # failure over a partially delivered message.
     fail_on_partial_refusal: bool = False
 
-    max_body_bytes: int = 26_214_400
-    max_attachments: int = 10
-    max_attachment_bytes: int = 10_485_760
-    max_recipients: int = 100
-    max_header_value_length: int = 998
+    max_body_bytes: int = Field(default=26_214_400, ge=1)
+    max_attachments: int = Field(default=10, ge=0)
+    max_attachment_bytes: int = Field(default=10_485_760, ge=0)
+    max_recipients: int = Field(default=100, ge=1)
+    max_header_value_length: int = Field(default=998, ge=0)
 
     log_level: str = Field(default="INFO")
 
