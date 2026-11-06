@@ -304,6 +304,9 @@ struct ParsedForm {
     inline: Vec<Attachment>,
 }
 
+/// Fixed total upload budget, independent of progress and SMTP settings.
+const BODY_READ_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(30);
+
 /// Steps 2–11; `Ok` is the 200 (or the configured 502 for a partial
 /// refusal), `Err` every other decision.
 async fn decide(
@@ -341,7 +344,14 @@ async fn decide(
     let encoding = form::encoding(content_type).map_err(form_failure)?;
     let bytes = match encoding {
         form::Encoding::None => Vec::new(),
-        _ => read_body(body, settings.max_body_bytes).await?,
+        _ => tokio::time::timeout(BODY_READ_TIMEOUT, read_body(body, settings.max_body_bytes))
+            .await
+            .map_err(|_| Failure {
+                status: StatusCode::REQUEST_TIMEOUT,
+                result: "body_timeout",
+                class: "BodyTimeoutError",
+                message: "Request body deadline exceeded".to_owned(),
+            })??,
     };
     let limits = Limits {
         max_files: settings.max_attachments.saturating_add(1),

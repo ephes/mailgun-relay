@@ -605,3 +605,77 @@ async fn the_smtp_socket_sends_without_delay() {
         .unwrap();
     assert!(stream.inner.get_ref().nodelay().unwrap());
 }
+
+#[tokio::test(start_paused = true)]
+async fn connection_budget_includes_resolution_and_all_attempts() {
+    use std::cell::Cell;
+    let budget = Duration::from_secs(5);
+    let addresses = vec!["192.0.2.1:587".parse().unwrap(); 4];
+    let calls = Cell::new(0);
+    let start = tokio::time::Instant::now();
+    let result = tokio::time::timeout(
+        Duration::from_secs(6),
+        connect_with_budget(
+            budget,
+            std::future::pending::<io::Result<Vec<SocketAddr>>>(),
+            |_| {
+                calls.set(calls.get() + 1);
+                std::future::ready(Ok::<_, io::Error>(()))
+            },
+        ),
+    )
+    .await
+    .expect("resolution must share connection deadline");
+    assert_eq!(result.unwrap_err().kind(), io::ErrorKind::TimedOut);
+    assert_eq!(calls.get(), 0);
+    assert_eq!(tokio::time::Instant::now() - start, budget);
+
+    let start = tokio::time::Instant::now();
+    let result = connect_with_budget(
+        budget,
+        async {
+            tokio::time::sleep(Duration::from_secs(2)).await;
+            Ok(addresses)
+        },
+        |_| {
+            calls.set(calls.get() + 1);
+            async {
+                tokio::time::sleep(Duration::from_secs(2)).await;
+                Err::<(), _>(io::ErrorKind::ConnectionRefused.into())
+            }
+        },
+    )
+    .await;
+    assert_eq!(result.unwrap_err().kind(), io::ErrorKind::TimedOut);
+    assert!(calls.get() >= 2);
+    assert_eq!(tokio::time::Instant::now() - start, budget);
+
+    let result = connect_with_budget(
+        budget,
+        async { Ok(vec!["192.0.2.1:587".parse().unwrap()]) },
+        |_| async { Ok::<_, io::Error>(42) },
+    )
+    .await;
+    assert_eq!(result.unwrap(), 42);
+}
+
+#[tokio::test(start_paused = true)]
+async fn connection_budget_reserves_time_for_fallback() {
+    let first = "192.0.2.1:587".parse().unwrap();
+    let second = "192.0.2.2:587".parse().unwrap();
+    let start = tokio::time::Instant::now();
+    let result = connect_with_budget(
+        Duration::from_secs(6),
+        async { Ok(vec![first, second]) },
+        |address| async move {
+            if address == first {
+                std::future::pending::<()>().await;
+            }
+            Ok::<_, io::Error>(address)
+        },
+    )
+    .await
+    .unwrap();
+    assert_eq!(result, second);
+    assert_eq!(tokio::time::Instant::now() - start, Duration::from_secs(3));
+}

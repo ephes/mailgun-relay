@@ -294,3 +294,21 @@ together, because the backend binds the login to the envelope sender (T5).
   first.
 - Domain-only tokens (T3): any token without `allowed_from_addresses` may use
   every local part of its domains; consider requiring an address list.
+
+## Rust acquisition deadlines
+
+Rust bounds form-body acquisition to 30 seconds total after admission, including
+trickling uploads. A full 25 MiB upload needs roughly 7 Mbit/s sustained throughput. Expiry returns HTTP 408 (`BodyTimeoutError`), drops the body
+and releases the admission slot before MIME or SMTP. Overload still returns 503
+before reading the body. Python rollback has no application body deadline.
+Rust also uses one `MAILGUN_RELAY_SMTP_TIMEOUT_S` budget for DNS resolution and
+all TCP connection attempts together, sharing remaining time equally among
+remaining addresses so a stalled address permits fallback; expiry is retryable HTTP 503. Later SMTP
+socket operations retain their individual timeouts, including DATA and QUIT;
+this is not a total SMTP-session deadline. Python retains its resolver and
+per-address connect behavior. These changes require a future runtime update;
+no deployment is performed by the source changes.
+
+Tokio's system resolver may keep a blocking `getaddrinfo` call alive after its
+waiting future expires. The deadline releases request admission but cannot
+cancel that OS call; repeated resolver stalls can pressure the blocking pool.

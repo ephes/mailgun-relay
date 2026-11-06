@@ -6,6 +6,10 @@ All notable changes to mailgun-relay are documented here.
 
 ### Fixed
 
+- Bound Rust admitted form-body reads to 30 seconds total (408 on expiry),
+  and DNS plus all SMTP TCP attempts to one SMTP timeout (retryable 503).
+  Python rollback acquisition behavior is unchanged.
+
 - Bound admitted sends in Rust and Python by `SMTP_MAX_CONCURRENCY` before
   body parsing and MIME construction. Excess authenticated requests receive
   503 immediately; accepted SMTP submissions still finish without abandonment.

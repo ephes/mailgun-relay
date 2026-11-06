@@ -262,26 +262,19 @@ impl SmtpSubmitter {
         outcome.map_err(|failure| failure.error)
     }
 
-    /// Resolve (unbounded, as `getaddrinfo` in Python), then connect to each
-    /// address in turn with the timeout, as `socket.create_connection`.
+    /// One budget for resolution and all TCP address attempts. Socket I/O
+    /// after connection retains its separate per-operation timeout.
     async fn connect(&self, written: Arc<AtomicBool>) -> io::Result<RelayStream> {
         let config = &self.config;
-        let mut last = io::Error::new(io::ErrorKind::NotFound, "no address");
-        for address in tokio::net::lookup_host((config.host.as_str(), config.port)).await? {
-            match tokio::time::timeout(config.timeout, TcpStream::connect(address)).await {
-                Ok(Ok(tcp)) => {
-                    // lettre writes the end of DATA and rustls the end of the
-                    // handshake as separate small writes before it reads; with
-                    // Nagle each waits for the server's delayed ACK (40 ms on
-                    // Linux). Best effort: a socket without it still works.
-                    let _ = tcp.set_nodelay(true);
-                    return Ok(RelayStream::new(tcp, config.timeout, written));
-                }
-                Ok(Err(error)) => last = error,
-                Err(_) => last = io::ErrorKind::TimedOut.into(),
-            }
-        }
-        Err(last)
+        let tcp = connect_with_budget(
+            config.timeout,
+            tokio::net::lookup_host((config.host.as_str(), config.port)),
+            TcpStream::connect,
+        )
+        .await?;
+        // Avoid delayed ACK waits between the small DATA/TLS writes.
+        let _ = tcp.set_nodelay(true);
+        Ok(RelayStream::new(tcp, config.timeout, written))
     }
 
     /// Python ignores the EHLO reply (`smtp_client.py` `smtp.ehlo()`), so
@@ -437,6 +430,38 @@ impl SmtpSubmitter {
             &CleanupFailed { error_class },
         );
     }
+}
+
+/// The resolver and connector are futures so tests need no DNS or sockets.
+async fn connect_with_budget<T, A, R, C, F>(
+    budget: Duration,
+    resolve: R,
+    mut connect: C,
+) -> io::Result<T>
+where
+    A: IntoIterator<Item = SocketAddr>,
+    R: std::future::Future<Output = io::Result<A>>,
+    C: FnMut(SocketAddr) -> F,
+    F: std::future::Future<Output = io::Result<T>>,
+{
+    let deadline = tokio::time::Instant::now() + budget;
+    tokio::time::timeout_at(deadline, async {
+        let mut last = io::Error::new(io::ErrorKind::NotFound, "no address");
+        let addresses: Vec<_> = resolve.await?.into_iter().collect();
+        for (index, address) in addresses.iter().enumerate() {
+            // Reserve a share for later addresses when an earlier one hangs.
+            let left = u32::try_from(addresses.len() - index).unwrap_or(u32::MAX);
+            let share = deadline.saturating_duration_since(tokio::time::Instant::now()) / left;
+            match tokio::time::timeout(share, connect(*address)).await {
+                Ok(Ok(stream)) => return Ok(stream),
+                Ok(Err(error)) => last = error,
+                Err(_) => last = io::ErrorKind::TimedOut.into(),
+            }
+        }
+        Err(last)
+    })
+    .await
+    .map_err(|_| io::Error::from(io::ErrorKind::TimedOut))?
 }
 
 /// The TCP stream lettre talks over: read and write timeouts per socket

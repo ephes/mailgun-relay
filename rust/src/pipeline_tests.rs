@@ -1381,3 +1381,43 @@ async fn health_answers_while_an_smtp_session_hangs() {
 /// Bypass attempts of the threat model (`docs/security.md`).
 #[path = "security_tests.rs"]
 mod security;
+
+/// Both a stalled upload and a trickling upload use one total deadline.
+#[tokio::test(start_paused = true)]
+async fn body_total_deadline_releases_admission() {
+    for trickle in [false, true] {
+        let h = Harness::with(Settings {
+            smtp_max_concurrency: 1,
+            ..settings()
+        });
+        let chunks = futures_util::stream::unfold((), move |()| async move {
+            if trickle {
+                tokio::time::sleep(Duration::from_secs(1)).await;
+                Some((Ok::<_, std::io::Error>(vec![b'x']), ()))
+            } else {
+                std::future::pending().await
+            }
+        });
+        let request = Request::builder()
+            .method("POST")
+            .uri("/v3/mg.wersdoerfer.de/messages")
+            .header(header::AUTHORIZATION, basic("api", HOMEPAGE_TOKEN))
+            .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
+            .body(Body::from_stream(chunks))
+            .unwrap();
+        let start = tokio::time::Instant::now();
+        let reply = tokio::time::timeout(Duration::from_secs(31), h.send(request))
+            .await
+            .expect("body must expire within 30 seconds");
+        assert_eq!(reply.status, StatusCode::REQUEST_TIMEOUT);
+        assert_eq!(tokio::time::Instant::now() - start, Duration::from_secs(30));
+        assert!(h.recorder.calls.lock().unwrap().is_empty());
+        assert_eq!(
+            h.homepage(encode(Encoding::Urlencoded, &MINIMUM))
+                .await
+                .status,
+            StatusCode::OK
+        );
+        assert_eq!(h.recorder.calls.lock().unwrap().len(), 1);
+    }
+}

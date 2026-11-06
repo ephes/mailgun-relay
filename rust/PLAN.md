@@ -414,7 +414,9 @@ Session rules (exact): one new connection per request; STARTTLS mandatory when
 (always, given the secrets schema); no retry; QUIT and close failures never
 change the outcome (logged as `smtp_cleanup_failed`); no QUIT when the server
 already closed the connection. The timeout `SMTP_TIMEOUT_S` applies per
-network operation, not to the whole session.
+network operation, not to the whole session. Rust additionally bounds DNS and
+all TCP attempts together to that timeout, and admitted body reads to 30 seconds
+total (HTTP 408); Python retains its original acquisition behavior.
 
 ### 2.5 JSON shapes (exact)
 
@@ -779,7 +781,9 @@ Decision: the Rust logger keeps every event name, every field name and every
 `bad_request`, `policy_error`, `too_large`, `smtp_temporary`,
 `smtp_permanent`, `error`, `internal_error`, `overloaded`), the field order and compact
 separators. `error_class` carries Rust error names (free; values are
-documented, not consumed). Only D-13 differs. Before cutover the coordinator
+documented, not consumed). Rust also emits `result=body_timeout` with
+`BodyTimeoutError` and 408 for the intentional 30-second upload deadline.
+Apart from this acquisition difference, only D-13 differs. Before cutover the coordinator
 asks once whether any generic journald forwarding filters on relay fields
 (none found).
 
