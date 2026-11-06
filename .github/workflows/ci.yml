@@ -24,7 +24,7 @@ env:
 
 jobs:
   python:
-    name: Lint, typecheck and tests (Python 3.14)
+    name: Audit, lint, typecheck and tests (Python 3.14)
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -44,6 +44,8 @@ jobs:
           cache-dependency-glob: uv.lock
       - name: Sync locked dependencies
         run: uv sync
+      - name: Audit frozen Python dependencies
+        run: uv run python scripts/audit_python.py
       - name: Lint
         run: |
           uv run ruff check .

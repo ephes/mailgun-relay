@@ -60,7 +60,8 @@ migration and rollback evidence.
 ## Quickstart (Python development)
 
 ```bash
-uv sync
+uv sync --frozen
+uv run --frozen python scripts/audit_python.py
 uv run pytest -q
 uv run ruff check .
 uv run ruff format --check .
@@ -68,7 +69,23 @@ uv run mypy
 ```
 
 GitHub Actions (`.github/workflows/ci.yml`) runs the same checks on every push
-and pull request. It needs no secrets.
+and pull request. It needs no secrets. The Python audit exports the frozen
+`uv.lock` runtime and development groups, excluding the project itself, and
+runs `pip-audit==2.9.0` against those exact pins with dependency resolution and
+package installation disabled. Only the top-level auditor version is pinned;
+its isolated tool dependencies are resolved by `uvx` independently of `uv.lock`.
+Strict dependency collection, export failures, auditor failures and known
+vulnerabilities fail the check. The audit queries public PyPI advisory data
+and evaluates platform markers for the current interpreter/platform (Linux and
+Python 3.14 in CI); it does not audit separately installed tools or retained
+host environments. Rust keeps its separate `cargo deny --locked check` gate.
+
+The Python lockfile constrains email-validator's dnspython dependency to 2.9.0
+or newer for [CVE-2026-114605](https://github.com/rthalley/dnspython/security/advisories/GHSA-45c3-73f7-pv4m).
+Sender and recipient validation disable DNS deliverability checks; the affected
+DNS wire parser is not used by those paths. The floor still protects Python
+runtime consumers when their environment is refreshed. The Rust implementation
+and any already retained Python installation are unaffected by this source change.
 
 The service starts with `uv run python -m mailgun_relay` and reads runtime
 config from environment variables prefixed `MAILGUN_RELAY_` (see
