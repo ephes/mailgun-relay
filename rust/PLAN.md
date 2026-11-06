@@ -252,7 +252,9 @@ the contract. Each step names its Python source.
      must be exactly `api`.
    - `sha256(password_utf8)` as lowercase hex is compared in constant time
      against **every** configured `token_sha256`, no early exit; the **last**
-     match wins (label used for logging).
+     match wins at the low-level matcher (label used for logging); both startup
+     loaders now refuse duplicate normalized digests, so loaded policies have
+     at most one match.
 3. **Body read and form parse** (`routes.py:121-142`). The whole form is
    parsed before any field is checked.
    - Streamed bytes beyond `max_body_bytes` → 413 (`request body exceeds N
@@ -541,11 +543,14 @@ tokens:                                  # non-empty list
     allowed_from_addresses: [<non-empty string>, ...] # optional; absent/null/[] → domain rule only; normalize_address; non-ASCII local part: Rust start failure (D-17)
 ```
 
-- Top level must be a mapping; unknown keys are ignored at every level.
+- Top level must be a mapping. Root, SMTP and token entries accept only the
+  documented string keys; unknown/non-string keys fail startup. Duplicate YAML
+  mapping keys are refused before schema lookup. Ordinary anchors/aliases work;
+  Python also refuses conflicting merge keys, Rust retains D-6 merge refusal.
 - The file is refused when `mode & 0o037 != 0` (world access, group write or
   execute); `0640`, `0600`, `0400` pass (`config.py:173-196`). The check runs
   before the file is read.
-- PyYAML `safe_load` is YAML 1.1: plain scalars such as `yes`, `on`, `1_000`,
+- Python uses a duplicate-checking `SafeLoader` subclass with YAML 1.1 types: plain scalars such as `yes`, `on`, `1_000`,
   `0777`, `2026-10-15` are not strings, so in a string field they make the
   load fail. Rust uses a YAML parser that reports scalar styles and applies
   the YAML 1.1 implicit types to plain scalars, so a config Python rejects is
@@ -1635,3 +1640,31 @@ rotation must use a new digest. Duplicate digests fail startup with positional, 
 this check never prints a digest. This intentionally rejects
 previously ambiguous configurations. Adoption requires a runtime update/restart;
 these source changes do not deploy anything.
+
+## Secret schema tightening (round 49)
+
+Startup accepts only these string keys: root `smtp`, `tokens`; SMTP `username`,
+`password`; each token `label`, `token_sha256`, `mailgun_domains`,
+`allowed_from_domains`, `allowed_from_addresses`. Unknown or non-string keys
+fail startup with positional, value-free diagnostics. Optional sender addresses
+may still be omitted, null or empty (domain-only authority); a misspelling now
+fails instead of silently broadening that authority.
+
+Both YAML loaders refuse duplicate mapping keys before schema lookup, including
+root sections, SMTP passwords and policy restrictions. Anchors and ordinary
+aliases remain supported. Python also refuses conflicting keys introduced by
+YAML merges; Rust retains its existing merge-key refusal (PLAN D-6). Previously
+ignored fields and ambiguous duplicate-key documents must be corrected before
+updating/restarting either runtime.
+
+Python parser and schema errors now use fixed messages or trusted field/index
+positions, suppressing parser snippets and chained value-bearing exceptions.
+Aliases cannot turn a password/hash into an error field name. Exceptions and
+ordinary startup stdout/stderr are tested with invented secret markers; Rust
+retains the same value-free diagnostic boundary. Adoption needs a runtime
+update/restart; no deployment is part of this change.
+
+Parser-only acceptance is pinned separately by `fixtures/yaml_parser.json`,
+using Python's actual SafeLoader subclass before schema validation and Rust's
+`yaml::parse`. Schema tightening cannot turn parser parity probes into trivial
+unknown-field refusals. This retains D-6 and positive large-scalar coverage.

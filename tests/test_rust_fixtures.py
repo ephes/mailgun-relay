@@ -66,6 +66,7 @@ def _cases(generator: ModuleType, name: str) -> list[dict[str, object]]:
         # S1 acceptance (PLAN.md 6): >= 60 env sets, >= 40 YAML documents.
         ("config_env.json", 60, {"D-7", "D-10", "D-15", "D-18"}),
         ("config_secrets.json", 40, {"D-5", "D-6", "D-10", "D-17"}),
+        ("yaml_parser.json", 40, {"D-6"}),
         # S2 acceptance: >= 400 addresses, >= 100 domains (D-11).
         ("address.json", 400, {"D-10", "D-11", "D-17", "D-11,D-10"}),
         ("domain.json", 100, {"D-10"}),
@@ -147,3 +148,22 @@ def test_check_mime_flags_broken_messages(generator: ModuleType) -> None:
     broken = raw.replace(payload, b"!" + payload, 1)
     problems = check_mime.check_message(generator, broken, case)
     assert problems == ["parser defects ['InvalidBase64CharactersDefect']"], problems
+
+
+def test_yaml_parser_probes_survive_schema_tightening(generator: ModuleType) -> None:
+    cases = {case["name"]: case for case in _cases(generator, "yaml_parser.json")}
+    for name in ["decimal int at the digit limit", "long octal int in unknown key"]:
+        assert cases[name]["python_accepts"] is True
+        assert cases[name]["expected"] is True
+    for name in [
+        "merge key",
+        "int tag",
+        "recursive alias",
+        "deep nesting",
+        "nel in quoted value",
+        "line separator in quoted value",
+        "tab in quoted value",
+    ]:
+        assert cases[name]["python_accepts"] is True
+        assert cases[name]["expected"] is False
+        assert cases[name]["divergence"] == "D-6"

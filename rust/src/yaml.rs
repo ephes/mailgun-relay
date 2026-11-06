@@ -33,12 +33,11 @@ pub enum Node {
 }
 
 impl Node {
-    /// `dict.get(key)` on a mapping: the last entry wins, as in PyYAML.
+    /// Look up a string key; duplicate mapping keys are refused during parsing.
     pub fn get(&self, key: &str) -> Option<&Node> {
         match self {
             Node::Map(entries) => entries
                 .iter()
-                .rev()
                 .find(|(k, _)| k.as_deref() == Some(key))
                 .map(|(_, v)| v.as_ref()),
             _ => None,
@@ -198,6 +197,7 @@ enum Frame {
         usize,
         Vec<(Option<String>, Rc<Node>)>,
         Option<Option<String>>,
+        HashSet<String>,
     ),
 }
 
@@ -242,18 +242,18 @@ pub fn parse(text: &str) -> Result<Rc<Node>, String> {
                 stack.push(if matches!(event, Event::SequenceStart(..)) {
                     Frame::Seq(anchor, Vec::new())
                 } else {
-                    Frame::Map(anchor, Vec::new(), None)
+                    Frame::Map(anchor, Vec::new(), None, HashSet::new())
                 });
                 continue;
             }
             Event::SequenceEnd | Event::MappingEnd => match stack.pop() {
                 Some(Frame::Seq(anchor, items)) => (Rc::new(Node::Seq(items)), anchor),
-                Some(Frame::Map(anchor, entries, None)) => (Rc::new(Node::Map(entries)), anchor),
+                Some(Frame::Map(anchor, entries, None, _)) => (Rc::new(Node::Map(entries)), anchor),
                 _ => return Err("unbalanced YAML events".to_owned()),
             },
             Event::Scalar(value, style, anchor, tag) => {
                 // An empty implicit key (`{: x}`) is an error in PyYAML.
-                let is_key = matches!(stack.last(), Some(Frame::Map(_, _, None)));
+                let is_key = matches!(stack.last(), Some(Frame::Map(_, _, None, _)));
                 if is_key && value.is_empty() && style == TScalarStyle::Plain && tag.is_none() {
                     return Err(format!("empty mapping key at line {}", mark.line()));
                 }
@@ -278,11 +278,19 @@ pub fn parse(text: &str) -> Result<Rc<Node>, String> {
         match stack.last_mut() {
             None => root = Some(node),
             Some(Frame::Seq(_, items)) => items.push(node),
-            Some(Frame::Map(_, entries, pending)) => match pending.take() {
+            Some(Frame::Map(_, entries, pending, seen)) => match pending.take() {
                 Some(key) => entries.push((key, node)),
                 None => {
                     *pending = Some(match node.as_ref() {
-                        Node::Str(key) => Some(key.clone()),
+                        Node::Str(key) => {
+                            if !seen.insert(key.clone()) {
+                                return Err(format!(
+                                    "duplicate mapping key at line {}",
+                                    mark.line()
+                                ));
+                            }
+                            Some(key.clone())
+                        }
                         Node::Null | Node::Other(_) => None,
                         // PyYAML: "found unhashable key".
                         Node::Seq(_) | Node::Map(_) => {
@@ -342,8 +350,28 @@ mod tests {
     }
 
     #[test]
+    fn parser_fixtures_before_schema_validation() {
+        let fixture: serde_json::Value =
+            serde_json::from_str(include_str!("../fixtures/yaml_parser.json")).unwrap();
+        let mismatches: Vec<_> = fixture["cases"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|case| {
+                parse(case["yaml"].as_str().unwrap()).is_ok() != case["expected"].as_bool().unwrap()
+            })
+            .map(|case| case["name"].clone())
+            .collect();
+        assert!(mismatches.is_empty(), "{mismatches:?}");
+        let error = parse("a: &key synthetic-secret-key\nb: {*key : 1, synthetic-secret-key: 2}\n")
+            .unwrap_err();
+        assert!(error.contains("duplicate mapping key"));
+        assert!(!error.contains("synthetic-secret-key"));
+    }
+
+    #[test]
     fn documents() {
-        let doc = parse("a: &x [1, 'b']\nb: *x\na: !!str yes\n").unwrap();
+        let doc = parse("a: &x [1, 'b']\nb: *x\nc: !!str yes\n").unwrap();
         assert!(
             parse(&format!(
                 "a: {}\nb: 0{}\n",
@@ -352,10 +380,11 @@ mod tests {
             ))
             .is_ok()
         );
-        assert_eq!(doc.get("a"), Some(&Node::Str("yes".to_owned())));
+        assert_eq!(doc.get("c"), Some(&Node::Str("yes".to_owned())));
         assert!(matches!(doc.get("b"), Some(Node::Seq(items)) if items.len() == 2));
         assert_eq!(*parse("").unwrap(), Node::Null);
         for bad in [
+            "a: 1\na: 2\n",
             "a: 1\n---\nb: 2\n",
             "a: &x 1\nb: &x 2\n",
             "a: &x [*x]\n",

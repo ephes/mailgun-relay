@@ -208,3 +208,26 @@ rotation must use a new digest. Duplicate digests fail startup with positional, 
 this check never prints a digest. This intentionally rejects
 previously ambiguous configurations. Adoption requires a runtime update/restart;
 these source changes do not deploy anything.
+
+## Fail-closed secret schema and diagnostics
+
+Startup accepts only these string keys: root `smtp`, `tokens`; SMTP `username`,
+`password`; each token `label`, `token_sha256`, `mailgun_domains`,
+`allowed_from_domains`, `allowed_from_addresses`. Unknown or non-string keys
+fail startup with positional, value-free diagnostics. Optional sender addresses
+may still be omitted, null or empty (domain-only authority); a misspelling now
+fails instead of silently broadening that authority.
+
+Both YAML loaders refuse duplicate mapping keys before schema lookup, including
+root sections, SMTP passwords and policy restrictions. Anchors and ordinary
+aliases remain supported. Python also refuses conflicting keys introduced by
+YAML merges; Rust retains its existing merge-key refusal (PLAN D-6). Previously
+ignored fields and ambiguous duplicate-key documents must be corrected before
+updating/restarting either runtime.
+
+Python parser and schema errors now use fixed messages or trusted field/index
+positions, suppressing parser snippets and chained value-bearing exceptions.
+Aliases cannot turn a password/hash into an error field name. Exceptions and
+ordinary startup stdout/stderr are tested with invented secret markers; Rust
+retains the same value-free diagnostic boundary. Adoption needs a runtime
+update/restart; no deployment is part of this change.

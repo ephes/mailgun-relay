@@ -21,6 +21,13 @@ All notable changes to mailgun-relay are documented here.
 
 ### Security
 
+- Redact Python YAML/schema error values and parser exception chains, including
+  aliases into labels and invalid address/domain fields.
+- Refuse unknown/non-string secret fields and duplicate YAML mapping keys in
+  both runtimes, preventing misspellings or last-wins overrides from silently
+  changing policy. Ordinary anchors/aliases and omitted optional fields remain
+  supported; conflicting Python merge keys are also refused.
+
 - Validate secret permissions and regular-file type on the descriptor being
   read in both runtimes; refuse final symlinks and special files without
   blocking, and cap startup reads at 1 MiB.

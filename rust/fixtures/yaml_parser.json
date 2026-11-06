@@ -1,0 +1,856 @@
+{
+ "cases": [
+  {
+   "expected": true,
+   "name": "minimal",
+   "python_accepts": true,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - label: homepage\n    token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\n"
+  },
+  {
+   "expected": true,
+   "name": "production shape",
+   "python_accepts": true,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - label: homepage\n    token_sha256: '9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08'\n    mailgun_domains: [mg.wersdoerfer.de, mg.homepage.example]\n    allowed_from_domains: [wersdoerfer.de, WERSD\u00d6RFER.DE]\n    allowed_from_addresses: [Info@Wersd\u00f6rfer.de, noreply@wersdoerfer.de]\n  - label: python-podcast\n    token_sha256: \"CDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCD\"\n    mailgun_domains:\n      - mg.python-podcast.de\n    allowed_from_domains:\n      - python-podcast.de\n    allowed_from_addresses:\n"
+  },
+  {
+   "expected": true,
+   "name": "mode 0600",
+   "python_accepts": true,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - label: homepage\n    token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\n"
+  },
+  {
+   "expected": true,
+   "name": "mode 0400",
+   "python_accepts": true,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - label: homepage\n    token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\n"
+  },
+  {
+   "expected": true,
+   "name": "mode 0700",
+   "python_accepts": true,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - label: homepage\n    token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\n"
+  },
+  {
+   "expected": true,
+   "name": "mode 0644",
+   "python_accepts": true,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - label: homepage\n    token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\n"
+  },
+  {
+   "expected": true,
+   "name": "mode 0660",
+   "python_accepts": true,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - label: homepage\n    token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\n"
+  },
+  {
+   "expected": true,
+   "name": "mode 0650",
+   "python_accepts": true,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - label: homepage\n    token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\n"
+  },
+  {
+   "expected": true,
+   "name": "mode 0604",
+   "python_accepts": true,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - label: homepage\n    token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\n"
+  },
+  {
+   "expected": true,
+   "name": "mode 0641",
+   "python_accepts": true,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - label: homepage\n    token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\n"
+  },
+  {
+   "expected": true,
+   "name": "sha unquoted all digits",
+   "python_accepts": true,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - label: homepage\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\n    token_sha256: 0000000000000000000000000000000000000000000000000000000000000000\n"
+  },
+  {
+   "expected": true,
+   "name": "sha boolean",
+   "python_accepts": true,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - label: homepage\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\n    token_sha256: yes\n"
+  },
+  {
+   "expected": true,
+   "name": "sha unquoted hex",
+   "python_accepts": true,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - label: homepage\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\n    token_sha256: 9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\n"
+  },
+  {
+   "expected": true,
+   "name": "sha uppercase with spaces",
+   "python_accepts": true,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - label: homepage\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\n    token_sha256: \"  9F86D081884C7D659A2FEAA0C55AD015A3BF4F1B2B0B822CD15D6C15B0F00A08 \"\n"
+  },
+  {
+   "expected": true,
+   "name": "sha too short",
+   "python_accepts": true,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - label: homepage\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\n    token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a0\"\n"
+  },
+  {
+   "expected": true,
+   "name": "sha 0x prefix",
+   "python_accepts": true,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - label: homepage\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\n    token_sha256: \"0x9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a\"\n"
+  },
+  {
+   "expected": true,
+   "name": "sha placeholder",
+   "python_accepts": true,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - label: homepage\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\n    token_sha256: CHANGEME\n"
+  },
+  {
+   "expected": true,
+   "name": "sha missing",
+   "python_accepts": true,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - label: homepage\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\n"
+  },
+  {
+   "expected": true,
+   "name": "label placeholder",
+   "python_accepts": true,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\n    label: CHANGEME\n"
+  },
+  {
+   "expected": true,
+   "name": "label replace-me",
+   "python_accepts": true,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\n    label: replace-me\n"
+  },
+  {
+   "expected": true,
+   "name": "label blank",
+   "python_accepts": true,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\n    label: \"  \"\n"
+  },
+  {
+   "expected": true,
+   "name": "label missing",
+   "python_accepts": true,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\n"
+  },
+  {
+   "expected": true,
+   "name": "label int",
+   "python_accepts": true,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\n    label: 123\n"
+  },
+  {
+   "expected": true,
+   "name": "duplicate labels",
+   "python_accepts": true,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - label: homepage\n    token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\n  - label: homepage\n    token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\n"
+  },
+  {
+   "expected": true,
+   "name": "duplicate normalized digests",
+   "python_accepts": true,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - label: homepage\n    token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\n  - mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\n    label: other\n    token_sha256: '  9F86D081884C7D659A2FEAA0C55AD015A3BF4F1B2B0B822CD15D6C15B0F00A08  '\n"
+  },
+  {
+   "expected": true,
+   "name": "unknown SMTP field",
+   "python_accepts": true,
+   "yaml": "smtp: {username: relay, password: synthetic, passwrod: hidden}\ntokens:\n  - label: homepage\n    token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\n"
+  },
+  {
+   "expected": true,
+   "name": "misspelled sender restriction",
+   "python_accepts": true,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - label: homepage\n    token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\n    allowed_from_address: [only@example.test]\n"
+  },
+  {
+   "expected": true,
+   "name": "non-string root field",
+   "python_accepts": true,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - label: homepage\n    token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\n12: hidden\n"
+  },
+  {
+   "expected": false,
+   "name": "duplicate policy field",
+   "python_accepts": false,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - label: homepage\n    token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [a.de]\n    allowed_from_domains: [b.de]\n"
+  },
+  {
+   "expected": false,
+   "name": "duplicate SMTP password",
+   "python_accepts": false,
+   "yaml": "smtp: {username: relay, password: first, password: second}\ntokens:\n  - label: homepage\n    token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\n"
+  },
+  {
+   "expected": false,
+   "name": "duplicate merge keys",
+   "python_accepts": false,
+   "yaml": "smtp:\n  <<: {username: relay}\n  <<: {password: synthetic}\ntokens:\n  - label: homepage\n    token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\n"
+  },
+  {
+   "expected": false,
+   "name": "nested duplicate merge keys",
+   "python_accepts": false,
+   "yaml": "smtp:\n  <<:\n    <<: {username: relay}\n    <<: {password: synthetic}\ntokens:\n  - label: homepage\n    token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\n"
+  },
+  {
+   "expected": false,
+   "name": "sequence nested duplicate merge keys",
+   "python_accepts": false,
+   "yaml": "smtp:\n  <<: [{<<: {username: relay}, <<: {password: synthetic}}]\ntokens:\n  - label: homepage\n    token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\n"
+  },
+  {
+   "expected": false,
+   "name": "inline anchored duplicate merge keys",
+   "python_accepts": false,
+   "yaml": "smtp:\n  <<: &base {<<: {username: relay}, <<: {password: synthetic}}\ntokens:\n  - label: homepage\n    token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\n"
+  },
+  {
+   "expected": true,
+   "name": "tokens empty",
+   "python_accepts": true,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens: []\n"
+  },
+  {
+   "expected": true,
+   "name": "tokens missing",
+   "python_accepts": true,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\n"
+  },
+  {
+   "expected": true,
+   "name": "tokens mapping",
+   "python_accepts": true,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens: {label: x}\n"
+  },
+  {
+   "expected": true,
+   "name": "token entry scalar",
+   "python_accepts": true,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens: [x]\n"
+  },
+  {
+   "expected": true,
+   "name": "top level list",
+   "python_accepts": true,
+   "yaml": "- a\n- b\n"
+  },
+  {
+   "expected": true,
+   "name": "empty document",
+   "python_accepts": true,
+   "yaml": ""
+  },
+  {
+   "expected": true,
+   "name": "comments only",
+   "python_accepts": true,
+   "yaml": "# nothing\n"
+  },
+  {
+   "expected": true,
+   "name": "smtp missing",
+   "python_accepts": true,
+   "yaml": "tokens:\n  - label: homepage\n    token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\n"
+  },
+  {
+   "expected": true,
+   "name": "smtp list",
+   "python_accepts": true,
+   "yaml": "smtp: [a]\ntokens:\n  - label: homepage\n    token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\n"
+  },
+  {
+   "expected": true,
+   "name": "username empty",
+   "python_accepts": true,
+   "yaml": "smtp: {username: '', password: x}\ntokens:\n  - label: homepage\n    token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\n"
+  },
+  {
+   "divergence": "D-6",
+   "expected": false,
+   "name": "username blank",
+   "python_accepts": true,
+   "yaml": "smtp: {username: ' \t', password: x}\ntokens:\n  - label: homepage\n    token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\n"
+  },
+  {
+   "expected": true,
+   "name": "username placeholder",
+   "python_accepts": true,
+   "yaml": "smtp: {username: changeme, password: x}\ntokens:\n  - label: homepage\n    token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\n"
+  },
+  {
+   "expected": true,
+   "name": "username bool",
+   "python_accepts": true,
+   "yaml": "smtp: {username: no, password: x}\ntokens:\n  - label: homepage\n    token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\n"
+  },
+  {
+   "expected": true,
+   "name": "password empty",
+   "python_accepts": true,
+   "yaml": "smtp: {username: relay, password: ''}\ntokens:\n  - label: homepage\n    token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\n"
+  },
+  {
+   "expected": true,
+   "name": "password missing",
+   "python_accepts": true,
+   "yaml": "smtp: {username: relay}\ntokens:\n  - label: homepage\n    token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\n"
+  },
+  {
+   "expected": true,
+   "name": "password int",
+   "python_accepts": true,
+   "yaml": "smtp: {username: relay, password: 1234}\ntokens:\n  - label: homepage\n    token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\n"
+  },
+  {
+   "expected": true,
+   "name": "password null",
+   "python_accepts": true,
+   "yaml": "smtp: {username: relay, password: ~}\ntokens:\n  - label: homepage\n    token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\n"
+  },
+  {
+   "expected": true,
+   "name": "password quoted digits",
+   "python_accepts": true,
+   "yaml": "smtp: {username: r, password: '1234'}\ntokens:\n  - label: homepage\n    token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\n"
+  },
+  {
+   "expected": true,
+   "name": "domains missing",
+   "python_accepts": true,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - label: homepage\n    token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    allowed_from_domains: [wersdoerfer.de]\n"
+  },
+  {
+   "expected": true,
+   "name": "domains empty",
+   "python_accepts": true,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - label: homepage\n    token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    allowed_from_domains: [wersdoerfer.de]\n    mailgun_domains: []\n"
+  },
+  {
+   "expected": true,
+   "name": "domains string",
+   "python_accepts": true,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - label: homepage\n    token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    allowed_from_domains: [wersdoerfer.de]\n    mailgun_domains: mg.wersdoerfer.de\n"
+  },
+  {
+   "expected": true,
+   "name": "domain entry empty",
+   "python_accepts": true,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - label: homepage\n    token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    allowed_from_domains: [wersdoerfer.de]\n    mailgun_domains: ['']\n"
+  },
+  {
+   "expected": true,
+   "name": "domain entry null",
+   "python_accepts": true,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - label: homepage\n    token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [~]\n"
+  },
+  {
+   "expected": true,
+   "name": "domain entry int",
+   "python_accepts": true,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - label: homepage\n    token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [1]\n"
+  },
+  {
+   "expected": true,
+   "name": "domain underscore",
+   "python_accepts": true,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - label: homepage\n    token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [a_b.de]\n"
+  },
+  {
+   "expected": true,
+   "name": "domain leading hyphen",
+   "python_accepts": true,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - label: homepage\n    token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [-x.de]\n"
+  },
+  {
+   "expected": true,
+   "name": "domain bad punycode",
+   "python_accepts": true,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - label: homepage\n    token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [xn--abc.de]\n"
+  },
+  {
+   "expected": true,
+   "name": "domain empty label",
+   "python_accepts": true,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - label: homepage\n    token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [a..b]\n"
+  },
+  {
+   "expected": true,
+   "name": "domain idn",
+   "python_accepts": true,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - label: homepage\n    token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersd\u00f6rfer.de, \u00df.de, \u00c4\u00d6\u00dc.example]\n"
+  },
+  {
+   "expected": true,
+   "name": "domain trailing dot",
+   "python_accepts": true,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - label: homepage\n    token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    allowed_from_domains: [wersdoerfer.de]\n    mailgun_domains: [mg.wersdoerfer.de.]\n"
+  },
+  {
+   "expected": true,
+   "name": "domain localhost",
+   "python_accepts": true,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - label: homepage\n    token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    allowed_from_domains: [wersdoerfer.de]\n    mailgun_domains: [localhost]\n"
+  },
+  {
+   "expected": true,
+   "name": "domain compatibility form",
+   "python_accepts": true,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - label: homepage\n    token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [\u216b.de]\n"
+  },
+  {
+   "expected": true,
+   "name": "domain fullwidth",
+   "python_accepts": true,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - label: homepage\n    token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [\uff41.de]\n"
+  },
+  {
+   "expected": true,
+   "name": "domain mixed script",
+   "python_accepts": true,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - label: homepage\n    token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [p\u0430ypal.de]\n"
+  },
+  {
+   "expected": true,
+   "name": "domain greek",
+   "python_accepts": true,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - label: homepage\n    token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [\u03b1\u03b2.gr]\n"
+  },
+  {
+   "expected": true,
+   "name": "domain emoji",
+   "python_accepts": true,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - label: homepage\n    token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [\ud83d\ude00.de]\n"
+  },
+  {
+   "expected": true,
+   "name": "domain symbol",
+   "python_accepts": true,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - label: homepage\n    token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [\u2603.de]\n"
+  },
+  {
+   "expected": true,
+   "name": "domain combining mark",
+   "python_accepts": true,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - label: homepage\n    token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [a\u0301b.de]\n"
+  },
+  {
+   "expected": true,
+   "name": "domain mapped to middle dot",
+   "python_accepts": true,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - label: homepage\n    token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [\u0140.de]\n"
+  },
+  {
+   "expected": true,
+   "name": "domain a-label of a symbol",
+   "python_accepts": true,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - label: homepage\n    token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    allowed_from_domains: [wersdoerfer.de]\n    mailgun_domains: [xn--n3h.de]\n"
+  },
+  {
+   "expected": true,
+   "name": "domain a-label with idn tld",
+   "python_accepts": true,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - label: homepage\n    token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    allowed_from_domains: [wersdoerfer.de]\n    mailgun_domains: [xn--wersdrfer-47a.\u00fc]\n"
+  },
+  {
+   "expected": true,
+   "name": "address a-label of a symbol",
+   "python_accepts": true,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - label: homepage\n    token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\n    allowed_from_addresses: [a@xn--n3h.de]\n"
+  },
+  {
+   "expected": true,
+   "name": "addresses null",
+   "python_accepts": true,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - label: homepage\n    token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\n    allowed_from_addresses: null\n"
+  },
+  {
+   "expected": true,
+   "name": "addresses empty",
+   "python_accepts": true,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - label: homepage\n    token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\n    allowed_from_addresses: []\n"
+  },
+  {
+   "expected": true,
+   "name": "addresses string",
+   "python_accepts": true,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - label: homepage\n    token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\n    allowed_from_addresses: a@wersdoerfer.de\n"
+  },
+  {
+   "expected": true,
+   "name": "address entry empty",
+   "python_accepts": true,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - label: homepage\n    token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\n    allowed_from_addresses: ['']\n"
+  },
+  {
+   "expected": true,
+   "name": "address without at",
+   "python_accepts": true,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - label: homepage\n    token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\n    allowed_from_addresses: [wersdoerfer.de]\n"
+  },
+  {
+   "expected": true,
+   "name": "address without local",
+   "python_accepts": true,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - label: homepage\n    token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\n    allowed_from_addresses: ['@wersdoerfer.de']\n"
+  },
+  {
+   "expected": true,
+   "name": "address two ats",
+   "python_accepts": true,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - label: homepage\n    token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\n    allowed_from_addresses: ['a@b@wersdoerfer.de']\n"
+  },
+  {
+   "expected": true,
+   "name": "address bad domain",
+   "python_accepts": true,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - label: homepage\n    token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\n    allowed_from_addresses: [a@a_b.de]\n"
+  },
+  {
+   "expected": true,
+   "name": "address eai local",
+   "python_accepts": true,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - label: homepage\n    token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\n    allowed_from_addresses: [j\u00f6rg@wersd\u00f6rfer.de]\n"
+  },
+  {
+   "expected": true,
+   "name": "address mixed-script domain",
+   "python_accepts": true,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - label: homepage\n    token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\n    allowed_from_addresses: [a@p\u0430ypal.de]\n"
+  },
+  {
+   "expected": true,
+   "name": "label plain yes",
+   "python_accepts": true,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\n    label: yes\n"
+  },
+  {
+   "expected": true,
+   "name": "label plain On",
+   "python_accepts": true,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\n    label: On\n"
+  },
+  {
+   "expected": true,
+   "name": "label plain off",
+   "python_accepts": true,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\n    label: off\n"
+  },
+  {
+   "expected": true,
+   "name": "label plain 0777",
+   "python_accepts": true,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\n    label: 0777\n"
+  },
+  {
+   "expected": true,
+   "name": "label plain 1_000",
+   "python_accepts": true,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\n    label: 1_000\n"
+  },
+  {
+   "expected": true,
+   "name": "label plain 0x1F",
+   "python_accepts": true,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\n    label: 0x1F\n"
+  },
+  {
+   "expected": true,
+   "name": "label plain 1:20",
+   "python_accepts": true,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\n    label: 1:20\n"
+  },
+  {
+   "expected": true,
+   "name": "label plain 1.5",
+   "python_accepts": true,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\n    label: 1.5\n"
+  },
+  {
+   "expected": true,
+   "name": "label plain .inf",
+   "python_accepts": true,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\n    label: .inf\n"
+  },
+  {
+   "expected": true,
+   "name": "label plain ~",
+   "python_accepts": true,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\n    label: ~\n"
+  },
+  {
+   "expected": true,
+   "name": "label plain 2026-10-15",
+   "python_accepts": true,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\n    label: 2026-10-15\n"
+  },
+  {
+   "expected": true,
+   "name": "label plain 2026-10-15 10:00:00",
+   "python_accepts": true,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\n    label: 2026-10-15 10:00:00\n"
+  },
+  {
+   "expected": true,
+   "name": "label plain null",
+   "python_accepts": true,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\n    label: null\n"
+  },
+  {
+   "expected": true,
+   "name": "label quoted yes",
+   "python_accepts": true,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\n    label: \"yes\"\n"
+  },
+  {
+   "expected": true,
+   "name": "label tagged str",
+   "python_accepts": true,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\n    label: !!str 0777\n"
+  },
+  {
+   "expected": true,
+   "name": "label plain y",
+   "python_accepts": true,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\n    label: y\n"
+  },
+  {
+   "expected": true,
+   "name": "label plain date-like",
+   "python_accepts": true,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\n    label: 2026-1-5\n"
+  },
+  {
+   "expected": true,
+   "name": "label block literal",
+   "python_accepts": true,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\n    label: |\n          multi\n          line\n"
+  },
+  {
+   "expected": true,
+   "name": "flow style",
+   "python_accepts": true,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens: [{label: a, token_sha256: '9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08', mailgun_domains: [a.de], allowed_from_domains: [a.de]}]\n"
+  },
+  {
+   "expected": true,
+   "name": "unknown keys refused",
+   "python_accepts": true,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - label: homepage\n    token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\n    comment: x\nother: [1, 2]\n"
+  },
+  {
+   "expected": false,
+   "name": "duplicate mapping key refused",
+   "python_accepts": false,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - label: homepage\n    token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\nsmtp: {username: second, password: pw2}\n"
+  },
+  {
+   "expected": true,
+   "name": "anchors and aliases",
+   "python_accepts": true,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - label: homepage\n    token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: &d [a.de]\n    allowed_from_domains: *d\n"
+  },
+  {
+   "expected": false,
+   "name": "duplicate anchor",
+   "python_accepts": false,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - label: homepage\n    token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: &d [a.de]\n    allowed_from_domains: &d [b.de]\n"
+  },
+  {
+   "divergence": "D-6",
+   "expected": false,
+   "name": "merge key",
+   "python_accepts": true,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - label: homepage\n    token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\nbase: &b {k: 1}\nother:\n  <<: *b\n"
+  },
+  {
+   "divergence": "D-6",
+   "expected": false,
+   "name": "int tag",
+   "python_accepts": true,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - label: homepage\n    token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\nother: !!int '5'\n"
+  },
+  {
+   "divergence": "D-6",
+   "expected": false,
+   "name": "seq tag",
+   "python_accepts": true,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - label: homepage\n    token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    allowed_from_domains: [wersdoerfer.de]\n    mailgun_domains: !!seq [a.de]\n"
+  },
+  {
+   "expected": false,
+   "name": "python tag",
+   "python_accepts": false,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - label: homepage\n    token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\nother: !!python/name:os.system ''\n"
+  },
+  {
+   "expected": false,
+   "name": "custom tag",
+   "python_accepts": false,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - label: homepage\n    token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\nother: !custom 1\n"
+  },
+  {
+   "divergence": "D-6",
+   "expected": false,
+   "name": "recursive alias",
+   "python_accepts": true,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - label: homepage\n    token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\nother: &r [*r]\n"
+  },
+  {
+   "divergence": "D-6",
+   "expected": false,
+   "name": "deep nesting",
+   "python_accepts": true,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - label: homepage\n    token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\nother: [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]\n"
+  },
+  {
+   "divergence": "D-6",
+   "expected": false,
+   "name": "nel in quoted value",
+   "python_accepts": true,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - label: homepage\n    token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\nother: \"a\u0085b\"\n"
+  },
+  {
+   "divergence": "D-6",
+   "expected": false,
+   "name": "line separator in quoted value",
+   "python_accepts": true,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - label: homepage\n    token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\nother: \"a\u2028b\"\n"
+  },
+  {
+   "expected": false,
+   "name": "invalid date in unknown key",
+   "python_accepts": false,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - label: homepage\n    token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\nother: 2026-02-30\n"
+  },
+  {
+   "expected": false,
+   "name": "empty binary int in unknown key",
+   "python_accepts": false,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - label: homepage\n    token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\nother: 0b_\n"
+  },
+  {
+   "expected": false,
+   "name": "value scalar",
+   "python_accepts": false,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - label: homepage\n    token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\nother: =\n"
+  },
+  {
+   "expected": false,
+   "name": "merge scalar as value",
+   "python_accepts": false,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - label: homepage\n    token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\nother: <<\n"
+  },
+  {
+   "expected": false,
+   "name": "collection key",
+   "python_accepts": false,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - label: homepage\n    token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\n? [a]\n: b\n"
+  },
+  {
+   "expected": false,
+   "name": "two documents",
+   "python_accepts": false,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - label: homepage\n    token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\n---\nsmtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - label: homepage\n    token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\n"
+  },
+  {
+   "expected": false,
+   "name": "syntax error",
+   "python_accepts": false,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - label: homepage\n    token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\nother: [a\n"
+  },
+  {
+   "expected": false,
+   "name": "tab before value",
+   "python_accepts": false,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - label: homepage\n    token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\nother:\tb\n"
+  },
+  {
+   "expected": false,
+   "name": "control character",
+   "python_accepts": false,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - label: homepage\n    token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\nother: a\u0001\n"
+  },
+  {
+   "expected": true,
+   "name": "byte order mark",
+   "python_accepts": true,
+   "yaml": "\ufeffsmtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - label: homepage\n    token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\n"
+  },
+  {
+   "expected": true,
+   "name": "crlf line endings",
+   "python_accepts": true,
+   "yaml": "smtp:\r\n  username: relay@example.test\r\n  password: hunter2\r\ntokens:\r\n  - label: homepage\r\n    token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\r\n    mailgun_domains: [mg.wersdoerfer.de]\r\n    allowed_from_domains: [wersdoerfer.de]\r\n"
+  },
+  {
+   "expected": true,
+   "name": "explicit document markers",
+   "python_accepts": true,
+   "yaml": "---\nsmtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - label: homepage\n    token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\n...\n"
+  },
+  {
+   "divergence": "D-6",
+   "expected": false,
+   "name": "yaml 1.1 directive",
+   "python_accepts": true,
+   "yaml": "%YAML 1.1\n---\nsmtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - label: homepage\n    token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\n"
+  },
+  {
+   "expected": false,
+   "name": "yaml 2.0 directive",
+   "python_accepts": false,
+   "yaml": "%YAML 2.0\n---\nsmtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - label: homepage\n    token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\n"
+  },
+  {
+   "divergence": "D-6",
+   "expected": false,
+   "name": "tag directive",
+   "python_accepts": true,
+   "yaml": "%TAG !e! tag:example.com,2000:\n---\nsmtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - label: homepage\n    token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\n"
+  },
+  {
+   "divergence": "D-6",
+   "expected": false,
+   "name": "tab in quoted value",
+   "python_accepts": true,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - label: homepage\n    token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\nother: \"a\tb\"\n"
+  },
+  {
+   "expected": false,
+   "name": "tab before password",
+   "python_accepts": false,
+   "yaml": "smtp:\n  username: relay\n  password:\thunter2\ntokens:\n  - label: homepage\n    token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\n"
+  },
+  {
+   "expected": false,
+   "name": "empty flow key",
+   "python_accepts": false,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - label: homepage\n    token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\nother: {: x}\n"
+  },
+  {
+   "expected": false,
+   "name": "long decimal int in unknown key",
+   "python_accepts": false,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - label: homepage\n    token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\nother: 11111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111\n"
+  },
+  {
+   "expected": true,
+   "name": "decimal int at the digit limit",
+   "python_accepts": true,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - label: homepage\n    token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\nother: 1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111\n"
+  },
+  {
+   "expected": true,
+   "name": "long octal int in unknown key",
+   "python_accepts": true,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - label: homepage\n    token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\nother: 077777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777\n"
+  },
+  {
+   "expected": true,
+   "name": "aliased password as address",
+   "python_accepts": true,
+   "yaml": "smtp:\n  username: relay\n  password: &pw hunter2\ntokens:\n  - label: homepage\n    token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\n    allowed_from_addresses: [*pw]\n"
+  }
+ ],
+ "source": "mailgun_relay.config._UniqueKeyLoader (before schema)"
+}

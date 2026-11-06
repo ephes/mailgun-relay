@@ -117,6 +117,7 @@ pub fn from_yaml(text: &str) -> Result<Secrets, ConfigError> {
     if !matches!(*data, Node::Map(_)) {
         return Err(invalid("secrets file must be a top-level mapping"));
     }
+    check_keys(&data, &["smtp", "tokens"], "root")?;
     let smtp = load_smtp(data.get("smtp"))?;
     let entries = match data.get("tokens") {
         Some(Node::Seq(items)) if !items.is_empty() => items,
@@ -153,10 +154,22 @@ fn as_str(node: Option<&Node>) -> Option<&str> {
     }
 }
 
+fn check_keys(raw: &Node, allowed: &[&str], at: &str) -> Result<(), ConfigError> {
+    if let Node::Map(entries) = raw
+        && entries
+            .iter()
+            .any(|(key, _)| key.as_deref().is_none_or(|key| !allowed.contains(&key)))
+    {
+        return Err(invalid(format!("{at}: unknown or non-string field")));
+    }
+    Ok(())
+}
+
 fn load_smtp(raw: Option<&Node>) -> Result<SmtpCredentials, ConfigError> {
     let Some(raw @ Node::Map(_)) = raw else {
         return Err(invalid("smtp section must be a mapping"));
     };
+    check_keys(raw, &["username", "password"], "smtp")?;
     let username = as_str(raw.get("username"))
         .filter(|u| !py_strip(u).is_empty())
         .ok_or_else(|| invalid("smtp.username must be a non-empty string"))?;
@@ -174,6 +187,17 @@ fn load_policy(raw: &Node, at: &str) -> Result<TokenPolicy, ConfigError> {
     if !matches!(raw, Node::Map(_)) {
         return Err(invalid(format!("{at}: each token entry must be a mapping")));
     }
+    check_keys(
+        raw,
+        &[
+            "label",
+            "token_sha256",
+            "mailgun_domains",
+            "allowed_from_domains",
+            "allowed_from_addresses",
+        ],
+        at,
+    )?;
     let label = as_str(raw.get("label"))
         .filter(|l| !py_strip(l).is_empty())
         .ok_or_else(|| invalid(format!("{at}.label must be a non-empty string")))?;
@@ -334,6 +358,71 @@ mod tests {
         );
     }
 
+    #[test]
+    fn schema_unknown_and_nonstring_fields_refused() {
+        let valid = minimal_document();
+        for doc in [
+            format!("{valid}synthetic-secret-key: hidden\n"),
+            format!("{valid}12: hidden\n"),
+            valid.replace(
+                "password: synthetic-password",
+                "password: synthetic-password, synthetic-secret-key: hidden",
+            ),
+            valid.replace(
+                "password: synthetic-password",
+                "password: synthetic-password, false: hidden",
+            ),
+            format!("{valid}    allowed_from_address: [only@example.test]\n"),
+            format!("{valid}    12: hidden\n"),
+        ] {
+            let error = from_yaml(&doc).unwrap_err().0;
+            assert!(error.contains("unknown or non-string field"));
+            assert!(!error.contains("synthetic-secret-key"));
+        }
+        assert!(from_yaml(&valid).is_ok());
+    }
+
+    #[test]
+    fn duplicate_yaml_keys_refused() {
+        let valid = minimal_document();
+        for reverse in [false, true] {
+            let passwords = if reverse {
+                "password: marker, password: synthetic-password"
+            } else {
+                "password: synthetic-password, password: marker"
+            };
+            let domains = if reverse {
+                "    allowed_from_domains: [other.test]\n    allowed_from_domains: [example.test]"
+            } else {
+                "    allowed_from_domains: [example.test]\n    allowed_from_domains: [other.test]"
+            };
+            let root = if reverse {
+                format!("tokens: [marker]\n{valid}")
+            } else {
+                format!("{valid}tokens: [marker]\n")
+            };
+            for doc in [
+                root,
+                valid.replace("password: synthetic-password", passwords),
+                valid.replace("    allowed_from_domains: [example.test]", domains),
+            ] {
+                let error = from_yaml(&doc).unwrap_err().0;
+                assert!(error.contains("duplicate mapping key"));
+                assert!(!error.contains("marker"));
+            }
+        }
+        let aliases = valid
+            .replace(
+                "mailgun_domains: [example.test]",
+                "mailgun_domains: &d [example.test]",
+            )
+            .replace(
+                "allowed_from_domains: [example.test]",
+                "allowed_from_domains: *d",
+            );
+        assert!(from_yaml(&aliases).is_ok());
+    }
+
     fn secrets_json(secrets: &Secrets) -> Value {
         let tokens: Vec<Value> = secrets
             .tokens
@@ -360,11 +449,27 @@ mod tests {
         let pw = "hunter2_secret!";
         let sha = "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08";
         let doc = |second: &str| {
+            let key = second.split(':').next().unwrap();
+            let label = if key == "label" {
+                ""
+            } else {
+                "label: second, "
+            };
+            let domains = if key == "mailgun_domains" {
+                ""
+            } else {
+                "mailgun_domains: [a.de], "
+            };
+            let from = if key == "allowed_from_domains" {
+                ""
+            } else {
+                "allowed_from_domains: [a.de], "
+            };
             format!(
                 "smtp: {{username: relay, password: &pw '{pw}'}}\ntokens:\n  - label: first\n    \
                  token_sha256: &sha '{sha}'\n    mailgun_domains: [a.de]\n    \
-                 allowed_from_domains: [a.de]\n  - {{label: second, token_sha256: '{}', \
-                 mailgun_domains: [a.de], allowed_from_domains: [a.de], {second}}}\n",
+                 allowed_from_domains: [a.de]\n  - {{{label}token_sha256: '{}', \
+                 {domains}{from}{second}}}\n",
                 "cd".repeat(32)
             )
         };
@@ -382,16 +487,17 @@ mod tests {
                 "allowed_from_domains: [*sha]",
                 "tokens[1].allowed_from_domains[0]",
             ),
-            (
-                "label: *pw, label: first",
-                "tokens[1]: duplicate token label",
-            ),
+            ("label: first", "tokens[1]: duplicate token label"),
         ];
         for (second, expected) in cases {
             let error = from_yaml(&doc(second)).unwrap_err().0;
             assert!(error.starts_with(expected), "{second}: {error}");
             assert!(!error.contains(pw) && !error.contains(sha), "{error}");
         }
+        let duplicate_alias = doc("label: *pw").replace("label: first", "label: *pw");
+        let error = from_yaml(&duplicate_alias).unwrap_err().0;
+        assert!(error.starts_with("tokens[1]: duplicate token label"));
+        assert!(!error.contains(pw) && !error.contains(sha));
         // Both aliases resolve: a label aliased from the password loads.
         assert!(from_yaml(&doc("label: *pw")).is_ok());
     }
