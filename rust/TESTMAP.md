@@ -181,3 +181,17 @@ consumer regeneration on 3.15.2, explicit encoded-comma and encoded-local-part
 observations (D-21), serialization refusal versus build rejection, refusal of
 noncanonical writes, and detection of edited fixtures/alternate observations.
 The Rust `mime_fixture` and Python parser check retain every Rust 400 decision.
+
+## Public labels and failure severity
+
+- Python `test_config_errors_never_disclose_secret_values` covers valid-schema
+  password/digest labels, later-policy digests and normalized aliases through
+  load errors and real app initialization. Rust `credential_valued_labels_refused`
+  covers value-free errors and ordinary-label Debug output;
+  `binary.rs::credential_valued_labels_stop_before_startup` exercises check-config
+  and serving refusal. Shared config/parser fixtures retain ordinary aliases.
+- Python and Rust `request_severity_follows_final_status` drive real request
+  handlers at INFO and WARNING: success logs at INFO, synthetic 500/502/503
+  log exactly one safe request record at ERROR. Credentials, recipients and
+  message content remain absent; existing partial-refusal tests cover its
+  separate WARNING.

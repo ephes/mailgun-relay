@@ -177,13 +177,21 @@ Run `--check-config` against the production files before any switch.
 Logs are one JSON object per line on stdout. Every start writes
 `{"ts":…,"level":"INFO","logger":"mailgun_relay.service","event":"startup",…}`
 with the fields of the Python record plus `"impl":"rust"`; `ts` is UTC
-(D-13). Each message request writes one `event=request` record; a partly
+(D-13). Each message request writes one `event=request` record, at ERROR for
+HTTP 5xx (including internal failures) and INFO otherwise. LOG_LEVEL=WARNING
+keeps these failures visible while suppressing normal traffic; a partly
 refused message adds a `recipients_refused` WARNING (domains and codes
 only), a `QUIT` that is not answered with 221 an `smtp_cleanup_failed`
 WARNING (the outcome stays). `/health` and the fallbacks log nothing.
 SIGTERM and SIGINT stop the
 server after in-flight requests (exit 0); a configuration or bind failure
 exits 1.
+
+Both secrets loaders refuse a label equal to the SMTP password or any loaded
+token digest, regardless of policy order; digest comparison trims whitespace
+and ignores case. Errors name only the token position, before startup/access
+or Debug output can expose the label. Ordinary labels and YAML aliases work.
+This equality guard does not detect embedded secrets: keep labels nonsecret.
 
 ## Fixtures
 

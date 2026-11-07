@@ -1020,6 +1020,69 @@ async fn records_follow_the_information_boundary() {
 }
 
 #[tokio::test]
+async fn request_severity_follows_final_status() {
+    for threshold in [Level::Info, Level::Warning] {
+        for (status, result) in [
+            (200, "ok"),
+            (500, "internal_error"),
+            (502, "smtp_permanent"),
+            (503, "smtp_temporary"),
+        ] {
+            let (logger, logs) = Logger::capturing(threshold);
+            let recorder = relay_recorder();
+            *recorder.outcome.lock().unwrap() = match status {
+                502 => Err(SubmitError::Permanent),
+                503 => Err(SubmitError::Temporary),
+                _ => Ok(Vec::new()),
+            };
+            let submitter: Box<dyn Submitter> = if status == 500 {
+                Box::new(Panicking)
+            } else {
+                Box::new(Shared(Arc::clone(&recorder)))
+            };
+            let h = Harness {
+                relay: Arc::new(Relay::new(settings(), tokens(), logger, submitter)),
+                recorder,
+                logs,
+            };
+            let fields = with(&[
+                ("to", "synthetic-private-recipient@example.test"),
+                ("subject", "synthetic-private-message"),
+                ("text", "synthetic-private-message"),
+            ]);
+            let reply = h.homepage(encode(Encoding::Urlencoded, &fields)).await;
+            assert_eq!(reply.status(), status);
+            let records = h.records("request");
+            if status == 200 && threshold == Level::Warning {
+                assert!(records.is_empty());
+            } else {
+                assert_eq!(records.len(), 1);
+                assert_eq!(
+                    records[0]["level"],
+                    if status == 200 { "INFO" } else { "ERROR" }
+                );
+                assert_eq!(records[0]["result"], result);
+                assert_eq!(records[0]["status_code"], status);
+                assert_eq!(records[0]["token_label"], "homepage-staging");
+            }
+            let shown = logs.lock().unwrap().join("");
+            for secret in [
+                "synthetic-private-recipient",
+                "synthetic-private-message",
+                HOMEPAGE_TOKEN,
+                SMTP_PASSWORD,
+                &basic("api", HOMEPAGE_TOKEN),
+            ] {
+                assert!(!shown.contains(secret));
+            }
+            for policy in tokens() {
+                assert!(!shown.contains(&policy.token_sha256));
+            }
+        }
+    }
+}
+
+#[tokio::test]
 async fn route_matching() {
     let h = Harness::new();
     let request = |method: &str, uri: &str| {

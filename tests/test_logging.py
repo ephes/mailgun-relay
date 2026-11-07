@@ -7,11 +7,14 @@ from collections.abc import Iterator
 from io import StringIO
 
 import pytest
+from fastapi.testclient import TestClient
 
 from mailgun_relay.app import log_startup
 from mailgun_relay.config import Secrets, Settings
 from mailgun_relay.logging_setup import access_logger, configure_logging
+from mailgun_relay.smtp_client import FailureCategory, SmtpSubmitError
 from mailgun_relay.version import __version__
+from tests.conftest import RecordingSubmitter
 
 
 class _FlushCountingStream(StringIO):
@@ -125,3 +128,50 @@ def test_startup_line_never_leaks_credentials(
     assert test_secrets.smtp.username not in line
     for policy in test_secrets.tokens:
         assert policy.token_sha256 not in line
+
+
+@pytest.mark.parametrize("status", [200, 500, 502, 503])
+@pytest.mark.parametrize("threshold", ["INFO", "WARNING"])
+def test_request_severity_follows_final_status(
+    monkeypatch: pytest.MonkeyPatch,
+    client: TestClient,
+    recording_smtp: RecordingSubmitter,
+    homepage_token: str,
+    test_secrets: Secrets,
+    status: int,
+    threshold: str,
+) -> None:
+    marker = "synthetic-private-message"
+    recipient = "synthetic-private-recipient@example.test"
+    if status == 500:
+        recording_smtp.raise_with = RuntimeError(marker)
+    elif status in {502, 503}:
+        category = FailureCategory.PERMANENT if status == 502 else FailureCategory.TEMPORARY
+        recording_smtp.raise_with = SmtpSubmitError(category, reason=marker)
+    stream = _configure_logging_to_stream(monkeypatch, threshold)
+    response = client.post(
+        "/v3/mg.wersdoerfer.de/messages",
+        auth=("api", homepage_token),
+        data={
+            "from": "jochen-homepage@wersdoerfer.de",
+            "to": recipient,
+            "subject": marker,
+            "text": marker,
+        },
+    )
+    assert response.status_code == status
+    assert len(recording_smtp.calls) == 1
+    records = [json.loads(line) for line in stream.getvalue().splitlines()]
+    requests = [record for record in records if record["event"] == "request"]
+    if status == 200 and threshold == "WARNING":
+        assert requests == []
+    else:
+        assert len(requests) == 1
+        assert requests[0]["level"] == ("INFO" if status == 200 else "ERROR")
+        assert requests[0]["status_code"] == status
+        assert requests[0]["token_label"] == "homepage-staging"
+    shown = stream.getvalue()
+    for secret in [marker, recipient, homepage_token, test_secrets.smtp.password]:
+        assert secret not in shown
+    for policy in test_secrets.tokens:
+        assert policy.token_sha256 not in shown

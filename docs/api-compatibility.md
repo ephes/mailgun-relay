@@ -161,6 +161,15 @@ table below is therefore the contract the relay implements:
 | SMTP authentication failure (relay → backend) | 502 | Treated as a permanent upstream failure. Never exposes the credential. |
 | Internal error | 500 | Body is `{"message": "Internal Server Error"}`; no secrets or message bodies in response. |
 
+Both runtimes emit the single structured `event=request` record at ERROR for
+HTTP 5xx, including internal errors, upstream failures, overload and strict
+partial refusal; other statuses use INFO. `MAILGUN_RELAY_LOG_LEVEL=WARNING`
+therefore suppresses ordinary request records while retaining failures. The
+safe field set and separate partial-refusal WARNING are unchanged. Configured
+token labels must not equal the SMTP password or any loaded token digest
+(digest comparison trims whitespace and ignores case); startup refuses these
+with positional, value-free diagnostics before labels can enter logs.
+
 Response body shape is `{"message": "<human readable>"}` on all non-2xx. `django-anymail`'s `AnymailRequestsAPIError` stores the full body so callers can log it; the relay never includes credential material in that message.
 
 Once DATA is accepted, a failed QUIT or connection close preserves the accepted

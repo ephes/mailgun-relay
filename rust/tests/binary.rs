@@ -108,6 +108,32 @@ fn check_config_exit_codes() {
     assert_eq!(output.status.code(), Some(1));
 }
 
+#[test]
+fn credential_valued_labels_stop_before_startup() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = secrets_file(dir.path(), 0o600);
+    let base = std::fs::read_to_string(&path).unwrap();
+    for text in [
+        base.replace("password: hunter2", "password: &pw hunter2")
+            .replace("label: zeta", "label: *pw"),
+        base.replace("label: zeta", &format!("label: '{SHA}'")),
+    ] {
+        std::fs::write(&path, text).unwrap();
+        let env = [("MAILGUN_RELAY_SECRETS_PATH", path.to_str().unwrap())];
+        // Check the bounded mode first so a regression never starts a server.
+        let output = run(&["--check-config"], &env);
+        assert_eq!(output.status.code(), Some(1));
+        let serve = run(&[], &env);
+        assert_eq!(serve.status.code(), Some(1));
+        for output in [output, serve] {
+            assert!(output.stdout.is_empty());
+            let shown = String::from_utf8(output.stderr).unwrap();
+            assert!(shown.contains("tokens[0].label"));
+            assert!(!shown.contains("hunter2") && !shown.contains(SHA));
+        }
+    }
+}
+
 fn get(port: u16, path: &str) -> String {
     let mut stream = TcpStream::connect(("127.0.0.1", port)).unwrap();
     stream

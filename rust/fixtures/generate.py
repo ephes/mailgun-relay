@@ -606,6 +606,34 @@ def _secrets_cases() -> list[tuple[str, str, int, str | None]]:
         ("label missing", _doc().replace("  - label: homepage\n    ", "  - "), ok, None),
         ("label int", _doc("label: 123"), ok, None),
         (
+            "label aliases SMTP password",
+            _doc("label: *pw", smtp=SMTP.replace("hunter2", "&pw hunter2")),
+            ok,
+            None,
+        ),
+        (
+            "label equals own digest",
+            _doc(f"label: '{SHA}'"),
+            ok,
+            None,
+        ),
+        (
+            "label aliases later normalized digest",
+            _doc(
+                f"label: *hash\ntoken_sha256: '{'cd' * 32}'",
+                smtp=SMTP.replace("relay@example.test", f"&hash '  {SHA.upper()}  '"),
+            )
+            + _doc("label: ordinary\ntoken_sha256: *hash").split("tokens:\n", 1)[1],
+            ok,
+            None,
+        ),
+        (
+            "ordinary label alias",
+            _doc("label: *label", smtp=SMTP.replace("relay@example.test", "&label ordinary")),
+            ok,
+            None,
+        ),
+        (
             "duplicate labels",
             _doc() + _doc().split("tokens:\n", 1)[1],
             ok,
