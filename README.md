@@ -98,6 +98,30 @@ when parsing reads their bytes into an attachment, before MIME construction;
 cancellation cannot resubmit the message.
 These checks cover the retained Python source, not a deployed rollback runtime.
 
+Python entrypoint contracts are covered without starting a server:
+`uv run --frozen pytest -q tests/test_entrypoint.py tests/test_logging.py`.
+The entrypoint selects `mailgun_relay.app:create_app` in Uvicorn factory mode,
+normalizes the log level, and disables Uvicorn access logs to avoid raw request
+metadata outside the structured logging policy. A noninteger bind port fails
+before Uvicorn is invoked.
+
+For a local Python rollback smoke run, generate synthetic secrets with the
+existing parity helper and bind to loopback (stop with Ctrl-C):
+
+```bash
+relay_smoke_dir="$(mktemp -d)"
+uv run --frozen python rust/parity/run_parity.py --write-secrets "$relay_smoke_dir/secrets.yml"
+MAILGUN_RELAY_BIND_HOST=127.0.0.1 MAILGUN_RELAY_BIND_PORT=8085 \
+MAILGUN_RELAY_SMTP_HOST=localhost MAILGUN_RELAY_SMTP_PORT=2525 \
+MAILGUN_RELAY_SECRETS_PATH="$relay_smoke_dir/secrets.yml" \
+uv run --frozen python -m mailgun_relay
+# In another terminal:
+curl --fail http://127.0.0.1:8085/health
+```
+
+The health probe opens no SMTP session. This checks the local checkout, not the
+retained runtime on a deployed host.
+
 The Python audit exports the frozen
 `uv.lock` runtime and development groups, excluding the project itself, and
 runs `pip-audit==2.9.0` against those exact pins with dependency resolution and
@@ -166,6 +190,10 @@ journald, so `journalctl -u mailgun-relay -f` is the live view.
 
 - `event=smtp_cleanup_failed` — a `WARNING` with only the exception class when
   QUIT or close fails. Accepted sends keep their outcome; closed sessions skip QUIT.
+
+Python structured records select their explicit `event` without formatting the
+raw message or its arguments; exception/stack objects remain excluded. Records
+without an explicit event retain the formatted-message fallback.
 
 These records contain no token values or hashes, the `Authorization` header,
 SMTP credentials, message bodies, or attachment content.

@@ -17,11 +17,12 @@ class _JsonFormatter(logging.Formatter):
     """
 
     def format(self, record: logging.LogRecord) -> str:
+        event = record.event if hasattr(record, "event") else record.getMessage()
         payload: dict[str, Any] = {
             "ts": self.formatTime(record, "%Y-%m-%dT%H:%M:%S%z"),
             "level": record.levelname,
             "logger": record.name,
-            "event": getattr(record, "event", record.getMessage()),
+            "event": event,
         }
         for key, value in record.__dict__.items():
             if key in _LOG_RECORD_RESERVED or key == "event":
