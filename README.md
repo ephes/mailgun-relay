@@ -84,6 +84,20 @@ to check the newer consumer. Other interpreter versions cannot rewrite the corpu
 A patch update that changes observations still fails the drift guard and needs
 an inspected fixture/contract update. See [the fixture contract](rust/README.md#fixtures).
 
+Python rollback transport tests use only synthetic inputs and local SMTP peers.
+`tests/test_python_smtp_wire.py` drives HTTP BCC forms through MIME construction
+and the real Python submitter, checking RCPT envelopes independently from DATA.
+It also exercises real STARTTLS handshakes with a throwaway CA and matching,
+wrong-host and untrusted certificates, plus a peer omitting STARTTLS. These tests
+reuse the parity server and require `openssl` on PATH; no SMTP account or host
+trust-store changes are needed. Failed TLS sends no AUTH, MAIL or DATA.
+The AUTH regression injects rejection at login and checks the complete call order.
+The AnyIO cancellation test holds admission until the running SMTP worker and
+form cleanup finish, while health remains responsive. Attachment spools close
+when parsing reads their bytes into an attachment, before MIME construction;
+cancellation cannot resubmit the message.
+These checks cover the retained Python source, not a deployed rollback runtime.
+
 The Python audit exports the frozen
 `uv.lock` runtime and development groups, excluding the project itself, and
 runs `pip-audit==2.9.0` against those exact pins with dependency resolution and
