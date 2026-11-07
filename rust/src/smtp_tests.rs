@@ -679,3 +679,63 @@ async fn connection_budget_reserves_time_for_fallback() {
     assert_eq!(result, second);
     assert_eq!(tokio::time::Instant::now() - start, Duration::from_secs(3));
 }
+
+#[tokio::test]
+async fn cleanup_drip_preserves_accepted_data() {
+    let server = FakeSmtp::start(
+        &json!({"fault": {"quit": "drip"}}),
+        Some(PKI.by_name("good")),
+    )
+    .await;
+    let (logger, lines) = Logger::capturing(Level::Info);
+    let mut smtp = submitter(server.port, true, 0.5, logger);
+    smtp.config.session_timeout = Duration::from_secs(3);
+    let outcome = tokio::time::timeout(
+        Duration::from_secs(2),
+        smtp.submit(message(&["a@example.test"])),
+    )
+    .await
+    .expect("QUIT must have its own total budget");
+    assert_eq!(outcome, Ok(Vec::new()));
+    assert!(server.sessions()[0].message.is_some());
+    assert_eq!(server.sessions()[0].commands().last().unwrap(), "QUIT");
+    let records = lines.lock().unwrap();
+    assert_eq!(records.len(), 1);
+    let record: Json = serde_json::from_str(&records[0]).unwrap();
+    assert_eq!(record["event"], "smtp_cleanup_failed");
+    assert_eq!(record["error_class"], "Timeout");
+    assert!(!records[0].contains("synthetic-private-reply"));
+}
+
+#[tokio::test]
+async fn inbound_wire_bytes_stop_exactly_at_ceiling() {
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let tcp = TcpStream::connect(listener.local_addr().unwrap())
+        .await
+        .unwrap();
+    let (mut peer, _) = listener.accept().await.unwrap();
+    let writer = tokio::spawn(async move {
+        let chunk = [b'x'; 4096];
+        for _ in 0..8192 {
+            if peer.write_all(&chunk).await.is_err() {
+                break;
+            }
+        }
+    });
+    let mut stream = RelayStream::new(
+        tcp,
+        Duration::from_secs(5),
+        Arc::new(AtomicBool::new(false)),
+    );
+    let mut received = Vec::new();
+    let error = stream.read_to_end(&mut received).await.unwrap_err();
+    assert_eq!(error.kind(), io::ErrorKind::InvalidData);
+    assert_eq!(received.len(), 16 * 1024 * 1024);
+    assert_eq!(
+        stream.read(&mut [0; 1]).await.unwrap_err().kind(),
+        io::ErrorKind::InvalidData
+    );
+    drop(stream);
+    writer.await.unwrap();
+}

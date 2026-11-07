@@ -15,6 +15,13 @@ All notable changes to mailgun-relay are documented here.
 
 ### Fixed
 
+- Bound Rust SMTP from DNS through the delivery outcome to a validated
+  `MAILGUN_RELAY_SMTP_SESSION_TIMEOUT_S` (120 s default), with separate bounded
+  QUIT cleanup preserving accepted DATA. Interrupted DATA can be ambiguous.
+- Cap Rust inbound SMTP wire reads at 16 MiB per session, including TLS overhead,
+  before lettre can allocate an unterminated reply. Exhaustion is a safe transport
+  failure and releases admission; Python rollback transport bounds are unchanged.
+
 - Log HTTP 5xx/internal request failures once at ERROR in Python and Rust,
   preserving safe structured evidence at LOG_LEVEL=WARNING while normal
   traffic remains at INFO.

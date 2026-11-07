@@ -129,6 +129,7 @@ pub struct Script {
     offer_starttls: bool,
     auth_offer: String,
     auth_by_mechanism: HashMap<String, u16>,
+    first_session_only: bool,
 }
 
 impl Script {
@@ -154,9 +155,11 @@ impl Script {
             offer_starttls: true,
             auth_offer: "PLAIN LOGIN".to_owned(),
             auth_by_mechanism: HashMap::new(),
+            first_session_only: false,
         };
         for (key, value) in scenario.as_object().expect("a scenario object") {
             match key.as_str() {
+                "first_session_only" => script.first_session_only = value.as_bool().unwrap(),
                 "offer_starttls" => script.offer_starttls = value.as_bool().unwrap(),
                 "auth_offer" => value.as_str().unwrap().clone_into(&mut script.auth_offer),
                 "rcpt" => {
@@ -288,7 +291,12 @@ impl Handler<'_> {
 
     /// The reply of a phase, or its fault; `false` ends the session.
     async fn reply(&mut self, phase: &str, code: u16, lines: &[String]) -> bool {
-        match self.script.faults.get(phase).map(String::as_str) {
+        let fault = if self.script.first_session_only && self.index > 0 {
+            None
+        } else {
+            self.script.faults.get(phase).map(String::as_str)
+        };
+        match fault {
             Some("close") => {
                 self.log(format!("S: <close at {phase}>"));
                 return false;
@@ -300,6 +308,29 @@ impl Handler<'_> {
             Some("garbage") => {
                 self.log("S: garbage reply".to_owned());
                 return self.write("garbage reply\r\n").await;
+            }
+            Some("drip") => {
+                self.log(format!("S: <drip at {phase}>"));
+                loop {
+                    if !self
+                        .write(&format!("{code}-synthetic-private-reply\r\n"))
+                        .await
+                    {
+                        return false;
+                    }
+                    tokio::time::sleep(std::time::Duration::from_millis(20)).await;
+                }
+            }
+            Some("oversized") => {
+                self.log(format!("S: <oversized at {phase}>"));
+                let chunk = "x".repeat(4096);
+                for _ in 0..8192 {
+                    if !self.write(&chunk).await {
+                        return false;
+                    }
+                }
+                self.log("S: <oversized completed>".to_owned());
+                return self.write("\r\n").await;
             }
             Some(other) => panic!("unknown fault {other}"),
             None => {}

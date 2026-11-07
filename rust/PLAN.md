@@ -418,7 +418,15 @@ change the outcome (logged as `smtp_cleanup_failed`); no QUIT when the server
 already closed the connection. The timeout `SMTP_TIMEOUT_S` applies per
 network operation, not to the whole session. Rust additionally bounds DNS and
 all TCP attempts together to that timeout, and admitted body reads to 30 seconds
-total (HTTP 408); Python retains its original acquisition behavior.
+total (HTTP 408). Rust additionally bounds the pre-outcome SMTP exchange by
+`SMTP_SESSION_TIMEOUT_S` (default 120 s), from DNS through DATA's final reply.
+Expiry drops the connection and returns 503; interrupted DATA may already have
+been accepted, so retries can duplicate delivery. QUIT has a separate total
+`min(SMTP_TIMEOUT_S, 5 s)` budget, preserving the outcome. RelayStream admits at
+most 16 MiB of inbound wire bytes including TLS handshake/record overhead and
+cleanup. Exhaustion is a safe transport failure, with no raw reply logs; accepted
+DATA still wins over cleanup failure. Python retains its original acquisition
+behavior; see D-23.
 
 ### 2.5 JSON shapes (exact)
 
@@ -499,6 +507,7 @@ does not validate stops the process with exit status 1 and no bind.
 | `SMTP_PORT` | int | `587` | – |
 | `SMTP_STARTTLS` | bool | `true` | – |
 | `SMTP_TIMEOUT_S` | float | `30.0` | – |
+| `SMTP_SESSION_TIMEOUT_S` (Rust only) | float | `120.0` | finite, `0 < value <= 1e9` |
 | `SMTP_CA_FILE` | str | `""` | empty: system store; else added to the system store |
 | `SMTP_MAX_CONCURRENCY` | int | `8` | `>= 1` |
 | `ENVELOPE_SENDER` | str | `""` | Python since S0-py (`config.py` `_envelope_sender_ascii`): empty → `MAIL FROM:<>`; any ASCII string passes unchanged (not validated, not lowercased); a non-ASCII value must be `<ASCII local>@<domain>`, the domain becomes its A-label, otherwise the start fails. Rust additionally requires a valid bare address (D-15, Rust-stricter) |
@@ -755,6 +764,7 @@ where Python starts), never the reverse.
 | D-21 | Python's header registry decodes encoded words in every header value and re-encodes them, whatever the surrounding text; it decodes any charset Python has a codec for; `h:Orig-Date` is a date header (a parseable date is rewritten, any other value is sent as an empty header); header names have no length limit; an attachment content type that is not `token/token` (`a b/c`, `image/png/x`) is passed on raw with a header defect. | Rust refuses with **400** at step 9 (fail closed, exotic input; no client sends these): a display name, Subject, `h:*` value or inline Content-ID that needs encoding (non-ASCII, or a word too long for a line) and also holds an encoded word; in a forwarded value an encoded word whose charset is outside the ASCII-compatible set of 2.10, whose base64 needs repair, whose text holds `=?` or starts or ends with whitespace (in a display name also ASCII text with a special such as `,`), or that is longer than 75 characters without whitespace around it (or inside a quoted string); an encoded word in an address local part; an `h:In-Reply-To`/`h:References` value that is not a list of `<dot-atom@dot-atom>` ids (Python repairs `<a@b`, `<a@b>,<c@d>` and passes other forms with defects); `h:Orig-Date`; an `h:*` name longer than 76 characters (lettre's limit). A broken attachment content type (not two RFC 7230 tokens of at most 127 characters) becomes `application/octet-stream` (RFC-conformant, same data and filename). | Coordinator rule Q4 (fail closed), added in S4a |
 
 | D-22 | `SMTP_CA_FILE` is read at each submission (`smtp_client.py` `_tls_context`): a missing, unreadable or certificate-less file makes every submission fail with 503; with `SMTP_STARTTLS` off the file is never read. | The file is read once at start, also by `--check-config`, and also with STARTTLS off: missing, unreadable, without a PEM certificate, or holding a certificate rustls cannot use → startup failure (fail closed; production leaves it empty). The roots are built once (system store plus the file), not per request. | Q4 (fail closed), added in S5a |
+| D-23 | Python retains per-operation SMTP timeouts, without an aggregate wire-byte ceiling. | Rust bounds DNS through the delivery outcome to `SMTP_SESSION_TIMEOUT_S` (default 120 s), cleanup separately to `min(SMTP_TIMEOUT_S, 5 s)`, and inbound wire reads to 16 MiB including TLS overhead. Interrupted DATA is ambiguous (503); cleanup never changes acceptance. Verbose sessions can exhaust the byte ceiling. | Bounded SMTP resource retention, round 75 |
 
 Python 500s on client input fixed in Python by the same rule as D-1 and
 D-16 (Q1), so no divergence remains: a non-ASCII character in the Basic
@@ -813,7 +823,7 @@ re-implementation of Python libraries, no hand-rolled protocol code.
 | JSON | `serde` (derive), `serde_json` | Responses and log records from structs; declaration order = field order. |
 | YAML | `yaml-rust2` 0.13 (`default-features = false`, event parser and scanner only) | Gives scalar style, tags and anchor names, which the YAML 1.1 subset of 2.8 needs. `serde_yaml` is archived and YAML 1.2. A small typed tree is built from events (`src/yaml.rs`, fail-closed details in D-6). |
 | SMTP + MIME | `lettre` `=0.11.23` (`default-features = false`; `builder`, `smtp-transport`, `tokio1`, `tokio1-rustls`, `rustls-native-certs`, `ring`, `hostname`; confirmed in S1b, `rustls-native-certs` is an implicit feature of the optional dependency) | Message builder for 2.10. Submission uses lettre's **connection-level API**, because the high-level `send` aborts on the first refused recipient and cannot express partial refusal (2.4): `AsyncSmtpConnection::connect_with_transport` over our own stream wrapper (banner + EHLO), `starttls`, `auth` with PLAIN, then LOGIN as `smtplib.login` falls back (S5a), `command(Mail)`, `command(Rcpt)` per recipient, `command(Data)`, `message_iter`, `command(Quit)`. The wrapper sets the per-operation timeouts and a "written" flag that tells a banner failure from an EHLO failure (S1b result). This is lettre's protocol code, not our own. lettre's `Address` parser is not used as a validator: envelope addresses our own validation accepted are carried with `Address::new_dangerous` after an ASCII check (lettre's parser refuses a 65-character local part Python accepts). The message goes to `message_iter` in 64 KiB pieces without its final CRLF, which lettre's end-of-data marker supplies (S5a). |
-| SMTP timeouts | `tokio-io-timeout` 1.2 | Read/write timeout per socket operation inside the stream wrapper, the semantics of `SMTP_TIMEOUT_S` in Python; rustls wraps the wrapper, so it also applies under TLS. The TCP connect is bounded with `tokio::time::timeout`. |
+| SMTP timeouts | `tokio-io-timeout` 1.2 | Read/write timeout per socket operation inside the stream wrapper, the semantics of `SMTP_TIMEOUT_S` in Python; rustls wraps the wrapper, so it also applies under TLS. The TCP connect and total pre-outcome exchange use `tokio::time::timeout`; QUIT has a separate bounded budget (D-23). |
 | TLS | `rustls` 0.23 (`ring`, `std`, `tls12`) and `rustls-native-certs`, both through lettre; the CA file is split into its certificates by `rustls-pki-types`' PEM reader (a bundle may hold several; a file without one is refused, D-22) and each is handed to lettre (`Certificate::from_der`) | No OpenSSL, so the binary links only glibc/libgcc (release check). Roots from the system store, like Python's `create_default_context()` on Ubuntu (`/etc/ssl/certs`, maintained by `ca-certificates`); this matters because the Postfix certificate chains to Let's Encrypt's newer hierarchy (issuer YE2), which a bundled `webpki-roots` snapshot might lag. `SMTP_CA_FILE` adds to the system roots (`TlsParameters::builder(host).add_root_certificate`), as `load_verify_locations` does. Hostname verified against `SMTP_HOST`; no `dangerous_*` call. S1b validated the live chain with the exact Ubuntu bundle of macmini (which lacks ISRG Root YE and builds the path through the cross-signs). `ring` instead of `aws-lc-rs` avoids cmake/nasm in the build. Built once at startup. |
 | auth | `base64` 0.22 (custom engine, 2.3), `sha2`, `subtle` (constant-time equality) | |
 | IDNA | `idna` 1 (UTS46 non-transitional, STD3 deny list, hyphen and DNS-length checks, root dot allowed) | Residual: D-10. |
