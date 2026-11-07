@@ -195,3 +195,19 @@ The Rust `mime_fixture` and Python parser check retain every Rust 400 decision.
   log exactly one safe request record at ERROR. Credentials, recipients and
   message content remain absent; existing partial-refusal tests cover its
   separate WARNING.
+
+
+## Bounded SMTP session (Rust-only D-23)
+
+- `config::tests::session_timeout_is_positive_finite_and_bounded`: the new
+  session budget defaults to 120 s and rejects zero, negative, nonfinite and
+  excessive values; existing Python config fixtures retain their original fields.
+- `pipeline::tests::bounded_smtp_sessions_release_admission`: synthetic dripping
+  banner and oversized unterminated replies before/after STARTTLS return 503,
+  omit reply contents from logs, and release the sole slot for a normal send.
+- `smtp::tests::inbound_wire_bytes_stop_exactly_at_ceiling`: the public AsyncRead
+  boundary reads exactly 16 MiB then fails, including repeated reads after exhaustion.
+- `smtp::tests::cleanup_drip_preserves_accepted_data`: dripping QUIT cannot hold
+  a completed send indefinitely and emits only the safe timeout warning.
+These protections intentionally exceed Python's transport bounds. Run with
+`cargo test --locked` in `rust`; all peers and certificates are synthetic.

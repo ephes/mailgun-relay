@@ -318,9 +318,25 @@ before reading the body. Python rollback has no application body deadline.
 Rust also uses one `MAILGUN_RELAY_SMTP_TIMEOUT_S` budget for DNS resolution and
 all TCP connection attempts together, sharing remaining time equally among
 remaining addresses so a stalled address permits fallback; expiry is retryable HTTP 503. Later SMTP
-socket operations retain their individual timeouts, including DATA and QUIT;
-this is not a total SMTP-session deadline. Python retains its resolver and
-per-address connect behavior. These changes require a future runtime update;
+socket operations retain their individual timeouts. In addition,
+`MAILGUN_RELAY_SMTP_SESSION_TIMEOUT_S` (default 120 seconds, finite and
+`0 < value <= 1e9`) bounds DNS, connect, banner, EHLO, STARTTLS, AUTH and DATA
+through the delivery outcome together. Expiry closes the connection and returns
+retryable HTTP 503, releasing admission. If DATA was interrupted before its final
+250 was received, delivery is ambiguous: the upstream may have accepted it;
+retrying can duplicate mail. There is no automatic retry.
+
+QUIT has a separate total budget of `min(SMTP_TIMEOUT_S, 5 seconds)` and never
+changes an already determined outcome, including accepted DATA. Rust also caps
+inbound wire bytes at 16 MiB per connection, counted before TLS decryption and
+including the handshake, TLS overhead, replies and cleanup. This conservative
+ceiling bounds lettre's allocation even for a reply without a newline; it can
+refuse unusually verbose sessions (including those with raised recipient limits).
+Exhaustion maps to the same safe transport failure (503 before the outcome;
+cleanup warning only after acceptance), without logging reply contents. OS socket
+buffers and TLS's bounded internal buffers are separate from this wire-read cap.
+Python retains its resolver, per-address connect and socket timeout behavior,
+without these total-session or byte limits. These changes require a future runtime update;
 no deployment is performed by the source changes.
 
 Tokio's system resolver may keep a blocking `getaddrinfo` call alive after its

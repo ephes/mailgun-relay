@@ -57,6 +57,9 @@ use crate::secrets::SmtpCredentials;
 /// The message goes to lettre in pieces of this size, so its dot-stuffing
 /// copy never holds the whole message a second time.
 const MESSAGE_CHUNK: usize = 64 * 1024;
+/// Wire bytes, including TLS records/handshake, across the entire session.
+const INBOUND_BYTES: usize = 16 * 1024 * 1024;
+const CLEANUP_TIMEOUT: Duration = Duration::from_secs(5);
 
 /// Everything a submission needs, checked at start (`--check-config` too).
 pub struct SmtpConfig {
@@ -67,6 +70,7 @@ pub struct SmtpConfig {
     tls: Option<TlsParameters>,
     credentials: Credentials,
     timeout: Duration,
+    session_timeout: Duration,
     /// `None` is the null sender `MAIL FROM:<>` (empty `ENVELOPE_SENDER`).
     sender: Option<Address>,
 }
@@ -88,6 +92,7 @@ impl SmtpConfig {
             tls: tls_parameters(settings)?,
             credentials: Credentials::new(smtp.username.clone(), smtp.password.clone()),
             timeout: Duration::from_secs_f64(settings.smtp_timeout_s),
+            session_timeout: Duration::from_secs_f64(settings.smtp_session_timeout_s),
             sender,
         })
     }
@@ -219,6 +224,11 @@ struct CleanupFailed {
 }
 
 impl SmtpSubmitter {
+    #[cfg(test)]
+    pub(crate) fn set_session_timeout_for_test(&mut self, seconds: f64) {
+        self.config.session_timeout = Duration::from_secs_f64(seconds);
+    }
+
     async fn session(&self, message: &BuiltMessage) -> Result<Vec<Refusal>, SubmitError> {
         let recipients: Vec<(Address, &str)> = message
             .envelope
@@ -228,28 +238,31 @@ impl SmtpSubmitter {
             // `smtplib` without SMTPUTF8: SMTPNotSupportedError, 503.
             .ok_or(SubmitError::Temporary)?;
 
-        let written = Arc::new(AtomicBool::new(false));
-        let stream = self
-            .connect(Arc::clone(&written))
-            .await
-            .map_err(|_| SubmitError::Temporary)?;
-        let mut connection = match AsyncSmtpConnection::connect_with_transport(
-            Box::new(stream),
-            &self.hello,
-        )
+        // The timed future owns the stream/connection, so expiry closes it.
+        // Stop this deadline at the DATA outcome; QUIT has its own budget.
+        let (mut connection, outcome) = tokio::time::timeout(self.config.session_timeout, async {
+            let written = Arc::new(AtomicBool::new(false));
+            let stream = self
+                .connect(Arc::clone(&written))
+                .await
+                .map_err(|_| SubmitError::Temporary)?;
+            let mut connection =
+                match AsyncSmtpConnection::connect_with_transport(Box::new(stream), &self.hello)
+                    .await
+                {
+                    Ok(connection) => connection,
+                    Err(error) if !written.load(Ordering::SeqCst) => {
+                        return Err(failure(&error).error);
+                    }
+                    Err(error) => return Err(self.ehlo_failure(&error)),
+                };
+            let outcome = self
+                .transaction(&mut connection, &recipients, message)
+                .await;
+            Ok((connection, outcome))
+        })
         .await
-        {
-            Ok(connection) => connection,
-            // Nothing written yet: the banner failed (SMTPConnectError).
-            Err(error) if !written.load(Ordering::SeqCst) => {
-                return Err(failure(&error).error);
-            }
-            Err(error) => return Err(self.ehlo_failure(&error)),
-        };
-
-        let outcome = self
-            .transaction(&mut connection, &recipients, message)
-            .await;
+        .map_err(|_| SubmitError::Temporary)??;
         let open = match &outcome {
             Ok(_) => true,
             Err(failure) => failure.open,
@@ -416,12 +429,18 @@ impl SmtpSubmitter {
     /// `QUIT` must be answered with 221; anything else is logged and
     /// ignored (`smtp_client.py` cleanup).
     async fn quit(&self, connection: &mut AsyncSmtpConnection) {
-        let error_class = match connection.command(Quit).await {
-            Ok(response) if u16::from(response.code()) == 221 => return,
-            Ok(_) => "UnexpectedReply",
-            Err(error) if code(&error).is_some() => "NegativeReply",
-            Err(error) if error.is_timeout() => "Timeout",
-            Err(_) => "Disconnected",
+        let error_class = match tokio::time::timeout(
+            self.config.timeout.min(CLEANUP_TIMEOUT),
+            connection.command(Quit),
+        )
+        .await
+        {
+            Ok(Ok(response)) if u16::from(response.code()) == 221 => return,
+            Ok(Ok(_)) => "UnexpectedReply",
+            Ok(Err(error)) if code(&error).is_some() => "NegativeReply",
+            Err(_) => "Timeout",
+            Ok(Err(error)) if error.is_timeout() => "Timeout",
+            Ok(Err(_)) => "Disconnected",
         };
         self.logger.emit(
             Level::Warning,
@@ -471,6 +490,7 @@ where
 struct RelayStream {
     inner: Pin<Box<TimeoutStream<TcpStream>>>,
     written: Arc<AtomicBool>,
+    inbound_remaining: usize,
 }
 
 impl RelayStream {
@@ -481,6 +501,7 @@ impl RelayStream {
         RelayStream {
             inner: Box::pin(inner),
             written,
+            inbound_remaining: INBOUND_BYTES,
         }
     }
 }
@@ -497,7 +518,22 @@ impl AsyncRead for RelayStream {
         cx: &mut Context<'_>,
         buf: &mut ReadBuf<'_>,
     ) -> Poll<io::Result<()>> {
-        self.inner.as_mut().poll_read(cx, buf)
+        if buf.remaining() == 0 {
+            return Poll::Ready(Ok(()));
+        }
+        if self.inbound_remaining == 0 {
+            return Poll::Ready(Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "SMTP inbound byte limit",
+            )));
+        }
+        let limit = buf.remaining().min(self.inbound_remaining);
+        let mut limited = ReadBuf::new(buf.initialize_unfilled_to(limit));
+        let result = self.inner.as_mut().poll_read(cx, &mut limited);
+        let read = limited.filled().len();
+        buf.advance(read);
+        self.inbound_remaining -= read;
+        result
     }
 }
 

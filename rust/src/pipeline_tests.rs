@@ -1354,8 +1354,11 @@ async fn admission_rejects_before_body_but_not_health() {
 async fn smtp_harness(scenario: Json, settings: Settings) -> (Harness, FakeSmtp) {
     let server = FakeSmtp::start(&scenario, Some(PKI.by_name("good"))).await;
     let port = server.port;
+    let session_timeout = settings.smtp_session_timeout_s;
     let h = Harness::with_submitter(settings, |logger| {
-        Box::new(smtp_submitter(port, true, 5.0, logger))
+        let mut smtp = smtp_submitter(port, true, 5.0, logger);
+        smtp.set_session_timeout_for_test(session_timeout);
+        Box::new(smtp)
     });
     (h, server)
 }
@@ -1482,5 +1485,57 @@ async fn body_total_deadline_releases_admission() {
             StatusCode::OK
         );
         assert_eq!(h.recorder.calls.lock().unwrap().len(), 1);
+    }
+}
+
+#[tokio::test]
+async fn bounded_smtp_sessions_release_admission() {
+    for (phase, fault, budget) in [
+        ("banner", "drip", 0.2),
+        ("banner", "oversized", 10.0),
+        ("ehlo_tls", "oversized", 10.0),
+    ] {
+        let (h, server) = smtp_harness(
+            json!({"fault": {phase: fault}, "first_session_only": true}),
+            Settings {
+                smtp_max_concurrency: 1,
+                smtp_session_timeout_s: budget,
+                ..settings()
+            },
+        )
+        .await;
+        let reply = tokio::time::timeout(
+            Duration::from_secs(3),
+            h.homepage(encode(Encoding::Urlencoded, &MINIMUM)),
+        )
+        .await
+        .expect("SMTP resource limits must finish the request");
+        assert_eq!(reply.status, StatusCode::SERVICE_UNAVAILABLE);
+        let sessions = server.sessions();
+        assert!(
+            sessions[0]
+                .log
+                .iter()
+                .any(|line| line == &format!("S: <{fault} at {phase}>"))
+        );
+        if phase == "ehlo_tls" {
+            assert!(sessions[0].tls);
+        }
+        assert!(sessions[0].message.is_none());
+        assert!(
+            !sessions[0]
+                .log
+                .iter()
+                .any(|line| line == "S: <oversized completed>")
+        );
+        assert_eq!(
+            h.homepage(encode(Encoding::Urlencoded, &MINIMUM))
+                .await
+                .status,
+            StatusCode::OK
+        );
+        assert_eq!(server.sessions().len(), 2);
+        let logs = serde_json::to_string(&h.records("request")).unwrap();
+        assert!(!logs.contains("synthetic-private-reply"));
     }
 }

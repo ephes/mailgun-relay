@@ -72,6 +72,7 @@ pub struct Settings {
     pub smtp_port: u16,
     pub smtp_starttls: bool,
     pub smtp_timeout_s: f64,
+    pub smtp_session_timeout_s: f64,
     pub smtp_ca_file: String,
     pub smtp_max_concurrency: u32,
     pub envelope_sender: String,
@@ -107,6 +108,13 @@ impl Settings {
             smtp_port: env.parsed("SMTP_PORT", "587", |v| range(parse_int(v)?, 0, 65535))?,
             smtp_starttls: env.parsed("SMTP_STARTTLS", "true", parse_bool)?,
             smtp_timeout_s: env.parsed("SMTP_TIMEOUT_S", "30.0", parse_timeout)?,
+            smtp_session_timeout_s: env.parsed("SMTP_SESSION_TIMEOUT_S", "120.0", |v| {
+                let seconds = parse_timeout(v)?;
+                if seconds == 0.0 {
+                    return Err("must be positive".to_owned());
+                }
+                Ok(seconds)
+            })?,
             smtp_ca_file: env.str("SMTP_CA_FILE", "")?,
             smtp_max_concurrency: env.parsed("SMTP_MAX_CONCURRENCY", "8", |v| {
                 range(parse_int(v)?, 1, u32::MAX.into())
@@ -294,6 +302,27 @@ mod tests {
     use serde_json::{Value, json};
 
     use super::*;
+
+    #[test]
+    fn session_timeout_is_positive_finite_and_bounded() {
+        assert_eq!(
+            Settings::from_env([]).unwrap().smtp_session_timeout_s,
+            120.0
+        );
+        for value in ["0", "-1", "NaN", "inf", "1000000001", "bad"] {
+            assert!(
+                Settings::from_env([("MAILGUN_RELAY_SMTP_SESSION_TIMEOUT_S".into(), value.into())])
+                    .is_err(),
+                "{value}"
+            );
+        }
+        assert_eq!(
+            Settings::from_env([("MAILGUN_RELAY_SMTP_SESSION_TIMEOUT_S".into(), "0.25".into())])
+                .unwrap()
+                .smtp_session_timeout_s,
+            0.25
+        );
+    }
 
     fn settings_json(s: &Settings) -> Value {
         json!({
