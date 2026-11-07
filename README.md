@@ -73,6 +73,8 @@ and pull request on Python 3.14.10 and 3.15.2, with mypy targeting each minor
 version. It needs no secrets. For the newer local type check, run
 `uv run --frozen --python 3.15.2 mypy --python-version 3.15` (the default mypy
 configuration targets 3.14).
+CI explicitly installs the canonical Python in the Rust and parity jobs, too;
+it does not rely on the pinned uv release's embedded interpreter downloads.
 The shared Rust fixture oracle uses **CPython 3.14.10** for committed writes;
 consumer checks regenerate observations in memory on both interpreters and
 compare the semantic contract, including explicit version-specific outcomes.
