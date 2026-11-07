@@ -175,3 +175,39 @@ def test_request_severity_follows_final_status(
         assert secret not in shown
     for policy in test_secrets.tokens:
         assert policy.token_sha256 not in shown
+
+
+class _NeverFormat:
+    def __str__(self) -> str:
+        raise AssertionError("raw log object must not be formatted")
+
+
+def test_explicit_event_never_formats_raw_message_or_args(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    stream = _configure_logging_to_stream(monkeypatch, "INFO")
+    # Exercise both message coercion and %-argument interpolation through the
+    # real handler, plus the reserved exception fields.
+    for msg in [_NeverFormat(), "raw %s"]:
+        access_logger().info(
+            msg,
+            _NeverFormat(),
+            extra={"event": "request", "result": "ok", "status_code": 200},
+            exc_info=(RuntimeError, RuntimeError("synthetic-private-exception"), None),
+        )
+    records = [json.loads(line) for line in stream.getvalue().splitlines()]
+    assert len(records) == 2
+    for record in records:
+        assert record["event"] == "request"
+        assert record["result"] == "ok"
+        assert record["status_code"] == 200
+        assert {"msg", "args", "exc_info", "exc_text", "stack_info"}.isdisjoint(record)
+    assert "synthetic-private-exception" not in stream.getvalue()
+
+
+def test_unstructured_record_retains_formatted_event_fallback(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    stream = _configure_logging_to_stream(monkeypatch, "INFO")
+    access_logger().info("fallback %s", "event")
+    assert json.loads(stream.getvalue())["event"] == "fallback event"

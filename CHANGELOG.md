@@ -6,6 +6,11 @@ All notable changes to mailgun-relay are documented here.
 
 ### Tests
 
+- Pin Python entrypoint defaults and environment overrides, app factory selection,
+  disabled Uvicorn access logs, invalid-port refusal before server invocation and
+  no extra environment passed from main to Uvicorn. Document a local
+  synthetic rollback smoke command; no entrypoint behavior changed.
+
 - Prove Python SMTP AUTH rejection at login with ordered handshake and cleanup
   assertions; exercise HTTP BCC input through real SMTP envelopes and DATA.
 - Exercise Python STARTTLS with synthetic trusted, wrong-host, untrusted and
@@ -14,6 +19,10 @@ All notable changes to mailgun-relay are documented here.
   keeps health responsive and admits a subsequent send without duplicating the first.
 
 ### Fixed
+
+- Select an explicit Python JSON logging event before evaluating the fallback
+  message, preserving structured records even when raw message/argument objects
+  cannot be formatted. Keep reserved raw and exception fields excluded.
 
 - Bound Rust SMTP from DNS through the delivery outcome to a validated
   `MAILGUN_RELAY_SMTP_SESSION_TIMEOUT_S` (120 s default), with separate bounded
