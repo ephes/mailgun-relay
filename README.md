@@ -69,7 +69,20 @@ uv run mypy
 ```
 
 GitHub Actions (`.github/workflows/ci.yml`) runs the same checks on every push
-and pull request. It needs no secrets. The Python audit exports the frozen
+and pull request on Python 3.14.10 and 3.15.2, with mypy targeting each minor
+version. It needs no secrets. For the newer local type check, run
+`uv run --frozen --python 3.15.2 mypy --python-version 3.15` (the default mypy
+configuration targets 3.14).
+The shared Rust fixture oracle uses **CPython 3.14.10** for committed writes;
+consumer checks regenerate observations in memory on both interpreters and
+compare the semantic contract, including explicit version-specific outcomes.
+Use `uv run --frozen --python 3.14.10 python rust/fixtures/generate.py` to rewrite
+fixtures, and `uv run --frozen --python 3.15.2 python rust/fixtures/generate.py --check`
+to check the newer consumer. Other interpreter versions cannot rewrite the corpus.
+A patch update that changes observations still fails the drift guard and needs
+an inspected fixture/contract update. See [the fixture contract](rust/README.md#fixtures).
+
+The Python audit exports the frozen
 `uv.lock` runtime and development groups, excluding the project itself, and
 runs `pip-audit==2.9.0` against those exact pins with dependency resolution and
 package installation disabled. Only the top-level auditor version is pinned;
@@ -77,7 +90,7 @@ its isolated tool dependencies are resolved by `uvx` independently of `uv.lock`.
 Strict dependency collection, export failures, auditor failures and known
 vulnerabilities fail the check. The audit queries public PyPI advisory data
 and evaluates platform markers for the current interpreter/platform (Linux and
-Python 3.14 in CI); it does not audit separately installed tools or retained
+Python 3.14/3.15 in CI); it does not audit separately installed tools or retained
 host environments. Rust keeps its separate `cargo deny --locked check` gate.
 
 The Python lockfile constrains email-validator's dnspython dependency to 2.9.0

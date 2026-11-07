@@ -173,3 +173,11 @@ and fixture cases generated from the fixed Python.
   Alias duplicate-key tests assert the actual duplicate-key diagnostic.
 - Repeated merge-marker tests include nested, sequence and inline-anchor sources;
   Python address/scalar-token diagnostics pin trusted token and entry positions.
+
+## Fixture interpreter contract
+
+`tests/test_rust_fixtures.py` covers the canonical CPython 3.14.10 corpus,
+consumer regeneration on 3.15.2, explicit encoded-comma and encoded-local-part
+observations (D-21), serialization refusal versus build rejection, refusal of
+noncanonical writes, and detection of edited fixtures/alternate observations.
+The Rust `mime_fixture` and Python parser check retain every Rust 400 decision.
