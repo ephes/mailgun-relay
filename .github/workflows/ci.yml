@@ -114,6 +114,10 @@ jobs:
           cargo deny --version
       - name: Supply chain (cargo deny, rust/deny.toml)
         run: cargo deny --locked check
+      - name: Set up canonical Python oracle
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.14.10"
       - name: Set up uv (Python's parser for the MIME check)
         uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
         with:
@@ -148,6 +152,10 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      - name: The harness also runs with the host's python3 (shadow, PLAN.md 10.1)
+        run: |
+          python3 --version
+          python3 -m py_compile rust/parity/*.py
       - name: Bootstrap patched Rustup with verified OS trust
         working-directory: .
         run: python3 scripts/ci_rustup.py
@@ -166,6 +174,10 @@ jobs:
             rust/target
           key: rust-${{ runner.os }}-${{ hashFiles('rust/rust-toolchain.toml', 'rust/Cargo.lock') }}
           restore-keys: rust-${{ runner.os }}-
+      - name: Set up canonical Python oracle
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.14.10"
       - name: Set up uv
         uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
         with:
@@ -177,10 +189,6 @@ jobs:
       - name: Release build
         working-directory: rust
         run: cargo build --release --locked
-      - name: The harness also runs with the host's python3 (shadow, PLAN.md 10.1)
-        run: |
-          python3 --version
-          python3 -m py_compile rust/parity/*.py
       - name: Parity harness
         run: |
           timeout 300 uv run python rust/parity/run_parity.py --report "$RUNNER_TEMP/parity.json"

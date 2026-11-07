@@ -12,6 +12,8 @@ All notable changes to mailgun-relay are documented here.
   and 3.15.2 in CI. Record 3.15's encoded-local-part `HeaderWriteError` as a
   serialization refusal instead of aborting generation; retain drift checks,
   Unicode display-name coverage and Rust's fail-closed address decisions.
+  Explicitly provision the canonical interpreter in Rust and parity CI jobs. Incoming
+  Python patch releases need not already be in uv's embedded download catalog.
 
 - Bound Rust admitted form-body reads to 30 seconds total (408 on expiry),
   and DNS plus all SMTP TCP attempts to one SMTP timeout (retryable 503).
