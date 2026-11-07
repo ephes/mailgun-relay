@@ -3,7 +3,7 @@
 The fixtures in ``rust/fixtures`` are generated from the Python implementation
 and pin the behaviour the Rust port must reproduce. A Python change that
 alters any of them must regenerate the files
-(``uv run python rust/fixtures/generate.py``), which then shows the Rust side
+(``uv run --python 3.14.10 python rust/fixtures/generate.py``), which then shows the Rust side
 what to change.
 """
 
@@ -34,7 +34,8 @@ def generator() -> ModuleType:
 def test_committed_fixtures_match_the_python_implementation(generator: ModuleType) -> None:
     stale = generator.check_fixtures()
     assert not stale, (
-        f"stale Rust fixtures {stale}: run `uv run python rust/fixtures/generate.py` "
+        f"stale Rust fixtures {stale}: run "
+        "`uv run --python 3.14.10 python rust/fixtures/generate.py` "
         "and update the Rust side to match"
     )
 
@@ -167,3 +168,132 @@ def test_yaml_parser_probes_survive_schema_tightening(generator: ModuleType) -> 
         assert cases[name]["python_accepts"] is True
         assert cases[name]["expected"] is False
         assert cases[name]["divergence"] == "D-6"
+
+
+def test_encoded_comma_keeps_one_display_name(generator: ModuleType) -> None:
+    cases = {case["name"]: case for case in _cases(generator, "mime.json")}
+    case = cases["encoded comma in display name"]
+    python = case["python"]
+    assert isinstance(python, dict)
+    assert isinstance(python["message"], dict)
+    assert python["status"] == 200
+    assert python["defects"] == []
+    assert ["to", [["Doe, Jane", "b@x.de"]]] in python["message"]["headers"]
+    assert generator._python_mime(case["input"]) == python
+    assert case["expected"] == {"status": 400}
+    assert case["divergence"] == "D-21"
+
+
+def test_encoded_local_part_has_explicit_interpreter_outcome(generator: ModuleType) -> None:
+    cases = {case["name"]: case for case in _cases(generator, "mime.json")}
+    case = cases["encoded local part"]
+    assert case["expected"] == {"status": 400}
+    assert case["divergence"] == "D-21"
+    refusal = {"status": 502, "error": "HeaderWriteError"}
+    assert case["python_versions"] == {"3.15": refusal}
+    expected = refusal if sys.version_info[:2] == (3, 15) else case["python"]
+    assert generator._python_mime(case["input"]) == expected
+    # This is a serialization refusal, not a widening of ordinary Unicode names.
+    ordinary = cases["encoded display name"]
+    assert generator._python_mime(ordinary["input"]) == ordinary["expected"]
+    assert isinstance(ordinary["expected"], dict)
+    assert ordinary["expected"]["status"] == 200
+
+
+def test_serialization_refusal_is_not_a_build_rejection(
+    generator: ModuleType, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from email.errors import HeaderWriteError
+    from email.message import EmailMessage
+
+    def refuse(*args: object, **kwargs: object) -> bytes:
+        raise HeaderWriteError("synthetic refusal")
+
+    monkeypatch.setattr(EmailMessage, "as_bytes", refuse)
+    assert generator._python_mime(generator._mime_input({})) == {
+        "status": 502,
+        "error": "HeaderWriteError",
+    }
+
+
+def test_only_canonical_interpreter_can_rewrite(
+    generator: ModuleType, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setattr(generator, "CANONICAL_PYTHON", (0, 0, 0))
+    monkeypatch.setattr(generator, "FIXTURES_DIR", tmp_path)
+    assert generator.main([]) == 2
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_consumer_drift_check_detects_changed_alternate(
+    generator: ModuleType, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(generator, "GENERATORS", {"mime.json": generator.build_mime})
+    shutil.copy(generator.FIXTURES_DIR / "mime.json", tmp_path / "mime.json")
+    assert generator.check_fixtures(tmp_path) == []
+    content = json.loads((tmp_path / "mime.json").read_text())
+    case = next(c for c in content["cases"] if c["name"] == "encoded local part")
+    case["python_versions"]["3.15"]["status"] = 200
+    (tmp_path / "mime.json").write_text(
+        json.dumps(content, indent=1, sort_keys=True, ensure_ascii=True) + "\n"
+    )
+    assert "mime.json" in generator.check_fixtures(tmp_path)
+
+
+@pytest.mark.parametrize("name", ["long header name", "attachment filenames"])
+def test_other_parser_observations_are_explicit(generator: ModuleType, name: str) -> None:
+    case = next(c for c in _cases(generator, "mime.json") if c["name"] == name)
+    versions = case["python_versions"]
+    assert isinstance(versions, dict)
+    expected = versions["3.15"] if sys.version_info[:2] == (3, 15) else case["python"]
+    assert generator._python_mime(case["input"]) == expected
+
+
+@pytest.mark.parametrize("field", ["expected", "input", "python"])
+def test_mime_consumer_checks_rust_decisions_inputs_and_observations(
+    generator: ModuleType, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, field: str
+) -> None:
+    monkeypatch.setattr(generator, "GENERATORS", {"mime.json": generator.build_mime})
+    shutil.copy(generator.FIXTURES_DIR / "mime.json", tmp_path / "mime.json")
+    assert generator.check_fixtures(tmp_path) == []
+    content = json.loads((tmp_path / "mime.json").read_text())
+    case = next(c for c in content["cases"] if c["name"] == "encoded display name")
+    if field == "input":
+        case[field]["text"] = "changed"
+    else:
+        case[field] = {"status": 400}
+    (tmp_path / "mime.json").write_text(
+        json.dumps(content, indent=1, sort_keys=True, ensure_ascii=True) + "\n"
+    )
+    assert generator.check_fixtures(tmp_path) == ["mime.json"]
+
+
+@pytest.mark.parametrize("change", ["defect", "refusal"])
+def test_attachment_rust_budget_tracks_oracle_and_status(
+    generator: ModuleType, monkeypatch: pytest.MonkeyPatch, change: str
+) -> None:
+    overrides = next(v for n, v in generator._mime_cases() if n == "attachment filenames")
+    target = generator._mime_input(overrides)
+    if change == "defect":
+        original = generator._python_mime
+
+        def observe(case: dict[str, object]) -> dict[str, object]:
+            outcome = original(case)
+            if case == target:
+                outcome["defects"].append("SyntheticDefect")
+            assert isinstance(outcome, dict)
+            return outcome
+
+        monkeypatch.setattr(generator, "_python_mime", observe)
+    else:
+        original_status = generator._rust_mime_status
+
+        def status(case: dict[str, object]) -> int:
+            return 400 if case == target else int(original_status(case))
+
+        monkeypatch.setattr(generator, "_rust_mime_status", status)
+    case = next(c for c in generator.build_mime()["cases"] if c["name"] == "attachment filenames")
+    if change == "defect":
+        assert "SyntheticDefect" in case["expected"]["defects"]
+    else:
+        assert case["expected"] == {"status": 400}

@@ -187,19 +187,47 @@ exits 1.
 
 ## Fixtures
 
-Python is the oracle for the contract and the policy decisions.
-`fixtures/generate.py` calls the real Python code on a fixed corpus and writes
-`fixtures/*.json`; the Rust tests load them with `include_str!`. After a
+CPython **3.14.10** is the canonical oracle for committed fixtures and policy
+decisions. `fixtures/generate.py` calls the real Python code on a fixed synthetic
+corpus and writes `fixtures/*.json`; the Rust tests load them with `include_str!`.
+Writes from other interpreter versions fail before changing any files. After a
 Python change, from the repository root:
 
 ```bash
-uv run python rust/fixtures/generate.py           # rewrite the fixtures
-uv run python rust/fixtures/generate.py --check   # exit 1 when stale
+uv run --frozen --python 3.14.10 python rust/fixtures/generate.py
+uv run --frozen --python 3.14.10 python rust/fixtures/generate.py --check
+uv run --frozen --python 3.15.2 python rust/fixtures/generate.py --check
 ```
 
 `tests/test_rust_fixtures.py` (Python suite) fails when a committed fixture
-differs from a fresh render (`smtp_outcomes.json` runs Python's SMTP
+differs from a fresh native render (`smtp_outcomes.json` runs Python's SMTP
 client against a fake server and needs `openssl` for its throwaway CA).
+CI runs the frozen audit, lint, types and full Python suite on 3.14.10 and 3.15.2.
+The suite narrowly filters aiosmtpd 1.4.6's `ByteString` import deprecation on
+3.15; the existing warnings-as-errors policy otherwise stays in place.
+Consumer checks compare every field, projecting only a recorded `python_versions`
+observation for the running minor version; Rust `expected` decisions stay fixed.
+Unknown parser/serializer changes fail the guard instead of being normalized away.
+
+Python 3.14.10 fixes the encoded-comma display name observation: `Doe, Jane`
+remains one display name for `b@x.de`, with no parser defects. Rust continues
+to refuse this exotic encoded ASCII special under D-21. For `encoded local part`,
+3.14.10 serializes a defective message, while 3.15.2 raises `HeaderWriteError`
+before DATA. The corpus records the latter as 502 (the permanent submission
+failure classification), separately from a build-time 400. This is a fixture
+observation, not a live-service finding or a runtime policy change. Ordinary
+Unicode display names still serialize successfully on both interpreters.
+
+The 3.15 consumer contract also records two parser-only differences in exotic
+D-21 cases: `long header name` becomes body text with
+`MissingHeaderBodySeparatorDefect` (Rust still refuses the field); `attachment
+filenames` gains `InvalidHeaderDefect` for the oversized declared Content-Type.
+Rust replaces that invalid type with `application/octet-stream`, so its canonical
+message and defect budget are unchanged. Each native Python observation is
+checked explicitly; neither difference broadens Rust acceptance. The 3.15
+contract entries are maintained in the generator and verified against native
+3.15 output; a change there needs an inspected contract edit, not just a rewrite.
+
 The messages the Rust port builds are also read
 with Python's parser (`mime.json`, PLAN.md 2.10):
 

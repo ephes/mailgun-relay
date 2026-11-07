@@ -6,6 +6,13 @@ All notable changes to mailgun-relay are documented here.
 
 ### Fixed
 
+- Refresh the encoded-comma MIME oracle for Python 3.14.10: one display name,
+  no parser defects. Rust retains its D-21 refusal.
+- Define CPython 3.14.10 as the fixture writer and check consumers on 3.14.10
+  and 3.15.2 in CI. Record 3.15's encoded-local-part `HeaderWriteError` as a
+  serialization refusal instead of aborting generation; retain drift checks,
+  Unicode display-name coverage and Rust's fail-closed address decisions.
+
 - Bound Rust admitted form-body reads to 30 seconds total (408 on expiry),
   and DNS plus all SMTP TCP attempts to one SMTP timeout (retryable 503).
   Python rollback acquisition behavior is unchanged.

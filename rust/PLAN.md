@@ -1036,8 +1036,30 @@ words ≤ 75, no parser defects beyond Python's own). The CI `rust` job runs
 both.
 
 Drift guard: `tests/test_rust_fixtures.py` regenerates in memory and asserts
-equality with the committed files, so a Python behaviour change cannot merge
-without regenerating, and the Rust tests then show what Rust must change.
+equality with the committed contract. CPython 3.14.10 is the canonical writer;
+other versions refuse on-disk writes. CI checks full native Python suites on
+3.14.10 and 3.15.2. The consumer comparison projects only explicitly recorded
+`python_versions` observations for that minor version, checking all remaining
+fields and Rust expectations unchanged. Unrecorded patch/parser changes fail.
+
+D-21 observations: patched 3.14.10 reads the encoded ASCII comma in `Doe, Jane`
+as one display name without defects (3.14.8 produced two addresses and
+`InvalidHeaderDefect`). Rust still refuses it with 400. The `encoded local part`
+case serializes with defects on 3.14.10; 3.15.2 refuses serialization with
+`HeaderWriteError`, recorded explicitly as 502 (permanent failure before DATA),
+not as a build-time 400. Rust still refuses it with 400; normal Unicode display
+names remain accepted. These are synthetic fixture observations, not changes to
+address policy or claims about the running service.
+
+The 3.15 consumer contract also records two parser-only differences in exotic
+D-21 cases: `long header name` becomes body text with
+`MissingHeaderBodySeparatorDefect` (Rust still refuses the field); `attachment
+filenames` gains `InvalidHeaderDefect` for the oversized declared Content-Type.
+Rust replaces that invalid type with `application/octet-stream`, so its canonical
+message and defect budget are unchanged. Each native Python observation is
+checked explicitly; neither difference broadens Rust acceptance. The 3.15
+contract entries are maintained in the generator and verified against native
+3.15 output; a change there needs an inspected contract edit, not just a rewrite.
 
 ### 7.3 Corpus generation
 

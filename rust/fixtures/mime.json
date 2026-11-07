@@ -1723,6 +1723,12 @@
      ]
     },
     "status": 200
+   },
+   "python_versions": {
+    "3.15": {
+     "error": "HeaderWriteError",
+     "status": 502
+    }
    }
   },
   {
@@ -2156,9 +2162,7 @@
    },
    "name": "encoded comma in display name",
    "python": {
-    "defects": [
-     "InvalidHeaderDefect"
-    ],
+    "defects": [],
     "envelope": [
      "b@x.de"
     ],
@@ -2186,11 +2190,7 @@
        "to",
        [
         [
-         "",
-         "Doe"
-        ],
-        [
-         "Jane",
+         "Doe, Jane",
          "b@x.de"
         ]
        ]
@@ -4749,6 +4749,48 @@
      ]
     },
     "status": 200
+   },
+   "python_versions": {
+    "3.15": {
+     "defects": [
+      "MissingHeaderBodySeparatorDefect"
+     ],
+     "envelope": [
+      "bob@example.test"
+     ],
+     "message": {
+      "body": {
+       "charset": "utf-8",
+       "text": "=?utf-8?q?X-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa?=\n =?utf-8?q?aaaaaaaaaaaaaaaa?=: v\n\nhello",
+       "type": "text/plain"
+      },
+      "headers": [
+       [
+        "from",
+        [
+         [
+          "Alice",
+          "alice@example.test"
+         ]
+        ]
+       ],
+       [
+        "subject",
+        "hi"
+       ],
+       [
+        "to",
+        [
+         [
+          "",
+          "bob@example.test"
+         ]
+        ]
+       ]
+      ]
+     },
+     "status": 200
+    }
    }
   },
   {
@@ -5872,6 +5914,102 @@
      ]
     },
     "status": 200
+   },
+   "python_versions": {
+    "3.15": {
+     "defects": [
+      "InvalidHeaderDefect",
+      "NonPrintableDefect"
+     ],
+     "envelope": [
+      "bob@example.test"
+     ],
+     "message": {
+      "body": {
+       "parts": [
+        {
+         "charset": "utf-8",
+         "text": "hello",
+         "type": "text/plain"
+        },
+        {
+         "data": "MQ==",
+         "disposition": "attachment",
+         "filename": "a\u0001b.txt",
+         "type": "text/plain"
+        },
+        {
+         "data": "Mg==",
+         "disposition": "attachment",
+         "filename": "a\tb.txt",
+         "type": "text/plain"
+        },
+        {
+         "data": "Mw==",
+         "disposition": "attachment",
+         "filename": "a\"b\\c.txt",
+         "type": "text/plain"
+        },
+        {
+         "data": "NA==",
+         "disposition": "attachment",
+         "filename": "a;b c.txt",
+         "type": "text/plain"
+        },
+        {
+         "data": "NQ==",
+         "disposition": "attachment",
+         "filename": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.txt",
+         "type": "text/plain"
+        },
+        {
+         "data": "Ng==",
+         "disposition": "attachment",
+         "filename": "\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6.txt",
+         "type": "text/plain"
+        },
+        {
+         "data": "Nw==",
+         "disposition": "attachment",
+         "filename": "a\u2028b\u0085.txt",
+         "type": "text/plain"
+        },
+        {
+         "data": "OA==",
+         "disposition": "attachment",
+         "filename": "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy.txt",
+         "type": "image/yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"
+        }
+       ],
+       "type": "multipart/mixed"
+      },
+      "headers": [
+       [
+        "from",
+        [
+         [
+          "Alice",
+          "alice@example.test"
+         ]
+        ]
+       ],
+       [
+        "subject",
+        "hi"
+       ],
+       [
+        "to",
+        [
+         [
+          "",
+          "bob@example.test"
+         ]
+        ]
+       ]
+      ]
+     },
+     "status": 200
+    }
    }
   },
   {
