@@ -384,7 +384,20 @@ def test_duplicate_normalized_token_digest_refused(tmp_path: Path, reverse: bool
     assert "synthetic-label-marker" not in str(caught.value)
 
 
-@pytest.mark.parametrize("case", ["syntax", "label", "address", "domain", "duplicate-label"])
+@pytest.mark.parametrize(
+    "case",
+    [
+        "syntax",
+        "label",
+        "address",
+        "domain",
+        "duplicate-label",
+        "password-label",
+        "digest-label",
+        "later-digest-label",
+        "normalized-digest-label",
+    ],
+)
 def test_config_errors_never_disclose_secret_values(tmp_path: Path, case: str) -> None:
     password = "SYNTHETIC-PASSWORD-MARKER!"
     digest = "ab" * 32
@@ -402,6 +415,21 @@ def test_config_errors_never_disclose_secret_values(tmp_path: Path, case: str) -
         text += "    allowed_from_addresses: [*pw]\n"
     elif case == "domain":
         text = text.replace("allowed_from_domains: [wersdoerfer.de]", "allowed_from_domains: [*pw]")
+    elif case == "password-label":
+        text = text.replace("label: t", "label: *pw")
+    elif case == "digest-label":
+        text = text.replace("label: t", f"label: '{digest}'")
+    elif case in {"later-digest-label", "normalized-digest-label"}:
+        # A label can expose another policy's digest, even before normalization.
+        spelling = f"  {digest.upper()}  " if case == "normalized-digest-label" else digest
+        text = text.replace("username: relay@example.test", f"username: &hash '{spelling}'")
+        text = text.replace("label: t", "label: *hash").replace(
+            f"&sha '{digest}'", f"'{'cd' * 32}'"
+        )
+        text += (
+            "  - label: ordinary\n    token_sha256: *hash\n"
+            "    mailgun_domains: [example.test]\n    allowed_from_domains: [example.test]\n"
+        )
     else:
         text = text.replace("label: t", "label: *pw")
         text += (
@@ -411,8 +439,10 @@ def test_config_errors_never_disclose_secret_values(tmp_path: Path, case: str) -
     path = write_secrets(tmp_path, text)
     with pytest.raises(InvalidPolicyError) as caught:
         load_secrets(path)
+    if case in {"password-label", "digest-label", "later-digest-label", "normalized-digest-label"}:
+        assert str(caught.value) == "tokens[0].label must not equal a credential"
     shown = "".join(traceback.format_exception(caught.value))
-    assert password not in shown and digest not in shown
+    assert password not in shown and digest not in shown.lower()
     result = subprocess.run(
         [sys.executable, "-c", "from mailgun_relay.app import create_app; create_app()"],
         env={"MAILGUN_RELAY_SECRETS_PATH": str(path)},
@@ -423,7 +453,7 @@ def test_config_errors_never_disclose_secret_values(tmp_path: Path, case: str) -
     assert result.returncode != 0
     assert "InvalidPolicyError" in result.stderr
     assert password not in result.stdout + result.stderr
-    assert digest not in result.stdout + result.stderr
+    assert digest not in (result.stdout + result.stderr).lower()
 
 
 @pytest.mark.parametrize(

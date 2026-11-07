@@ -308,7 +308,8 @@ def register_routes(app: FastAPI) -> None:
                 assert admission_limiter is not None
                 admission_limiter.release()
             duration_ms = int((time.monotonic() - start) * 1000)
-            log.info(
+            log.log(
+                logging.ERROR if status_code >= 500 else logging.INFO,
                 "request",
                 extra={
                     "event": "request",

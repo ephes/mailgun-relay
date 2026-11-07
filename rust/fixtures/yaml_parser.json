@@ -140,6 +140,30 @@
   },
   {
    "expected": true,
+   "name": "label aliases SMTP password",
+   "python_accepts": true,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: &pw hunter2\ntokens:\n  - token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\n    label: *pw\n"
+  },
+  {
+   "expected": true,
+   "name": "label equals own digest",
+   "python_accepts": true,
+   "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\n    label: '9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08'\n"
+  },
+  {
+   "expected": true,
+   "name": "label aliases later normalized digest",
+   "python_accepts": true,
+   "yaml": "smtp:\n  username: &hash '  9F86D081884C7D659A2FEAA0C55AD015A3BF4F1B2B0B822CD15D6C15B0F00A08  '\n  password: hunter2\ntokens:\n  - mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\n    label: *hash\n    token_sha256: 'cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd'\n  - mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\n    label: ordinary\n    token_sha256: *hash\n"
+  },
+  {
+   "expected": true,
+   "name": "ordinary label alias",
+   "python_accepts": true,
+   "yaml": "smtp:\n  username: &label ordinary\n  password: hunter2\ntokens:\n  - token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\n    label: *label\n"
+  },
+  {
+   "expected": true,
    "name": "duplicate labels",
    "python_accepts": true,
    "yaml": "smtp:\n  username: relay@example.test\n  password: hunter2\ntokens:\n  - label: homepage\n    token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\n  - label: homepage\n    token_sha256: \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\"\n    mailgun_domains: [mg.wersdoerfer.de]\n    allowed_from_domains: [wersdoerfer.de]\n"

@@ -188,8 +188,12 @@ impl Drop for Record {
             error_class: self.error_class,
             duration_ms: self.start.elapsed().as_millis(),
         };
-        self.logger
-            .emit(Level::Info, ACCESS_LOGGER, "request", &fields);
+        let level = if self.status_code >= 500 {
+            Level::Error
+        } else {
+            Level::Info
+        };
+        self.logger.emit(level, ACCESS_LOGGER, "request", &fields);
     }
 }
 

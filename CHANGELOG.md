@@ -6,6 +6,10 @@ All notable changes to mailgun-relay are documented here.
 
 ### Fixed
 
+- Log HTTP 5xx/internal request failures once at ERROR in Python and Rust,
+  preserving safe structured evidence at LOG_LEVEL=WARNING while normal
+  traffic remains at INFO.
+
 - Refresh the encoded-comma MIME oracle for Python 3.14.10: one display name,
   no parser defects. Rust retains its D-21 refusal.
 - Define CPython 3.14.10 as the fixture writer and check consumers on 3.14.10
@@ -29,6 +33,11 @@ All notable changes to mailgun-relay are documented here.
   startup. Rust configuration bounds remain unchanged.
 
 ### Security
+
+- Refuse policy labels equal to the loaded SMTP password or any token digest
+  in both runtimes, including aliases and later policies; digest comparisons
+  trim whitespace and ignore case. Fail with positional, value-free errors
+  before startup/access logs or Debug output can expose a credential.
 
 - Redact Python YAML/schema error values and parser exception chains, including
   aliases into labels and invalid address/domain fields.

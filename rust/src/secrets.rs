@@ -134,6 +134,18 @@ pub fn from_yaml(text: &str) -> Result<Secrets, ConfigError> {
         }
         tokens.push(policy);
     }
+    // Labels enter logs and Debug output. Check every loaded digest, including
+    // policies later in the document and noncanonical digest spellings.
+    let digests: BTreeSet<&str> = tokens.iter().map(|t| t.token_sha256.as_str()).collect();
+    for (index, policy) in tokens.iter().enumerate() {
+        if policy.label == smtp.password
+            || digests.contains(py_strip(&policy.label).to_lowercase().as_str())
+        {
+            return Err(invalid(format!(
+                "tokens[{index}].label must not equal a credential"
+            )));
+        }
+    }
     Ok(Secrets { smtp, tokens })
 }
 
@@ -291,6 +303,43 @@ mod tests {
             "smtp: {{username: relay, password: synthetic-password}}\ntokens:\n  - label: first\n    token_sha256: '{}'\n    mailgun_domains: [example.test]\n    allowed_from_domains: [example.test]\n",
             "ab".repeat(32)
         )
+    }
+
+    #[test]
+    fn credential_valued_labels_refused() {
+        let digest = "ab".repeat(32);
+        let other = "cd".repeat(32);
+        let base = minimal_document();
+        for text in [
+            base.replace(
+                "password: synthetic-password",
+                "password: &pw synthetic-password",
+            )
+            .replace("label: first", "label: *pw"),
+            base.replace("label: first", &format!("label: '{digest}'")),
+            base.replace(
+                "username: relay",
+                &format!("username: &hash '  {}  '", digest.to_uppercase()),
+            )
+            .replace("label: first", "label: *hash")
+            .replace(&format!("'{digest}'"), &format!("'{other}'"))
+                + "  - label: ordinary\n    token_sha256: *hash\n    mailgun_domains: [example.test]\n    allowed_from_domains: [example.test]\n",
+        ] {
+            let error = from_yaml(&text).unwrap_err();
+            assert!(error.0.contains("tokens[0].label"));
+            let shown = format!("{error:?}");
+            assert!(!shown.contains("synthetic-password"));
+            assert!(!shown.to_lowercase().contains(&digest));
+        }
+        let secrets = from_yaml(
+            &base
+                .replace("username: relay", "username: &label ordinary")
+                .replace("label: first", "label: *label"),
+        )
+        .unwrap();
+        let shown = format!("{secrets:?}");
+        assert!(shown.contains("ordinary"));
+        assert!(!shown.contains("synthetic-password") && !shown.contains(&digest));
     }
 
     #[test]
@@ -498,8 +547,8 @@ mod tests {
         let error = from_yaml(&duplicate_alias).unwrap_err().0;
         assert!(error.starts_with("tokens[1]: duplicate token label"));
         assert!(!error.contains(pw) && !error.contains(sha));
-        // Both aliases resolve: a label aliased from the password loads.
-        assert!(from_yaml(&doc("label: *pw")).is_ok());
+        // Credential-valued labels now fail even when the rest of the schema is valid.
+        assert!(from_yaml(&doc("label: *pw")).is_err());
     }
 
     /// Every case of `fixtures/config_secrets.json`: the YAML written with

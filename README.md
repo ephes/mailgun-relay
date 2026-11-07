@@ -136,11 +136,14 @@ journald, so `journalctl -u mailgun-relay -f` is the live view.
   whether a custom CA bundle is in use, the SMTP concurrency cap, log level,
   the configured token *labels*, the body/recipient caps, and
   `fail_on_partial_refusal`. Raising `MAILGUN_RELAY_LOG_LEVEL`
-  above `INFO` quietens the request records but never this one.
+  above `INFO` quietens ordinary request records but never this one.
 - `event=request` — one record per `POST /v3/{domain}/messages`, with
   `request_id`, `token_label`, `path_domain`, `from`, `recipient_count`,
   `refused_count`, `message_id`, `result`, `status_code`, `error_class`,
   `duration_ms`.
+  Requests ending in HTTP 5xx (including internal errors) log at `ERROR`;
+  other outcomes log at `INFO`. Thus `WARNING` keeps failure records visible
+  while suppressing normal traffic. The request record is still emitted once.
 - `event=recipients_refused` — a `WARNING` emitted when the SMTP server
   accepted the message for some recipients and refused others. It carries the
   same `request_id`/`message_id` as the request record, `refused_count`, and a
@@ -246,3 +249,10 @@ Aliases cannot turn a password/hash into an error field name. Exceptions and
 ordinary startup stdout/stderr are tested with invented secret markers; Rust
 retains the same value-free diagnostic boundary. Adoption needs a runtime
 update/restart; no deployment is part of this change.
+
+Labels are public metadata: both loaders reject a label equal to the loaded
+SMTP password or any loaded token digest, including another policy's digest.
+Digest comparisons trim whitespace and ignore case. Rejection happens before
+startup/access logging or secrets Debug output, with only the token position
+in the error. Ordinary labels and aliases remain supported. This is an equality
+guard, not detection of embedded secrets; operators must keep labels nonsecret.

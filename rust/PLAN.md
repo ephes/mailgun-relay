@@ -547,6 +547,9 @@ tokens:                                  # non-empty list
   documented string keys; unknown/non-string keys fail startup. Duplicate YAML
   mapping keys are refused before schema lookup. Ordinary anchors/aliases work;
   Python also refuses conflicting merge keys, Rust retains D-6 merge refusal.
+- Labels must not equal the SMTP password or any loaded token digest (including
+  later policies, with whitespace/case normalization for digest comparisons).
+  Refuse the complete load with positional, value-free errors before logging.
 - The file is refused when `mode & 0o037 != 0` (world access, group write or
   execute); `0640`, `0600`, `0400` pass (`config.py:173-196`). The check runs
   before the file is read.
@@ -685,6 +688,8 @@ One compact JSON object per line on stdout, flushed per record; the unit keeps
 INFO or the configured level if higher), `event=request` (exactly one per
 `POST /v3/{domain}/messages` that reaches the route, none for the 413 layer),
 `event=recipients_refused` (WARNING), `event=smtp_cleanup_failed` (WARNING).
+Request records use ERROR for HTTP 5xx/internal failures and INFO otherwise;
+WARNING suppresses normal traffic while retaining failure evidence.
 Field sets and `result` values as in Python (`relay:app.py:96-132`,
 `routes.py:288-358`); section 4 says which parts are load-bearing.
 `smtp_cleanup_failed` is written when `QUIT` is not answered with 221; its

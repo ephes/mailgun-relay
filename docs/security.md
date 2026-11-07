@@ -193,6 +193,22 @@ codes, never reply texts. The startup record names the effective configuration a
 token labels, never secrets; `Debug` of the secrets redacts the password and
 the hashes.
 
+Before accepting a complete secrets document, both loaders reject labels equal
+to the SMTP password or any token digest (digest comparison strips whitespace
+and ignores case), including later policies and YAML aliases. Errors identify
+only the token position. This protects successful-load startup/access/Debug
+output as well as failure diagnostics. Ordinary labels/aliases remain valid;
+operators must still avoid embedding secrets in public metadata.
+
+Each request ending in HTTP 5xx logs once at ERROR; other request outcomes stay
+at INFO. At LOG_LEVEL=WARNING, successful traffic stays quiet and internal/SMTP
+failures remain visible with the same safe fields. Partial refusals retain their
+separate WARNING; strict partial-refusal HTTP 502 also has an ERROR request record.
+Python `test_request_severity_follows_final_status` and Rust's same-named route
+test cover quiet-mode 500/502/503 visibility and privacy; config privacy tests,
+`credential_valued_labels_refused`, shared config fixtures and
+`credential_valued_labels_stop_before_startup` cover the label guard.
+
 The logged `from` is personal data of the sender role address; it is
 needed to diagnose policy failures and is not a secret.
 

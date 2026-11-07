@@ -306,4 +306,10 @@ def load_secrets(path: str | Path) -> Secrets:
         seen_labels.add(policy.label)
         tokens.append(policy)
 
+    # Labels are public log/Debug metadata. Check the complete document so a
+    # label cannot expose another policy's digest, regardless of token order.
+    for index, policy in enumerate(tokens):
+        if policy.label == smtp.password or policy.label.strip().lower() in seen_digests:
+            raise InvalidPolicyError(f"tokens[{index}].label must not equal a credential")
+
     return Secrets(smtp=smtp, tokens=tuple(tokens))
