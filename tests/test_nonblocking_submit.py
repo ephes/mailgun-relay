@@ -10,14 +10,19 @@ from __future__ import annotations
 import asyncio
 import base64
 import dataclasses
+import functools
 import logging
 import threading
 from collections.abc import AsyncIterator
 from email.message import EmailMessage
+from typing import Any
 
+import anyio
 import httpx
 import pytest
+from starlette.datastructures import FormData, UploadFile
 
+from mailgun_relay import routes
 from mailgun_relay.app import create_app
 from mailgun_relay.config import Settings
 from mailgun_relay.routes import AppState
@@ -257,3 +262,101 @@ def test_admission_is_returned_after_failures(
             assert response.status_code == 200
 
     asyncio.run(scenario())
+
+
+def test_cancelled_send_keeps_admission_until_worker_and_form_cleanup_finish(
+    app_state: AppState,
+    homepage_token: str,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    submitter = GatedSubmitter()
+    parsed_forms: list[FormData] = []
+    closed_forms: list[FormData] = []
+    parse = routes._parse_form
+    close = FormData.close
+    run_sync = anyio.to_thread.run_sync
+    finished_workers: list[bool] = []
+
+    async def checkpoint_after_worker(*args: Any, **kwargs: Any) -> Any:
+        result = await run_sync(*args, **kwargs)
+        if isinstance(args[0], functools.partial) and args[0].func is submitter:
+            finished_workers.append(True)
+            # Deliver pending cancellation after AnyIO's worker shield exits,
+            # forcing the route to unwind through its cleanup finally blocks.
+            await anyio.lowlevel.checkpoint()
+        return result
+
+    def capture(form: FormData, settings: Settings) -> routes._ParsedForm:
+        parsed_forms.append(form)
+        return parse(form, settings)
+
+    async def close_form(form: FormData) -> None:
+        # Make cleanup genuinely asynchronous so cancellation must be shielded.
+        await anyio.lowlevel.checkpoint()
+        closed_forms.append(form)
+        await close(form)
+
+    monkeypatch.setattr(routes, "_parse_form", capture)
+    monkeypatch.setattr(FormData, "close", close_form)
+    monkeypatch.setattr(anyio.to_thread, "run_sync", checkpoint_after_worker)
+
+    async def scenario() -> None:
+        scopes: list[anyio.CancelScope] = []
+        done = anyio.Event()
+        responses: list[httpx.Response] = []
+        async with _client(app_state, submitter, smtp_max_concurrency=1) as client:
+            path = "/v3/mg.wersdoerfer.de/messages"
+
+            async def send() -> None:
+                with anyio.CancelScope() as scope:
+                    scopes.append(scope)
+                    responses.append(
+                        await client.post(
+                            path,
+                            headers=_auth(homepage_token),
+                            data=_form(_SLOW_RECIPIENT),
+                            files={"attachment": ("synthetic.txt", b"invented attachment")},
+                        )
+                    )
+                done.set()
+
+            with anyio.fail_after(_TIMEOUT_S):
+                async with anyio.create_task_group() as group:
+                    group.start_soon(send)
+                    try:
+                        await _wait_entered(submitter)
+                        [form] = parsed_forms
+                        [upload] = [v for _, v in form.multi_items() if isinstance(v, UploadFile)]
+                        # Parsing already read the bytes into an Attachment and closed
+                        # the spool. Request-level form cleanup still waits for SMTP.
+                        assert upload.file.closed
+                        scopes[0].cancel()
+                        busy = await client.post(
+                            path,
+                            headers=_auth(homepage_token),
+                            data=_form("retry@example.test"),
+                        )
+                        assert busy.status_code == 503
+                        assert (await client.get("/health")).status_code == 200
+                        assert not done.is_set()
+                        assert closed_forms == []
+                        assert submitter.recipients == [[_SLOW_RECIPIENT]]
+                    finally:
+                        submitter.release.set()
+                    await done.wait()
+                assert scopes[0].cancelled_caught
+                assert responses == []
+                assert finished_workers == [True]
+                assert len(closed_forms) == 1 and closed_forms[0] is form
+                assert upload.file.closed
+                retry = await client.post(
+                    path,
+                    headers=_auth(homepage_token),
+                    data=_form("retry@example.test"),
+                )
+                assert retry.status_code == 200
+                assert len(closed_forms) == 2
+                assert closed_forms[1] is parsed_forms[1]
+                assert submitter.recipients == [[_SLOW_RECIPIENT], ["retry@example.test"]]
+
+    anyio.run(scenario)

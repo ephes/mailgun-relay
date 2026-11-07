@@ -4,6 +4,15 @@ All notable changes to mailgun-relay are documented here.
 
 ## Unreleased
 
+### Tests
+
+- Prove Python SMTP AUTH rejection at login with ordered handshake and cleanup
+  assertions; exercise HTTP BCC input through real SMTP envelopes and DATA.
+- Exercise Python STARTTLS with synthetic trusted, wrong-host, untrusted and
+  missing-STARTTLS peers, refusing AUTH and message submission on TLS failure.
+- Verify AnyIO cancellation retains admission until SMTP and form cleanup finish,
+  keeps health responsive and admits a subsequent send without duplicating the first.
+
 ### Fixed
 
 - Log HTTP 5xx/internal request failures once at ERROR in Python and Rust,

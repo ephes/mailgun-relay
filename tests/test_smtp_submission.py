@@ -1,10 +1,8 @@
 from __future__ import annotations
 
-import asyncio
 import smtplib
 import socket
 import ssl
-import threading
 from collections.abc import Iterator
 from email.message import EmailMessage
 from typing import Any
@@ -17,6 +15,7 @@ from mailgun_relay.smtp_client import (
     FailureCategory,
     SmtpSubmitError,
     SmtpTransport,
+    _category_for,
     submit,
 )
 
@@ -190,8 +189,6 @@ def test_submit_happy_path(fake_smtp: tuple[_RecordingHandler, int]) -> None:
     assert handler.mail_from == "relay@example.test"
     assert set(handler.rcpt_tos) == {"bob@example.test", "secret@example.test"}
     assert handler.content is not None
-    # BCC must NOT appear in the message bytes (only in envelope).
-    assert b"secret@example.test" not in handler.content
 
 
 def _make_mock_smtp_with_exc(exc: Exception) -> MagicMock:
@@ -247,20 +244,41 @@ def test_smtp_recipients_refused_maps_to_permanent() -> None:
     assert ei.value.category is FailureCategory.PERMANENT
 
 
-def test_smtp_auth_failure_maps_to_auth() -> None:
-    err = smtplib.SMTPAuthenticationError(535, b"bad creds")
-    with patch("smtplib.SMTP", new=_make_mock_smtp_with_exc(err)):
+def test_smtp_auth_failure_at_login_stops_submission() -> None:
+    auth_marker = "invented-login-marker"
+    mock, instance = _make_ok_mock_smtp()
+    instance.login.side_effect = smtplib.SMTPAuthenticationError(535, b"bad credentials")
+    with patch("smtplib.SMTP", new=mock):
         with pytest.raises(SmtpSubmitError) as ei:
             submit(
                 _msg(),
-                envelope_sender="x@x",
-                recipients=["y@y"],
-                # AUTH only ever runs over TLS now, so exercise the STARTTLS path.
-                transport=SmtpTransport("h", 25, "user", "pw", True, 5.0),
+                envelope_sender="relay@example.test",
+                recipients=["recipient@example.test"],
+                transport=SmtpTransport("smtp.test", 587, "user", auth_marker, True, 5.0),
             )
     assert ei.value.category is FailureCategory.AUTH
-    # The error message must not include the SMTP password.
-    assert "pw" not in str(ei.value)
+    assert auth_marker not in str(ei.value)
+    assert [entry[0] for entry in instance.method_calls] == [
+        "ehlo",
+        "starttls",
+        "ehlo",
+        "login",
+        "quit",
+        "close",
+    ]
+    instance.login.assert_called_once_with("user", auth_marker)
+    instance.send_message.assert_not_called()
+    instance.mail.assert_not_called()
+    instance.data.assert_not_called()
+    instance.quit.assert_called_once()
+    instance.close.assert_called_once()
+
+
+def test_auth_exception_classifier() -> None:
+    assert (
+        _category_for(smtplib.SMTPAuthenticationError(535, b"bad credentials"))
+        is FailureCategory.AUTH
+    )
 
 
 def _make_ok_mock_smtp() -> tuple[MagicMock, MagicMock]:
@@ -291,7 +309,15 @@ def test_starttls_uses_verifying_tls_context() -> None:
     assert isinstance(context, ssl.SSLContext)
     assert context.verify_mode is ssl.CERT_REQUIRED
     assert context.check_hostname is True
-    # AUTH happens only after STARTTLS succeeded.
+    assert [entry[0] for entry in instance.method_calls] == [
+        "ehlo",
+        "starttls",
+        "ehlo",
+        "login",
+        "send_message",
+        "quit",
+        "close",
+    ]
     instance.login.assert_called_once_with("user", "pw")
 
 
@@ -351,7 +377,3 @@ def test_smtp_timeout_maps_to_temporary() -> None:
                 transport=SmtpTransport("h", 25, None, None, False, 5.0),
             )
     assert ei.value.category is FailureCategory.TEMPORARY
-
-
-# Silence unused-warning for asyncio/threading imports kept for future TLS tests.
-_unused = (asyncio, threading)
