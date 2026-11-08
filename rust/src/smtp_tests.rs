@@ -739,3 +739,19 @@ async fn inbound_wire_bytes_stop_exactly_at_ceiling() {
     drop(stream);
     writer.await.unwrap();
 }
+
+#[test]
+fn ca_read_bounds_a_growing_source_and_accepts_the_limit() {
+    // Metadata can become stale: simulate an endless producer at the read
+    // boundary, without a timing-dependent file-growth race.
+    assert_eq!(
+        read_ca_bytes(std::io::repeat(b'x')).unwrap_err(),
+        "CA bundle exceeds 1048576 bytes"
+    );
+    assert_eq!(
+        read_ca_bytes(std::io::repeat(b'x').take(MAX_CA_BYTES))
+            .unwrap()
+            .len(),
+        MAX_CA_BYTES as usize
+    );
+}

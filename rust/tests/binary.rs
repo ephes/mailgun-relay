@@ -224,6 +224,14 @@ struct Server {
     stdout: BufReader<std::process::ChildStdout>,
 }
 
+impl Drop for Server {
+    fn drop(&mut self) {
+        // Also reap the process when an assertion fails.
+        let _ = self.child.kill();
+        let _ = self.child.wait();
+    }
+}
+
 /// Start the server on a free port and wait for its startup record. The
 /// port can be taken by another test between `free_port` and the bind;
 /// then the server exits 1 and another port is tried.
@@ -258,7 +266,7 @@ fn terminate(child: &mut std::process::Child) -> std::process::ExitStatus {
         .status()
         .unwrap();
     assert!(killed.success());
-    child.wait().unwrap()
+    wait_before(child, Duration::from_secs(10))
 }
 
 #[test]
@@ -346,8 +354,14 @@ fn delivers_over_starttls_with_the_ca_file() {
     );
     let dir = tempfile::tempdir().unwrap();
     let secrets = secrets_file(dir.path(), 0o600);
+    let ca_target = dir.path().join("roots.pem");
     let ca = dir.path().join("ca.pem");
-    std::fs::write(&ca, &pki.ca_pem).unwrap();
+    std::fs::write(
+        &ca_target,
+        format!("{}{}", fake_smtp::Pki::new().ca_pem, pki.ca_pem),
+    )
+    .unwrap();
+    std::os::unix::fs::symlink(&ca_target, &ca).unwrap();
     let smtp_port = smtp.port.to_string();
     let env = [
         ("MAILGUN_RELAY_SECRETS_PATH", secrets.to_str().unwrap()),
@@ -476,4 +490,165 @@ fn shutdown_waits_for_a_submission_whose_client_left() {
     assert_eq!(record["event"], "request");
     assert_eq!(record["result"], "smtp_temporary");
     assert_eq!(record["status_code"], 503);
+}
+
+/// A failed startup or shutdown must not hang the test runner.
+fn wait_before(child: &mut std::process::Child, budget: Duration) -> std::process::ExitStatus {
+    let started = std::time::Instant::now();
+    loop {
+        if let Some(status) = child.try_wait().unwrap() {
+            return status;
+        }
+        if started.elapsed() >= budget {
+            child.kill().unwrap();
+            child.wait().unwrap();
+            panic!("binary did not exit within {budget:?}");
+        }
+        std::thread::sleep(Duration::from_millis(10));
+    }
+}
+
+fn bounded_output(mut command: Command) -> Output {
+    let mut child = command
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap();
+    wait_before(&mut child, Duration::from_secs(5));
+    child.wait_with_output().unwrap()
+}
+
+#[test]
+fn ca_bundle_refuses_nonregular_and_oversized_files_before_startup() {
+    let dir = tempfile::tempdir().unwrap();
+    let secrets = secrets_file(dir.path(), 0o600);
+    let fifo = dir.path().join("ca.fifo");
+    assert!(
+        Command::new("mkfifo")
+            .arg(&fifo)
+            .status()
+            .unwrap()
+            .success()
+    );
+    let large = dir.path().join("large.pem");
+    // Still a valid PEM bundle: the old unbounded reader accepts it.
+    let mut pem = fake_smtp::Pki::new().ca_pem;
+    pem.push_str(&"\n".repeat(1_048_577));
+    std::fs::write(&large, pem).unwrap();
+    for path in [&fifo, &dir.path().to_path_buf(), &large] {
+        for args in [&["--check-config"][..], &[]] {
+            let output = bounded_output(relay(
+                args,
+                &[
+                    ("MAILGUN_RELAY_SECRETS_PATH", secrets.to_str().unwrap()),
+                    ("MAILGUN_RELAY_SMTP_CA_FILE", path.to_str().unwrap()),
+                ],
+            ));
+            assert_eq!(output.status.code(), Some(1), "{output:?}");
+            assert!(output.stdout.is_empty());
+            let error = String::from_utf8(output.stderr).unwrap();
+            assert!(error.contains("SMTP_CA_FILE"), "{error}");
+            assert!(!error.contains("hunter2") && !error.contains(SHA));
+        }
+    }
+}
+
+const SEND_HEAD: &str = "POST /v3/mg.example.org/messages HTTP/1.1\r\nHost: relay.test\r\nAuthorization: Basic YXBpOnRlc3Q=\r\nContent-Type: application/x-www-form-urlencoded\r\n";
+const SEND_BODY: &str =
+    "from=a%40example.org&to=b%40example.net&subject=synthetic&text=private-body-marker";
+
+/// Send exact wire bytes, including deliberately invalid framing. Half-close
+/// so incomplete bodies produce EOF instead of waiting for the upload deadline.
+fn raw_request(port: u16, wire: &str, eof: bool) -> String {
+    let mut stream = TcpStream::connect(("127.0.0.1", port)).unwrap();
+    stream
+        .set_read_timeout(Some(Duration::from_secs(5)))
+        .unwrap();
+    if eof {
+        let (head, body) = wire.split_once("\r\n\r\n").unwrap();
+        write!(stream, "{head}\r\nExpect: 100-continue\r\n\r\n").unwrap();
+        let mut reader = BufReader::new(&mut stream);
+        let mut interim = String::new();
+        reader.read_line(&mut interim).unwrap();
+        assert_eq!(interim, "HTTP/1.1 100 Continue\r\n");
+        interim.clear();
+        reader.read_line(&mut interim).unwrap();
+        assert_eq!(interim, "\r\n");
+        stream.write_all(body.as_bytes()).unwrap();
+        stream.shutdown(std::net::Shutdown::Write).unwrap();
+    } else {
+        stream.write_all(wire.as_bytes()).unwrap();
+    }
+    let mut response = Vec::new();
+    match stream.read_to_end(&mut response) {
+        Ok(_) => {}
+        Err(error) if error.kind() == std::io::ErrorKind::ConnectionReset => {}
+        Err(error) => panic!("raw HTTP read: {error}"),
+    }
+    String::from_utf8(response).unwrap()
+}
+
+#[test]
+fn raw_http_framing_rejects_ambiguous_and_incomplete_bodies() {
+    let pki = fake_smtp::Pki::new();
+    let smtp = fake_smtp::FakeSmtp::start_in_thread(serde_json::json!({}), Some(pki.good.clone()));
+    let dir = tempfile::tempdir().unwrap();
+    let secrets = secrets_file(dir.path(), 0o600);
+    let ca = dir.path().join("ca.pem");
+    std::fs::write(&ca, pki.ca_pem).unwrap();
+    let smtp_port = smtp.port.to_string();
+    let mut server = start(&[
+        ("MAILGUN_RELAY_SECRETS_PATH", secrets.to_str().unwrap()),
+        ("MAILGUN_RELAY_SMTP_HOST", "localhost"),
+        ("MAILGUN_RELAY_SMTP_PORT", &smtp_port),
+        ("MAILGUN_RELAY_SMTP_CA_FILE", ca.to_str().unwrap()),
+    ]);
+    let trailing = format!(
+        "{SEND_HEAD}Connection: close\r\nContent-Length: {}\r\n\r\n{SEND_BODY}",
+        SEND_BODY.len()
+    );
+    let bad = [
+        format!("Content-Length: 1\r\nContent-Length: 2\r\n\r\nx{trailing}"),
+        // Hyper may prefer chunked over CL; the malformed chunk must still fail.
+        format!("Content-Length: 1\r\nTransfer-Encoding: chunked\r\n\r\nZ\r\n{trailing}"),
+        format!("Transfer-Encoding: chunked\r\n\r\nZ\r\n{trailing}"),
+        format!(
+            "Transfer-Encoding: chunked\r\n\r\n{:x}\r\n{SEND_BODY}",
+            SEND_BODY.len() + 10
+        ),
+        format!(
+            "Content-Length: {}\r\n\r\n{SEND_BODY}",
+            SEND_BODY.len() + 10
+        ),
+    ];
+    for (index, body) in bad.into_iter().enumerate() {
+        let response = raw_request(server.port, &format!("{SEND_HEAD}{body}"), index >= 3);
+        assert!(
+            response.is_empty() || response.starts_with("HTTP/1.1 400 "),
+            "{response}"
+        );
+        assert!(response.matches("HTTP/1.1 ").count() <= 1, "{response}");
+        assert!(!response.contains("private-body-marker") && !response.contains("YXBpOnRlc3Q="));
+    }
+    assert!(smtp.sessions().is_empty());
+    // Positive control: a well-framed chunked message traverses the same path.
+    let response = raw_request(
+        server.port,
+        &format!(
+            "{SEND_HEAD}Connection: close\r\nTransfer-Encoding: chunked\r\n\r\n{:x}\r\n{SEND_BODY}\r\n0\r\n\r\n",
+            SEND_BODY.len()
+        ),
+        false,
+    );
+    assert!(response.starts_with("HTTP/1.1 200 "), "{response}");
+    assert!(terminate(&mut server.child).success());
+    assert_eq!(smtp.sessions().len(), 1);
+    let mut records = String::new();
+    server.stdout.read_to_string(&mut records).unwrap();
+    assert!(
+        !records.contains("hunter2")
+            && !records.contains(SHA)
+            && !records.contains("private-body-marker")
+            && !records.contains("YXBpOnRlc3Q=")
+    );
 }
