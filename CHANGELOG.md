@@ -6,6 +6,12 @@ All notable changes to mailgun-relay are documented here.
 
 ### Tests
 
+- Pin Rust binary SIGTERM after accepted SMTP DATA while QUIT times out:
+  retain the queued response and one success record with exactly one message.
+- Verify multi-address bind rollback through the production bind helper with
+  explicit loopback addresses: release earlier listeners after a later bind
+  conflict, then bind all addresses successfully when the conflict is removed.
+
 - Cover Rust partial-upload disconnects with one admission slot, exactly one
   body-error record, no send for the disconnected request and a successful next
   send. Pin SIGTERM during a stalled upload to the existing 30-second body

@@ -409,3 +409,17 @@ SIGTERM must finish at the existing 30-second body deadline (with a bounded
 cleanup allowance), return/log 408 `BodyTimeoutError`, open no SMTP connection
 and release the listener. These tests do not shorten the production deadline;
 the shutdown test takes about 30 seconds.
+
+
+The accepted-DATA shutdown regression waits until the SMTP peer receives QUIT
+(proving the relay consumed DATA's 250), then sends SIGTERM while QUIT is still
+pending. A cleanup timeout must preserve HTTP 200, the same message ID and one
+success receipt, with exactly one SMTP transaction. The peer uses a synthetic
+CA and withholds its QUIT reply.
+
+Multi-listener startup is tested at the production `bind_addresses` seam using
+explicit IPv4 loopback addresses, independent of DNS ordering and IPv6 support.
+A later address-in-use error must release earlier listeners immediately; after
+removing the conflict, both addresses must bind successfully. The binary bind
+failure test separately pins exit 1, no startup-success record and safe output.
+Startup logs success only after the complete listener set has been acquired.
