@@ -6,6 +6,10 @@ All notable changes to mailgun-relay are documented here.
 
 ### Tests
 
+- Pin Rust binary rejection of ambiguous/malformed/truncated HTTP framing and
+  pipelined trailing requests without unintended SMTP sends; retain a valid
+  chunked-send control.
+
 - Pin Python entrypoint defaults and environment overrides, app factory selection,
   disabled Uvicorn access logs, invalid-port refusal before server invocation and
   no extra environment passed from main to Uvicorn. Document a local
@@ -19,6 +23,10 @@ All notable changes to mailgun-relay are documented here.
   keeps health responsive and admits a subsequent send without duplicating the first.
 
 ### Fixed
+
+- Bound Rust custom CA loading to one nonblocking regular-file descriptor and
+  1 MiB, refusing FIFOs, directories and oversized/growing bundles before startup.
+  Retain operator CA symlinks and existing TLS verification.
 
 - Select an explicit Python JSON logging event before evaluating the fallback
   message, preserving structured records even when raw message/argument objects

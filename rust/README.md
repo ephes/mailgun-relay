@@ -382,3 +382,20 @@ Aliases cannot turn a password/hash into an error field name. Exceptions and
 ordinary startup stdout/stderr are tested with invented secret markers; Rust
 retains the same value-free diagnostic boundary. Adoption needs a runtime
 update/restart; no deployment is part of this change.
+
+
+## Bounded custom CA loading and HTTP framing
+
+Rust opens `SMTP_CA_FILE` once with nonblocking I/O, requires that descriptor to
+be a regular file, and reads at most 1 MiB (1,048,576 bytes), including growth
+after inspection. Symlinks remain supported for operator-managed trust bundles.
+Both startup and `--check-config` refuse nonregular or oversized bundles before
+binding or SMTP AUTH. System roots, multi-certificate PEM bundles, chain and
+hostname verification retain their existing behavior (D-22).
+
+The binary loopback tests send raw conflicting Content-Length headers,
+Content-Length plus malformed chunked framing, invalid chunk sizes and truncated
+fixed/chunked bodies, including a trailing authenticated request. Transport
+rejection (400 or connection close) or the application's controlled 400 body
+error must cause no SMTP submission. A valid chunked send is the positive
+control. Tests use synthetic credentials, certificates and message bodies.

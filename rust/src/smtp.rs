@@ -24,7 +24,7 @@
 //! outcome and is logged as `smtp_cleanup_failed`. The socket closes when
 //! the connection is dropped.
 
-use std::io;
+use std::io::{self, Read};
 use std::net::SocketAddr;
 use std::pin::Pin;
 use std::sync::Arc;
@@ -107,8 +107,7 @@ fn tls_parameters(settings: &Settings) -> Result<Option<TlsParameters>, ConfigEr
     };
     let mut builder = TlsParameters::builder(settings.smtp_host.clone());
     if !settings.smtp_ca_file.is_empty() {
-        let pem = std::fs::read(&settings.smtp_ca_file)
-            .map_err(|error| ca_error(format!("cannot read: {error}")))?;
+        let pem = read_ca_bundle(&settings.smtp_ca_file).map_err(ca_error)?;
         // Every certificate of the bundle, as `load_verify_locations`
         // reads it; a file without one is an error there too.
         let certificates = CertificateDer::pem_slice_iter(&pem)
@@ -130,6 +129,39 @@ fn tls_parameters(settings: &Settings) -> Result<Option<TlsParameters>, ConfigEr
         .build_rustls()
         .map_err(|error| ca_error(format!("unusable certificate: {error}")))?;
     Ok(settings.smtp_starttls.then_some(parameters))
+}
+
+/// A generous bound for custom root bundles, enforced on the read itself so
+/// growth after inspection cannot bypass it. CA symlinks remain supported.
+const MAX_CA_BYTES: u64 = 1_048_576;
+
+fn read_ca_bundle(path: &str) -> Result<Vec<u8>, String> {
+    use rustix::fs::{Mode, OFlags, open};
+    let fd = open(
+        path,
+        OFlags::RDONLY | OFlags::NONBLOCK | OFlags::CLOEXEC,
+        Mode::empty(),
+    )
+    .map_err(|error| format!("cannot open CA bundle (errno {})", error.raw_os_error()))?;
+    let file = std::fs::File::from(fd);
+    let metadata = file
+        .metadata()
+        .map_err(|error| format!("cannot inspect CA bundle: {}", error.kind()))?;
+    if !metadata.is_file() {
+        return Err("CA bundle must be a regular file".to_owned());
+    }
+    read_ca_bytes(file)
+}
+
+fn read_ca_bytes(file: impl Read) -> Result<Vec<u8>, String> {
+    let mut bytes = Vec::new();
+    file.take(MAX_CA_BYTES + 1)
+        .read_to_end(&mut bytes)
+        .map_err(|error| format!("cannot read CA bundle: {}", error.kind()))?;
+    if bytes.len() as u64 > MAX_CA_BYTES {
+        return Err("CA bundle exceeds 1048576 bytes".to_owned());
+    }
+    Ok(bytes)
 }
 
 /// An envelope address for lettre. Our own validation decided it (S2, S4);
