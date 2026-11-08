@@ -399,3 +399,13 @@ fixed/chunked bodies, including a trailing authenticated request. Transport
 rejection (400 or connection close) or the application's controlled 400 body
 error must cause no SMTP submission. A valid chunked send is the positive
 control. Tests use synthetic credentials, certificates and message bodies.
+
+
+The body lifecycle binary regressions use `Expect: 100-continue` to acknowledge
+that admission is held and the body reader has started. A partial disconnect
+must release the only slot, log one controlled body error, permit the next send
+exactly once, and drain tracked tasks on shutdown. A stalled upload followed by
+SIGTERM must finish at the existing 30-second body deadline (with a bounded
+cleanup allowance), return/log 408 `BodyTimeoutError`, open no SMTP connection
+and release the listener. These tests do not shorten the production deadline;
+the shutdown test takes about 30 seconds.

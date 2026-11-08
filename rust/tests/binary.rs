@@ -652,3 +652,160 @@ fn raw_http_framing_rejects_ambiguous_and_incomplete_bodies() {
             && !records.contains("YXBpOnRlc3Q=")
     );
 }
+
+/// 100 Continue is sent only once the application polls the body: admission
+/// is held before this acknowledgement, so no sleep races with the handler.
+fn partial_upload(port: u16) -> TcpStream {
+    let mut stream = TcpStream::connect(("127.0.0.1", port)).unwrap();
+    stream
+        .set_read_timeout(Some(Duration::from_secs(40)))
+        .unwrap();
+    write!(
+        stream,
+        "{SEND_HEAD}Expect: 100-continue\r\nContent-Length: {}\r\n\r\n",
+        SEND_BODY.len() + 100
+    )
+    .unwrap();
+    let mut reader = BufReader::new(&mut stream);
+    let mut line = String::new();
+    reader.read_line(&mut line).unwrap();
+    assert_eq!(line, "HTTP/1.1 100 Continue\r\n");
+    line.clear();
+    reader.read_line(&mut line).unwrap();
+    assert_eq!(line, "\r\n");
+    stream.write_all(SEND_BODY.as_bytes()).unwrap();
+    stream
+}
+
+fn request_records(server: &mut Server) -> Vec<serde_json::Value> {
+    let mut records = String::new();
+    server.stdout.read_to_string(&mut records).unwrap();
+    assert!(
+        !records.contains("hunter2")
+            && !records.contains(SHA)
+            && !records.contains("private-body-marker")
+            && !records.contains("YXBpOnRlc3Q=")
+    );
+    records
+        .lines()
+        .map(|line| serde_json::from_str(line).unwrap())
+        .collect()
+}
+
+#[test]
+fn disconnected_upload_releases_the_only_admission_slot() {
+    let pki = fake_smtp::Pki::new();
+    let smtp = fake_smtp::FakeSmtp::start_in_thread(serde_json::json!({}), Some(pki.good.clone()));
+    let dir = tempfile::tempdir().unwrap();
+    let secrets = secrets_file(dir.path(), 0o600);
+    let ca = dir.path().join("ca.pem");
+    std::fs::write(&ca, pki.ca_pem).unwrap();
+    let smtp_port = smtp.port.to_string();
+    let mut server = start(&[
+        ("MAILGUN_RELAY_SECRETS_PATH", secrets.to_str().unwrap()),
+        ("MAILGUN_RELAY_SMTP_HOST", "localhost"),
+        ("MAILGUN_RELAY_SMTP_PORT", &smtp_port),
+        ("MAILGUN_RELAY_SMTP_CA_FILE", ca.to_str().unwrap()),
+        ("MAILGUN_RELAY_SMTP_MAX_CONCURRENCY", "1"),
+    ]);
+    drop(partial_upload(server.port));
+    let started = std::time::Instant::now();
+    let head = SEND_HEAD.replace("Host: relay.test\r\n", "");
+    loop {
+        let response = request(server.port, head.trim_end_matches("\r\n"), SEND_BODY);
+        if response.starts_with("HTTP/1.1 200 ") {
+            break;
+        }
+        assert!(response.starts_with("HTTP/1.1 503 "), "{response}");
+        assert!(
+            started.elapsed() < Duration::from_secs(5),
+            "admission was not released"
+        );
+        std::thread::sleep(Duration::from_millis(250));
+    }
+    assert!(terminate(&mut server.child).success()); // TaskTracker drains too
+    let sessions = smtp.sessions();
+    assert_eq!(sessions.len(), 1);
+    assert_eq!(
+        sessions[0]
+            .commands()
+            .iter()
+            .filter(|c| *c == "DATA")
+            .count(),
+        1
+    );
+    let records = request_records(&mut server);
+    let errors: Vec<_> = records
+        .iter()
+        .filter(|r| r["error_class"] == "BadRequestError")
+        .collect();
+    assert_eq!(errors.len(), 1, "{records:?}");
+    assert_eq!(errors[0]["status_code"], 400);
+    assert_eq!(errors[0]["message_id"], "-");
+    assert_eq!(records.iter().filter(|r| r["result"] == "ok").count(), 1);
+    assert!(records.iter().all(|r| r["event"] == "request"
+        && (r["error_class"] == "BadRequestError"
+            || r["result"] == "ok"
+            || r["result"] == "overloaded")));
+}
+
+#[test]
+fn shutdown_during_upload_waits_for_the_existing_body_deadline() {
+    // A listening sink proves even a connection attempt did not reach SMTP.
+    let smtp = TcpListener::bind("127.0.0.1:0").unwrap();
+    smtp.set_nonblocking(true).unwrap();
+    let smtp_port = smtp.local_addr().unwrap().port().to_string();
+    let dir = tempfile::tempdir().unwrap();
+    let secrets = secrets_file(dir.path(), 0o600);
+    let mut server = start(&[
+        ("MAILGUN_RELAY_SECRETS_PATH", secrets.to_str().unwrap()),
+        ("MAILGUN_RELAY_SMTP_HOST", "127.0.0.1"),
+        ("MAILGUN_RELAY_SMTP_PORT", &smtp_port),
+        ("MAILGUN_RELAY_SMTP_MAX_CONCURRENCY", "1"),
+    ]);
+    let upload_started = std::time::Instant::now();
+    let mut client = partial_upload(server.port);
+    assert!(
+        Command::new("kill")
+            .args(["-TERM", &server.child.id().to_string()])
+            .status()
+            .unwrap()
+            .success()
+    );
+    // Observe listener retirement while the admitted upload still owns its
+    // connection, before process exit or another test can reuse the port.
+    let stopping = std::time::Instant::now();
+    loop {
+        assert!(
+            server.child.try_wait().unwrap().is_none(),
+            "exited before body drain"
+        );
+        if TcpStream::connect(("127.0.0.1", server.port)).is_err() {
+            break;
+        }
+        assert!(
+            stopping.elapsed() < Duration::from_secs(2),
+            "listener still accepting"
+        );
+        std::thread::sleep(Duration::from_millis(10));
+    }
+    assert!(wait_before(&mut server.child, Duration::from_secs(35)).success());
+    assert!(
+        upload_started.elapsed() >= Duration::from_secs(29),
+        "body deadline shortened"
+    );
+    let mut response = String::new();
+    client.read_to_string(&mut response).unwrap();
+    assert!(response.starts_with("HTTP/1.1 408 "), "{response}");
+    assert_eq!(
+        smtp.accept().unwrap_err().kind(),
+        std::io::ErrorKind::WouldBlock
+    );
+    let records = request_records(&mut server);
+    assert_eq!(records.len(), 1, "{records:?}");
+    assert_eq!(records[0]["event"], "request");
+    assert_eq!(records[0]["result"], "body_timeout");
+    assert_eq!(records[0]["error_class"], "BodyTimeoutError");
+    assert_eq!(records[0]["status_code"], 408);
+    assert_eq!(records[0]["message_id"], "-");
+}
