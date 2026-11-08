@@ -167,8 +167,14 @@ async fn bind_all(host: &str, port: u16) -> std::io::Result<Vec<TcpListener>> {
             addresses.push(address);
         }
     }
+    bind_addresses(&addresses)
+}
+
+/// Acquire the complete listener set before startup can announce success.
+/// Dropping the local vector on any error rolls back earlier binds.
+fn bind_addresses(addresses: &[SocketAddr]) -> std::io::Result<Vec<TcpListener>> {
     let mut listeners = Vec::with_capacity(addresses.len());
-    for address in addresses {
+    for address in addresses.iter().copied() {
         let socket = Socket::new(
             Domain::for_address(address),
             Type::STREAM,
@@ -257,4 +263,34 @@ fn log_startup(logger: &Logger, settings: &Settings, secrets: &Secrets, bind: &s
     let level = logger.threshold().max(Level::Info);
     let record = startup_record(settings, secrets, bind);
     logger.emit(level, SERVICE_LOGGER, "startup", &record);
+}
+
+#[cfg(test)]
+mod bind_tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn partial_bind_failure_releases_earlier_listeners_and_allows_retry() {
+        // Explicit IPv4 addresses avoid DNS order and IPv6 availability.
+        let first = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let first_address = first.local_addr().unwrap();
+        let busy = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let second_address = busy.local_addr().unwrap();
+        drop(first);
+        let error = bind_addresses(&[first_address, second_address]).unwrap_err();
+        assert_eq!(error.kind(), std::io::ErrorKind::AddrInUse);
+        // The first bind succeeded before the second failed. Its listener
+        // must have been dropped, before startup could publish success.
+        let rebound = std::net::TcpListener::bind(first_address).unwrap();
+        drop(rebound);
+        drop(busy);
+        let listeners = bind_addresses(&[first_address, second_address]).unwrap();
+        assert_eq!(listeners.len(), 2);
+        assert_eq!(listeners[0].local_addr().unwrap(), first_address);
+        assert_eq!(listeners[1].local_addr().unwrap(), second_address);
+        drop(listeners);
+        for address in [first_address, second_address] {
+            assert!(std::net::TcpListener::bind(address).is_ok());
+        }
+    }
 }

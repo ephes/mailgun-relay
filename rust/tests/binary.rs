@@ -206,6 +206,8 @@ fn bind_failure_exits_1() {
     );
     assert_eq!(output.status.code(), Some(1));
     assert!(output.stdout.is_empty());
+    let error = String::from_utf8(output.stderr).unwrap();
+    assert!(!error.contains("hunter2") && !error.contains(SHA));
 }
 
 fn free_port() -> u16 {
@@ -808,4 +810,86 @@ fn shutdown_during_upload_waits_for_the_existing_body_deadline() {
     assert_eq!(records[0]["error_class"], "BodyTimeoutError");
     assert_eq!(records[0]["status_code"], 408);
     assert_eq!(records[0]["message_id"], "-");
+}
+
+#[test]
+fn shutdown_after_data_acceptance_preserves_success_when_quit_times_out() {
+    let pki = fake_smtp::Pki::new();
+    let smtp = fake_smtp::FakeSmtp::start_in_thread(
+        serde_json::json!({"fault": {"quit": "hang"}}),
+        Some(pki.good.clone()),
+    );
+    let dir = tempfile::tempdir().unwrap();
+    let secrets = secrets_file(dir.path(), 0o600);
+    let ca = dir.path().join("ca.pem");
+    std::fs::write(&ca, pki.ca_pem).unwrap();
+    let smtp_port = smtp.port.to_string();
+    let mut server = start(&[
+        ("MAILGUN_RELAY_SECRETS_PATH", secrets.to_str().unwrap()),
+        ("MAILGUN_RELAY_SMTP_HOST", "localhost"),
+        ("MAILGUN_RELAY_SMTP_PORT", &smtp_port),
+        ("MAILGUN_RELAY_SMTP_CA_FILE", ca.to_str().unwrap()),
+        ("MAILGUN_RELAY_SMTP_TIMEOUT_S", "2"),
+    ]);
+    let mut client = TcpStream::connect(("127.0.0.1", server.port)).unwrap();
+    client
+        .set_read_timeout(Some(Duration::from_secs(10)))
+        .unwrap();
+    write!(
+        client,
+        "{SEND_HEAD}Connection: close\r\nContent-Length: {}\r\n\r\n{SEND_BODY}",
+        SEND_BODY.len()
+    )
+    .unwrap();
+    let started = std::time::Instant::now();
+    // Seeing QUIT proves the relay consumed the DATA 250, unlike merely
+    // observing the peer write a reply. The peer now withholds QUIT forever.
+    loop {
+        if smtp
+            .sessions()
+            .first()
+            .is_some_and(|s| s.log.iter().any(|line| line == "S: <hang at quit>"))
+        {
+            break;
+        }
+        assert!(
+            started.elapsed() < Duration::from_secs(5),
+            "relay did not reach QUIT"
+        );
+        std::thread::sleep(Duration::from_millis(10));
+    }
+    // Cleanup must still be pending when SIGTERM is sent.
+    client.set_nonblocking(true).unwrap();
+    let mut byte = [0];
+    assert_eq!(
+        client.peek(&mut byte).unwrap_err().kind(),
+        std::io::ErrorKind::WouldBlock
+    );
+    client.set_nonblocking(false).unwrap();
+    assert!(terminate(&mut server.child).success());
+    let mut response = String::new();
+    client.read_to_string(&mut response).unwrap();
+    assert!(response.starts_with("HTTP/1.1 200 "), "{response}");
+    let queued: serde_json::Value =
+        serde_json::from_str(response.split_once("\r\n\r\n").unwrap().1).unwrap();
+    assert_eq!(queued["message"], "Queued. Thank you.");
+    let sessions = smtp.sessions();
+    assert_eq!(sessions.len(), 1);
+    let commands = sessions[0].commands();
+    for verb in ["MAIL", "DATA", "QUIT"] {
+        assert_eq!(commands.iter().filter(|c| c.as_str() == verb).count(), 1);
+    }
+    let message = String::from_utf8(sessions[0].message.clone().unwrap()).unwrap();
+    assert!(message.contains(&format!(
+        "Message-ID: {}\r\n",
+        queued["id"].as_str().unwrap()
+    )));
+    let records = request_records(&mut server);
+    assert_eq!(records.len(), 2, "{records:?}");
+    assert_eq!(records[0]["event"], "smtp_cleanup_failed");
+    assert_eq!(records[0]["error_class"], "Timeout");
+    assert_eq!(records[1]["event"], "request");
+    assert_eq!(records[1]["result"], "ok");
+    assert_eq!(records[1]["status_code"], 200);
+    assert_eq!(records[1]["message_id"], queued["id"]);
 }

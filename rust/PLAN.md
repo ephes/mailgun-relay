@@ -1725,3 +1725,16 @@ reading a body, complementing SMTP-stage disconnect/shutdown coverage. A
 loopback tests assert exact outcome records, no send for incomplete bodies,
 reuse of the sole admission slot and full task drain. The existing 30-second
 body budget remains the sole upload deadline; production behavior is unchanged.
+
+
+## Accepted outcome and listener rollback coverage (round 79, R3)
+
+A binary lifecycle test composes DATA acceptance, SIGTERM and failed QUIT cleanup:
+exactly one transaction keeps its queued response/message ID and success record.
+The loopback peer gates at QUIT, after the relay has consumed DATA's 250.
+
+The production bind loop is extracted as `bind_addresses` so explicit loopback
+candidates can exercise partial failure without depending on resolver order or
+IPv6. A later occupied address releases the earlier listener; retry after
+conflict removal acquires both. Existing binary startup-failure assertions pin
+no success log and value-free diagnostics. No transport/startup behavior changes.
