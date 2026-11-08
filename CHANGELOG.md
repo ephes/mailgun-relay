@@ -6,6 +6,11 @@ All notable changes to mailgun-relay are documented here.
 
 ### Tests
 
+- Cover Rust partial-upload disconnects with one admission slot, exactly one
+  body-error record, no send for the disconnected request and a successful next
+  send. Pin SIGTERM during a stalled upload to the existing 30-second body
+  deadline, one timeout record, no SMTP connection and a drained process.
+
 - Pin Rust binary rejection of ambiguous/malformed/truncated HTTP framing and
   pipelined trailing requests without unintended SMTP sends; retain a valid
   chunked-send control.

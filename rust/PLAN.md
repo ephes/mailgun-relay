@@ -1715,3 +1715,13 @@ supported; certificate and hostname checks are unchanged. Binary regressions
 cover FIFO/directory/oversize refusal before startup and raw ambiguous,
 malformed and truncated HTTP framing without an extra SMTP transaction; a valid
 chunked request still delivers. All fixtures and peers are synthetic loopback.
+
+
+## Body lifecycle regression coverage (round 79, R2)
+
+The binary now pins partial-body disconnect admission release and SIGTERM while
+reading a body, complementing SMTP-stage disconnect/shutdown coverage. A
+100-continue acknowledgement synchronizes with actual body polling. Synthetic
+loopback tests assert exact outcome records, no send for incomplete bodies,
+reuse of the sole admission slot and full task drain. The existing 30-second
+body budget remains the sole upload deadline; production behavior is unchanged.
