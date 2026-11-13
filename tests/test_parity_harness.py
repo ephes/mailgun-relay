@@ -249,3 +249,175 @@ def test_corpus_covers_the_s6_requirements() -> None:
     assert sum(name.startswith("recorder multipart") for name in names) >= 8
     assert sum(name.startswith("anymail") for name in names) >= 40
     assert any(name.startswith("smtp strict partial") for name in names)
+
+
+@pytest.mark.parametrize("limit", ["deadline", "header", "body"])
+def test_exchange_bounds_real_loopback_response(
+    monkeypatch: pytest.MonkeyPatch, limit: str
+) -> None:
+    import socket
+    import threading
+    import time
+
+    monkeypatch.setattr(run_parity, "MAX_RESPONSE_HEADER_BYTES", 128, raising=False)
+    monkeypatch.setattr(run_parity, "MAX_RESPONSE_BODY_BYTES", 128, raising=False)
+    closed = threading.Event()
+    with socket.socket() as listener:
+        listener.bind(("127.0.0.1", 0))
+        listener.listen()
+        address = listener.getsockname()
+
+        def respond() -> None:
+            with listener.accept()[0] as peer:
+                peer.settimeout(2)
+                peer.recv(4096)
+                try:
+                    if limit == "deadline":
+                        peer.sendall(b"HTTP/1.1 200 OK\r\n\r\n")
+                        for _ in range(20):
+                            peer.sendall(b"x")
+                            time.sleep(0.02)
+                    elif limit == "header":
+                        peer.sendall(b"HTTP/1.1 200 OK\r\nX-Pad: " + b"x" * 256 + b"\r\n\r\n")
+                    else:
+                        peer.sendall(b"HTTP/1.1 200 OK\r\n\r\n" + b"x" * 256)
+                    peer.shutdown(socket.SHUT_WR)
+                    assert peer.recv(1) == b""
+                except BrokenPipeError, ConnectionResetError:
+                    pass
+                finally:
+                    closed.set()
+
+        worker = threading.Thread(target=respond)
+        worker.start()
+        try:
+            expected = TimeoutError if limit == "deadline" else RuntimeError
+            with pytest.raises(expected, match=r"deadline|header|body"):
+                run_parity.exchange(address, [b"GET / HTTP/1.1\r\n\r\n"], timeout=0.12)
+        finally:
+            worker.join(3)
+        assert closed.is_set()
+
+
+@pytest.mark.parametrize("failure", [RuntimeError("probe failed"), KeyboardInterrupt()])
+def test_start_unwinds_probe_failure(
+    monkeypatch: pytest.MonkeyPatch, failure: BaseException
+) -> None:
+    import socket
+    import subprocess
+
+    processes: list[subprocess.Popen[bytes]] = []
+    original_spawn = run_parity.spawn
+
+    def spawn(command: list[str], env: dict[str, str]) -> subprocess.Popen[bytes]:
+        process = original_spawn(command, env)
+        processes.append(process)
+        return process
+
+    def probe(*args: Any, **kwargs: Any) -> None:
+        raise failure
+
+    monkeypatch.setattr(run_parity, "spawn", spawn)
+    monkeypatch.setattr(socket, "create_connection", probe)
+    try:
+        with pytest.raises(type(failure)) as caught:
+            run_parity.start(
+                "python",
+                [sys.executable, "-c", "import time; time.sleep(60)"],
+                {},
+                None,  # type: ignore[arg-type]
+            )
+        assert caught.value is failure
+        assert processes and all(p.poll() is not None for p in processes)
+    finally:
+        for process in processes:
+            run_parity.stop(process)
+            assert process.stdout is not None
+            process.stdout.close()
+
+
+@pytest.mark.parametrize("failure", [RuntimeError("second start failed"), KeyboardInterrupt()])
+def test_local_unwinds_partial_startup(
+    monkeypatch: pytest.MonkeyPatch, pki: dict[str, str], failure: BaseException
+) -> None:
+    import argparse
+    import subprocess
+
+    smtp = ScriptedSmtp(server_contexts(pki))
+
+    processes: list[subprocess.Popen[bytes]] = []
+    sinks: list[Any] = []
+    stopped: list[Any] = []
+    original_start = smtp.start
+    original_stop = smtp.stop
+
+    def sink_start() -> Any:
+        sink = original_start()
+        sinks.append(sink)
+        return sink
+
+    def sink_stop(sink: Any) -> None:
+        stopped.append(sink)
+        original_stop(sink)
+
+    def start(name: str, command: list[str], env: dict[str, str], sink: Any) -> Any:
+        if processes:
+            raise failure
+        process = run_parity.spawn([sys.executable, "-c", "import time; time.sleep(60)"], {})
+        processes.append(process)
+        return run_parity.Target(name, ("127.0.0.1", 1), sink=sink, process=process)
+
+    monkeypatch.setattr(smtp, "start", sink_start)
+    monkeypatch.setattr(smtp, "stop", sink_stop)
+    monkeypatch.setattr(run_parity, "ScriptedSmtp", lambda _: smtp)
+    monkeypatch.setattr(run_parity, "start", start)
+    args = argparse.Namespace(python=[], binary="unused", verbose=False, filter=None)
+    try:
+        with pytest.raises(type(failure)) as caught:
+            run_parity.run_local(
+                args, [corpus.Case("test", corpus.Request(), 200)], run_parity.Report()
+            )
+        assert caught.value is failure
+        assert processes[0].poll() is not None
+        assert stopped == list(reversed(sinks))
+    finally:
+        for process in processes:
+            run_parity.stop(process)
+            assert process.stdout is not None
+            process.stdout.close()
+
+
+@pytest.mark.parametrize("failure", [RuntimeError("probe failed"), KeyboardInterrupt()])
+def test_startup_cases_unwind_probe_failure(
+    monkeypatch: pytest.MonkeyPatch, smtp: ScriptedSmtp, failure: BaseException
+) -> None:
+    import argparse
+
+    target = run_parity.Target("python", ("127.0.0.1", 1))
+    process = run_parity.spawn([sys.executable, "-c", "import time; time.sleep(60)"], {})
+    target.process = process
+    stopped: list[Any] = []
+    original_stop = smtp.stop
+
+    def stop(sink: Any) -> None:
+        stopped.append(sink)
+        original_stop(sink)
+
+    def probe(*args: Any) -> None:
+        raise failure
+
+    monkeypatch.setattr(run_parity, "start", lambda *args: target)
+    monkeypatch.setattr(run_parity, "exchange", probe)
+    monkeypatch.setattr(smtp, "stop", stop)
+    monkeypatch.setattr(corpus, "STARTUP_CASES", corpus.STARTUP_CASES[:1])
+    args = argparse.Namespace(python=[], binary="unused", verbose=False, filter=None)
+    try:
+        with pytest.raises(type(failure)) as caught:
+            run_parity.run_startup_cases(args, {}, run_parity.Report(), smtp)
+        assert caught.value is failure
+        assert process.poll() is not None
+        assert len(stopped) == 1
+    finally:
+        run_parity.stop(process)
+        assert process.stdout is not None
+        process.stdout.close()

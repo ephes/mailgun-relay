@@ -20,6 +20,10 @@ All notable changes to mailgun-relay are documented here.
 
 ### Fixed
 
+- Bound parity HTTP exchanges by one total deadline and header/body limits;
+  release owned relay processes and SMTP sinks on partial startup, probe errors
+  and interruption. Synthetic loopback and process regressions cover the failures.
+
 - Select an explicit Python JSON logging event before evaluating the fallback
   message, preserving structured records even when raw message/argument objects
   cannot be formatted. Keep reserved raw and exception fields excluded.

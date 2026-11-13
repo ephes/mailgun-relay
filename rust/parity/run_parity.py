@@ -57,6 +57,7 @@ import tempfile
 import threading
 import time
 from collections import Counter
+from contextlib import ExitStack
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -69,6 +70,9 @@ from smtp_fake import ScriptedSmtp, Sink, make_certificates, server_contexts, se
 
 REPO = Path(__file__).resolve().parents[2]
 HOST_HEADER = "relay.parity.test"
+MAX_RESPONSE_HEADER_BYTES = 64 * 1024
+# Includes wire framing for chunked responses. Relay replies are small JSON.
+MAX_RESPONSE_BODY_BYTES = 1024 * 1024
 # Texts PLAN.md 2.2 keeps verbatim; other error texts are free.
 KEPT_TEXTS = {
     "Unauthorized",
@@ -127,26 +131,44 @@ def _dechunk(body: bytes) -> bytes:
 
 
 def exchange(address: tuple[str, int], pieces: list[bytes], timeout: float = 60) -> Response:
-    """Send the request (each piece in its own write) and read the response
-    until the server closes."""
-    with socket.create_connection(address, timeout=timeout) as sock:
+    """Send and receive within one deadline, with bounded response storage."""
+    deadline = time.monotonic() + timeout
+
+    def remaining() -> float:
+        left = deadline - time.monotonic()
+        if left <= 0:
+            raise TimeoutError("HTTP exchange deadline exceeded")
+        return left
+
+    with socket.create_connection(address, timeout=remaining()) as sock:
         for i, piece in enumerate(pieces):
             if i:
-                time.sleep(0.05)
+                time.sleep(min(0.05, remaining()))
+            sock.settimeout(remaining())
             try:
                 sock.sendall(piece)
             except (BrokenPipeError, ConnectionResetError):
                 break  # the server answered early (413) and closed
-        data = b""
+        data = bytearray()
+        header_end = -1
         while True:
+            sock.settimeout(remaining())
             try:
                 chunk = sock.recv(65536)
+            except TimeoutError as exc:
+                raise TimeoutError("HTTP exchange deadline exceeded") from exc
             except ConnectionResetError:
                 break
             if not chunk:
                 break
-            data += chunk
-    head, _, body = data.partition(b"\r\n\r\n")
+            data.extend(chunk)
+            if header_end < 0:
+                header_end = data.find(b"\r\n\r\n")
+                if (header_end if header_end >= 0 else len(data)) > MAX_RESPONSE_HEADER_BYTES:
+                    raise RuntimeError("HTTP response header limit exceeded")
+            if header_end >= 0 and len(data) - header_end - 4 > MAX_RESPONSE_BODY_BYTES:
+                raise RuntimeError("HTTP response body limit exceeded")
+    head, _, body = bytes(data).partition(b"\r\n\r\n")
     lines = head.decode("latin-1").split("\r\n")
     if not lines[0].startswith("HTTP/"):
         raise RuntimeError(f"no HTTP response: {data[:200]!r}")
@@ -534,17 +556,20 @@ def start(name: str, command: list[str], env: dict[str, str], sink: Sink) -> Tar
     for _ in range(5):
         port = free_port()
         process = spawn(command, {**env, "MAILGUN_RELAY_BIND_PORT": str(port)})
-        log = LogTail()
-        assert process.stdout is not None
-        log.follow_pipe(process.stdout)
-        deadline = time.monotonic() + 30
-        while time.monotonic() < deadline and process.poll() is None:
-            try:
-                socket.create_connection(("127.0.0.1", port), timeout=1).close()
-                return Target(name, ("127.0.0.1", port), sink=sink, log=log, process=process)
-            except OSError:
-                time.sleep(0.05)
-        code = stop(process)
+        with ExitStack() as owner:
+            owner.callback(stop, process)
+            log = LogTail()
+            assert process.stdout is not None
+            log.follow_pipe(process.stdout)
+            deadline = time.monotonic() + 30
+            while time.monotonic() < deadline and process.poll() is None:
+                try:
+                    socket.create_connection(("127.0.0.1", port), timeout=1).close()
+                    owner.pop_all()
+                    return Target(name, ("127.0.0.1", port), sink=sink, log=log, process=process)
+                except OSError:
+                    time.sleep(0.05)
+        code = process.returncode
         if _port_free(port):
             raise StartError(name, code, log.lines)
     raise StartError(name, None, log.lines)
@@ -675,21 +700,32 @@ def run_local(args: argparse.Namespace, cases: list[corpus.Case], report: Report
                 if not selected:
                     continue
                 print(f"profile {profile}: {len(selected)} cases")
-                targets = []
-                for name, command in (("python", args.python), ("rust", [args.binary])):
-                    sink = smtp.start()
-                    profile_env = {**env, **overrides, "MAILGUN_RELAY_SMTP_PORT": str(sink.port)}
-                    targets.append(start(name, command, profile_env, sink))
-                py, rs = targets
-                try:
+                codes: dict[str, int] = {}
+                with ExitStack() as owners:
+                    targets = []
+                    for name, command in (("python", args.python), ("rust", [args.binary])):
+                        sink = smtp.start()
+                        owners.callback(smtp.stop, sink)
+                        profile_env = {
+                            **env,
+                            **overrides,
+                            "MAILGUN_RELAY_SMTP_PORT": str(sink.port),
+                        }
+                        target = start(name, command, profile_env, sink)
+                        assert target.process is not None
+
+                        def stop_target(
+                            target: Target = target, codes: dict[str, int] = codes
+                        ) -> None:
+                            assert target.process is not None
+                            codes[target.name] = stop(target.process)
+
+                        owners.callback(stop_target)
+                        targets.append(target)
+                    py, rs = targets
                     diffs = startup_diffs(py, rs)
                     report.record(f"[{profile}] startup records", diffs, None, args.verbose)
                     run_cases(py, rs, selected, report, counter, args.verbose)
-                finally:
-                    codes = {t.name: stop(t.process) for t in targets if t.process is not None}
-                    for target in targets:
-                        assert target.sink is not None
-                        smtp.stop(target.sink)
                 # uvicorn re-raises SIGTERM after its graceful shutdown (a
                 # clean stop for systemd); the Rust binary exits 0.
                 bad = {
@@ -716,26 +752,30 @@ def run_startup_cases(
     for case in corpus.STARTUP_CASES:
         if args.filter and args.filter not in case.name:
             continue
-        sink = smtp.start()
-        outcomes = {}
-        for name, command in (("python", args.python), ("rust", [args.binary])):
-            case_env = {**env, "MAILGUN_RELAY_SMTP_PORT": str(sink.port), **case.env}
-            if case.secrets_mode is not None:
-                path = Path(case_env["MAILGUN_RELAY_SECRETS_PATH"]).with_name(f"mode-{name}.yml")
-                write_secrets(path)
-                path.chmod(case.secrets_mode)
-                case_env["MAILGUN_RELAY_SECRETS_PATH"] = str(path)
-            try:
-                target = start(name, command, case_env, sink)
-            except StartError as exc:
-                outcomes[name] = f"exits {exc.code}"
-                continue
-            assert target.process is not None
-            response = exchange(target.address, request_pieces(case.probe))
-            target.sessions()
-            stop(target.process)
-            outcomes[name] = f"serves {response.status}"
-        smtp.stop(sink)
+        with ExitStack() as owners:
+            sink = smtp.start()
+            owners.callback(smtp.stop, sink)
+            outcomes = {}
+            for name, command in (("python", args.python), ("rust", [args.binary])):
+                case_env = {**env, "MAILGUN_RELAY_SMTP_PORT": str(sink.port), **case.env}
+                if case.secrets_mode is not None:
+                    path = Path(case_env["MAILGUN_RELAY_SECRETS_PATH"]).with_name(
+                        f"mode-{name}.yml"
+                    )
+                    write_secrets(path)
+                    path.chmod(case.secrets_mode)
+                    case_env["MAILGUN_RELAY_SECRETS_PATH"] = str(path)
+                try:
+                    target = start(name, command, case_env, sink)
+                except StartError as exc:
+                    outcomes[name] = f"exits {exc.code}"
+                    continue
+                assert target.process is not None
+                with ExitStack() as process_owner:
+                    process_owner.callback(stop, target.process)
+                    response = exchange(target.address, request_pieces(case.probe))
+                    target.sessions()
+                    outcomes[name] = f"serves {response.status}"
         expected_rust = case.rust or case.python
         diffs = []
         if outcomes["python"] != case.python:
