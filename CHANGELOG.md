@@ -416,12 +416,11 @@ public request/response contract changes except the two noted under *Behavior*.
   catching everything else; no new dependency is added.
 - No code or API changes. Redeploy the relay to pick up the new lock.
 
-## rs-v0.2.3 (candidate, not yet tagged)
+## rs-v0.2.3 — 2026-11-13
 
-Rust port release candidate 0.2.3 (crate version 0.2.3). It carries the
-Rust fixes and regression tests merged since `rs-v0.2.2`; the Python
-implementation is not released by this tag. No tag/release or deployment is
-implied until the publication is recorded here. Rust-only entries moved here
+Rust port release 0.2.3 (crate version 0.2.3). It carries the Rust fixes and
+regression tests merged since `rs-v0.2.2`; the Python implementation is not
+released by this tag. Rust-only entries moved here
 from *Unreleased*; entries that apply to both runtimes stay under
 *Unreleased* above and are summarised here for the Rust side.
 
@@ -479,10 +478,14 @@ from *Unreleased*; entries that apply to both runtimes stay under
 
 ### Release
 
-- Only the crate version and two version assertions change for the release
-  itself. Exact-source CI and the tag Linux build must pass before the
-  archive is pinned; controller selection and running-process verification
-  are separate steps.
+- Only the crate version and two version assertions changed for the release
+  itself (tag `rs-v0.2.3` on `d2a4ddb`).
+- Exact-source CI (including cargo-deny/parity), the artifact-only build and
+  the tag Linux build passed. The binary embeds `d2a4ddbccc549feeaaa0ae90dab111ee0d8e7870`.
+- The release carries `mailgun-relay-0.2.3-x86_64-unknown-linux-gnu.tar.gz`
+  and its `.sha256`. Archive SHA256: `a7a942e5d3f23e49515ae4f3da3bae98a03a55fc1c06848298a0de731da607cf`;
+  the artifact-only and tag builds produced identical bytes.
+  Controller selection and running-process verification remain separate steps.
 
 ## rs-v0.2.2 — 2026-10-21
 

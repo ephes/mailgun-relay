@@ -7,7 +7,7 @@ production. [`TESTMAP.md`](TESTMAP.md) maps every Python test to its Rust
 counterpart.
 
 **Status: slices S1 to S7 of PLAN.md section 6 are done; the current
-release is [`rs-v0.2.2`](https://github.com/ephes/mailgun-relay/releases/tag/rs-v0.2.2)**;
+release is [`rs-v0.2.3`](https://github.com/ephes/mailgun-relay/releases/tag/rs-v0.2.3)**;
 S3 adds subject and header validation, form parsing and
 `POST /v3/{domain}/messages` with every decision of the Python route. The
 binary loads and validates the configuration, answers `GET /health`, the
@@ -424,13 +424,18 @@ removing the conflict, both addresses must bind successfully. The binary bind
 failure test separately pins exit 1, no startup-success record and safe output.
 Startup logs success only after the complete listener set has been acquired.
 
-## Prepared release 0.2.3
+## Published release 0.2.3
 
 Rust 0.2.3 carries the Rust fixes and regression tests merged after 0.2.2
 (see the `rs-v0.2.3` CHANGELOG section): bounded SMTP session time and
 inbound wire bytes, bounded CA and secret reads, stricter secret validation,
 admission before body parsing, and rustix 1.1.6 for RUSTSEC-2026-0486. Only
-the crate version and two version assertions change for this preparation.
-The exact candidate commit must pass CI (including cargo-deny/parity) and the
-tag Linux build before the archive is pinned. Publication is not evidence of
-running-process protection.
+the crate version and two version assertions changed for the release.
+[Exact-source CI](https://github.com/ephes/mailgun-relay/actions/runs/43430238377),
+including cargo-deny/parity, the
+[artifact-only build](https://github.com/ephes/mailgun-relay/actions/runs/43430290988)
+and the [tag release build](https://github.com/ephes/mailgun-relay/actions/runs/43430804815)
+passed. The Linux binary embeds `d2a4ddbccc549feeaaa0ae90dab111ee0d8e7870`; the published archive
+`mailgun-relay-0.2.3-x86_64-unknown-linux-gnu.tar.gz` and its `.sha256` carry
+archive SHA256 `a7a942e5d3f23e49515ae4f3da3bae98a03a55fc1c06848298a0de731da607cf`; the artifact-only and tag builds produced identical
+bytes. Publication is not evidence of running-process protection.
