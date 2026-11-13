@@ -78,6 +78,10 @@ All notable changes to mailgun-relay are documented here.
 
 ### Security
 
+- Update the Rust lockfile from rustix 1.1.5 to 1.1.6 to resolve
+  RUSTSEC-2026-0486 (uninitialized memory in zero-length extended-attribute
+  buffers), without adding advisory exceptions.
+
 - Refuse policy labels equal to the loaded SMTP password or any token digest
   in both runtimes, including aliases and later policies; digest comparisons
   trim whitespace and ignore case. Fail with positional, value-free errors
