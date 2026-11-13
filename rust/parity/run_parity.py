@@ -804,15 +804,33 @@ def run_targets(args: argparse.Namespace, cases: list[corpus.Case], report: Repo
         target = Target(name, (parts.hostname, parts.port), sink_dir=Path(sink), log=log)
         target.sessions()  # sessions recorded before this run are not ours
         targets.append(target)
-    runnable = []
-    for case in cases:
-        if case.profile != "default" or case.smtp or case.cert != "good":
-            report.skipped.append(case.name)
-        else:
-            runnable.append(case)
     # Distinct markers per run: the log files may hold earlier runs.
     counter = [int(time.time()) * 1000]
-    run_cases(targets[0], targets[1], runnable, report, counter, args.verbose)
+    run_cases(targets[0], targets[1], cases, report, counter, args.verbose)
+
+
+def publish_report(path: Path, detail: dict[str, Any]) -> None:
+    """Keep the previous receipt until its complete replacement is synced."""
+    serialized = json.dumps(detail, indent=2, ensure_ascii=False) + "\n"
+    temporary: Path | None = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            encoding="utf-8",
+            dir=path.parent,
+            prefix=f".{path.name}.",
+            suffix=".tmp",
+            delete=False,
+        ) as stream:
+            temporary = Path(stream.name)
+            if stream.write(serialized) != len(serialized):
+                raise OSError("short parity report write")
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temporary, path)
+    finally:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -845,6 +863,17 @@ def main(argv: list[str] | None = None) -> int:
     if args.filter:
         cases = [c for c in cases if args.filter in c.name]
     report = Report()
+    selected_count = len(cases)
+    if args.targets:
+        runnable = []
+        for case in cases:
+            if case.profile != "default" or case.smtp or case.cert != "good":
+                report.skipped.append(case.name)
+            else:
+                runnable.append(case)
+        cases = runnable
+    if not cases:
+        raise SystemExit("no runnable request cases selected; check --filter and --targets support")
     if args.targets:
         if not args.sinks:
             raise SystemExit("--targets needs --sinks")
@@ -854,6 +883,7 @@ def main(argv: list[str] | None = None) -> int:
 
     elapsed = time.monotonic() - report.started
     summary = {
+        "selected_request_cases": selected_count,
         "request_cases": len(cases),
         "passed_checks": report.passed,
         "failed": len(report.failures),
@@ -870,7 +900,11 @@ def main(argv: list[str] | None = None) -> int:
             "skipped_cases": report.skipped,
             "cases": report.cases,
         }
-        args.report.write_text(json.dumps(detail, indent=2, ensure_ascii=False) + "\n")
+        try:
+            publish_report(args.report, detail)
+        except OSError as exc:
+            print(f"report publication failed: {exc}", file=sys.stderr)
+            return 1
     return 1 if report.failures else 0
 
 

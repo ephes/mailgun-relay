@@ -20,6 +20,11 @@ All notable changes to mailgun-relay are documented here.
 
 ### Fixed
 
+- Refuse empty parity request selections before target startup/capture access,
+  retaining the explicit secrets utility; report selected and runnable counts.
+- Publish complete parity receipts through synced sibling files and atomic
+  replacement, preserving the previous JSON on write/sync/replace failure.
+
 - Bound parity HTTP exchanges by one total deadline and header/body limits;
   release owned relay processes and SMTP sinks on partial startup, probe errors
   and interruption. Synthetic loopback and process regressions cover the failures.

@@ -275,6 +275,21 @@ instances whose SMTP goes to capture sinks (`parity/smtp_fake.py --listen
 HOST:PORT --certs DIR --record-dir DIR`) and whose secrets come from
 `run_parity.py --write-secrets PATH` (the shadow of PLAN.md 10.1).
 
+Verification requires at least one runnable request case. A misspelled filter,
+a startup-only filter, or a `--targets` subset consisting entirely of unsupported
+cases exits nonzero before starting relays or reading capture files. The explicit
+`--write-secrets` utility remains exempt. Reports distinguish
+`selected_request_cases` (before target-mode exclusions) from `request_cases`
+(runnable requests), and list skipped cases separately.
+
+`--report FILE` serializes a complete success or failure receipt first, writes a
+sibling temporary file, flushes and fsyncs it, then atomically replaces FILE.
+Write, sync or replacement failures return nonzero with a separate publication
+error and preserve the previous report; temporary files are removed on ordinary
+failure unwinding. This provides atomic visibility, without promising directory
+entry durability across power loss. Abrupt process termination can leave a
+sibling temporary file, but cannot publish partial JSON to FILE.
+
 ## Layout
 
 ```
