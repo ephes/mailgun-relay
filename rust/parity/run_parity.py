@@ -51,6 +51,7 @@ import json
 import os
 import signal
 import socket
+import stat
 import subprocess
 import sys
 import tempfile
@@ -826,6 +827,15 @@ def publish_report(path: Path, detail: dict[str, Any]) -> None:
             if stream.write(serialized) != len(serialized):
                 raise OSError("short parity report write")
             stream.flush()
+            # mkstemp creates 0600; keep the previous receipt's mode, or the
+            # umask-derived mode a plain write would have used.
+            try:
+                mode = stat.S_IMODE(path.stat().st_mode)
+            except FileNotFoundError:
+                umask = os.umask(0)
+                os.umask(umask)
+                mode = 0o666 & ~umask
+            os.fchmod(stream.fileno(), mode)
             os.fsync(stream.fileno())
         os.replace(temporary, path)
     finally:

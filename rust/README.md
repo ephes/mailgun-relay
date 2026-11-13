@@ -264,9 +264,11 @@ uv run python rust/parity/run_parity.py            # -v: every case; --filter TE
 Each HTTP exchange has a 60-second monotonic deadline covering connection,
 split request writes and all response reads. Responses are limited to 64 KiB
 of headers (before the separator) and 1 MiB of wire body, including chunk
-framing. A timeout or limit violation closes the socket and records a harness
-failure. Started relay children and SMTP sinks are owned immediately; partial
-startup, probe errors and interruption unwind them in reverse acquisition order.
+framing. A timeout or limit violation closes the socket; in a request case it
+records a harness failure, while in a startup probe it unwinds the relay and sink
+and then aborts the run without a `--report` receipt. Started relay children and
+SMTP sinks are owned immediately; partial startup, probe errors and interruption
+unwind them in reverse acquisition order.
 
 CI runs it in the `parity` job. The modules use the standard library only
 and run with a host's `python3` (3.12+): `--targets PY_URL,RS_URL --sinks
@@ -284,6 +286,8 @@ cases exits nonzero before starting relays or reading capture files. The explici
 
 `--report FILE` serializes a complete success or failure receipt first, writes a
 sibling temporary file, flushes and fsyncs it, then atomically replaces FILE.
+The replacement keeps the previous report's permission bits, or the
+umask-derived mode for a new report.
 Write, sync or replacement failures return nonzero with a separate publication
 error and preserve the previous report; temporary files are removed on ordinary
 failure unwinding. This provides atomic visibility, without promising directory
