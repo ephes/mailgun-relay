@@ -261,12 +261,38 @@ difference fails. From the repository root:
 uv run python rust/parity/run_parity.py            # -v: every case; --filter TEXT
 ```
 
+Each HTTP exchange has a 60-second monotonic deadline covering connection,
+split request writes and all response reads. Responses are limited to 64 KiB
+of headers (before the separator) and 1 MiB of wire body, including chunk
+framing. A timeout or limit violation closes the socket; in a request case it
+records a harness failure, while in a startup probe it unwinds the relay and sink
+and then aborts the run without a `--report` receipt. Started relay children and
+SMTP sinks are owned immediately; partial startup, probe errors and interruption
+unwind them in reverse acquisition order.
+
 CI runs it in the `parity` job. The modules use the standard library only
 and run with a host's `python3` (3.12+): `--targets PY_URL,RS_URL --sinks
 PY_DIR,RS_DIR [--logs PY_LOG,RS_LOG]` runs the corpus against two running
 instances whose SMTP goes to capture sinks (`parity/smtp_fake.py --listen
 HOST:PORT --certs DIR --record-dir DIR`) and whose secrets come from
 `run_parity.py --write-secrets PATH` (the shadow of PLAN.md 10.1).
+
+Verification requires at least one runnable request case. A misspelled filter,
+a startup-only filter, or a `--targets` subset consisting entirely of unsupported
+cases exits nonzero before starting relays or reading capture files. The explicit
+`--write-secrets` utility remains exempt. Reports distinguish
+`selected_request_cases` (before target-mode exclusions) from `request_cases`
+(runnable requests), and list skipped cases separately.
+
+`--report FILE` serializes a complete success or failure receipt first, writes a
+sibling temporary file, flushes and fsyncs it, then atomically replaces FILE.
+The replacement keeps the previous report's permission bits, or the
+umask-derived mode for a new report.
+Write, sync or replacement failures return nonzero with a separate publication
+error and preserve the previous report; temporary files are removed on ordinary
+failure unwinding. This provides atomic visibility, without promising directory
+entry durability across power loss. Abrupt process termination can leave a
+sibling temporary file, but cannot publish partial JSON to FILE.
 
 ## Layout
 

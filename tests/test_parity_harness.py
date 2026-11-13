@@ -249,3 +249,369 @@ def test_corpus_covers_the_s6_requirements() -> None:
     assert sum(name.startswith("recorder multipart") for name in names) >= 8
     assert sum(name.startswith("anymail") for name in names) >= 40
     assert any(name.startswith("smtp strict partial") for name in names)
+
+
+@pytest.mark.parametrize("limit", ["deadline", "header", "body"])
+def test_exchange_bounds_real_loopback_response(
+    monkeypatch: pytest.MonkeyPatch, limit: str
+) -> None:
+    import socket
+    import threading
+    import time
+
+    monkeypatch.setattr(run_parity, "MAX_RESPONSE_HEADER_BYTES", 128, raising=False)
+    monkeypatch.setattr(run_parity, "MAX_RESPONSE_BODY_BYTES", 128, raising=False)
+    closed = threading.Event()
+    with socket.socket() as listener:
+        listener.bind(("127.0.0.1", 0))
+        listener.listen()
+        address = listener.getsockname()
+
+        def respond() -> None:
+            with listener.accept()[0] as peer:
+                peer.settimeout(2)
+                peer.recv(4096)
+                try:
+                    if limit == "deadline":
+                        peer.sendall(b"HTTP/1.1 200 OK\r\n\r\n")
+                        for _ in range(20):
+                            peer.sendall(b"x")
+                            time.sleep(0.02)
+                    elif limit == "header":
+                        peer.sendall(b"HTTP/1.1 200 OK\r\nX-Pad: " + b"x" * 256 + b"\r\n\r\n")
+                    else:
+                        peer.sendall(b"HTTP/1.1 200 OK\r\n\r\n" + b"x" * 256)
+                    peer.shutdown(socket.SHUT_WR)
+                    assert peer.recv(1) == b""
+                except BrokenPipeError, ConnectionResetError:
+                    pass
+                finally:
+                    closed.set()
+
+        worker = threading.Thread(target=respond)
+        worker.start()
+        try:
+            expected = TimeoutError if limit == "deadline" else RuntimeError
+            with pytest.raises(expected, match=r"deadline|header|body"):
+                run_parity.exchange(address, [b"GET / HTTP/1.1\r\n\r\n"], timeout=0.12)
+        finally:
+            worker.join(3)
+        assert closed.is_set()
+
+
+@pytest.mark.parametrize("failure", [RuntimeError("probe failed"), KeyboardInterrupt()])
+def test_start_unwinds_probe_failure(
+    monkeypatch: pytest.MonkeyPatch, failure: BaseException
+) -> None:
+    import socket
+    import subprocess
+
+    processes: list[subprocess.Popen[bytes]] = []
+    original_spawn = run_parity.spawn
+
+    def spawn(command: list[str], env: dict[str, str]) -> subprocess.Popen[bytes]:
+        process = original_spawn(command, env)
+        processes.append(process)
+        return process
+
+    def probe(*args: Any, **kwargs: Any) -> None:
+        raise failure
+
+    monkeypatch.setattr(run_parity, "spawn", spawn)
+    monkeypatch.setattr(socket, "create_connection", probe)
+    try:
+        with pytest.raises(type(failure)) as caught:
+            run_parity.start(
+                "python",
+                [sys.executable, "-c", "import time; time.sleep(60)"],
+                {},
+                None,  # type: ignore[arg-type]
+            )
+        assert caught.value is failure
+        assert processes and all(p.poll() is not None for p in processes)
+    finally:
+        for process in processes:
+            run_parity.stop(process)
+            assert process.stdout is not None
+            process.stdout.close()
+
+
+@pytest.mark.parametrize("failure", [RuntimeError("second start failed"), KeyboardInterrupt()])
+def test_local_unwinds_partial_startup(
+    monkeypatch: pytest.MonkeyPatch, pki: dict[str, str], failure: BaseException
+) -> None:
+    import argparse
+    import subprocess
+
+    smtp = ScriptedSmtp(server_contexts(pki))
+
+    processes: list[subprocess.Popen[bytes]] = []
+    sinks: list[Any] = []
+    stopped: list[Any] = []
+    original_start = smtp.start
+    original_stop = smtp.stop
+
+    def sink_start() -> Any:
+        sink = original_start()
+        sinks.append(sink)
+        return sink
+
+    def sink_stop(sink: Any) -> None:
+        stopped.append(sink)
+        original_stop(sink)
+
+    def start(name: str, command: list[str], env: dict[str, str], sink: Any) -> Any:
+        if processes:
+            raise failure
+        process = run_parity.spawn([sys.executable, "-c", "import time; time.sleep(60)"], {})
+        processes.append(process)
+        return run_parity.Target(name, ("127.0.0.1", 1), sink=sink, process=process)
+
+    monkeypatch.setattr(smtp, "start", sink_start)
+    monkeypatch.setattr(smtp, "stop", sink_stop)
+    monkeypatch.setattr(run_parity, "ScriptedSmtp", lambda _: smtp)
+    monkeypatch.setattr(run_parity, "start", start)
+    args = argparse.Namespace(python=[], binary="unused", verbose=False, filter=None)
+    try:
+        with pytest.raises(type(failure)) as caught:
+            run_parity.run_local(
+                args, [corpus.Case("test", corpus.Request(), 200)], run_parity.Report()
+            )
+        assert caught.value is failure
+        assert processes[0].poll() is not None
+        assert stopped == list(reversed(sinks))
+        assert all(run_parity._port_free(sink.port) for sink in sinks)
+    finally:
+        for process in processes:
+            run_parity.stop(process)
+            assert process.stdout is not None
+            process.stdout.close()
+
+
+@pytest.mark.parametrize("failure", [RuntimeError("probe failed"), KeyboardInterrupt()])
+def test_startup_cases_unwind_probe_failure(
+    monkeypatch: pytest.MonkeyPatch, smtp: ScriptedSmtp, failure: BaseException
+) -> None:
+    import argparse
+
+    target = run_parity.Target("python", ("127.0.0.1", 1))
+    process = run_parity.spawn([sys.executable, "-c", "import time; time.sleep(60)"], {})
+    target.process = process
+    stopped: list[Any] = []
+    original_stop = smtp.stop
+
+    def stop(sink: Any) -> None:
+        stopped.append(sink)
+        original_stop(sink)
+
+    def probe(*args: Any) -> None:
+        raise failure
+
+    monkeypatch.setattr(run_parity, "start", lambda *args: target)
+    monkeypatch.setattr(run_parity, "exchange", probe)
+    monkeypatch.setattr(smtp, "stop", stop)
+    monkeypatch.setattr(corpus, "STARTUP_CASES", corpus.STARTUP_CASES[:1])
+    args = argparse.Namespace(python=[], binary="unused", verbose=False, filter=None)
+    try:
+        with pytest.raises(type(failure)) as caught:
+            run_parity.run_startup_cases(args, {}, run_parity.Report(), smtp)
+        assert caught.value is failure
+        assert process.poll() is not None
+        assert len(stopped) == 1
+    finally:
+        run_parity.stop(process)
+        assert process.stdout is not None
+        process.stdout.close()
+
+
+@pytest.mark.parametrize("mode", ["local", "targets"])
+def test_empty_selection_fails_before_running(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, mode: str
+) -> None:
+    def unexpected(*args: Any) -> None:
+        pytest.fail("empty selection reached target startup")
+
+    monkeypatch.setattr(run_parity, "run_local", unexpected)
+    monkeypatch.setattr(run_parity, "run_targets", unexpected)
+    argv = ["--filter", "no-such-parity-case"]
+    if mode == "targets":
+        argv += ["--targets", "http://127.0.0.1:1,http://127.0.0.1:2", "--sinks", "a,b"]
+    with pytest.raises(SystemExit, match="no runnable request cases"):
+        run_parity.main(argv)
+    assert run_parity.main([*argv, "--write-secrets", str(tmp_path / "secrets.yml")]) == 0
+
+
+def test_all_skipped_targets_fail_before_capture_access(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    case = corpus.Case("unsupported", corpus.Request(), 200, profile="strict")
+    monkeypatch.setattr(corpus, "request_cases", lambda: [case])
+    with pytest.raises(SystemExit, match="no runnable request cases"):
+        run_parity.main(
+            ["--targets", "http://127.0.0.1:1,http://127.0.0.1:2", "--sinks", "missing,missing"]
+        )
+
+
+def test_target_subset_counts_exercised_cases(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    selected = [
+        corpus.Case("health", corpus.Request(method="GET", path="/health"), 200),
+        corpus.Case("unsupported", corpus.Request(), 200, profile="strict"),
+    ]
+    calls: list[str] = []
+    monkeypatch.setattr(corpus, "request_cases", lambda: selected)
+
+    def run_case(target: run_parity.Target, case: corpus.Case, n: int) -> run_parity.Outcome:
+        calls.append(target.name)
+        return run_parity.Outcome(_response(200, '{"status":"ok"}'), [], None)
+
+    monkeypatch.setattr(run_parity, "run_case", run_case)
+    report = tmp_path / "report.json"
+    assert (
+        run_parity.main(
+            [
+                "--targets",
+                "http://127.0.0.1:1,http://127.0.0.1:2",
+                "--sinks",
+                f"{tmp_path},{tmp_path}",
+                "--report",
+                str(report),
+            ]
+        )
+        == 0
+    )
+    receipt = json.loads(report.read_text())
+    assert receipt["request_cases"] == 1
+    assert receipt["selected_request_cases"] == 2
+    assert receipt["skipped"] == 1
+    assert [c["name"] for c in receipt["cases"]] == ["health"]
+    assert calls == ["python", "rust"]
+
+
+def _record_one_case(args: Any, cases: list[corpus.Case], report: run_parity.Report) -> None:
+    report.observe(cases[0], _outcome(), _outcome())
+    report.record(cases[0].name, [], None, False)
+
+
+@pytest.mark.parametrize(
+    "fault", ["short-write", "write", "interrupt", "flush", "fsync", "replace"]
+)
+def test_report_publication_failure_preserves_previous_json(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str], fault: str
+) -> None:
+    import io
+    import os
+
+    report = tmp_path / "report.json"
+    previous = '{"previous":"complete"}\n'
+    report.write_text(previous)
+    monkeypatch.setattr(run_parity, "run_local", _record_one_case)
+    original_open = io.open
+
+    class FaultyFile:
+        def __init__(self, stream: Any) -> None:
+            self.stream = stream
+
+        def __enter__(self) -> Any:
+            return self
+
+        def __exit__(self, *args: Any) -> Any:
+            return self.stream.__exit__(*args)
+
+        def __getattr__(self, name: str) -> Any:
+            return getattr(self.stream, name)
+
+        def write(self, data: str) -> int:
+            if fault in ("short-write", "write", "interrupt"):
+                written: int = self.stream.write(data[: len(data) // 2])
+                if fault == "interrupt":
+                    raise KeyboardInterrupt
+                if fault == "write":
+                    raise OSError("injected write failure")
+                return written
+            result: int = self.stream.write(data)
+            return result
+
+        def flush(self) -> None:
+            if fault == "flush":
+                raise OSError("injected flush failure")
+            self.stream.flush()
+
+    def open_file(*args: Any, **kwargs: Any) -> Any:
+        return FaultyFile(original_open(*args, **kwargs))
+
+    def fail(*args: Any, **kwargs: Any) -> None:
+        raise OSError(f"injected {fault} failure")
+
+    with monkeypatch.context() as patch:
+        patch.setattr(io, "open", open_file)
+        if fault in ("fsync", "replace"):
+            patch.setattr(os, fault, fail)
+        if fault == "interrupt":
+            with pytest.raises(KeyboardInterrupt):
+                run_parity.main(["--report", str(report)])
+        else:
+            assert run_parity.main(["--report", str(report)]) == 1
+    assert report.read_text() == previous
+    assert list(tmp_path.iterdir()) == [report]
+    if fault != "interrupt":
+        assert "report publication failed" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("failed", [False, True])
+def test_complete_report_is_published_after_sync(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, failed: bool
+) -> None:
+    import os
+
+    report = tmp_path / "report.json"
+    report.write_text('{"previous":true}\n')
+    events: list[str] = []
+    original_fsync, original_replace = os.fsync, os.replace
+
+    def record(args: Any, cases: list[corpus.Case], receipt: run_parity.Report) -> None:
+        _record_one_case(args, cases, receipt)
+        if failed:
+            receipt.record("synthetic failure", ["mismatch"], None, False)
+
+    def fsync(fd: int) -> None:
+        events.append("sync")
+        original_fsync(fd)
+
+    def replace(source: Any, destination: Any) -> None:
+        assert Path(source).parent == report.parent
+        assert json.loads(Path(source).read_text())["failed"] == int(failed)
+        assert json.loads(report.read_text()) == {"previous": True}
+        events.append("replace")
+        original_replace(source, destination)
+
+    monkeypatch.setattr(run_parity, "run_local", record)
+    monkeypatch.setattr(os, "fsync", fsync)
+    monkeypatch.setattr(os, "replace", replace)
+    assert run_parity.main(["--report", str(report)]) == int(failed)
+    assert events == ["sync", "replace"]
+    assert json.loads(report.read_text())["failed"] == int(failed)
+    assert list(tmp_path.iterdir()) == [report]
+
+
+@pytest.mark.parametrize("existing_mode", [None, 0o644, 0o640])
+def test_published_report_keeps_previous_or_umask_mode(
+    tmp_path: Path, existing_mode: int | None
+) -> None:
+    import os
+    import stat
+
+    report = tmp_path / "report.json"
+    if existing_mode is not None:
+        report.write_text('{"previous":true}\n')
+        report.chmod(existing_mode)
+    previous_umask = os.umask(0o022)
+    try:
+        run_parity.publish_report(report, {"failed": 0})
+    finally:
+        os.umask(previous_umask)
+    expected = 0o644 if existing_mode is None else existing_mode
+    assert stat.S_IMODE(report.stat().st_mode) == expected
+    assert json.loads(report.read_text()) == {"failed": 0}
+    assert list(tmp_path.iterdir()) == [report]
