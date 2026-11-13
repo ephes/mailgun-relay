@@ -42,7 +42,7 @@ fn version_and_usage() {
     let output = run(&["--version"], &[]);
     assert!(output.status.success());
     let line = String::from_utf8(output.stdout).unwrap();
-    let rest = line.strip_prefix("mailgun-relay 0.2.2 (").unwrap();
+    let rest = line.strip_prefix("mailgun-relay 0.2.3 (").unwrap();
     let commit = rest.strip_suffix(")\n").unwrap();
     assert!(
         commit == "unknown"
@@ -164,7 +164,7 @@ fn serves_health_logs_startup_and_stops_on_sigterm() {
     assert_eq!(record["level"], "ERROR");
     assert_eq!(record["logger"], "mailgun_relay.service");
     assert_eq!(record["event"], "startup");
-    assert_eq!(record["version"], "0.2.2");
+    assert_eq!(record["version"], "0.2.3");
     assert_eq!(record["impl"], "rust");
     assert_eq!(record["bind"], format!("127.0.0.1:{port}"));
     assert_eq!(record["token_labels"], serde_json::json!(["alpha", "zeta"]));

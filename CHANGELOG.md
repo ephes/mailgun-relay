@@ -6,21 +6,6 @@ All notable changes to mailgun-relay are documented here.
 
 ### Tests
 
-- Pin Rust binary SIGTERM after accepted SMTP DATA while QUIT times out:
-  retain the queued response and one success record with exactly one message.
-- Verify multi-address bind rollback through the production bind helper with
-  explicit loopback addresses: release earlier listeners after a later bind
-  conflict, then bind all addresses successfully when the conflict is removed.
-
-- Cover Rust partial-upload disconnects with one admission slot, exactly one
-  body-error record, no send for the disconnected request and a successful next
-  send. Pin SIGTERM during a stalled upload to the existing 30-second body
-  deadline, one timeout record, no SMTP connection and a drained process.
-
-- Pin Rust binary rejection of ambiguous/malformed/truncated HTTP framing and
-  pipelined trailing requests without unintended SMTP sends; retain a valid
-  chunked-send control.
-
 - Pin Python entrypoint defaults and environment overrides, app factory selection,
   disabled Uvicorn access logs, invalid-port refusal before server invocation and
   no extra environment passed from main to Uvicorn. Document a local
@@ -35,20 +20,9 @@ All notable changes to mailgun-relay are documented here.
 
 ### Fixed
 
-- Bound Rust custom CA loading to one nonblocking regular-file descriptor and
-  1 MiB, refusing FIFOs, directories and oversized/growing bundles before startup.
-  Retain operator CA symlinks and existing TLS verification.
-
 - Select an explicit Python JSON logging event before evaluating the fallback
   message, preserving structured records even when raw message/argument objects
   cannot be formatted. Keep reserved raw and exception fields excluded.
-
-- Bound Rust SMTP from DNS through the delivery outcome to a validated
-  `MAILGUN_RELAY_SMTP_SESSION_TIMEOUT_S` (120 s default), with separate bounded
-  QUIT cleanup preserving accepted DATA. Interrupted DATA can be ambiguous.
-- Cap Rust inbound SMTP wire reads at 16 MiB per session, including TLS overhead,
-  before lettre can allocate an unterminated reply. Exhaustion is a safe transport
-  failure and releases admission; Python rollback transport bounds are unchanged.
 
 - Log HTTP 5xx/internal request failures once at ERROR in Python and Rust,
   preserving safe structured evidence at LOG_LEVEL=WARNING while normal
@@ -63,10 +37,6 @@ All notable changes to mailgun-relay are documented here.
   Explicitly provision the canonical interpreter in Rust and parity CI jobs. Incoming
   Python patch releases need not already be in uv's embedded download catalog.
 
-- Bound Rust admitted form-body reads to 30 seconds total (408 on expiry),
-  and DNS plus all SMTP TCP attempts to one SMTP timeout (retryable 503).
-  Python rollback acquisition behavior is unchanged.
-
 - Bound admitted sends in Rust and Python by `SMTP_MAX_CONCURRENCY` before
   body parsing and MIME construction. Excess authenticated requests receive
   503 immediately; accepted SMTP submissions still finish without abandonment.
@@ -77,10 +47,6 @@ All notable changes to mailgun-relay are documented here.
   startup. Rust configuration bounds remain unchanged.
 
 ### Security
-
-- Update the Rust lockfile from rustix 1.1.5 to 1.1.6 to resolve
-  RUSTSEC-2026-0486 (uninitialized memory in zero-length extended-attribute
-  buffers), without adding advisory exceptions.
 
 - Refuse policy labels equal to the loaded SMTP password or any token digest
   in both runtimes, including aliases and later policies; digest comparisons
@@ -115,10 +81,6 @@ All notable changes to mailgun-relay are documented here.
   enforces it and the tests that cover it, plus a runbook for token
   rotation, token revocation and SMTP credential rotation. Rate limiting
   remains unenforced and is listed as an open point.
-- Add bypass tests (`rust/src/security_tests.rs`, 12 tests) for credential
-  variants, token scope, sender spoofing, header injection, the SMTP
-  envelope, remote content, log contents and replay. They found no bypass;
-  relay behaviour is unchanged.
 - Update the locked certifi CA bundle of the Python implementation to
   2026.10.19 for the eMudhra/emSign CA compromise
   ([GHSA-6q48-6c7w-9gw2](https://github.com/certifi/python-certifi/security/advisories/GHSA-6q48-6c7w-9gw2)). Lock-only change; it applies when the
@@ -453,6 +415,74 @@ public request/response contract changes except the two noted under *Behavior*.
   pytest config ignores exactly that warning so `filterwarnings = error` keeps
   catching everything else; no new dependency is added.
 - No code or API changes. Redeploy the relay to pick up the new lock.
+
+## rs-v0.2.3 (candidate, not yet tagged)
+
+Rust port release candidate 0.2.3 (crate version 0.2.3). It carries the
+Rust fixes and regression tests merged since `rs-v0.2.2`; the Python
+implementation is not released by this tag. No tag/release or deployment is
+implied until the publication is recorded here. Rust-only entries moved here
+from *Unreleased*; entries that apply to both runtimes stay under
+*Unreleased* above and are summarised here for the Rust side.
+
+### Security
+
+- Update the Rust lockfile from rustix 1.1.5 to 1.1.6 to resolve
+  RUSTSEC-2026-0486 (uninitialized memory in zero-length extended-attribute
+  buffers), without adding advisory exceptions.
+- Startup refuses ambiguous or unsafe secrets (shared with Python, see
+  *Unreleased*): policy labels equal to the SMTP password or a token digest,
+  unknown/non-string secret fields, duplicate YAML mapping keys, duplicate
+  normalized token digests across policies, and secret files that are not a
+  regular file with safe permissions on the descriptor read (final symlinks
+  and special files refused, reads capped at 1 MiB). A production secrets file
+  that violates one of these now fails `--check-config` before any switch.
+
+### Fixed
+
+- Bound Rust custom CA loading to one nonblocking regular-file descriptor and
+  1 MiB, refusing FIFOs, directories and oversized/growing bundles before startup.
+  Retain operator CA symlinks and existing TLS verification.
+- Bound Rust SMTP from DNS through the delivery outcome to a validated
+  `MAILGUN_RELAY_SMTP_SESSION_TIMEOUT_S` (120 s default), with separate bounded
+  QUIT cleanup preserving accepted DATA. Interrupted DATA can be ambiguous.
+- Cap Rust inbound SMTP wire reads at 16 MiB per session, including TLS overhead,
+  before lettre can allocate an unterminated reply. Exhaustion is a safe transport
+  failure and releases admission; Python rollback transport bounds are unchanged.
+- Bound Rust admitted form-body reads to 30 seconds total (408 on expiry),
+  and DNS plus all SMTP TCP attempts to one SMTP timeout (retryable 503).
+  Python rollback acquisition behavior is unchanged.
+- Admit sends by `SMTP_MAX_CONCURRENCY` before body parsing and MIME
+  construction (excess authenticated requests: immediate 503), and log HTTP
+  5xx/internal request failures once at ERROR (both shared with Python, see
+  *Unreleased*).
+
+### Tests
+
+- Pin Rust binary SIGTERM after accepted SMTP DATA while QUIT times out:
+  retain the queued response and one success record with exactly one message.
+- Verify multi-address bind rollback through the production bind helper with
+  explicit loopback addresses: release earlier listeners after a later bind
+  conflict, then bind all addresses successfully when the conflict is removed.
+- Cover Rust partial-upload disconnects with one admission slot, exactly one
+  body-error record, no send for the disconnected request and a successful next
+  send. Pin SIGTERM during a stalled upload to the existing 30-second body
+  deadline, one timeout record, no SMTP connection and a drained process.
+- Pin Rust binary rejection of ambiguous/malformed/truncated HTTP framing and
+  pipelined trailing requests without unintended SMTP sends; retain a valid
+  chunked-send control.
+- Add bypass tests (`rust/src/security_tests.rs`, 12 tests) for credential
+  variants, token scope, sender spoofing, header injection, the SMTP
+  envelope, remote content, log contents and replay. They found no bypass;
+  relay behaviour is unchanged. The threat model `docs/security.md` (see
+  *Unreleased*) maps them to the enforcing code.
+
+### Release
+
+- Only the crate version and two version assertions change for the release
+  itself. Exact-source CI and the tag Linux build must pass before the
+  archive is pinned; controller selection and running-process verification
+  are separate steps.
 
 ## rs-v0.2.2 — 2026-10-21
 

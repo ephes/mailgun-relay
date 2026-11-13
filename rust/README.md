@@ -423,3 +423,14 @@ A later address-in-use error must release earlier listeners immediately; after
 removing the conflict, both addresses must bind successfully. The binary bind
 failure test separately pins exit 1, no startup-success record and safe output.
 Startup logs success only after the complete listener set has been acquired.
+
+## Prepared release 0.2.3
+
+Rust 0.2.3 carries the Rust fixes and regression tests merged after 0.2.2
+(see the `rs-v0.2.3` CHANGELOG section): bounded SMTP session time and
+inbound wire bytes, bounded CA and secret reads, stricter secret validation,
+admission before body parsing, and rustix 1.1.6 for RUSTSEC-2026-0486. Only
+the crate version and two version assertions change for this preparation.
+The exact candidate commit must pass CI (including cargo-deny/parity) and the
+tag Linux build before the archive is pinned. Publication is not evidence of
+running-process protection.
