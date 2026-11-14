@@ -1,12 +1,13 @@
 from __future__ import annotations
 
+import logging
 import smtplib
 import ssl
 from dataclasses import dataclass
 from email.message import EmailMessage
 from enum import StrEnum
 
-from mailgun_relay.logging_setup import service_logger
+from mailgun_relay.logging_setup import log_safely, service_logger
 
 
 class FailureCategory(StrEnum):
@@ -159,7 +160,9 @@ def submit(
                     if code != 221:
                         raise smtplib.SMTPResponseException(code, reply)
             except (smtplib.SMTPException, OSError) as exc:
-                service_logger().warning(
+                log_safely(
+                    service_logger(),
+                    logging.WARNING,
                     "smtp_cleanup_failed",
                     extra={"event": "smtp_cleanup_failed", "error_class": type(exc).__name__},
                 )
@@ -167,7 +170,9 @@ def submit(
                 try:
                     smtp.close()
                 except (smtplib.SMTPException, OSError) as exc:
-                    service_logger().warning(
+                    log_safely(
+                        service_logger(),
+                        logging.WARNING,
                         "smtp_cleanup_failed",
                         extra={"event": "smtp_cleanup_failed", "error_class": type(exc).__name__},
                     )

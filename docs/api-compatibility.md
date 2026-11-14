@@ -178,6 +178,20 @@ the send. A safe `smtp_cleanup_failed` warning records only the exception class,
 never SMTP reply text or recipient addresses. Pre-acceptance failures retain their
 original error category even if cleanup also fails.
 
+The retained Python rollback adapter also isolates multipart teardown: under a
+cancellation shield it attempts each parsed upload's close independently, even
+after validation or submission fails. A close failure produces an
+`upload_cleanup_failed` warning with only the exception class (capped at 80
+characters), preserving the HTTP result and attempting the remaining uploads.
+Failed resources are not retried; a close attempt cannot guarantee release if
+the underlying file operation itself fails.
+
+Python request, partial-refusal and cleanup logging is best effort. Exceptions
+from a custom handler/filter/formatter do not change the submission result or
+retain admission capacity. A failed log call attempts only the fixed stderr
+line `{"event":"diagnostic_logging_failed"}`, without record fields or exception
+details; failure of that fallback is ignored. The send is never retried.
+
 ## Compatibility Assumptions to Verify
 
 - Anymail posts to `{MAILGUN_API_URL}/{sender_domain}/messages`.

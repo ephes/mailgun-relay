@@ -191,6 +191,16 @@ journald, so `journalctl -u mailgun-relay -f` is the live view.
 
 - `event=smtp_cleanup_failed` — a `WARNING` with only the exception class when
   QUIT or close fails. Accepted sends keep their outcome; closed sessions skip QUIT.
+- `event=upload_cleanup_failed` — a Python rollback `WARNING` with only the
+  exception class (at most 80 characters) when an upload close fails. Remaining
+  uploads still get a close attempt under the cancellation shield; the HTTP
+  result is preserved.
+
+Python request, partial-refusal and cleanup records are best effort: a failing
+logging sink cannot change delivery outcomes. The fallback attempts only the
+fixed line `{"event":"diagnostic_logging_failed"}` on stderr, without request
+fields or exception details. A failed fallback is ignored. Rust already ignores
+stdout write/flush errors. No diagnostic failure retries a send.
 
 Python structured records select their explicit `event` without formatting the
 raw message or its arguments; exception/stack objects remain excluded. Records
