@@ -400,3 +400,21 @@ Aliases cannot turn a password/hash into an error field name. Exceptions and
 ordinary startup stdout/stderr are tested with invented secret markers; Rust
 retains the same value-free diagnostic boundary. Adoption needs a runtime
 update/restart; no deployment is part of this change.
+
+Policy list expansion is bounded cumulatively across all tokens and all three
+scope lists: at most 16,384 entries and 1,048,576 UTF-8 bytes. Each occurrence
+counts, including duplicates and each alias use, before normalization/storage;
+bytes charge the larger of the input and normalized spelling. Limits fail with
+only the field/index position. Ordinary shared lists remain supported. Python
+also checks public YAML events before construction, allowing at most 64 nested
+collections (matching Rust), refusing aliases to unfinished collections, and
+normalizing residual recursion/memory parse failures to value-free
+`InvalidPolicyError`. These bounds apply to startup, not a deployed runtime
+until it is updated and restarted.
+
+Runtime isolation: form parsing and MIME retain their owned admission permit
+inside bounded blocking jobs, including caller cancellation. Rust logging uses
+256 queued records of at most 64 KiB, nonblocking drop-newest overflow and a
+one-second shutdown drain. A blocked stdout sink owns only its dedicated OS
+thread; it cannot stall health or induce a resend. See architecture for the
+best-effort logging limits and the synthetic blocked-sink regressions.

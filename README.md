@@ -199,8 +199,8 @@ journald, so `journalctl -u mailgun-relay -f` is the live view.
 Python request, partial-refusal and cleanup records are best effort: a failing
 logging sink cannot change delivery outcomes. The fallback attempts only the
 fixed line `{"event":"diagnostic_logging_failed"}` on stderr, without request
-fields or exception details. A failed fallback is ignored. Rust already ignores
-stdout write/flush errors. No diagnostic failure retries a send.
+fields or exception details. A failed fallback is ignored. Rust uses a bounded
+nonblocking stdout queue (details below). No diagnostic failure retries a send.
 
 Python structured records select their explicit `event` without formatting the
 raw message or its arguments; exception/stack objects remain excluded. Records
@@ -210,8 +210,8 @@ These records contain no token values or hashes, the `Authorization` header,
 SMTP credentials, message bodies, or attachment content.
 
 A relay nobody has asked to send anything logs nothing between restarts — that
-is normal, not a fault. The `startup` record is the anchor: if it is there, the
-logging pipeline works. Log records are flushed per record, so `PYTHONUNBUFFERED`
+is normal, not a fault. A received `startup` record confirms startup logging
+reached the sink. Log records are flushed per record, so `PYTHONUNBUFFERED`
 is not needed; if recent records are present but older history is gone, the
 cause is journald retention on the host, not the service.
 
@@ -309,3 +309,21 @@ Digest comparisons trim whitespace and ignore case. Rejection happens before
 startup/access logging or secrets Debug output, with only the token position
 in the error. Ordinary labels and aliases remain supported. This is an equality
 guard, not detection of embedded secrets; operators must keep labels nonsecret.
+
+Policy list expansion is bounded cumulatively across all tokens and all three
+scope lists: at most 16,384 entries and 1,048,576 UTF-8 bytes. Each occurrence
+counts, including duplicates and each alias use, before normalization/storage;
+bytes charge the larger of the input and normalized spelling. Limits fail with
+only the field/index position. Ordinary shared lists remain supported. Python
+also checks public YAML events before construction, allowing at most 64 nested
+collections (matching Rust), refusing aliases to unfinished collections, and
+normalizing residual recursion/memory parse failures to value-free
+`InvalidPolicyError`. These bounds apply to startup, not a deployed runtime
+until it is updated and restarted.
+
+Rust parsing runs in the bounded blocking pool while retaining admission.
+Rust stdout has a dedicated writer thread with a 256-record queue and 64 KiB
+per-record cap; newest overflow/oversize records drop. Shutdown drains for at
+most one second after requests finish, so a stalled sink may lose records,
+including startup. Health and delivery never wait for stdout. See
+[architecture](docs/architecture.md) for ownership and drain details.

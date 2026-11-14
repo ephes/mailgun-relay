@@ -16,7 +16,7 @@ use axum::http::{HeaderMap, HeaderValue, StatusCode, header};
 use axum::response::{IntoResponse, Response};
 use http_body_util::BodyExt;
 use serde::Serialize;
-use tokio::sync::Semaphore;
+use tokio::sync::{OwnedSemaphorePermit, Semaphore};
 use tokio_util::task::TaskTracker;
 
 use crate::auth::authenticate;
@@ -83,7 +83,9 @@ pub struct Relay {
     pub logger: Logger,
     pub submitter: Box<dyn Submitter>,
     /// Admission cap from body parsing through SMTP; excess sends fail immediately.
-    smtp_slots: Semaphore,
+    smtp_slots: Arc<Semaphore>,
+    #[cfg(test)]
+    parse_hook: Option<Arc<dyn Fn() + Send + Sync>>,
     /// Every request runs in a task of its own; shutdown waits for them, so
     /// a submission whose client went away is still finished.
     pub tasks: TaskTracker,
@@ -104,7 +106,9 @@ impl Relay {
             tokens,
             logger,
             submitter,
-            smtp_slots: Semaphore::new(slots),
+            smtp_slots: Arc::new(Semaphore::new(slots)),
+            #[cfg(test)]
+            parse_hook: None,
             tasks: TaskTracker::new(),
         }
     }
@@ -242,7 +246,7 @@ pub async fn post_messages(
 
 async fn process(relay: Arc<Relay>, domain: String, headers: HeaderMap, body: Body) -> Response {
     let mut record = Record {
-        logger: relay.logger,
+        logger: relay.logger.clone(),
         start: Instant::now(),
         request_id: random_hex(),
         token_label: "-".to_owned(),
@@ -336,12 +340,16 @@ async fn decide(
 
     // No application wait queue: reserve before retaining the body or MIME.
     // RAII releases on validation failures, SMTP outcomes and unwinding.
-    let _slot = relay.smtp_slots.try_acquire().map_err(|_| Failure {
-        status: StatusCode::SERVICE_UNAVAILABLE,
-        result: "overloaded",
-        class: "AdmissionLimitError",
-        message: "Relay busy; retry later".to_owned(),
-    })?;
+    let slot = relay
+        .smtp_slots
+        .clone()
+        .try_acquire_owned()
+        .map_err(|_| Failure {
+            status: StatusCode::SERVICE_UNAVAILABLE,
+            result: "overloaded",
+            class: "AdmissionLimitError",
+            message: "Relay busy; retry later".to_owned(),
+        })?;
 
     // Step 3: the content type decides whether and how the body is read.
     let content_type = headers.get(header::CONTENT_TYPE).map(HeaderValue::as_bytes);
@@ -362,8 +370,17 @@ async fn decide(
         max_fields: settings.max_recipients.saturating_add(FORM_FIELD_HEADROOM),
         max_part_size: settings.max_body_bytes,
     };
-    let items = form::parse(&encoding, &bytes, limits).map_err(form_failure)?;
-    drop(bytes);
+    #[cfg(test)]
+    let hook = relay.parse_hook.clone();
+    let (items, slot) = offload(slot, move || {
+        #[cfg(test)]
+        if let Some(hook) = hook {
+            hook();
+        }
+        form::parse(&encoding, &bytes, limits)
+    })
+    .await?;
+    let items = items.map_err(form_failure)?;
 
     // Step 4.
     let parsed = parse_form(items, settings)?;
@@ -422,15 +439,9 @@ async fn decide(
         inline: parsed.inline,
         public_host: settings.public_host.clone(),
     };
-    let message = tokio::task::spawn_blocking(move || mime::build(input))
-        .await
-        .map_err(|_| Failure {
-            status: StatusCode::INTERNAL_SERVER_ERROR,
-            result: "internal_error",
-            class: "Panic",
-            message: "Internal Server Error".to_owned(),
-        })?
-        .map_err(|_| Failure::bad_request("HeaderInjectionError", "invalid message"))?;
+    let (message, _slot) = offload(slot, move || mime::build(input)).await?;
+    let message =
+        message.map_err(|_| Failure::bad_request("HeaderInjectionError", "invalid message"))?;
     let message_id = message.message_id.clone();
     record.message_id = Some(message_id.clone());
     record.recipient_count = message.envelope.len();
@@ -480,6 +491,22 @@ async fn decide(
             message: "Queued. Thank you.",
         },
     ))
+}
+
+/// Move admission into the blocking work. Dropping/aborting its waiter cannot
+/// admit more work until this closure has actually finished, even on panic.
+async fn offload<T: Send + 'static>(
+    slot: OwnedSemaphorePermit,
+    work: impl FnOnce() -> T + Send + 'static,
+) -> Result<(T, OwnedSemaphorePermit), Failure> {
+    tokio::task::spawn_blocking(move || (work(), slot))
+        .await
+        .map_err(|_| Failure {
+            status: StatusCode::INTERNAL_SERVER_ERROR,
+            result: "internal_error",
+            class: "Panic",
+            message: "Internal Server Error".to_owned(),
+        })
 }
 
 fn form_failure(error: FormError) -> Failure {

@@ -574,3 +574,120 @@ def test_scalar_token_error_uses_position(tmp_path: Path) -> None:
     text = _VALID_BODY.split("tokens:")[0] + "tokens: [invalid]\n"
     with pytest.raises(InvalidPolicyError, match=r"tokens\[0\]: each token entry"):
         load_secrets(write_secrets(tmp_path, text))
+
+
+def expanded_policy_document(count: int, width: int, domain: str = "example.test") -> str:
+    entries = []
+    shared = "[" + ", ".join([domain] * width) + "]"
+    for index in range(count):
+        domains = f"&domains {shared}" if index == 0 else "*domains"
+        entries.append(
+            f"  - label: policy-{index}\n    token_sha256: '{index:064x}'\n"
+            f"    mailgun_domains: {domains}\n    allowed_from_domains: *domains\n"
+        )
+    return "smtp: {username: relay, password: synthetic-password}\ntokens:\n" + "".join(entries)
+
+
+@pytest.mark.parametrize(
+    ("count", "domain", "limit"),
+    [(65, "example.test", "entries"), (20, ".".join(["a" * 60] * 4), "bytes")],
+)
+def test_policy_alias_expansion_budget(tmp_path: Path, count: int, domain: str, limit: str) -> None:
+    document = expanded_policy_document(count, 128, domain)
+    assert len(document.encode()) < 1_048_576
+    with pytest.raises(InvalidPolicyError, match=f"tokens.*expanded policy {limit}") as caught:
+        load_secrets(write_secrets(tmp_path, document))
+    assert "synthetic-password" not in str(caught.value)
+    assert domain not in str(caught.value)
+    ordinary = load_secrets(write_secrets(tmp_path, expanded_policy_document(2, 2)))
+    assert ordinary.tokens[0].mailgun_domains == ordinary.tokens[1].allowed_from_domains
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        "[" * 65 + "secret-marker" + "]" * 65,
+        "&loop [*loop]",
+        "{x: " * 65 + "secret-marker" + "}" * 65,
+    ],
+)
+def test_python_yaml_resource_boundary(tmp_path: Path, value: str) -> None:
+    with pytest.raises(
+        InvalidPolicyError, match=r"secrets file: (nesting too deep|alias to an unfinished node)"
+    ):
+        load_secrets(write_secrets(tmp_path, value))
+
+
+def test_yaml_depth_boundary_and_factory_startup(tmp_path: Path) -> None:
+    # Root + 62 merge mappings + SMTP leaf = 64 collection levels.
+    smtp = "{username: relay, password: synthetic-password}"
+    body = _VALID_BODY.replace(
+        "  username: relay@example.test\n  password: hunter2",
+        "  <<: " + "{<<: " * 61 + smtp + "}" * 61,
+    )
+    path = write_secrets(tmp_path, body)
+    env = {k: v for k, v in os.environ.items() if not k.startswith("MAILGUN_RELAY_")}
+    env["MAILGUN_RELAY_SECRETS_PATH"] = str(path)
+    check = "from mailgun_relay.app import create_app; create_app()"
+    valid = subprocess.run(  # noqa: S603 - fixed interpreter and synthetic startup check
+        [sys.executable, "-c", check], env=env, capture_output=True, text=True, timeout=10
+    )
+    assert valid.returncode == 0, valid.stderr
+    assert "synthetic-password" not in valid.stdout + valid.stderr
+    for value in [
+        "[" * 500 + "synthetic-password" + "]" * 500,
+        "&a [*a]",
+        "{x: " * 500 + "synthetic-password" + "}" * 500,
+    ]:
+        path.write_text(value)
+        invalid = subprocess.run(  # noqa: S603 - fixed interpreter and synthetic startup check
+            [sys.executable, "-c", check], env=env, capture_output=True, text=True, timeout=10
+        )
+        assert invalid.returncode == 1
+        assert "InvalidPolicyError" in invalid.stderr
+        assert "RecursionError" not in invalid.stderr
+        assert "synthetic-password" not in invalid.stdout + invalid.stderr
+
+
+@pytest.mark.parametrize("error", [RecursionError, MemoryError])
+def test_residual_yaml_resource_errors_are_private(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, error: type[Exception]
+) -> None:
+    def fail(*args: object, **kwargs: object) -> None:
+        raise error("synthetic-password")
+
+    monkeypatch.setattr("mailgun_relay.config.yaml.load", fail)
+    with pytest.raises(InvalidPolicyError) as caught:
+        load_secrets(write_secrets(tmp_path, _VALID_BODY))
+    assert "synthetic-password" not in "".join(traceback.format_exception(caught.value))
+
+
+def test_policy_expansion_exact_boundary_and_address_use(tmp_path: Path) -> None:
+    # 8192 shared entries used twice: exactly 16384 entries / 1 MiB.
+    domain = "a" * 60 + ".tes"
+    document = expanded_policy_document(1, 8192, domain)
+    loaded = load_secrets(write_secrets(tmp_path, document))
+    assert loaded.tokens[0].mailgun_domains == loaded.tokens[0].allowed_from_domains == {domain}
+    document += "    allowed_from_addresses: [sender@example.test]\n"
+    with pytest.raises(
+        InvalidPolicyError,
+        match=r"tokens\[0\].allowed_from_addresses\[0\]: expanded policy entries",
+    ):
+        load_secrets(write_secrets(tmp_path, document))
+
+
+@pytest.mark.parametrize("field", ["mailgun_domains", "allowed_from_addresses"])
+def test_policy_budget_refuses_non_utf8_scalars_privately(tmp_path: Path, field: str) -> None:
+    # PyYAML permits escaped lone surrogates, which have no UTF-8 byte size.
+    text = expanded_policy_document(1, 1)
+    if field == "mailgun_domains":
+        text = text.replace(
+            "&domains [example.test]", r'&domains ["synthetic-private-marker\uD800.test"]'
+        )
+    else:
+        text += (
+            r'    allowed_from_addresses: ["synthetic-private-marker\uD800@example.test"]' + "\n"
+        )
+    with pytest.raises(InvalidPolicyError, match="entry is not valid UTF-8") as caught:
+        load_secrets(write_secrets(tmp_path, text))
+    assert "synthetic-private-marker" not in "".join(traceback.format_exception(caught.value))

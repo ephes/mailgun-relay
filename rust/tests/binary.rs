@@ -893,3 +893,128 @@ fn shutdown_after_data_acceptance_preserves_success_when_quit_times_out() {
     assert_eq!(records[1]["status_code"], 200);
     assert_eq!(records[1]["message_id"], queued["id"]);
 }
+
+#[test]
+fn stalled_stdout_does_not_block_health_delivery_or_shutdown() {
+    let pki = fake_smtp::Pki::new();
+    let smtp = fake_smtp::FakeSmtp::start_in_thread(serde_json::json!({}), Some(pki.good.clone()));
+    let dir = tempfile::tempdir().unwrap();
+    let secrets = secrets_file(dir.path(), 0o600);
+    let ca = dir.path().join("ca.pem");
+    std::fs::write(&ca, pki.ca_pem).unwrap();
+    let smtp_port = smtp.port.to_string();
+    let mut server = start(&[
+        ("MAILGUN_RELAY_SECRETS_PATH", secrets.to_str().unwrap()),
+        ("MAILGUN_RELAY_SMTP_HOST", "localhost"),
+        ("MAILGUN_RELAY_SMTP_PORT", &smtp_port),
+        ("MAILGUN_RELAY_SMTP_CA_FILE", ca.to_str().unwrap()),
+        ("MAILGUN_RELAY_SMTP_MAX_CONCURRENCY", "1"),
+    ]);
+    // Do not read stdout after startup: fill both the pipe and bounded queue.
+    let path = "x".repeat(2048);
+    for _ in 0..400 {
+        let response = request(
+            server.port,
+            &format!("POST /v3/{path}/messages HTTP/1.1"),
+            "",
+        );
+        assert!(response.starts_with("HTTP/1.1 401 "), "{response}");
+    }
+    assert!(get(server.port, "/health").starts_with("HTTP/1.1 200 "));
+    let response = request(
+        server.port,
+        SEND_HEAD.replace("Host: relay.test\r\n", "").trim_end(),
+        SEND_BODY,
+    );
+    assert!(response.starts_with("HTTP/1.1 200 "), "{response}");
+    let stopped = std::time::Instant::now();
+    assert!(terminate(&mut server.child).success());
+    assert!(stopped.elapsed() < Duration::from_secs(3));
+    let sessions = smtp.sessions();
+    assert_eq!(sessions.len(), 1);
+    assert!(sessions[0].message.is_some());
+    assert_eq!(
+        sessions[0]
+            .commands()
+            .iter()
+            .filter(|c| *c == "DATA")
+            .count(),
+        1
+    );
+}
+
+#[test]
+fn lost_final_data_ack_is_uncertain_without_replay_even_after_restart() {
+    let pki = fake_smtp::Pki::new();
+    let smtp = fake_smtp::FakeSmtp::start_in_thread(
+        serde_json::json!({"fault": {"data_end": "close"}, "first_session_only": true}),
+        Some(pki.good.clone()),
+    );
+    let dir = tempfile::tempdir().unwrap();
+    let secrets = secrets_file(dir.path(), 0o600);
+    let ca = dir.path().join("ca.pem");
+    std::fs::write(&ca, pki.ca_pem).unwrap();
+    let smtp_port = smtp.port.to_string();
+    let env = [
+        ("MAILGUN_RELAY_SECRETS_PATH", secrets.to_str().unwrap()),
+        ("MAILGUN_RELAY_SMTP_HOST", "localhost"),
+        ("MAILGUN_RELAY_SMTP_PORT", &smtp_port),
+        ("MAILGUN_RELAY_SMTP_CA_FILE", ca.to_str().unwrap()),
+        ("MAILGUN_RELAY_SMTP_MAX_CONCURRENCY", "1"),
+    ];
+    let mut server = start(&env);
+    let head = SEND_HEAD.replace("Host: relay.test\r\n", "");
+    let head = head.trim_end_matches("\r\n");
+    let response = request(server.port, head, SEND_BODY);
+    assert!(response.starts_with("HTTP/1.1 503 "), "{response}");
+    assert!(!response.contains("private-body-marker"));
+    let sessions = smtp.sessions();
+    assert_eq!(sessions.len(), 1);
+    assert!(sessions[0].message.is_some()); // Peer stored DATA before losing 250.
+    assert_eq!(sessions[0].data_for.as_ref().unwrap(), &["b@example.net"]);
+    assert!(
+        sessions[0]
+            .log
+            .contains(&"S: <close at data_end>".to_owned())
+    );
+    assert!(!sessions[0].commands().iter().any(|c| c == "QUIT"));
+    assert!(get(server.port, "/health").starts_with("HTTP/1.1 200 "));
+    // An explicit second request proves the only slot is reusable. Its
+    // different subject/body distinguishes it from an invented resend.
+    let second = SEND_BODY.replace("private-body-marker", "second-synthetic-message");
+    assert!(request(server.port, head, &second).starts_with("HTTP/1.1 200 "));
+    assert!(terminate(&mut server.child).success());
+    let records = request_records(&mut server);
+    assert_eq!(records.len(), 2, "{records:?}");
+    assert_eq!(records[0]["result"], "smtp_temporary");
+    assert_eq!(records[0]["error_class"], "SmtpSubmitError");
+    assert_eq!(records[0]["status_code"], 503);
+    assert_eq!(records[1]["result"], "ok");
+    assert_eq!(records[1]["status_code"], 200);
+    assert_ne!(records[0]["message_id"], records[1]["message_id"]);
+    let mut restarted = start(&env);
+    // Observe several health round trips over a bounded idle observation
+    // window, then shut down normally: neither startup nor shutdown resends.
+    let observe = std::time::Instant::now();
+    while observe.elapsed() < Duration::from_millis(250) {
+        assert!(get(restarted.port, "/health").starts_with("HTTP/1.1 200 "));
+        std::thread::sleep(Duration::from_millis(10));
+    }
+    assert!(terminate(&mut restarted.child).success());
+    assert!(request_records(&mut restarted).is_empty());
+    let sessions = smtp.sessions();
+    assert_eq!(sessions.len(), 2);
+    for (index, marker) in ["private-body-marker", "second-synthetic-message"]
+        .into_iter()
+        .enumerate()
+    {
+        let session = &sessions[index];
+        assert_eq!(
+            session.commands().iter().filter(|c| *c == "DATA").count(),
+            1
+        );
+        let message = String::from_utf8(session.message.clone().unwrap()).unwrap();
+        assert!(message.contains(marker));
+        assert!(message.contains(records[index]["message_id"].as_str().unwrap()));
+    }
+}

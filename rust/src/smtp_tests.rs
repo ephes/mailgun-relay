@@ -755,3 +755,56 @@ fn ca_read_bounds_a_growing_source_and_accepts_the_limit() {
         MAX_CA_BYTES as usize
     );
 }
+
+#[tokio::test]
+async fn auth_uses_only_latest_encrypted_ehlo_for_each_session() {
+    let server = FakeSmtp::start(
+        &json!({"auth_offer_pre_tls": "PLAIN", "auth_offer_tls_sessions": ["LOGIN", "", "PLAIN"]}),
+        Some(PKI.good.clone()),
+    )
+    .await;
+    let (logger, _) = Logger::capturing(Level::Info);
+    let smtp = submitter(server.port, true, 5.0, logger);
+    for expected in [Ok(Vec::new()), Err(SubmitError::Temporary), Ok(Vec::new())] {
+        assert_eq!(smtp.submit(message(&["a@example.test"])).await, expected);
+    }
+    let sessions = server.sessions();
+    assert_eq!(sessions.len(), 3);
+    for (index, mechanism) in [Some("LOGIN"), None, Some("PLAIN")].into_iter().enumerate() {
+        let session = &sessions[index];
+        assert!(session.tls);
+        assert_eq!(
+            session.commands().iter().filter(|c| *c == "EHLO").count(),
+            2
+        );
+        assert!(
+            session.log.contains(&"S: 250-AUTH PLAIN".to_owned())
+                || session.log.contains(&"S: 250 AUTH PLAIN".to_owned())
+        );
+        let auth: Vec<_> = session
+            .log
+            .iter()
+            .filter(|line| line.starts_with("S: <auth "))
+            .collect();
+        if let Some(mechanism) = mechanism {
+            assert_eq!(auth, [&format!("S: <auth {mechanism}>")]);
+            let upgrade = session
+                .commands()
+                .iter()
+                .position(|c| c == "STARTTLS")
+                .unwrap();
+            let auth_index = session.commands().iter().position(|c| c == "AUTH").unwrap();
+            assert!(auth_index > upgrade + 1);
+            assert!(session.message.is_some());
+        } else {
+            assert!(auth.is_empty());
+            assert!(
+                !session
+                    .commands()
+                    .iter()
+                    .any(|c| matches!(c.as_str(), "AUTH" | "MAIL" | "RCPT" | "DATA"))
+            );
+            assert!(session.message.is_none());
+        }
+    }
+}

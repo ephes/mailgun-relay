@@ -140,7 +140,49 @@ def _validate_sha256_hex(value: str) -> str:
     return value
 
 
-def _coerce_domain_set(field_name: str, raw: object) -> frozenset[str]:
+# Charge every use, including duplicate entries and shared YAML aliases.
+MAX_POLICY_ENTRIES = 16_384
+MAX_POLICY_BYTES = 1_048_576
+MAX_YAML_DEPTH = 64
+
+
+@dataclass
+class _PolicyBudget:
+    entries: int = 0
+    bytes: int = 0
+
+    def admit(self, value: str, at: str) -> int:
+        self.entries += 1
+        if self.entries > MAX_POLICY_ENTRIES:
+            raise InvalidPolicyError(f"{at}: expanded policy entries exceed 16384")
+        try:
+            size = len(value.encode("utf-8"))
+        except UnicodeError:
+            raise InvalidPolicyError(f"{at}: entry is not valid UTF-8") from None
+        self.charge(size, at)
+        return size
+
+    def charge(self, size: int, at: str) -> None:
+        self.bytes += size
+        if self.bytes > MAX_POLICY_BYTES:
+            raise InvalidPolicyError(f"{at}: expanded policy bytes exceed 1048576")
+
+
+def _check_yaml_resources(text: str) -> None:
+    # Public event API: refuse deep collections before recursive construction.
+    anchors: list[str | None] = []
+    for event in yaml.parse(text, Loader=yaml.SafeLoader):
+        if isinstance(event, yaml.events.CollectionStartEvent):
+            if len(anchors) >= MAX_YAML_DEPTH:
+                raise InvalidPolicyError("secrets file: nesting too deep")
+            anchors.append(event.anchor)
+        elif isinstance(event, yaml.events.CollectionEndEvent):
+            anchors.pop()
+        elif isinstance(event, yaml.events.AliasEvent) and event.anchor in anchors:
+            raise InvalidPolicyError("secrets file: alias to an unfinished node")
+
+
+def _coerce_domain_set(field_name: str, raw: object, budget: _PolicyBudget) -> frozenset[str]:
     if not isinstance(raw, list) or not raw:
         raise InvalidPolicyError(f"{field_name} must be a non-empty list")
     normalized: set[str] = set()
@@ -148,13 +190,19 @@ def _coerce_domain_set(field_name: str, raw: object) -> frozenset[str]:
         if not isinstance(item, str) or not item.strip():
             raise InvalidPolicyError(f"{field_name}: entries must be non-empty strings")
         try:
-            normalized.add(normalize_domain(item))
+            at = f"{field_name}[{index}]"
+            size = budget.admit(item, at)
+            value = normalize_domain(item)
+            budget.charge(max(0, len(value.encode("utf-8")) - size), at)
+            normalized.add(value)
         except InvalidAddressError:
             raise InvalidPolicyError(f"{field_name}[{index}]: invalid domain") from None
     return frozenset(normalized)
 
 
-def _coerce_optional_address_set(raw: object, at: str) -> frozenset[str] | None:
+def _coerce_optional_address_set(
+    raw: object, at: str, budget: _PolicyBudget
+) -> frozenset[str] | None:
     if raw is None:
         return None
     if not isinstance(raw, list):
@@ -166,7 +214,11 @@ def _coerce_optional_address_set(raw: object, at: str) -> frozenset[str] | None:
         if not isinstance(item, str) or not item.strip():
             raise InvalidPolicyError(f"{at}[{index}]: entries must be non-empty strings")
         try:
-            normalized.add(normalize_address(item))
+            field = f"{at}[{index}]"
+            size = budget.admit(item, field)
+            value = normalize_address(item)
+            budget.charge(max(0, len(value.encode("utf-8")) - size), field)
+            normalized.add(value)
         except InvalidAddressError:
             raise InvalidPolicyError(f"{at}[{index}]: invalid address") from None
     return frozenset(normalized)
@@ -177,7 +229,7 @@ def _check_keys(raw: dict[object, object], allowed: set[str], at: str) -> None:
         raise InvalidPolicyError(f"{at}: unknown or non-string field")
 
 
-def _load_policy_entry(raw: object, at: str) -> TokenPolicy:
+def _load_policy_entry(raw: object, at: str, budget: _PolicyBudget) -> TokenPolicy:
     if not isinstance(raw, dict):
         raise InvalidPolicyError(f"{at}: each token entry must be a mapping")
     _check_keys(
@@ -204,12 +256,14 @@ def _load_policy_entry(raw: object, at: str) -> TokenPolicy:
     _reject_changeme(f"{at}.token_sha256", token_sha256_raw)
     token_sha256 = _validate_sha256_hex(token_sha256_raw)
 
-    mailgun_domains = _coerce_domain_set(f"{at}.mailgun_domains", raw.get("mailgun_domains"))
+    mailgun_domains = _coerce_domain_set(
+        f"{at}.mailgun_domains", raw.get("mailgun_domains"), budget
+    )
     allowed_from_domains = _coerce_domain_set(
-        f"{at}.allowed_from_domains", raw.get("allowed_from_domains")
+        f"{at}.allowed_from_domains", raw.get("allowed_from_domains"), budget
     )
     allowed_from_addresses = _coerce_optional_address_set(
-        raw.get("allowed_from_addresses"), f"{at}.allowed_from_addresses"
+        raw.get("allowed_from_addresses"), f"{at}.allowed_from_addresses", budget
     )
 
     return TokenPolicy(
@@ -278,10 +332,11 @@ def _read_secret_file(path: Path) -> str:
 def load_secrets(path: str | Path) -> Secrets:
     data_text = _read_secret_file(Path(path))
     try:
+        _check_yaml_resources(data_text)
         data = yaml.load(data_text, Loader=_UniqueKeyLoader)  # noqa: S506 - SafeLoader subclass
     except InvalidPolicyError:
         raise
-    except yaml.YAMLError, ValueError, TypeError, OverflowError:
+    except yaml.YAMLError, ValueError, TypeError, OverflowError, RecursionError, MemoryError:
         raise InvalidPolicyError("secrets file is not valid YAML") from None
     if not isinstance(data, dict):
         raise InvalidPolicyError("secrets file must be a top-level mapping")
@@ -296,8 +351,9 @@ def load_secrets(path: str | Path) -> Secrets:
     tokens: list[TokenPolicy] = []
     seen_labels: set[str] = set()
     seen_digests: set[str] = set()
+    budget = _PolicyBudget()
     for index, entry in enumerate(tokens_raw):
-        policy = _load_policy_entry(entry, f"tokens[{index}]")
+        policy = _load_policy_entry(entry, f"tokens[{index}]", budget)
         if policy.label in seen_labels:
             raise InvalidPolicyError(f"tokens[{index}]: duplicate token label")
         if policy.token_sha256 in seen_digests:

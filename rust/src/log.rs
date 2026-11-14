@@ -6,8 +6,9 @@
 //! them.
 
 use std::io::Write;
-use std::sync::Mutex;
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex, mpsc};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use serde::Serialize;
 
@@ -25,9 +26,67 @@ struct Record<'a, T: Serialize> {
     fields: &'a T,
 }
 
-#[derive(Debug, Clone, Copy)]
+/// A fixed count AND byte envelope. Oversize and newest overflow records drop.
+const LOG_QUEUE_RECORDS: usize = 256;
+const MAX_LOG_RECORD_BYTES: usize = 65_536;
+
+#[derive(Debug)]
+struct Writer {
+    sender: mpsc::SyncSender<Box<[u8]>>,
+    stopping: Arc<AtomicBool>,
+    finished: Mutex<mpsc::Receiver<()>>,
+}
+
+impl Writer {
+    fn new(mut sink: impl Write + Send + 'static, capacity: usize) -> Self {
+        let (sender, receiver) = mpsc::sync_channel::<Box<[u8]>>(capacity);
+        let (done, finished) = mpsc::channel();
+        let stopping = Arc::new(AtomicBool::new(false));
+        let stopped = stopping.clone();
+        // A dedicated OS thread: a live blocked sink cannot occupy Tokio's
+        // runtime or its bounded blocking pool. It is detached on drain expiry.
+        std::thread::spawn(move || {
+            loop {
+                match receiver.recv_timeout(Duration::from_millis(10)) {
+                    Ok(line) => {
+                        let _ = sink.write_all(&line).and_then(|()| sink.flush());
+                    }
+                    Err(mpsc::RecvTimeoutError::Disconnected) => break,
+                    Err(mpsc::RecvTimeoutError::Timeout) if stopped.load(Ordering::Acquire) => {
+                        break;
+                    }
+                    Err(mpsc::RecvTimeoutError::Timeout) => {}
+                }
+            }
+            let _ = done.send(());
+        });
+        Self {
+            sender,
+            stopping,
+            finished: Mutex::new(finished),
+        }
+    }
+
+    fn send(&self, line: Vec<u8>) -> bool {
+        line.len() <= MAX_LOG_RECORD_BYTES
+            && !self.stopping.load(Ordering::Acquire)
+            && self.sender.try_send(line.into_boxed_slice()).is_ok()
+    }
+
+    fn shutdown(&self, budget: Duration) {
+        self.stopping.store(true, Ordering::Release);
+        let _ = self
+            .finished
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .recv_timeout(budget);
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct Logger {
     threshold: Level,
+    writer: Option<Arc<Writer>>,
     /// Tests collect the lines here instead of on stdout.
     capture: Option<&'static Mutex<Vec<String>>>,
 }
@@ -36,6 +95,7 @@ impl Logger {
     pub fn new(threshold: Level) -> Self {
         Logger {
             threshold,
+            writer: Some(Arc::new(Writer::new(std::io::stdout(), LOG_QUEUE_RECORDS))),
             capture: None,
         }
     }
@@ -46,9 +106,18 @@ impl Logger {
         let lines: &'static Mutex<Vec<String>> = Box::leak(Box::default());
         let logger = Logger {
             threshold,
+            writer: None,
             capture: Some(lines),
         };
         (logger, lines)
+    }
+
+    /// Stop admission and drain for a bounded interval after request shutdown.
+    /// A stalled sink may lose the queued tail when the process exits.
+    pub fn shutdown(&self, budget: Duration) {
+        if let Some(writer) = &self.writer {
+            writer.shutdown(budget);
+        }
     }
 
     pub fn threshold(&self) -> Level {
@@ -78,8 +147,8 @@ impl Logger {
         Some(line)
     }
 
-    /// Write one record to stdout and flush it. A failed write (closed
-    /// stdout) is ignored: logging never takes the service down.
+    /// Serialize and enqueue without waiting for stdout. Failed writes, full
+    /// queues and records over 64 KiB are best effort drops, never send retries.
     pub fn emit<T: Serialize>(&self, level: Level, logger: &str, event: &str, fields: &T) {
         if let Some(line) = self.render(level, logger, event, fields) {
             if let Some(lines) = self.capture {
@@ -87,8 +156,9 @@ impl Logger {
                 lines.lock().unwrap_or_else(|e| e.into_inner()).push(text);
                 return;
             }
-            let mut out = std::io::stdout().lock();
-            let _ = out.write_all(&line).and_then(|()| out.flush());
+            if let Some(writer) = &self.writer {
+                let _ = writer.send(line);
+            }
         }
     }
 }
@@ -119,6 +189,52 @@ mod tests {
     use std::time::Duration;
 
     use super::*;
+
+    #[test]
+    fn blocked_sink_has_fixed_queue_and_bounded_drain() {
+        struct Sink {
+            entered: Option<mpsc::Sender<()>>,
+            release: mpsc::Receiver<()>,
+            lines: Arc<Mutex<Vec<Vec<u8>>>>,
+        }
+        impl Write for Sink {
+            fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
+                if let Some(entered) = self.entered.take() {
+                    entered.send(()).unwrap();
+                    self.release.recv_timeout(Duration::from_secs(2)).unwrap();
+                }
+                self.lines.lock().unwrap().push(bytes.to_vec());
+                Ok(bytes.len())
+            }
+            fn flush(&mut self) -> std::io::Result<()> {
+                Ok(())
+            }
+        }
+        let (entered_tx, entered_rx) = mpsc::channel();
+        let (release_tx, release_rx) = mpsc::channel();
+        let lines = Arc::new(Mutex::new(Vec::new()));
+        let writer = Writer::new(
+            Sink {
+                entered: Some(entered_tx),
+                release: release_rx,
+                lines: lines.clone(),
+            },
+            2,
+        );
+        assert!(writer.send(vec![1]));
+        entered_rx.recv_timeout(Duration::from_secs(2)).unwrap();
+        assert!(writer.send(vec![2]));
+        assert!(writer.send(vec![3]));
+        assert!(!writer.send(vec![4])); // Newest overflow is dropped.
+        assert!(!writer.send(vec![0; MAX_LOG_RECORD_BYTES + 1]));
+        let start = std::time::Instant::now();
+        writer.shutdown(Duration::from_millis(30));
+        assert!(start.elapsed() < Duration::from_millis(500));
+        assert!(!writer.send(vec![5]));
+        release_tx.send(()).unwrap();
+        writer.shutdown(Duration::from_secs(2));
+        assert_eq!(*lines.lock().unwrap(), [vec![1], vec![2], vec![3]]);
+    }
 
     #[test]
     fn timestamps() {

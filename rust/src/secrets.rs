@@ -112,6 +112,35 @@ fn read_opened(file: std::fs::File) -> Result<String, ConfigError> {
     String::from_utf8(bytes).map_err(|_| invalid("secrets file is not valid UTF-8"))
 }
 
+/// Per-use admission, including duplicates and aliases, before normalization.
+#[derive(Default)]
+struct PolicyBudget {
+    entries: usize,
+    bytes: usize,
+}
+
+impl PolicyBudget {
+    fn admit(&mut self, value: &str, at: &str) -> Result<(), ConfigError> {
+        self.entries += 1;
+        if self.entries > 16_384 {
+            return Err(invalid(format!(
+                "{at}: expanded policy entries exceed 16384"
+            )));
+        }
+        self.charge(value.len(), at)
+    }
+
+    fn charge(&mut self, bytes: usize, at: &str) -> Result<(), ConfigError> {
+        self.bytes = self.bytes.saturating_add(bytes);
+        if self.bytes > 1_048_576 {
+            return Err(invalid(format!(
+                "{at}: expanded policy bytes exceed 1048576"
+            )));
+        }
+        Ok(())
+    }
+}
+
 pub fn from_yaml(text: &str) -> Result<Secrets, ConfigError> {
     let data = yaml::parse(text).map_err(|e| invalid(format!("secrets file: {e}")))?;
     if !matches!(*data, Node::Map(_)) {
@@ -124,8 +153,9 @@ pub fn from_yaml(text: &str) -> Result<Secrets, ConfigError> {
         _ => return Err(invalid("tokens must be a non-empty list")),
     };
     let mut tokens: Vec<TokenPolicy> = Vec::new();
+    let mut budget = PolicyBudget::default();
     for (index, entry) in entries.iter().enumerate() {
-        let policy = load_policy(entry, &format!("tokens[{index}]"))?;
+        let policy = load_policy(entry, &format!("tokens[{index}]"), &mut budget)?;
         if tokens.iter().any(|t| t.label == policy.label) {
             return Err(invalid(format!("tokens[{index}]: duplicate token label")));
         }
@@ -195,7 +225,11 @@ fn load_smtp(raw: Option<&Node>) -> Result<SmtpCredentials, ConfigError> {
     })
 }
 
-fn load_policy(raw: &Node, at: &str) -> Result<TokenPolicy, ConfigError> {
+fn load_policy(
+    raw: &Node,
+    at: &str,
+    budget: &mut PolicyBudget,
+) -> Result<TokenPolicy, ConfigError> {
     if !matches!(raw, Node::Map(_)) {
         return Err(invalid(format!("{at}: each token entry must be a mapping")));
     }
@@ -233,21 +267,29 @@ fn load_policy(raw: &Node, at: &str) -> Result<TokenPolicy, ConfigError> {
         )));
     }
 
-    let mailgun_domains = string_list(raw, at, "mailgun_domains", normalize_config_domain)?
+    let mailgun_domains = string_list(raw, at, "mailgun_domains", normalize_config_domain, budget)?
         .ok_or_else(|| invalid(format!("{at}.mailgun_domains must be a non-empty list")))?;
-    let allowed_from_domains =
-        string_list(raw, at, "allowed_from_domains", normalize_config_domain)?.ok_or_else(
-            || {
-                invalid(format!(
-                    "{at}.allowed_from_domains must be a non-empty list"
-                ))
-            },
-        )?;
+    let allowed_from_domains = string_list(
+        raw,
+        at,
+        "allowed_from_domains",
+        normalize_config_domain,
+        budget,
+    )?
+    .ok_or_else(|| {
+        invalid(format!(
+            "{at}.allowed_from_domains must be a non-empty list"
+        ))
+    })?;
     let allowed_from_addresses = match raw.get("allowed_from_addresses") {
         None | Some(Node::Null) => None,
-        Some(Node::Seq(_)) => {
-            string_list(raw, at, "allowed_from_addresses", normalize_config_address)?
-        }
+        Some(Node::Seq(_)) => string_list(
+            raw,
+            at,
+            "allowed_from_addresses",
+            normalize_config_address,
+            budget,
+        )?,
         Some(_) => {
             return Err(invalid(format!(
                 "{at}.allowed_from_addresses must be a list when present"
@@ -270,6 +312,7 @@ fn string_list(
     at: &str,
     key: &str,
     normalize: fn(&str) -> Result<String, String>,
+    budget: &mut PolicyBudget,
 ) -> Result<Option<BTreeSet<String>>, ConfigError> {
     let Some(Node::Seq(items)) = raw.get(key) else {
         return Ok(None);
@@ -282,8 +325,10 @@ fn string_list(
         let field = format!("{at}.{key}[{index}]");
         match item.as_ref() {
             Node::Str(value) if !py_strip(value).is_empty() => {
+                budget.admit(value, &field)?;
                 let normalized =
                     normalize(value).map_err(|reason| invalid(format!("{field}: {reason}")))?;
+                budget.charge(normalized.len().saturating_sub(value.len()), &field)?;
                 values.insert(normalized);
             }
             _ => return Err(invalid(format!("{field} must be a non-empty string"))),
@@ -297,6 +342,57 @@ mod tests {
     use serde_json::{Value, json};
 
     use super::*;
+
+    #[test]
+    fn policy_alias_expansion_budget() {
+        for (count, domain, limit) in [
+            (65, "example.test".to_owned(), "entries"),
+            (20, vec!["a".repeat(60); 4].join("."), "bytes"),
+        ] {
+            let mut doc =
+                "smtp: {username: relay, password: synthetic-password}\ntokens:\n".to_owned();
+            let shared = format!("&domains [{}]", vec![domain.as_str(); 128].join(", "));
+            for index in 0..count {
+                let domains = if index == 0 { &shared } else { "*domains" };
+                doc.push_str(&format!("  - label: policy-{index}\n    token_sha256: '{index:064x}'\n    mailgun_domains: {domains}\n    allowed_from_domains: *domains\n"));
+            }
+            assert!(doc.len() < 1_048_576);
+            let error = from_yaml(&doc).unwrap_err().0;
+            assert!(
+                error.contains(&format!("expanded policy {limit}")),
+                "{error}"
+            );
+            assert!(error.contains("tokens["));
+            assert!(!error.contains(&domain) && !error.contains("synthetic-password"));
+        }
+    }
+
+    #[test]
+    fn policy_expansion_exact_boundary_and_address_use() {
+        let domain = format!("{}.tes", "a".repeat(60));
+        let list = vec![domain.as_str(); 8192].join(", ");
+        let mut doc = minimal_document()
+            .replace(
+                "mailgun_domains: [example.test]",
+                &format!("mailgun_domains: &d [{list}]"),
+            )
+            .replace(
+                "allowed_from_domains: [example.test]",
+                "allowed_from_domains: *d",
+            );
+        let loaded = from_yaml(&doc).unwrap();
+        assert_eq!(loaded.tokens[0].mailgun_domains, BTreeSet::from([domain]));
+        assert_eq!(
+            loaded.tokens[0].mailgun_domains,
+            loaded.tokens[0].allowed_from_domains
+        );
+        doc.push_str("    allowed_from_addresses: [sender@example.test]\n");
+        let error = from_yaml(&doc).unwrap_err().0;
+        assert!(
+            error.contains("tokens[0].allowed_from_addresses[0]: expanded policy entries"),
+            "{error}"
+        );
+    }
 
     fn minimal_document() -> String {
         format!(

@@ -88,15 +88,17 @@ fn serve() -> ExitCode {
         Ok(loaded) => loaded,
         Err(error) => return config_failure(&error),
     };
+    let logger = Logger::new(settings.log_level);
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .max_blocking_threads(2)
         .thread_keep_alive(Duration::from_secs(10))
         .build();
     let result = match runtime {
-        Ok(runtime) => runtime.block_on(run(settings, secrets, smtp)),
+        Ok(runtime) => runtime.block_on(run(settings, secrets, smtp, logger.clone())),
         Err(error) => Err(format!("cannot start the runtime: {error}")),
     };
+    logger.shutdown(Duration::from_secs(1));
     match result {
         Ok(()) => ExitCode::SUCCESS,
         Err(message) => {
@@ -106,20 +108,24 @@ fn serve() -> ExitCode {
     }
 }
 
-async fn run(settings: Settings, secrets: Secrets, smtp: SmtpConfig) -> Result<(), String> {
+async fn run(
+    settings: Settings,
+    secrets: Secrets,
+    smtp: SmtpConfig,
+    logger: Logger,
+) -> Result<(), String> {
     let bind = format!("{}:{}", settings.bind_host, settings.bind_port);
     let listeners = bind_all(&settings.bind_host, settings.bind_port)
         .await
         .map_err(|error| format!("cannot bind {bind}: {error}"))?;
     // Handlers are in place before the startup record announces the process.
     let mut shutdown = Shutdown::register().map_err(|error| format!("signals: {error}"))?;
-    let logger = Logger::new(settings.log_level);
     log_startup(&logger, &settings, &secrets, &bind);
 
     let relay = Arc::new(pipeline::Relay::new(
         settings,
         secrets.tokens,
-        logger,
+        logger.clone(),
         Box::new(SmtpSubmitter::new(smtp, logger)),
     ));
     let state = Arc::new(http::AppState {
