@@ -465,3 +465,50 @@ passed. The Linux binary embeds `d2a4ddbccc549feeaaa0ae90dab111ee0d8e7870`; the 
 `mailgun-relay-0.2.3-x86_64-unknown-linux-gnu.tar.gz` and its `.sha256` carry
 archive SHA256 `a7a942e5d3f23e49515ae4f3da3bae98a03a55fc1c06848298a0de731da607cf`; the artifact-only and tag builds produced identical
 bytes. Publication is not evidence of running-process protection.
+
+Policy list expansion is bounded cumulatively across all tokens and all three
+scope lists: at most 16,384 entries and 1,048,576 UTF-8 bytes. Each occurrence
+counts, including duplicates and each alias use, before normalization/storage;
+bytes charge the larger of the input and normalized spelling. Limits fail with
+only the field/index position. Ordinary shared lists remain supported. Python
+also checks public YAML events before construction, allowing at most 64 nested
+collections (matching Rust), refusing aliases to unfinished collections, and
+normalizing residual recursion/memory parse failures to value-free
+`InvalidPolicyError`. These bounds apply to startup, not a deployed runtime
+until it is updated and restarted.
+
+Rust buffers form bodies under the existing admission limit, then moves form
+parsing and MIME construction onto the bounded Tokio blocking pool (two worker
+threads). The owned admission permit travels into each blocking job and returns
+with its result. Cancellation cannot free a slot while that job is still running;
+tracked requests still drain before shutdown. Authentication, content-type/body
+limits and validation order are unchanged.
+
+Rust stdout logging uses a dedicated OS writer thread and the standard library's
+bounded `sync_channel` with nonblocking `try_send`: 256 queued records, each at
+most 65,536 serialized bytes (at most 16 MiB queued payload, plus one writing
+record and queue metadata).
+The newest record is dropped on saturation; oversized records and write/flush
+errors are also dropped. There is no recursive fallback or send retry. The
+writer flushes each accepted record. After requests drain, shutdown stops log
+admission and waits at most one second for queued records; a stalled sink may
+lose the tail when the process exits. Health, SMTP outcomes and capacity release
+do not depend on stdout progress. Startup logging is best effort too, so a
+missing startup record alone does not prove startup failed. Python's retained
+logging path keeps its documented exception-isolation behavior.
+
+STARTTLS authentication uses only the latest encrypted EHLO capabilities; a
+pre-TLS AUTH offer never authorizes sending credentials after upgrade. Each
+submission opens a fresh session. Synthetic TLS tests vary AUTH by phase and
+session (PLAIN → LOGIN, then no AUTH, then PLAIN) and prove removed mechanisms
+cannot leak into authentication or message submission.
+
+A disconnect after complete DATA but before the final 250 is an **uncertain
+submission**, returned as retryable HTTP 503 (`smtp_temporary`). The peer may
+already have stored/delivered the message. The relay never retries internally,
+keeps no durable replay queue and performs no unsolicited SMTP transaction on
+restart. A caller retry may therefore duplicate delivery; this adapter does not
+provide durable exactly-once delivery. This differs from a consumed final 250:
+a subsequent QUIT failure still returns success. A full-binary loopback test
+records one DATA per explicit HTTP request, reuses admission after a lost ACK,
+and observes an idle restart without replay.

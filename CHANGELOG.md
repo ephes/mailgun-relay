@@ -6,6 +6,14 @@ All notable changes to mailgun-relay are documented here.
 
 ### Tests
 
+- Extend the synthetic TLS peer with phase/session-specific AUTH offers. Pin
+  encrypted EHLO replacement and fresh-session authentication, including AUTH
+  removal without credential or message submission. SMTP production logic
+  already satisfies this oracle and is unchanged.
+- Pin full-binary lost-final-DATA-250 behavior: one stored DATA, HTTP 503 and
+  one controlled failure record, reusable admission and no restart replay.
+  Document caller-retry duplicate risk separately from confirmed-250 success.
+
 - Pin Python entrypoint defaults and environment overrides, app factory selection,
   disabled Uvicorn access logs, invalid-port refusal before server invocation and
   no extra environment passed from main to Uvicorn. Document a local
@@ -19,6 +27,23 @@ All notable changes to mailgun-relay are documented here.
   keeps health responsive and admits a subsequent send without duplicating the first.
 
 ### Fixed
+
+- Offload Rust buffered form parsing while retaining admission inside parsing
+  and MIME jobs, including cancellation; preserve the decision order.
+- Isolate Rust stdout backpressure on a dedicated writer with a bounded
+  nonblocking queue, drop-newest overflow and a one-second shutdown drain.
+  Synthetic single-worker and blocked-pipe tests pin health, delivery and
+  capacity/shutdown ownership; logging never retries SMTP. Both runtimes cap
+  the logged path domain at 320 characters like `from`, so an oversized
+  unauthenticated URL path cannot push its request record past the writer's
+  64 KiB record envelope and silently drop it.
+
+- Bound cumulative policy-list normalization in both runtimes to 16,384 entries
+  and 1 MiB of per-use input/normalized UTF-8 bytes, including aliases and
+  duplicates. Keep positional, credential-free startup diagnostics.
+- Check Python YAML nesting (64 collections) and unfinished aliases before
+  construction; normalize residual recursion/resource parse failures without
+  exposing values. Cover the actual startup factory without binding a server.
 
 - Preserve Python rollback HTTP/SMTP outcomes when multipart upload cleanup
   fails, attempting every owned upload close under the cancellation shield.

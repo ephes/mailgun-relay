@@ -128,7 +128,8 @@ recursively logging through the failed sink; the configured stdout handler route
 its own formatter/stream errors to the same line instead of the stdlib traceback.
 An unavailable stderr is ignored.
 Normal structured records and severity rules remain unchanged; diagnostic
-delivery is best effort. Rust already ignores stdout write/flush failures.
+delivery is best effort. Rust uses a bounded nonblocking stdout queue
+(details below).
 
 `GET /health` deliberately logs nothing, so the deploy-time health probe does not pollute the access log.
 
@@ -324,3 +325,28 @@ The current backend deployment hosts mail domains including:
 - `opaq.de`
 
 The current edge relay accepts those domains and rewrites the Unicode U-label form of the IDN as envelope recipients to `@xn--wersdrfer-47a.de`. This service should prefer punycode in configuration and should not infer sender authorization from relay recipient rewrites.
+
+Rust buffers form bodies under the existing admission limit, then moves form
+parsing and MIME construction onto the bounded Tokio blocking pool (two worker
+threads). The owned admission permit travels into each blocking job and returns
+with its result. Cancellation cannot free a slot while that job is still running;
+tracked requests still drain before shutdown. Authentication, content-type/body
+limits and validation order are unchanged.
+
+Rust stdout logging uses a dedicated OS writer thread and the standard library's
+bounded `sync_channel` with nonblocking `try_send`: 256 queued records, each at
+most 65,536 serialized bytes (at most 16 MiB queued payload, plus one writing
+record and queue metadata).
+The newest record is dropped on saturation; oversized records and write/flush
+errors are also dropped. There is no recursive fallback or send retry. The
+writer flushes each accepted record. After requests drain, shutdown stops log
+admission and waits at most one second for queued records; a stalled sink may
+lose the tail when the process exits. Health, SMTP outcomes and capacity release
+do not depend on stdout progress. Startup logging is best effort too, so a
+missing startup record alone does not prove startup failed. Python's retained
+logging path keeps its documented exception-isolation behavior.
+
+A completed DATA whose final 250 is lost remains uncertain: HTTP 503 cannot
+prove non-delivery. There is no internal retry or persisted replay after restart;
+caller retry can duplicate mail. After a confirmed 250, QUIT failure retains
+success. See API compatibility for this retry boundary and the TLS EHLO oracle.

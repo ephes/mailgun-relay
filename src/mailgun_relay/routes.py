@@ -65,6 +65,8 @@ _FORM_FIELD_HEADROOM = 100
 
 # Cap on the attacker-controlled `from` value written to the access log.
 _FROM_LOG_MAX_LEN = 320
+# The logged path domain comes from the unauthenticated URL path; cap it like `from`.
+_PATH_DOMAIN_LOG_MAX_LEN = 320
 
 # Substrings in starlette's MultiPartException messages that mean "too big"
 # rather than "malformed", so they map to 413 instead of 400. Matched on the
@@ -113,6 +115,7 @@ def register_routes(app: FastAPI) -> None:
             path_domain_log = normalize_domain(domain)
         except InvalidAddressError:
             path_domain_log = domain
+        path_domain_log = path_domain_log[:_PATH_DOMAIN_LOG_MAX_LEN]
 
         try:
             policy = authenticate(

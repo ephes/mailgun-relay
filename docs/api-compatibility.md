@@ -291,3 +291,19 @@ Aliases cannot turn a password/hash into an error field name. Exceptions and
 ordinary startup stdout/stderr are tested with invented secret markers; Rust
 retains the same value-free diagnostic boundary. Adoption needs a runtime
 update/restart; no deployment is part of this change.
+
+STARTTLS authentication uses only the latest encrypted EHLO capabilities; a
+pre-TLS AUTH offer never authorizes sending credentials after upgrade. Each
+submission opens a fresh session. Synthetic TLS tests vary AUTH by phase and
+session (PLAIN → LOGIN, then no AUTH, then PLAIN) and prove removed mechanisms
+cannot leak into authentication or message submission.
+
+A disconnect after complete DATA but before the final 250 is an **uncertain
+submission**, returned as retryable HTTP 503 (`smtp_temporary`). The peer may
+already have stored/delivered the message. The relay never retries internally,
+keeps no durable replay queue and performs no unsolicited SMTP transaction on
+restart. A caller retry may therefore duplicate delivery; this adapter does not
+provide durable exactly-once delivery. This differs from a consumed final 250:
+a subsequent QUIT failure still returns success. A full-binary loopback test
+records one DATA per explicit HTTP request, reuses admission after a lost ACK,
+and observes an idle restart without replay.

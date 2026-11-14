@@ -6,7 +6,8 @@
 //! `ehlo_tls`, `starttls`, `auth`, `mail`, `data`, `data_end`, `quit`;
 //! `auth_plain` and `auth_login` for one mechanism), a code per recipient
 //! local part (`rcpt`), the offered extensions
-//! (`offer_starttls`, `auth_offer`) and faults per phase (`garbage`: a reply
+//! (`offer_starttls`, `auth_offer`, `auth_offer_pre_tls`,
+//! `auth_offer_tls_sessions`) and faults per phase (`garbage`: a reply
 //! without a code, `close`: the server closes, `hang`: no reply). STARTTLS
 //! uses `rcgen` certificates with key identifiers (Python's
 //! `VERIFY_X509_STRICT` needs them, S1b). Every session is recorded:
@@ -128,6 +129,8 @@ pub struct Script {
     faults: HashMap<String, String>,
     offer_starttls: bool,
     auth_offer: String,
+    auth_offer_pre_tls: Option<String>,
+    auth_offer_tls_sessions: Vec<String>,
     auth_by_mechanism: HashMap<String, u16>,
     first_session_only: bool,
 }
@@ -154,6 +157,8 @@ impl Script {
             faults: HashMap::new(),
             offer_starttls: true,
             auth_offer: "PLAIN LOGIN".to_owned(),
+            auth_offer_pre_tls: None,
+            auth_offer_tls_sessions: Vec::new(),
             auth_by_mechanism: HashMap::new(),
             first_session_only: false,
         };
@@ -162,6 +167,17 @@ impl Script {
                 "first_session_only" => script.first_session_only = value.as_bool().unwrap(),
                 "offer_starttls" => script.offer_starttls = value.as_bool().unwrap(),
                 "auth_offer" => value.as_str().unwrap().clone_into(&mut script.auth_offer),
+                "auth_offer_pre_tls" => {
+                    script.auth_offer_pre_tls = Some(value.as_str().unwrap().to_owned())
+                }
+                "auth_offer_tls_sessions" => {
+                    script.auth_offer_tls_sessions = value
+                        .as_array()
+                        .unwrap()
+                        .iter()
+                        .map(|v| v.as_str().unwrap().to_owned())
+                        .collect()
+                }
                 "rcpt" => {
                     for (local, code) in value.as_object().unwrap() {
                         script
@@ -369,8 +385,22 @@ impl Handler<'_> {
         if !tls && self.script.offer_starttls {
             lines.push("STARTTLS".to_owned());
         }
-        if (tls || !self.script.offer_starttls) && !self.script.auth_offer.is_empty() {
-            lines.push(format!("AUTH {}", self.script.auth_offer));
+        let offer = if tls {
+            self.script
+                .auth_offer_tls_sessions
+                .get(self.index)
+                .or_else(|| self.script.auth_offer_tls_sessions.last())
+                .unwrap_or(&self.script.auth_offer)
+                .as_str()
+        } else if let Some(offer) = &self.script.auth_offer_pre_tls {
+            offer.as_str()
+        } else if !self.script.offer_starttls {
+            &self.script.auth_offer
+        } else {
+            ""
+        };
+        if !offer.is_empty() {
+            lines.push(format!("AUTH {offer}"));
         }
         lines
     }

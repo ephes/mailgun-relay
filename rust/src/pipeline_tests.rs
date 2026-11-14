@@ -132,7 +132,7 @@ impl Harness {
     /// A relay with another submitter, which gets the capturing logger.
     fn with_submitter(settings: Settings, make: impl FnOnce(Logger) -> Box<dyn Submitter>) -> Self {
         let (logger, logs) = Logger::capturing(Level::Info);
-        let relay = Relay::new(settings, tokens(), logger, make(logger));
+        let relay = Relay::new(settings, tokens(), logger.clone(), make(logger));
         Harness {
             relay: Arc::new(relay),
             recorder: relay_recorder(),
@@ -1003,6 +1003,32 @@ async fn records_follow_the_information_boundary() {
     .await;
     let from = h.records("request")[0]["from"].as_str().unwrap().to_owned();
     assert_eq!(from.chars().count(), 320);
+    // An oversized unauthenticated path still yields exactly one request record
+    // that fits the writer's per-record envelope: the path domain is capped too.
+    let h = Harness::new();
+    let reply = h
+        .post(
+            None,
+            &"%01".repeat(20_000),
+            encode(Encoding::Urlencoded, &MINIMUM),
+        )
+        .await;
+    assert_eq!(reply.status(), 401);
+    let records = h.records("request");
+    assert_eq!(records.len(), 1);
+    assert_eq!(
+        records[0]["path_domain"].as_str().unwrap().chars().count(),
+        320
+    );
+    let longest = h
+        .logs
+        .lock()
+        .unwrap()
+        .iter()
+        .map(String::len)
+        .max()
+        .unwrap();
+    assert!(longest <= crate::log::MAX_LOG_RECORD_BYTES);
     // No record below the configured level.
     let (logger, lines) = Logger::capturing(Level::Warning);
     let quiet = Relay::new(settings(), tokens(), logger, Box::new(Panicking));
@@ -1538,4 +1564,86 @@ async fn bounded_smtp_sessions_release_admission() {
         let logs = serde_json::to_string(&h.records("request")).unwrap();
         assert!(!logs.contains("synthetic-private-reply"));
     }
+}
+
+/// Runs on one Tokio worker. A watchdog releases the synthetic parser even
+/// on regression, so an inline parse fails an assertion rather than hanging.
+#[tokio::test]
+async fn parsing_keeps_runtime_capacity_and_shutdown_owned() {
+    let mut h = Harness::with(Settings {
+        smtp_max_concurrency: 1,
+        ..settings()
+    });
+    let (entered_tx, entered_rx) = tokio::sync::oneshot::channel();
+    let entered_tx = Mutex::new(Some(entered_tx));
+    let parser_finished = Arc::new(std::sync::atomic::AtomicBool::new(false));
+    let finished = parser_finished.clone();
+    let (release_tx, release_rx) = std::sync::mpsc::channel();
+    let release_rx = Mutex::new(release_rx);
+    Arc::get_mut(&mut h.relay).unwrap().parse_hook = Some(Arc::new(move || {
+        if let Some(tx) = entered_tx.lock().unwrap().take() {
+            tx.send(()).unwrap();
+            release_rx
+                .lock()
+                .unwrap()
+                .recv_timeout(Duration::from_secs(2))
+                .unwrap();
+            finished.store(true, std::sync::atomic::Ordering::Release);
+        }
+    }));
+    let watchdog_tx = release_tx.clone();
+    let (cancel_tx, cancel_rx) = std::sync::mpsc::channel::<()>();
+    let watchdog = std::thread::spawn(move || {
+        if cancel_rx.recv_timeout(Duration::from_millis(700)).is_err() {
+            let _ = watchdog_tx.send(());
+        }
+    });
+    let caller = post_to(&h, "admin@wersdoerfer.de");
+    entered_rx.await.unwrap();
+    assert_eq!(h.health().await.status(), 200);
+    assert!(
+        !parser_finished.load(std::sync::atomic::Ordering::Acquire),
+        "health ran only after parser release"
+    );
+    caller.abort(); // The service's tracked request still owns its work.
+    assert_eq!(
+        post_to(&h, "admin@wersdoerfer.de").await.unwrap().status(),
+        503
+    );
+    h.relay.tasks.close();
+    assert!(
+        tokio::time::timeout(Duration::from_millis(30), h.relay.tasks.wait())
+            .await
+            .is_err()
+    );
+    release_tx.send(()).unwrap();
+    cancel_tx.send(()).unwrap();
+    watchdog.join().unwrap();
+    tokio::time::timeout(Duration::from_secs(2), h.relay.tasks.wait())
+        .await
+        .unwrap();
+    assert_eq!(h.recorder.calls.lock().unwrap().len(), 1);
+    assert_queued(&post_to(&h, "admin@wersdoerfer.de").await.unwrap());
+    assert_eq!(h.recorder.calls.lock().unwrap().len(), 2);
+}
+
+#[tokio::test]
+async fn aborted_blocking_waiter_cannot_release_parser_capacity() {
+    let slots = Arc::new(Semaphore::new(1));
+    let slot = slots.clone().try_acquire_owned().unwrap();
+    let (entered_tx, entered_rx) = tokio::sync::oneshot::channel();
+    let (release_tx, release_rx) = std::sync::mpsc::channel();
+    let work = tokio::spawn(offload(slot, move || {
+        entered_tx.send(()).unwrap();
+        release_rx.recv_timeout(Duration::from_secs(2)).unwrap();
+    }));
+    entered_rx.await.unwrap();
+    work.abort();
+    let _ = work.await;
+    assert!(slots.try_acquire().is_err());
+    release_tx.send(()).unwrap();
+    let _slot = tokio::time::timeout(Duration::from_secs(2), slots.acquire())
+        .await
+        .unwrap()
+        .unwrap();
 }

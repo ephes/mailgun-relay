@@ -211,3 +211,16 @@ def test_unstructured_record_retains_formatted_event_fallback(
     stream = _configure_logging_to_stream(monkeypatch, "INFO")
     access_logger().info("fallback %s", "event")
     assert json.loads(stream.getvalue())["event"] == "fallback event"
+
+
+def test_oversized_unauthenticated_path_domain_is_capped_in_the_request_record(
+    monkeypatch: pytest.MonkeyPatch, client: TestClient
+) -> None:
+    stream = _configure_logging_to_stream(monkeypatch, "INFO")
+    response = client.post("/v3/" + "%01" * 20_000 + "/messages", data={"from": "x@example.test"})
+    assert response.status_code == 401
+    records = [json.loads(line) for line in stream.getvalue().splitlines()]
+    requests = [record for record in records if record["event"] == "request"]
+    assert len(requests) == 1
+    # Capped like `from` (and the Rust runtime), so the record stays small.
+    assert len(requests[0]["path_domain"]) == 320
