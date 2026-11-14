@@ -1003,6 +1003,32 @@ async fn records_follow_the_information_boundary() {
     .await;
     let from = h.records("request")[0]["from"].as_str().unwrap().to_owned();
     assert_eq!(from.chars().count(), 320);
+    // An oversized unauthenticated path still yields exactly one request record
+    // that fits the writer's per-record envelope: the path domain is capped too.
+    let h = Harness::new();
+    let reply = h
+        .post(
+            None,
+            &"%01".repeat(20_000),
+            encode(Encoding::Urlencoded, &MINIMUM),
+        )
+        .await;
+    assert_eq!(reply.status(), 401);
+    let records = h.records("request");
+    assert_eq!(records.len(), 1);
+    assert_eq!(
+        records[0]["path_domain"].as_str().unwrap().chars().count(),
+        320
+    );
+    let longest = h
+        .logs
+        .lock()
+        .unwrap()
+        .iter()
+        .map(String::len)
+        .max()
+        .unwrap();
+    assert!(longest <= crate::log::MAX_LOG_RECORD_BYTES);
     // No record below the configured level.
     let (logger, lines) = Logger::capturing(Level::Warning);
     let quiet = Relay::new(settings(), tokens(), logger, Box::new(Panicking));

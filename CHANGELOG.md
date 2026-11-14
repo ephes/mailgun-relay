@@ -33,7 +33,10 @@ All notable changes to mailgun-relay are documented here.
 - Isolate Rust stdout backpressure on a dedicated writer with a bounded
   nonblocking queue, drop-newest overflow and a one-second shutdown drain.
   Synthetic single-worker and blocked-pipe tests pin health, delivery and
-  capacity/shutdown ownership; logging never retries SMTP.
+  capacity/shutdown ownership; logging never retries SMTP. Both runtimes cap
+  the logged path domain at 320 characters like `from`, so an oversized
+  unauthenticated URL path cannot push its request record past the writer's
+  64 KiB record envelope and silently drop it.
 
 - Bound cumulative policy-list normalization in both runtimes to 16,384 entries
   and 1 MiB of per-use input/normalized UTF-8 bytes, including aliases and

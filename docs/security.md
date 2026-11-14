@@ -183,8 +183,9 @@ needs a review of this section.
 
 ### T8 Log leakage
 
-The `event=request` record holds the request id, token label, path domain,
-the `from` value (capped at 320 characters), counts, the Message-Id, the
+The `event=request` record holds the request id, token label, path domain and
+the `from` value (each capped at 320 characters, so an oversized URL path
+cannot make the record too large to log), counts, the Message-Id, the
 result, the status and the duration. It never holds the token, the
 `Authorization` header, the SMTP password, recipients, the subject, bodies,
 custom header values, upload names or content. A partial refusal logs the

@@ -28,7 +28,7 @@ struct Record<'a, T: Serialize> {
 
 /// A fixed count AND byte envelope. Oversize and newest overflow records drop.
 const LOG_QUEUE_RECORDS: usize = 256;
-const MAX_LOG_RECORD_BYTES: usize = 65_536;
+pub(crate) const MAX_LOG_RECORD_BYTES: usize = 65_536;
 
 #[derive(Debug)]
 struct Writer {

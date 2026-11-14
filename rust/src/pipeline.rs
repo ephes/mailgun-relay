@@ -37,6 +37,10 @@ const FORM_FIELD_HEADROOM: i64 = 100;
 
 /// The logged `from` is capped (`_FROM_LOG_MAX_LEN`, code points).
 const FROM_LOG_MAX_LEN: usize = 320;
+/// The logged `path_domain` is capped the same way (`_PATH_DOMAIN_LOG_MAX_LEN`):
+/// it comes from the unauthenticated URL path, and an oversized record would
+/// otherwise be dropped by the log writer's per-record byte envelope.
+const PATH_DOMAIN_LOG_MAX_LEN: usize = 320;
 
 const KNOWN_FIELDS: &[&str] = &[
     "from",
@@ -251,7 +255,11 @@ async fn process(relay: Arc<Relay>, domain: String, headers: HeaderMap, body: Bo
         request_id: random_hex(),
         token_label: "-".to_owned(),
         // Normalised for the log; the raw value when it is no domain.
-        path_domain: normalize_domain(&domain).unwrap_or_else(|_| domain.clone()),
+        path_domain: normalize_domain(&domain)
+            .unwrap_or_else(|_| domain.clone())
+            .chars()
+            .take(PATH_DOMAIN_LOG_MAX_LEN)
+            .collect(),
         from: "-".to_owned(),
         recipient_count: 0,
         refused_count: 0,
