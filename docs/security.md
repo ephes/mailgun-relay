@@ -194,7 +194,9 @@ token labels, never secrets; `Debug` of the secrets redacts the password and
 the hashes.
 
 The Python rollback adapter isolates exceptions from request, partial-refusal
-and cleanup log handlers, filters and formatters. Its fallback writes only the
+and cleanup log handlers, filters and formatters, including formatter and
+stdout write failures inside the configured stdout handler (its `handleError`
+is replaced so no stdlib traceback is printed). Its fallback writes only the
 fixed line `{"event":"diagnostic_logging_failed"}` directly to stderr: no
 record fields, exception text, credentials or message content, and no recursive
 call into the failed sink. An unavailable fallback is ignored. Upload-close

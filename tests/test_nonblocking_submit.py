@@ -301,12 +301,14 @@ def test_cancelled_send_keeps_admission_until_worker_and_form_cleanup_finish(
     monkeypatch.setattr(routes, "_parse_form", capture)
     monkeypatch.setattr(routes, "_close_form", close_form)
     monkeypatch.setattr(anyio.to_thread, "run_sync", checkpoint_after_worker)
+    failed_closes: list[UploadFile] = []
     if cleanup_fails:
         close_upload = UploadFile.close
 
         async def failing_close(upload: UploadFile) -> None:
             await anyio.lowlevel.checkpoint()
             await close_upload(upload)
+            failed_closes.append(upload)
             raise OSError("synthetic cleanup failure")
 
         monkeypatch.setattr(UploadFile, "close", failing_close)
@@ -360,6 +362,9 @@ def test_cancelled_send_keeps_admission_until_worker_and_form_cleanup_finish(
                 assert finished_workers == [True]
                 assert len(closed_forms) == 1 and closed_forms[0] is form
                 assert upload.file.closed
+                # The failing close really ran on the cancelled path, and
+                # admission was still released (the retry below succeeds).
+                assert failed_closes == ([upload] if cleanup_fails else [])
                 retry = await client.post(
                     path,
                     headers=_auth(homepage_token),

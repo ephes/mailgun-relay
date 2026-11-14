@@ -57,6 +57,30 @@ _LOG_RECORD_RESERVED = {
 }
 
 
+_FALLBACK_LINE = b'{"event":"diagnostic_logging_failed"}\n'
+
+
+def _write_fallback() -> None:
+    # Never recurse through the broken handler, format the exception or copy
+    # record fields into the fallback. Even stderr may be unavailable.
+    try:
+        os.write(2, _FALLBACK_LINE)
+    except OSError:
+        pass
+
+
+class _IsolatedStreamHandler(logging.StreamHandler):  # type: ignore[type-arg]
+    """StreamHandler whose formatter/stream failures stay payload-free.
+
+    The stdlib `Handler.handleError` prints the exception and traceback (which
+    may echo record fields) to stderr. Formatter, filter-on-handler and stream
+    write errors land here, so replace that with the fixed fallback line.
+    """
+
+    def handleError(self, record: logging.LogRecord) -> None:  # noqa: N802 - stdlib API
+        _write_fallback()
+
+
 def configure_logging(level: str = "INFO") -> None:
     """Send structured JSON records to stdout, one flushed line per record.
 
@@ -67,7 +91,7 @@ def configure_logging(level: str = "INFO") -> None:
     `tests/test_logging.py` pins that property so it is not "fixed" again by
     guesswork.
     """
-    handler = logging.StreamHandler(stream=sys.stdout)
+    handler = _IsolatedStreamHandler(stream=sys.stdout)
     handler.setFormatter(_JsonFormatter())
     root = logging.getLogger()
     root.handlers = [handler]
@@ -88,9 +112,4 @@ def log_safely(logger: logging.Logger, level: int, event: str, *, extra: dict[st
     try:
         logger.log(level, event, extra=extra)
     except Exception:
-        # Never recurse through the broken handler, format the exception or
-        # copy record fields into the fallback. Even stderr may be unavailable.
-        try:
-            os.write(2, b'{"event":"diagnostic_logging_failed"}\n')
-        except OSError:
-            pass
+        _write_fallback()

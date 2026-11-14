@@ -124,7 +124,9 @@ The service emits these record types, each as one JSON object per line on stdout
 Python request, partial-refusal and cleanup log calls isolate sink exceptions
 from delivery decisions. They attempt a fixed payload-free
 `{"event":"diagnostic_logging_failed"}` line directly on stderr, without
-recursively logging through the failed sink. An unavailable stderr is ignored.
+recursively logging through the failed sink; the configured stdout handler routes
+its own formatter/stream errors to the same line instead of the stdlib traceback.
+An unavailable stderr is ignored.
 Normal structured records and severity rules remain unchanged; diagnostic
 delivery is best effort. Rust already ignores stdout write/flush failures.
 

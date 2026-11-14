@@ -26,6 +26,8 @@ All notable changes to mailgun-relay are documented here.
 - Isolate Python request, partial-refusal and cleanup logging exceptions from
   delivery decisions and capacity release. Attempt a fixed payload-free stderr
   fallback without recursively invoking a failed sink; ignore fallback failure.
+  Formatter and stdout write failures inside the configured handler use the same
+  fixed line instead of the stdlib traceback.
 
 - Refuse empty parity request selections before target startup/capture access,
   retaining the explicit secrets utility; report selected and runnable counts.

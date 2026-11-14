@@ -248,3 +248,41 @@ def test_unavailable_fallback_preserves_accepted_send(
         assert handler.events == ["request"]
     finally:
         log.removeHandler(handler)
+
+
+class _SecretFormatter(logging.Formatter):
+    def format(self, record: logging.LogRecord) -> str:
+        raise RuntimeError("SECRET " + _PRIVATE)
+
+
+class _BrokenStream:
+    def write(self, text: str) -> int:
+        raise OSError("SECRET " + _PRIVATE)
+
+    def flush(self) -> None:
+        raise OSError("SECRET " + _PRIVATE)
+
+
+@pytest.mark.parametrize("failure", ["formatter", "stream"])
+def test_configured_handler_failures_write_only_the_fixed_line(
+    capfd: pytest.CaptureFixture[str], failure: str
+) -> None:
+    from mailgun_relay.logging_setup import configure_logging, log_safely
+
+    root = logging.getLogger()
+    saved_handlers, saved_level = root.handlers, root.level
+    try:
+        configure_logging("INFO")
+        handler = root.handlers[0]
+        assert isinstance(handler, logging.StreamHandler)
+        if failure == "formatter":
+            handler.setFormatter(_SecretFormatter())
+        else:
+            handler.setStream(_BrokenStream())
+        log_safely(access_logger(), logging.INFO, "request", extra={"token_label": _PRIVATE})
+    finally:
+        root.handlers, root.level = saved_handlers, saved_level
+    captured = capfd.readouterr()
+    assert captured.err == '{"event":"diagnostic_logging_failed"}\n'
+    assert _PRIVATE not in captured.out + captured.err
+    assert "Traceback" not in captured.err
