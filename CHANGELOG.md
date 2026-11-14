@@ -20,6 +20,13 @@ All notable changes to mailgun-relay are documented here.
 
 ### Fixed
 
+- Preserve Python rollback HTTP/SMTP outcomes when multipart upload cleanup
+  fails, attempting every owned upload close under the cancellation shield.
+  Report only a bounded exception class, without filenames or content.
+- Isolate Python request, partial-refusal and cleanup logging exceptions from
+  delivery decisions and capacity release. Attempt a fixed payload-free stderr
+  fallback without recursively invoking a failed sink; ignore fallback failure.
+
 - Refuse empty parity request selections before target startup/capture access,
   retaining the explicit secrets utility; report selected and runnable counts.
 - Publish complete parity receipts through synced sibling files and atomic

@@ -264,16 +264,18 @@ def test_admission_is_returned_after_failures(
     asyncio.run(scenario())
 
 
+@pytest.mark.parametrize("cleanup_fails", [False, True])
 def test_cancelled_send_keeps_admission_until_worker_and_form_cleanup_finish(
     app_state: AppState,
     homepage_token: str,
     monkeypatch: pytest.MonkeyPatch,
+    cleanup_fails: bool,
 ) -> None:
     submitter = GatedSubmitter()
     parsed_forms: list[FormData] = []
     closed_forms: list[FormData] = []
     parse = routes._parse_form
-    close = FormData.close
+    close = routes._close_form
     run_sync = anyio.to_thread.run_sync
     finished_workers: list[bool] = []
 
@@ -297,8 +299,17 @@ def test_cancelled_send_keeps_admission_until_worker_and_form_cleanup_finish(
         await close(form)
 
     monkeypatch.setattr(routes, "_parse_form", capture)
-    monkeypatch.setattr(FormData, "close", close_form)
+    monkeypatch.setattr(routes, "_close_form", close_form)
     monkeypatch.setattr(anyio.to_thread, "run_sync", checkpoint_after_worker)
+    if cleanup_fails:
+        close_upload = UploadFile.close
+
+        async def failing_close(upload: UploadFile) -> None:
+            await anyio.lowlevel.checkpoint()
+            await close_upload(upload)
+            raise OSError("synthetic cleanup failure")
+
+        monkeypatch.setattr(UploadFile, "close", failing_close)
 
     async def scenario() -> None:
         scopes: list[anyio.CancelScope] = []

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import sys
 from typing import Any
 
@@ -80,3 +81,16 @@ def access_logger() -> logging.Logger:
 def service_logger() -> logging.Logger:
     """Logger for lifecycle and transport diagnostics without request context."""
     return logging.getLogger(_SERVICE_LOGGER_NAME)
+
+
+def log_safely(logger: logging.Logger, level: int, event: str, *, extra: dict[str, Any]) -> None:
+    """Keep diagnostic sink failures outside the delivery decision path."""
+    try:
+        logger.log(level, event, extra=extra)
+    except Exception:
+        # Never recurse through the broken handler, format the exception or
+        # copy record fields into the fallback. Even stderr may be unavailable.
+        try:
+            os.write(2, b'{"event":"diagnostic_logging_failed"}\n')
+        except OSError:
+            pass

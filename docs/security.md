@@ -193,6 +193,20 @@ codes, never reply texts. The startup record names the effective configuration a
 token labels, never secrets; `Debug` of the secrets redacts the password and
 the hashes.
 
+The Python rollback adapter isolates exceptions from request, partial-refusal
+and cleanup log handlers, filters and formatters. Its fallback writes only the
+fixed line `{"event":"diagnostic_logging_failed"}` directly to stderr: no
+record fields, exception text, credentials or message content, and no recursive
+call into the failed sink. An unavailable fallback is ignored. Upload-close
+warnings include only the exception class (at most 80 characters), with no
+filename/content/reply text. Close failures preserve the decided HTTP/SMTP
+outcome and do not stop remaining upload close attempts under the cancellation
+shield. This avoids duplicate-send incentives from diagnostic/cleanup failures;
+it cannot guarantee release of a resource whose close operation fails.
+Synthetic `tests/test_diagnostic_isolation.py` regressions cover these paths,
+including released admission capacity, QUIT/close errors and broken stderr;
+`tests/test_nonblocking_submit.py` covers cancellation with a failing upload close.
+
 Before accepting a complete secrets document, both loaders reject labels equal
 to the SMTP password or any token digest (digest comparison strips whitespace
 and ignores case), including later policies and YAML aliases. Errors identify

@@ -13,7 +13,7 @@ import anyio.to_thread
 from anyio import CapacityLimiter, WouldBlock
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
-from starlette.datastructures import UploadFile
+from starlette.datastructures import FormData, UploadFile
 
 from mailgun_relay.auth import AuthError, authenticate
 from mailgun_relay.config import Secrets, Settings
@@ -29,7 +29,7 @@ from mailgun_relay.headers import (
     validate_custom_headers,
     validate_subject,
 )
-from mailgun_relay.logging_setup import access_logger
+from mailgun_relay.logging_setup import access_logger, log_safely, service_logger
 from mailgun_relay.mime_build import Attachment, MessageInput, build_message
 from mailgun_relay.policy import (
     InvalidAddressError,
@@ -247,7 +247,7 @@ def register_routes(app: FastAPI) -> None:
                 )
             finally:
                 with anyio.CancelScope(shield=True):
-                    await form.close()
+                    await _close_form(form)
 
         except AuthError as exc:
             error_class = type(exc).__name__
@@ -308,7 +308,8 @@ def register_routes(app: FastAPI) -> None:
                 assert admission_limiter is not None
                 admission_limiter.release()
             duration_ms = int((time.monotonic() - start) * 1000)
-            log.log(
+            log_safely(
+                log,
                 logging.ERROR if status_code >= 500 else logging.INFO,
                 "request",
                 extra={
@@ -326,6 +327,25 @@ def register_routes(app: FastAPI) -> None:
                     "duration_ms": duration_ms,
                 },
             )
+
+
+async def _close_form(form: FormData) -> None:
+    # FormData.close stops at the first failure. Each owned upload must get
+    # its own attempt, without replacing an accepted send or a primary error.
+    for _, value in form.multi_items():
+        if isinstance(value, UploadFile):
+            try:
+                await value.close()
+            except Exception as exc:
+                log_safely(
+                    service_logger(),
+                    logging.WARNING,
+                    "upload_cleanup_failed",
+                    extra={
+                        "event": "upload_cleanup_failed",
+                        "error_class": type(exc).__name__[:80],
+                    },
+                )
 
 
 def _refused_domain(address: str) -> str:
@@ -359,7 +379,9 @@ def _log_partial_refusal(
         {(_refused_domain(address), _reply_code(reply)) for address, reply in refused.items()},
         key=lambda entry: (entry[0], -1 if entry[1] is None else entry[1]),
     )
-    log.warning(
+    log_safely(
+        log,
+        logging.WARNING,
         "recipients_refused",
         extra={
             "event": "recipients_refused",

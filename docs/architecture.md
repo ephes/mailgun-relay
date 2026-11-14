@@ -82,8 +82,12 @@ Do not blindly retry a disconnected or timed-out accepted request, whose deliver
 may already have occurred.
 
 In the Python rollback implementation, every successfully parsed multipart form
-is closed after validation, MIME construction and submission, including error
-paths; all uploaded temporary files are closed even when an earlier field fails.
+is cleaned up after validation, MIME construction and submission, including error
+paths. Every uploaded temporary file gets an independent close attempt, even
+when an earlier field or close fails. Cleanup remains cancellation-shielded,
+and admission is released afterwards. A failed close cannot replace the primary
+validation/SMTP outcome and is not retried; release of a failing resource is
+best effort.
 
 When the backend refuses some recipients but accepts the message for the
 others, the relay still answers `200` (a retry would duplicate the message for
@@ -113,6 +117,16 @@ The service emits these record types, each as one JSON object per line on stdout
 - `event=request`, once per `POST /v3/{domain}/messages`, including `refused_count`.
 - `event=recipients_refused` (WARNING), only when the backend refused some but not all recipients.
 - `event=smtp_cleanup_failed` (WARNING), when QUIT or close fails; contains only the exception class, without reply text or request identifiers. Already closed connections skip QUIT. Cleanup failures preserve the submission outcome.
+- `event=upload_cleanup_failed` (WARNING, Python rollback), when an upload close
+  fails; only the exception class, capped at 80 characters, without file names,
+  content or exception text.
+
+Python request, partial-refusal and cleanup log calls isolate sink exceptions
+from delivery decisions. They attempt a fixed payload-free
+`{"event":"diagnostic_logging_failed"}` line directly on stderr, without
+recursively logging through the failed sink. An unavailable stderr is ignored.
+Normal structured records and severity rules remain unchanged; diagnostic
+delivery is best effort. Rust already ignores stdout write/flush failures.
 
 `GET /health` deliberately logs nothing, so the deploy-time health probe does not pollute the access log.
 
