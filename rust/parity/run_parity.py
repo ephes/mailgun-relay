@@ -301,6 +301,24 @@ class Target:
     log: LogTail | None = None
     process: subprocess.Popen[bytes] | None = None
     seen_sessions: set[str] = field(default_factory=set)
+    # Incomplete attempts a restarted sink retained from earlier runs: only
+    # markers that appear during this run can be captures in progress.
+    stale_active: set[str] = field(default_factory=set)
+    startup_settle: float = 5.0
+
+    def __post_init__(self) -> None:
+        if self.sink_dir is None:
+            return
+        # Let a capture really in progress at startup finish first; markers that
+        # outlive this settle period are retained attempts from earlier runs.
+        deadline = time.monotonic() + self.startup_settle
+        while any(self.sink_dir.glob("*.active")) and time.monotonic() < deadline:
+            time.sleep(0.02)
+        self.stale_active = {p.name for p in self.sink_dir.glob("*.active")}
+
+    def in_flight(self) -> bool:
+        assert self.sink_dir is not None
+        return any(p.name not in self.stale_active for p in self.sink_dir.glob("*.active"))
 
     def sessions(self) -> list[dict[str, Any]]:
         if self.sink is not None:
@@ -309,7 +327,7 @@ class Target:
         if self.sink_dir is None:
             return []
         deadline = time.monotonic() + 5
-        while any(self.sink_dir.glob("*.active")) and time.monotonic() < deadline:
+        while self.in_flight() and time.monotonic() < deadline:
             time.sleep(0.02)
         found = []
         for path in sorted(self.sink_dir.glob("*.json")):

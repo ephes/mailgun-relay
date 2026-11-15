@@ -615,3 +615,38 @@ def test_published_report_keeps_previous_or_umask_mode(
     assert stat.S_IMODE(report.stat().st_mode) == expected
     assert json.loads(report.read_text()) == {"failed": 0}
     assert list(tmp_path.iterdir()) == [report]
+
+
+def test_directory_target_ignores_retained_incomplete_attempts(tmp_path: Path) -> None:
+    import time
+
+    (tmp_path / "3.active").write_text("{}")
+    target = run_parity.Target("rust", ("127.0.0.1", 1), sink_dir=tmp_path, startup_settle=0.1)
+    started = time.monotonic()
+    assert target.sessions() == []
+    assert time.monotonic() - started < 1
+    (tmp_path / "4.active").write_text("{}")
+    assert target.in_flight()
+    (tmp_path / "4.active").unlink()
+    assert not target.in_flight()
+
+
+def test_directory_target_waits_for_a_capture_in_progress_at_startup(tmp_path: Path) -> None:
+    import threading
+
+    (tmp_path / "5.active").write_text("{}")
+
+    def finish() -> None:
+        (tmp_path / "5.json").write_text(json.dumps({"message": None, "id": "startup"}))
+        (tmp_path / "5.active").unlink()
+
+    timer = threading.Timer(0.2, finish)
+    timer.start()
+    try:
+        target = run_parity.Target("rust", ("127.0.0.1", 1), sink_dir=tmp_path, startup_settle=5)
+    finally:
+        timer.join()
+    assert target.stale_active == set()
+    # The startup drain in run_targets absorbs it, so no parity case sees it.
+    assert [s["id"] for s in target.sessions()] == ["startup"]
+    assert target.sessions() == []

@@ -345,3 +345,255 @@ def test_smoke_secrets_load_with_distinct_credentials(checks: ModuleType, tmp_pa
     path.chmod(0o600)
     policies = load_secrets(path).tokens
     assert len({policy.token_sha256 for policy in policies}) == 2
+
+
+@pytest.mark.parametrize("phase", ["config", "version", "objdump"])
+def test_release_helpers_have_a_whole_command_deadline(
+    checks: ModuleType,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    phase: str,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    helper = tmp_path / "objdump"
+    helper.write_text("#!/bin/sh\nsleep 0.3\n")
+    helper.chmod(0o755)
+    monkeypatch.setattr(checks, "COMMAND_TIMEOUT", 0.05, raising=False)
+    monkeypatch.setenv("PATH", f"{tmp_path}:{os.environ['PATH']}")
+    if phase == "version":
+        assert (
+            checks.main(
+                ["smoke", "--binary", str(helper), "--version", "0.2.0", "--commit", COMMIT]
+            )
+            == 1
+        )
+        assert "deadline" in capsys.readouterr().err
+        return
+    with pytest.raises(checks.CheckError, match="deadline"):
+        if phase == "config":
+            checks.run_check_config(helper)
+        else:
+            checks._objdump(helper)
+
+
+@pytest.mark.parametrize("fd", [1, 2])
+def test_release_helpers_refuse_output_overflow_without_echoing_it(
+    checks: ModuleType, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, fd: int
+) -> None:
+    helper = tmp_path / "flood"
+    helper.write_text(f"#!{sys.executable}\nimport os\nos.write({fd}, b'CANARY' * 10000)\n")
+    helper.chmod(0o755)
+    monkeypatch.setattr(checks, "OUTPUT_LIMIT", 1024, raising=False)
+    with pytest.raises(checks.CheckError, match="output byte ceiling") as error:
+        checks.run_check_config(helper)
+    assert "CANARY" not in str(error.value)
+
+
+@pytest.mark.parametrize(
+    "version,target",
+    [
+        ("../1.2.3", "x86_64-unknown-linux-gnu"),
+        ("1.2.3\n", "x86_64-unknown-linux-gnu"),
+        ("1.2.3", "../../elsewhere"),
+        ("1.2.3", "/absolute/out"),
+        ("1.2.3", "linux\nchecksum"),
+        ("1.2.3", "unsupported"),
+    ],
+)
+def test_pack_refuses_components_before_reading_inputs(
+    checks: ModuleType, tmp_path: Path, version: str, target: str
+) -> None:
+    assert (
+        checks.main(
+            [
+                "pack",
+                "--version",
+                version,
+                "--target",
+                target,
+                "--binary",
+                str(tmp_path / "missing"),
+                "--license",
+                "missing",
+                "--mtime",
+                "0",
+                "--out-dir",
+                str(tmp_path / "out"),
+            ]
+        )
+        == 1
+    )
+    assert not (tmp_path / "out").exists()
+
+
+@pytest.mark.parametrize("failure", ["stage", "first", "second"])
+def test_pack_failed_publication_preserves_previous_pair_and_retry_repairs(
+    checks: ModuleType, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, failure: str
+) -> None:
+    binary, license_path = tmp_path / "binary", tmp_path / "LICENSE"
+    binary.write_bytes(b"old")
+    license_path.write_bytes(b"MIT")
+    out = tmp_path / "out"
+    args = [
+        "pack",
+        "--binary",
+        str(binary),
+        "--license",
+        str(license_path),
+        "--version",
+        "1.2.3-rc.1",
+        "--target",
+        "x86_64-unknown-linux-gnu",
+        "--mtime",
+        "0",
+        "--out-dir",
+        str(out),
+    ]
+    assert checks.main(args) == 0
+    name = checks.archive_name("1.2.3-rc.1", "x86_64-unknown-linux-gnu")
+    previous = {p.name: p.read_bytes() for p in out.iterdir() if not p.name.startswith(".")}
+    binary.write_bytes(b"new")
+    replace, write = os.replace, Path.write_text
+    calls = 0
+
+    def fail_replace(src: Any, dst: Any, *a: Any, **kw: Any) -> None:
+        nonlocal calls
+        if Path(dst).parent == out and Path(dst).name in previous:
+            calls += 1
+            if calls == (1 if failure == "first" else 2):
+                raise OSError("synthetic publication failure")
+        replace(src, dst, *a, **kw)
+
+    def fail_write(path: Path, *a: Any, **kw: Any) -> int:
+        if path.name.endswith(".sha256"):
+            raise OSError("synthetic checksum write failure")
+        return write(path, *a, **kw)
+
+    with monkeypatch.context() as patch:
+        if failure == "stage":
+            patch.setattr(Path, "write_text", fail_write)
+        else:
+            patch.setattr(os, "replace", fail_replace)
+        assert checks.main(args) == 1
+    assert {p.name: p.read_bytes() for p in out.iterdir() if not p.name.startswith(".")} == previous
+    # A clean rollback restores a usable pair, so no incomplete marker remains.
+    assert not (out / f".{name}.incomplete").exists()
+    assert checks.main(args) == 0
+    data = (out / name).read_bytes()
+    checks.verify_archive(data, b"new", b"MIT")
+    assert (out / f"{name}.sha256").read_text() == checks.checksum_line(data, name)
+    assert not list(out.glob("*.incomplete"))
+
+
+def test_failed_publication_keeps_an_earlier_incomplete_marker(
+    checks: ModuleType, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    out = tmp_path / "out"
+    checks.publish_archive(out, "relay.tar.gz", b"old")
+    marker = out / ".relay.tar.gz.incomplete"
+    marker.write_text("earlier interrupted run\n")
+    replace = os.replace
+
+    def fail_replace(src: Any, dst: Any, *a: Any, **kw: Any) -> None:
+        if Path(dst).parent == out and Path(src).parent != out and not str(src).endswith(".old"):
+            raise OSError("synthetic publication failure")
+        replace(src, dst, *a, **kw)
+
+    with monkeypatch.context() as patch:
+        patch.setattr(os, "replace", fail_replace)
+        with pytest.raises(OSError):
+            checks.publish_archive(out, "relay.tar.gz", b"new")
+    assert (out / "relay.tar.gz").read_bytes() == b"old"
+    assert marker.exists()
+
+
+def test_command_deadline_retires_descendant_holding_pipes(
+    checks: ModuleType, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import time
+
+    pidfile = tmp_path / "pid"
+    escaped = tmp_path / "survived"
+    code = f"""
+import os,time,pathlib
+pid = os.fork()
+if pid == 0:
+    pathlib.Path({str(pidfile)!r}).write_text(str(os.getpid()))
+    time.sleep(0.4)
+    pathlib.Path({str(escaped)!r}).write_text('survived cleanup')
+    time.sleep(1)
+else:
+    while not pathlib.Path({str(pidfile)!r}).exists():
+        time.sleep(0.005)
+"""
+    monkeypatch.setattr(checks, "COMMAND_TIMEOUT", 0.2)
+    started = time.monotonic()
+    with pytest.raises(checks.CheckError, match="deadline"):
+        checks.run_command([sys.executable, "-c", code])
+    assert time.monotonic() - started < 2
+    assert int(pidfile.read_text()) > 0
+    # A live descendant would write this witness even after its parent exits.
+    time.sleep(0.5)
+    assert not escaped.exists()
+
+
+def test_command_cancellation_and_launch_errors_become_check_errors(
+    checks: ModuleType, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    with pytest.raises(checks.CheckError, match="launch"):
+        checks.run_command(["/nonexistent-release-helper"])
+
+    def interrupt(*args: Any, **kwargs: Any) -> Any:
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(checks.selectors.SelectSelector, "select", interrupt)
+    # Use the public selector class explicitly so the seam also works on epoll/kqueue.
+    monkeypatch.setattr(checks.selectors, "DefaultSelector", checks.selectors.SelectSelector)
+    with pytest.raises(checks.CheckError, match="cancellation"):
+        checks.run_command([sys.executable, "-c", "import time; time.sleep(5)"])
+
+
+def test_pack_process_death_leaves_marker_and_rerun_repairs_pair(
+    checks: ModuleType, tmp_path: Path
+) -> None:
+    binary, license_path = tmp_path / "binary", tmp_path / "LICENSE"
+    binary.write_bytes(b"old")
+    license_path.write_bytes(b"MIT")
+    out = tmp_path / "out"
+    args = [
+        "pack",
+        "--binary",
+        str(binary),
+        "--license",
+        str(license_path),
+        "--version",
+        "1.2.3",
+        "--target",
+        "x86_64-unknown-linux-gnu",
+        "--mtime",
+        "0",
+        "--out-dir",
+        str(out),
+    ]
+    assert checks.main(args) == 0
+    binary.write_bytes(b"new")
+    code = f"""
+import os, runpy, signal
+module = runpy.run_path({str(SCRIPT)!r})
+replace = os.replace
+def die_after_archive(src, dst):
+    replace(src, dst)
+    if str(dst).endswith('.tar.gz'):
+        os.kill(os.getpid(), signal.SIGKILL)
+os.replace = die_after_archive
+module['main']({args!r})
+"""
+    result = subprocess.run([sys.executable, "-c", code], check=False, timeout=5)  # noqa: S603
+    assert result.returncode < 0
+    assert list(out.glob("*.incomplete"))
+    assert checks.main(args) == 0
+    name = checks.archive_name("1.2.3", "x86_64-unknown-linux-gnu")
+    assert (out / f"{name}.sha256").read_text() == checks.checksum_line(
+        (out / name).read_bytes(), name
+    )
+    assert not list(out.glob("*.incomplete"))
