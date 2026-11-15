@@ -378,6 +378,9 @@ def publish_archive(directory: Path, name: str, data: bytes) -> None:
                     os.fsync(handle.fileno())
                 if (directory / item).exists():
                     shutil.copyfile(directory / item, stage / f"{item}.old")
+            # A marker left by an earlier interrupted run means the current pair is
+            # itself unusable, so a rollback to it must keep that marker.
+            previously_marked = marker.exists()
             marker.write_text("incomplete artifact pair; rerun pack before use\n")
             with marker.open("rb") as handle:
                 os.fsync(handle.fileno())
@@ -395,6 +398,9 @@ def publish_archive(directory: Path, name: str, data: bytes) -> None:
                     else:
                         (directory / item).unlink(missing_ok=True)
                 sync_directory(directory)
+                if not previously_marked:
+                    marker.unlink(missing_ok=True)
+                    sync_directory(directory)
                 raise
             marker.unlink()
             sync_directory(directory)

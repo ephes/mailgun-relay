@@ -476,11 +476,35 @@ def test_pack_failed_publication_preserves_previous_pair_and_retry_repairs(
             patch.setattr(os, "replace", fail_replace)
         assert checks.main(args) == 1
     assert {p.name: p.read_bytes() for p in out.iterdir() if not p.name.startswith(".")} == previous
+    # A clean rollback restores a usable pair, so no incomplete marker remains.
+    assert not (out / f".{name}.incomplete").exists()
     assert checks.main(args) == 0
     data = (out / name).read_bytes()
     checks.verify_archive(data, b"new", b"MIT")
     assert (out / f"{name}.sha256").read_text() == checks.checksum_line(data, name)
     assert not list(out.glob("*.incomplete"))
+
+
+def test_failed_publication_keeps_an_earlier_incomplete_marker(
+    checks: ModuleType, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    out = tmp_path / "out"
+    checks.publish_archive(out, "relay.tar.gz", b"old")
+    marker = out / ".relay.tar.gz.incomplete"
+    marker.write_text("earlier interrupted run\n")
+    replace = os.replace
+
+    def fail_replace(src: Any, dst: Any, *a: Any, **kw: Any) -> None:
+        if Path(dst).parent == out and Path(src).parent != out and not str(src).endswith(".old"):
+            raise OSError("synthetic publication failure")
+        replace(src, dst, *a, **kw)
+
+    with monkeypatch.context() as patch:
+        patch.setattr(os, "replace", fail_replace)
+        with pytest.raises(OSError):
+            checks.publish_archive(out, "relay.tar.gz", b"new")
+    assert (out / "relay.tar.gz").read_bytes() == b"old"
+    assert marker.exists()
 
 
 def test_command_deadline_retires_descendant_holding_pipes(

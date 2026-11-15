@@ -478,17 +478,23 @@ A failed publication preserves (or recreates) the active/pending evidence and
 makes `stop` or `close` fail; subsequent sessions are refused until restart.
 On restart, `sink.incomplete` lists unfinished attempts and the CLI prints their
 count; numbering advances beyond them. Inspect these attempts
-separately; only final JSON records are input to capture comparison.
+separately; only final JSON records are input to capture comparison. The
+`--targets` parity harness waits up to 5 seconds at startup for `.active`
+markers to clear and then ignores the remaining ones as retained attempts, so
+they do not stall each case.
 
 Each session admits at most 64 MiB of aggregate input (including AUTH/DATA),
 4,096 commands and one retained message. The sink admits at most 16 simultaneous
 sessions and retains at most 256 session records until `take()` drains them;
-a recording sink drops finished records from memory. Overflow receives SMTP
-421 and a `limited` record, never a truncated successful message. These are
-fixture budgets, independent of relay production limits. `close()` is idempotent:
-it closes all listeners, cancels live sessions, waits for capture finalization
-and transport closure, then stops and joins the event-loop thread. The standalone
-CLI follows this path on Ctrl-C and startup failure.
+a recording sink drops finished records from memory. A session exceeding its
+own byte or command budget receives SMTP 421 and a `limited` record, never a
+truncated successful message. Connections refused for sink-wide concurrency or
+retention, or after a failed publication, receive 421 without a session record.
+These are fixture budgets, independent of relay production limits. `close()` is
+idempotent: it closes all listeners, cancels live sessions, waits for capture
+finalization and transport closure, then stops and joins the event-loop thread.
+The standalone CLI follows this path on Ctrl-C and startup failure; on Ctrl-C a
+capture publication failure is printed and the CLI exits nonzero.
 
 Fixture PKI reuse validates every expected certificate and matching private key,
 the intended hostname/CA relationships, and OpenSSL validity with at least one

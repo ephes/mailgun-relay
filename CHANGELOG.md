@@ -41,6 +41,10 @@ All notable changes to mailgun-relay are documented here.
 - Validate complete fixture PKI key/certificate sets, chains and expiry before
   reuse; stage and validate replacement generations without damaging previous
   material on generation failure (B29).
+- Remove the incomplete-pair marker after a clean release rollback (an earlier
+  run's marker stays); report SMTP capture publication failures as a nonzero
+  exit when the standalone sink is stopped with Ctrl-C; let the `--targets`
+  parity harness ignore incomplete attempts retained from earlier runs.
 
 - Offload Rust buffered form parsing while retaining admission inside parsing
   and MIME jobs, including cancellation; preserve the decision order.

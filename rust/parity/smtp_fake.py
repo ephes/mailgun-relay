@@ -42,6 +42,7 @@ import os
 import shutil
 import ssl
 import subprocess
+import sys
 import tempfile
 import threading
 import time
@@ -645,16 +646,26 @@ def main() -> None:
         print(f"smtp sink on {host}:{sink.port}, CA {args.certs / 'ca.pem'}", flush=True)
         if sink.incomplete:
             print(f"incomplete capture attempts: {len(sink.incomplete)}", flush=True)
-        threading.Event().wait()
+        wait_for_shutdown()
+    except KeyboardInterrupt:
+        # A requested stop: a capture publication failure must reach the operator.
+        pass
     except BaseException:
         # Cleanup must not replace the failure that triggered shutdown.
         with contextlib.suppress(Exception):
             smtp.close()
         raise
-    else:
+    try:
         smtp.close()
+    except RuntimeError as error:
+        print(f"smtp sink failed: {error}", file=sys.stderr, flush=True)
+        raise SystemExit(1) from error
+
+
+def wait_for_shutdown() -> None:
+    """Block until the operator interrupts the sink (Ctrl-C)."""
+    threading.Event().wait()
 
 
 if __name__ == "__main__":
-    with contextlib.suppress(KeyboardInterrupt):
-        main()
+    main()

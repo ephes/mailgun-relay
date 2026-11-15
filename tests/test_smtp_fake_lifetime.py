@@ -328,3 +328,41 @@ def test_take_keeps_sessions_accepted_while_older_session_is_draining(
             second.quit()
         sink.settle()
         smtp.stop(sink)
+
+
+def test_cli_interrupt_reports_capture_publication_failure(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    closed: list[smtp_fake.ScriptedSmtp] = []
+    real_close = smtp_fake.ScriptedSmtp.close
+
+    def failing_close(self: smtp_fake.ScriptedSmtp) -> None:
+        closed.append(self)
+        raise RuntimeError("capture publication failed; incomplete attempts retained")
+
+    def interrupt() -> None:
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(smtp_fake, "wait_for_shutdown", interrupt)
+    monkeypatch.setattr(smtp_fake.ScriptedSmtp, "close", failing_close)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "smtp_fake.py",
+            "--listen",
+            "localhost:0",
+            "--certs",
+            str(tmp_path / "pki"),
+            "--record-dir",
+            str(tmp_path / "records"),
+        ],
+    )
+    with pytest.raises(SystemExit) as exit_info:
+        smtp_fake.main()
+    assert exit_info.value.code == 1
+    assert len(closed) == 1
+    real_close(closed[0])  # retire the real listener the patched close left running
+    captured = capsys.readouterr()
+    assert "smtp sink on localhost:" in captured.out
+    assert "capture publication failed" in captured.err
