@@ -26,16 +26,21 @@ Subcommands:
 from __future__ import annotations
 
 import argparse
+import fcntl
 import gzip
 import hashlib
 import io
 import json
 import os
 import re
+import selectors
+import shutil
+import signal
 import subprocess
 import sys
 import tarfile
 import tempfile
+import time
 from pathlib import Path
 from typing import Any
 
@@ -49,6 +54,7 @@ SEMVER = re.compile(
     r"(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)"
     r"(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?"
 )
+SUPPORTED_TARGETS = frozenset({"x86_64-unknown-linux-gnu"})
 COMMIT = re.compile(r"[0-9a-f]{40}")
 
 # Shared libraries a glibc build may link to (PLAN.md 8: only glibc and
@@ -103,6 +109,66 @@ SMOKE_CHECK_CONFIG_OUTPUT = (
 
 class CheckError(Exception):
     """A release check failed; the message is the reason."""
+
+
+COMMAND_TIMEOUT = 10.0
+OUTPUT_LIMIT = 1 << 20
+
+
+def run_command(
+    command: list[str], *, env: dict[str, str] | None = None, check: bool = True
+) -> subprocess.CompletedProcess[str]:
+    """Bound the whole command, both pipes and its POSIX process group."""
+    deadline = time.monotonic() + COMMAND_TIMEOUT
+    process: subprocess.Popen[bytes] | None = None
+    output = [bytearray(), bytearray()]
+    total = 0
+    try:
+        process = subprocess.Popen(  # noqa: S603 - explicit executable under validation
+            command,
+            env=env,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            start_new_session=True,
+        )
+        assert process.stdout is not None and process.stderr is not None
+        with selectors.DefaultSelector() as selector:
+            for index, pipe in enumerate((process.stdout, process.stderr)):
+                os.set_blocking(pipe.fileno(), False)
+                selector.register(pipe, selectors.EVENT_READ, index)
+            while selector.get_map() or process.poll() is None:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    raise CheckError("helper command deadline exceeded")
+                for key, _ in selector.select(min(remaining, 0.05)):
+                    chunk = os.read(key.fd, 65536)
+                    if not chunk:
+                        selector.unregister(key.fileobj)
+                        continue
+                    total += len(chunk)
+                    if total > OUTPUT_LIMIT:
+                        raise CheckError("helper output byte ceiling exceeded")
+                    output[key.data].extend(chunk)
+        returncode = process.wait(timeout=max(0.001, deadline - time.monotonic()))
+        if check and returncode != 0:
+            raise CheckError("helper command exited unsuccessfully")
+        return subprocess.CompletedProcess(
+            command, returncode, *(bytes(part).decode("utf-8", "replace") for part in output)
+        )
+    except (OSError, subprocess.TimeoutExpired, KeyboardInterrupt) as error:
+        raise CheckError("helper command launch, deadline or cancellation failure") from error
+    finally:
+        if process is not None:
+            # Also retire descendants of an already exited group leader.
+            try:
+                os.killpg(process.pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+            process.wait(timeout=1)
+            if process.stdout is not None:
+                process.stdout.close()
+            if process.stderr is not None:
+                process.stderr.close()
 
 
 def parse_version(text: str) -> tuple[int, ...]:
@@ -215,18 +281,18 @@ def run_check_config(binary: Path) -> str:
         descriptor = os.open(secrets_path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
         with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
             handle.write(SMOKE_SECRETS)
-        result = subprocess.run(  # noqa: S603 - the binary under test
-            [str(binary), "--check-config"],
-            env=smoke_environment(secrets_path),
-            capture_output=True,
-            text=True,
-            check=False,
+        result = run_command(
+            [str(binary), "--check-config"], env=smoke_environment(secrets_path), check=False
         )
     check_config_output(result.returncode, result.stdout, result.stderr)
     return result.stdout
 
 
 def archive_name(version: str, target: str) -> str:
+    if not SEMVER.fullmatch(version) or not version.isascii():
+        raise CheckError("artifact version must be semver without build metadata")
+    if target not in SUPPORTED_TARGETS:
+        raise CheckError("unsupported artifact target")
     return f"{PACKAGE}-{version}-{target}.tar.gz"
 
 
@@ -283,11 +349,65 @@ def checksum_line(data: bytes, name: str) -> str:
     return f"{hashlib.sha256(data).hexdigest()}  {name}\n"
 
 
+def sync_directory(directory: Path) -> None:
+    descriptor = os.open(directory, os.O_RDONLY)
+    try:
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
+
+
+def publish_archive(directory: Path, name: str, data: bytes) -> None:
+    """Stage a verified pair; retain an incomplete marker across process death."""
+    directory.mkdir(parents=True, exist_ok=True)
+    descriptor = os.open(directory, os.O_RDONLY)
+    try:
+        fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        marker = directory / f".{name}.incomplete"
+        names = (name, f"{name}.sha256")
+        with tempfile.TemporaryDirectory(prefix=".pack-", dir=directory) as staging:
+            stage = Path(staging)
+            (stage / name).write_bytes(data)
+            (stage / names[1]).write_text(checksum_line(data, name), encoding="utf-8")
+            if (stage / name).read_bytes() != data or (
+                stage / names[1]
+            ).read_text() != checksum_line(data, name):
+                raise CheckError("staged artifact verification failed")
+            for item in names:
+                with (stage / item).open("rb") as handle:
+                    os.fsync(handle.fileno())
+                if (directory / item).exists():
+                    shutil.copyfile(directory / item, stage / f"{item}.old")
+            marker.write_text("incomplete artifact pair; rerun pack before use\n")
+            with marker.open("rb") as handle:
+                os.fsync(handle.fileno())
+            sync_directory(directory)
+            try:
+                for item in names:
+                    os.replace(stage / item, directory / item)
+                sync_directory(directory)
+            except BaseException:
+                # If rollback itself fails the durable marker remains authoritative.
+                for item in names:
+                    backup = stage / f"{item}.old"
+                    if backup.exists():
+                        os.replace(backup, directory / item)
+                    else:
+                        (directory / item).unlink(missing_ok=True)
+                sync_directory(directory)
+                raise
+            marker.unlink()
+            sync_directory(directory)
+
+    finally:
+        os.close(descriptor)
+
+
 def _objdump(binary: Path) -> str:
     texts = []
     for flag in ("-T", "-p"):
         command = ["objdump", flag, str(binary)]  # binutils from PATH
-        result = subprocess.run(command, check=True, capture_output=True, text=True)  # noqa: S603
+        result = run_command(command)
         texts.append(result.stdout)
     return "\n".join(texts)
 
@@ -334,28 +454,19 @@ def main(argv: list[str] | None = None) -> int:
         elif args.command == "smoke":
             if not COMMIT.fullmatch(args.commit):
                 raise CheckError(f"--commit must be 40 lowercase hex digits, got {args.commit!r}")
-            result = subprocess.run(  # noqa: S603 - the binary under test
-                [str(args.binary), "--version"],
-                check=True,
-                capture_output=True,
-                text=True,
-            )
+            result = run_command([str(args.binary), "--version"])
             check_version_output(result.stdout, args.version, args.commit)
             print(result.stdout, end="")
             print(run_check_config(args.binary), end="")
         else:
+            name = archive_name(args.version, args.target)
             binary = args.binary.read_bytes()
             license_text = args.license.read_bytes()
-            name = archive_name(args.version, args.target)
             data = build_archive(binary, license_text, args.mtime)
             verify_archive(data, binary, license_text)
-            args.out_dir.mkdir(parents=True, exist_ok=True)
-            (args.out_dir / name).write_bytes(data)
-            (args.out_dir / f"{name}.sha256").write_text(
-                checksum_line(data, name), encoding="utf-8"
-            )
+            publish_archive(args.out_dir, name, data)
             print(name)
-    except CheckError as error:
+    except (CheckError, OSError) as error:
         print(f"release check failed: {error}", file=sys.stderr)
         return 1
     return 0

@@ -28,6 +28,20 @@ All notable changes to mailgun-relay are documented here.
 
 ### Fixed
 
+- Bound local release helper execution to 10 seconds and 1 MiB combined output,
+  retiring owned subprocess groups on success, failure and cancellation (B25).
+- Validate release artifact components before I/O; stage, sync and publish the
+  archive/checksum pair under directory ownership with rollback and explicit
+  interruption recovery (B26).
+- Publish only synced complete SMTP capture records; lock capture directories
+  before listening and retain/report incomplete attempts on restart (B27).
+- Bound SMTP fixture session input, command history and concurrency; drain
+  listeners, sessions, captures and transports before closing the loop, including
+  standalone interruption and startup failure (B28).
+- Validate complete fixture PKI key/certificate sets, chains and expiry before
+  reuse; stage and validate replacement generations without damaging previous
+  material on generation failure (B29).
+
 - Offload Rust buffered form parsing while retaining admission inside parsing
   and MIME jobs, including cancellation; preserve the decision order.
 - Isolate Rust stdout backpressure on a dedicated writer with a bounded

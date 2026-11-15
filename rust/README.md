@@ -131,6 +131,22 @@ git tag -a rs-v<ver> -m "mailgun-relay <ver> (Rust port)" <commit>
 git push origin rs-v<ver>
 ```
 
+The local release helpers run on POSIX. Each version/config/objdump command has
+one 10-second deadline covering process exit and both output pipes, with a
+combined 1 MiB output ceiling. Launch failure, cancellation, timeout or overflow
+fails the check; overflow prints a fixed diagnostic. Cleanup kills the owned
+process group, including pipe-holding descendants.
+
+`pack` accepts ASCII semver without build metadata and the supported
+`x86_64-unknown-linux-gnu` target, before reading inputs or creating output.
+It locks the output directory, stages and verifies both files, syncs them and
+publishes the pair with rollback on handled failures. A durable
+`.mailgun-relay-<version>-<target>.tar.gz.incomplete` marker identifies an
+interrupted publication. Do not consume a marked pair, even if one file looks
+complete: rerun the same `pack` command successfully to repair and clear it.
+Two file names cannot be atomically replaced together; the marker is the
+interruption boundary. The helper does not publish a release or a tag.
+
 The release checks are tested in the Python suite
 (`tests/test_rust_release_checks.py`); locally, after a release build:
 
@@ -449,6 +465,41 @@ A later address-in-use error must release earlier listeners immediately; after
 removing the conflict, both addresses must bind successfully. The binary bind
 failure test separately pins exit 1, no startup-success record and safe output.
 Startup logs success only after the complete listener set has been acquired.
+
+## Local SMTP fixture ownership and recovery
+
+The scripted SMTP peer is local test/capture tooling. A recording sink takes a
+kernel-held exclusive directory lock before opening its listener. A second
+sink fails before accepting mail; shutdown or failed startup releases ownership.
+Capture history is never overwritten. Each finished record is written to an
+exclusive `.pending` file, flushed and synced, then linked to its exclusive
+`<n>.json` name and the directory synced before removing `<n>.active`.
+A failed publication preserves (or recreates) the active/pending evidence and
+makes `stop` or `close` fail; subsequent sessions are refused until restart.
+On restart, `sink.incomplete` lists unfinished attempts and the CLI prints their
+count; numbering advances beyond them. Inspect these attempts
+separately; only final JSON records are input to capture comparison.
+
+Each session admits at most 64 MiB of aggregate input (including AUTH/DATA),
+4,096 commands and one retained message. The sink admits at most 16 simultaneous
+sessions and retains at most 256 session records until `take()` drains them;
+a recording sink drops finished records from memory. Overflow receives SMTP
+421 and a `limited` record, never a truncated successful message. These are
+fixture budgets, independent of relay production limits. `close()` is idempotent:
+it closes all listeners, cancels live sessions, waits for capture finalization
+and transport closure, then stops and joins the event-loop thread. The standalone
+CLI follows this path on Ctrl-C and startup failure.
+
+Fixture PKI reuse validates every expected certificate and matching private key,
+the intended hostname/CA relationships, and OpenSSL validity with at least one
+hour remaining for the CA and all leaves. The deliberately wrong-host and
+self-signed leaves remain negative TLS cases. Replacement material is generated
+and checked in a private staging directory before publication under a parent
+directory lock. Handled generation/publication failure preserves the preceding
+material. A `.NAME.previous` directory is the recovery generation if interruption
+occurs between renames; the next preparation restores it when NAME is absent.
+A successful replacement refreshes the complete two-day fixture generation;
+it never changes relay TLS verification or the host trust store.
 
 ## Published release 0.2.3
 
