@@ -145,6 +145,17 @@ on the backend then signs whatever `From:` the relay allowed.
 
 ### T6 Header injection
 
+Duplicate singleton body fields and case-insensitive duplicate `h:*` names are
+400 at form admission. Inline Content-IDs must be unique per message (exact
+comparison); ambiguity is refused before SMTP. Upload filenames and raw content
+types, including parameters after empty-value defaults, each obey the configured
+header-value character limit before MIME assembly. Oversize errors carry no
+uploaded value. Boundary Unicode filenames remain supported. Rust regression
+coverage: `duplicate_singletons_rejected`, `duplicate_inline_ids_never_submit`,
+`upload_metadata_header_limit`; Python has corresponding route tests and
+explicit-ID normalization cases. Shared MIME fixtures independently parse unique
+inline parts and same-name ordinary attachments.
+
 - The subject, every `h:*` value and every address field refuse C0 and C1
   controls (TAB excepted), DEL, U+2028 and U+2029 (`contains_forbidden_control_chars`).
 - `h:*` names must match `^[A-Za-z][A-Za-z0-9-]*$`; a denylist refuses,
@@ -161,7 +172,9 @@ on the backend then signs whatever `From:` the relay allowed.
   filenames are RFC 2231-encoded. Inline filenames, which become the `Content-ID`, refuse
   `<`, `>`, controls and surrounding whitespace. Upload content types are
   reduced to `main/sub` tokens; parameters are dropped and `multipart/*` or
-  `message/*` become `application/octet-stream`.
+  `message/*` become `application/octet-stream`. Both runtimes also use that
+  opaque fallback for anything other than two ASCII RFC 7230 tokens of 1–127
+  characters each, preserving bytes and filenames without defective type headers.
 - `v:*`, `o:*`, `t:*`, `template`, `recipient-variables` and unknown fields
   are `400`.
 

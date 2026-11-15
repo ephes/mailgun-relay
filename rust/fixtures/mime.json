@@ -5216,6 +5216,116 @@
         "type": "text/plain"
        },
        {
+        "content_id": "<a.bin>",
+        "data": "MQ==",
+        "disposition": "inline",
+        "filename": "a.bin",
+        "type": "application/octet-stream"
+       },
+       {
+        "content_id": "<b.bin>",
+        "data": "Mg==",
+        "disposition": "inline",
+        "filename": "b.bin",
+        "type": "application/octet-stream"
+       },
+       {
+        "content_id": "<c.bin>",
+        "data": "Mw==",
+        "disposition": "inline",
+        "filename": "c.bin",
+        "type": "application/octet-stream"
+       },
+       {
+        "content_id": "<d.bin>",
+        "data": "NA==",
+        "disposition": "inline",
+        "filename": "d.bin",
+        "type": "application/octet-stream"
+       }
+      ],
+      "type": "multipart/mixed"
+     },
+     "headers": [
+      [
+       "from",
+       [
+        [
+         "Alice",
+         "alice@example.test"
+        ]
+       ]
+      ],
+      [
+       "subject",
+       "hi"
+      ],
+      [
+       "to",
+       [
+        [
+         "",
+         "bob@example.test"
+        ]
+       ]
+      ]
+     ]
+    },
+    "status": 200
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [],
+    "bcc": [],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [],
+    "html": null,
+    "inline": [
+     {
+      "content_type": "text/plain/extra",
+      "data": "MQ==",
+      "filename": "a.bin"
+     },
+     {
+      "content_type": "a b/c",
+      "data": "Mg==",
+      "filename": "b.bin"
+     },
+     {
+      "content_type": "t\u00ebxt/plain",
+      "data": "Mw==",
+      "filename": "c.bin"
+     },
+     {
+      "content_type": "x/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "data": "NA==",
+      "filename": "d.bin"
+     }
+    ],
+    "subject": "hi",
+    "text": "hello",
+    "to": [
+     "bob@example.test"
+    ]
+   },
+   "name": "broken inline types"
+  },
+  {
+   "expected": {
+    "defects": [],
+    "envelope": [
+     "bob@example.test"
+    ],
+    "message": {
+     "body": {
+      "parts": [
+       {
+        "charset": "utf-8",
+        "text": "hello",
+        "type": "text/plain"
+       },
+       {
         "data": "aGVsbG8gYXR0YWNobWVudA==",
         "disposition": "attachment",
         "filename": "hello.txt",
@@ -5476,11 +5586,8 @@
    "name": "container types"
   },
   {
-   "divergence": "D-21",
    "expected": {
-    "defects": [
-     "InvalidHeaderDefect"
-    ],
+    "defects": [],
     "envelope": [
      "bob@example.test"
     ],
@@ -5593,85 +5700,9 @@
      "bob@example.test"
     ]
    },
-   "name": "broken types",
-   "python": {
-    "defects": [
-     "InvalidHeaderDefect"
-    ],
-    "envelope": [
-     "bob@example.test"
-    ],
-    "message": {
-     "body": {
-      "parts": [
-       {
-        "charset": "utf-8",
-        "text": "hello",
-        "type": "text/plain"
-       },
-       {
-        "data": "MQ==",
-        "disposition": "attachment",
-        "filename": "a.bin",
-        "type": "a b/c"
-       },
-       {
-        "data": "Mg==",
-        "disposition": "attachment",
-        "filename": "b.bin",
-        "type": "text/plain"
-       },
-       {
-        "data": "Mw==",
-        "disposition": "attachment",
-        "filename": "c.bin",
-        "type": "application/octet-stream"
-       },
-       {
-        "data": "NA==",
-        "disposition": "attachment",
-        "filename": "d.bin",
-        "type": "application/octet-stream"
-       },
-       {
-        "data": "NQ==",
-        "disposition": "attachment",
-        "filename": "e.bin",
-        "type": "t\u00e4/x"
-       }
-      ],
-      "type": "multipart/mixed"
-     },
-     "headers": [
-      [
-       "from",
-       [
-        [
-         "Alice",
-         "alice@example.test"
-        ]
-       ]
-      ],
-      [
-       "subject",
-       "hi"
-      ],
-      [
-       "to",
-       [
-        [
-         "",
-         "bob@example.test"
-        ]
-       ]
-      ]
-     ]
-    },
-    "status": 200
-   }
+   "name": "broken types"
   },
   {
-   "divergence": "D-21",
    "expected": {
     "defects": [
      "NonPrintableDefect"
@@ -5821,196 +5852,7 @@
      "bob@example.test"
     ]
    },
-   "name": "attachment filenames",
-   "python": {
-    "defects": [
-     "NonPrintableDefect"
-    ],
-    "envelope": [
-     "bob@example.test"
-    ],
-    "message": {
-     "body": {
-      "parts": [
-       {
-        "charset": "utf-8",
-        "text": "hello",
-        "type": "text/plain"
-       },
-       {
-        "data": "MQ==",
-        "disposition": "attachment",
-        "filename": "a\u0001b.txt",
-        "type": "text/plain"
-       },
-       {
-        "data": "Mg==",
-        "disposition": "attachment",
-        "filename": "a\tb.txt",
-        "type": "text/plain"
-       },
-       {
-        "data": "Mw==",
-        "disposition": "attachment",
-        "filename": "a\"b\\c.txt",
-        "type": "text/plain"
-       },
-       {
-        "data": "NA==",
-        "disposition": "attachment",
-        "filename": "a;b c.txt",
-        "type": "text/plain"
-       },
-       {
-        "data": "NQ==",
-        "disposition": "attachment",
-        "filename": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.txt",
-        "type": "text/plain"
-       },
-       {
-        "data": "Ng==",
-        "disposition": "attachment",
-        "filename": "\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6.txt",
-        "type": "text/plain"
-       },
-       {
-        "data": "Nw==",
-        "disposition": "attachment",
-        "filename": "a\u2028b\u0085.txt",
-        "type": "text/plain"
-       },
-       {
-        "data": "OA==",
-        "disposition": "attachment",
-        "filename": "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy.txt",
-        "type": "image/yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"
-       }
-      ],
-      "type": "multipart/mixed"
-     },
-     "headers": [
-      [
-       "from",
-       [
-        [
-         "Alice",
-         "alice@example.test"
-        ]
-       ]
-      ],
-      [
-       "subject",
-       "hi"
-      ],
-      [
-       "to",
-       [
-        [
-         "",
-         "bob@example.test"
-        ]
-       ]
-      ]
-     ]
-    },
-    "status": 200
-   },
-   "python_versions": {
-    "3.15": {
-     "defects": [
-      "InvalidHeaderDefect",
-      "NonPrintableDefect"
-     ],
-     "envelope": [
-      "bob@example.test"
-     ],
-     "message": {
-      "body": {
-       "parts": [
-        {
-         "charset": "utf-8",
-         "text": "hello",
-         "type": "text/plain"
-        },
-        {
-         "data": "MQ==",
-         "disposition": "attachment",
-         "filename": "a\u0001b.txt",
-         "type": "text/plain"
-        },
-        {
-         "data": "Mg==",
-         "disposition": "attachment",
-         "filename": "a\tb.txt",
-         "type": "text/plain"
-        },
-        {
-         "data": "Mw==",
-         "disposition": "attachment",
-         "filename": "a\"b\\c.txt",
-         "type": "text/plain"
-        },
-        {
-         "data": "NA==",
-         "disposition": "attachment",
-         "filename": "a;b c.txt",
-         "type": "text/plain"
-        },
-        {
-         "data": "NQ==",
-         "disposition": "attachment",
-         "filename": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.txt",
-         "type": "text/plain"
-        },
-        {
-         "data": "Ng==",
-         "disposition": "attachment",
-         "filename": "\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6.txt",
-         "type": "text/plain"
-        },
-        {
-         "data": "Nw==",
-         "disposition": "attachment",
-         "filename": "a\u2028b\u0085.txt",
-         "type": "text/plain"
-        },
-        {
-         "data": "OA==",
-         "disposition": "attachment",
-         "filename": "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy.txt",
-         "type": "image/yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"
-        }
-       ],
-       "type": "multipart/mixed"
-      },
-      "headers": [
-       [
-        "from",
-        [
-         [
-          "Alice",
-          "alice@example.test"
-         ]
-        ]
-       ],
-       [
-        "subject",
-        "hi"
-       ],
-       [
-        "to",
-        [
-         [
-          "",
-          "bob@example.test"
-         ]
-        ]
-       ]
-      ]
-     },
-     "status": 200
-    }
-   }
+   "name": "attachment filenames"
   },
   {
    "expected": {
@@ -6644,6 +6486,162 @@
     ]
    },
    "name": "inline text only"
+  },
+  {
+   "expected": {
+    "status": 400
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [],
+    "bcc": [],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [],
+    "html": null,
+    "inline": [
+     {
+      "content_type": "image/png",
+      "data": "iVBORw0KGgoAAAANSUhEUg==",
+      "filename": "logo.png"
+     },
+     {
+      "content_type": "image/png",
+      "data": "b3RoZXI=",
+      "filename": "logo.png"
+     }
+    ],
+    "subject": "hi",
+    "text": "hello",
+    "to": [
+     "bob@example.test"
+    ]
+   },
+   "name": "duplicate inline ids"
+  },
+  {
+   "expected": {
+    "defects": [],
+    "envelope": [
+     "bob@example.test"
+    ],
+    "message": {
+     "body": {
+      "parts": [
+       {
+        "parts": [
+         {
+          "charset": "utf-8",
+          "text": "hello",
+          "type": "text/plain"
+         },
+         {
+          "parts": [
+           {
+            "charset": "utf-8",
+            "text": "<img src=\"cid:a.png\"><img src=\"cid:b.png\">",
+            "type": "text/html"
+           },
+           {
+            "content_id": "<a.png>",
+            "data": "iVBORw0KGgoAAAANSUhEUg==",
+            "disposition": "inline",
+            "filename": "a.png",
+            "type": "image/png"
+           },
+           {
+            "content_id": "<b.png>",
+            "data": "b3RoZXI=",
+            "disposition": "inline",
+            "filename": "b.png",
+            "type": "image/png"
+           }
+          ],
+          "type": "multipart/related"
+         }
+        ],
+        "type": "multipart/alternative"
+       },
+       {
+        "data": "iVBORw0KGgoAAAANSUhEUg==",
+        "disposition": "attachment",
+        "filename": "a.png",
+        "type": "image/png"
+       },
+       {
+        "data": "b3RoZXI=",
+        "disposition": "attachment",
+        "filename": "a.png",
+        "type": "image/png"
+       }
+      ],
+      "type": "multipart/mixed"
+     },
+     "headers": [
+      [
+       "from",
+       [
+        [
+         "Alice",
+         "alice@example.test"
+        ]
+       ]
+      ],
+      [
+       "subject",
+       "hi"
+      ],
+      [
+       "to",
+       [
+        [
+         "",
+         "bob@example.test"
+        ]
+       ]
+      ]
+     ]
+    },
+    "status": 200
+   },
+   "input": {
+    "amp_html": null,
+    "attachments": [
+     {
+      "content_type": "image/png",
+      "data": "iVBORw0KGgoAAAANSUhEUg==",
+      "filename": "a.png"
+     },
+     {
+      "content_type": "image/png",
+      "data": "b3RoZXI=",
+      "filename": "a.png"
+     }
+    ],
+    "bcc": [],
+    "cc": [],
+    "from": "Alice <alice@example.test>",
+    "headers": [],
+    "html": "<img src=\"cid:a.png\"><img src=\"cid:b.png\">",
+    "inline": [
+     {
+      "content_type": "image/png",
+      "data": "iVBORw0KGgoAAAANSUhEUg==",
+      "filename": "a.png"
+     },
+     {
+      "content_type": "image/png",
+      "data": "b3RoZXI=",
+      "filename": "b.png"
+     }
+    ],
+    "subject": "hi",
+    "text": "hello",
+    "to": [
+     "bob@example.test"
+    ]
+   },
+   "name": "unique inline ids and repeated attachments"
   },
   {
    "expected": {

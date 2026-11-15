@@ -318,17 +318,19 @@ the contract. Each step names its Python source.
      charsets Rust does not implement.
 4. **Field rules in form order, first error wins** (`routes.py:381-471`):
    - `v:*`, `o:*`, `t:*`, `recipient-variables`, `template` → 400;
-   - `h:<name>`: must be a string (400 otherwise); stored in a map keyed by the
-     exact name, last value wins, case variants are separate entries;
+   - `h:<name>`: must be a string (400 otherwise); duplicate names compared
+     case-insensitively return 400, including identical values;
    - other names outside `from to cc bcc subject text html amp-html attachment
      inline` → 400;
-   - `from`/`to`/`cc`/`bcc` repeatable; `subject`/`text`/`html`/`amp-html`
-     last wins; a file in a string field → 400;
+   - `to`/`cc`/`bcc` repeatable; duplicate `subject`/`text`/`html`/`amp-html`
+     return 400, including identical/empty values; a file in a string field → 400;
    - running UTF-8 byte total of `text`/`html`/`amp-html` plus attachment
      sizes `> max_body_bytes` → 413;
    - `attachment`/`inline` must be files (400); a file larger than
      `max_attachment_bytes` → 413; `attachments + inline > max_attachments`
-     → 413 (checked after each file);
+     → 413 (checked after each file); filename and raw content type (parameters
+     included, after defaults) each exceeding `max_header_value_length` Unicode
+     code points → fixed value-free 400 before MIME assembly;
    - after the loop: not exactly one `from` → 400; no `subject` → 400 (an
      empty subject is allowed); neither `text` nor `html` present → 400.
 5. **Policy** (`relay:policy.py:79-99`):
@@ -661,12 +663,14 @@ What must arrive the same (checked by the semantic comparison of 7.4):
 - **Attachments**: filename (RFC 2231 for non-ASCII), decoded bytes (always
   base64), content type reduced to `main/sub`; `multipart/*`, `message/*`,
   empty or broken types become `application/octet-stream` (broken: main or
-  sub type not an RFC 7230 token; Python passes those on raw, D-21);
+  sub type not an ASCII RFC 7230 token of 1–127 characters in either runtime);
   filename defaults to `attachment`.
 - **Inline parts**: `Content-ID: <filename>`, `Content-Disposition: inline`
   with filename; with HTML they sit with the HTML part in
   `multipart/related` inside the alternative; without HTML in the top-level
-  `multipart/mixed`; inline parts before attachments.
+  `multipart/mixed`; inline parts before attachments. Duplicate final inline
+  IDs are 400 before construction (exact comparison); ordinary attachment names
+  may repeat.
 - **RFC conformance** of the Rust output: CRLF only, lines ≤ 998 octets,
   7-bit clean headers (no SMTPUTF8 is ever needed, Q2), and no defects reported
   by Python's `email` parser (`policy=default`).
@@ -761,7 +765,7 @@ where Python starts), never the reverse.
 | D-18 | Python rollback now requires ports 1–65535, finite `0 < SMTP_TIMEOUT_S <= 1e9`, positive body/recipient limits, and nonnegative attachment/header limits. It still accepts arbitrary-size integers and an empty bind host. | Rust retains its original startup bounds: nonempty `BIND_HOST`, ports 0–65535, signed 64-bit size settings (including negative values), finite timeout 0–1e9 s, concurrency 1–2^32−1, valid UTF-8. `config_env.json` pins both sets of decisions. | Q4 from S1; Python bounds tightened in round 42 without changing Rust validation |
 | D-19 | A custom header name was checked with `re.match("^[A-Za-z][A-Za-z0-9-]*$")`, whose `$` also matches before a final newline: `h:X-Foo%0A` (also `h:Bcc%0A`, which then was no denylisted name) passed step 7, and the email package wrote the name as an encoded word (`=?utf-8?q?X-Foo=0A?=: …`), 200. | The name must match the pattern in full: a final newline → **400** at step 7, in both implementations (Python uses `fullmatch`). No longer a divergence; `headers.json` pins the 400 from the fixed Python. | Owner decision 2026-10-15 (Q1 rule): Python fixed after S3, behaviour change 200 → 400 |
 | D-20 | The form is parsed chunk by chunk as the body streams in, so some decisions depend on TCP segmentation: (a) a multipart body starting with CR or LF skips to the next `-` of the first chunk, so other bytes before the first boundary (`\ntext--boundary…`) are accepted when they arrive in one chunk with the boundary and refused (400) otherwise; (b) a chunked body (no `Content-Length`) over `max_body_bytes` that is also malformed answers 400 when the framing error arrives before the byte limit is crossed, else 413. | The body is buffered up to the limit and parsed whole, taking the refusing decision: (a) only CR and LF may precede the first boundary, anything else → **400**; (b) always **413**. Clients send `Content-Length` and no preamble (Anymail, recorder). | Q4 (fail closed), added in S3b; coordinator to confirm |
-| D-21 | Python's header registry decodes encoded words in every header value and re-encodes them, whatever the surrounding text; it decodes any charset Python has a codec for; `h:Orig-Date` is a date header (a parseable date is rewritten, any other value is sent as an empty header); header names have no length limit; an attachment content type that is not `token/token` (`a b/c`, `image/png/x`) is passed on raw with a header defect. | Rust refuses with **400** at step 9 (fail closed, exotic input; no client sends these): a display name, Subject, `h:*` value or inline Content-ID that needs encoding (non-ASCII, or a word too long for a line) and also holds an encoded word; in a forwarded value an encoded word whose charset is outside the ASCII-compatible set of 2.10, whose base64 needs repair, whose text holds `=?` or starts or ends with whitespace (in a display name also ASCII text with a special such as `,`), or that is longer than 75 characters without whitespace around it (or inside a quoted string); an encoded word in an address local part; an `h:In-Reply-To`/`h:References` value that is not a list of `<dot-atom@dot-atom>` ids (Python repairs `<a@b`, `<a@b>,<c@d>` and passes other forms with defects); `h:Orig-Date`; an `h:*` name longer than 76 characters (lettre's limit). A broken attachment content type (not two RFC 7230 tokens of at most 127 characters) becomes `application/octet-stream` (RFC-conformant, same data and filename). | Coordinator rule Q4 (fail closed), added in S4a |
+| D-21 | Python's header registry decodes encoded words in every header value and re-encodes them, whatever the surrounding text; it decodes any charset Python has a codec for; `h:Orig-Date` is a date header (a parseable date is rewritten, any other value is sent as an empty header); header names have no length limit. | Rust refuses with **400** at step 9 (fail closed, exotic input; no client sends these): a display name, Subject, `h:*` value or inline Content-ID that needs encoding (non-ASCII, or a word too long for a line) and also holds an encoded word; in a forwarded value an encoded word whose charset is outside the ASCII-compatible set of 2.10, whose base64 needs repair, whose text holds `=?` or starts or ends with whitespace (in a display name also ASCII text with a special such as `,`), or that is longer than 75 characters without whitespace around it (or inside a quoted string); an encoded word in an address local part; an `h:In-Reply-To`/`h:References` value that is not a list of `<dot-atom@dot-atom>` ids (Python repairs `<a@b`, `<a@b>,<c@d>` and passes other forms with defects); `h:Orig-Date`; an `h:*` name longer than 76 characters (lettre's limit). Malformed leaf media-type fallback is now shared by Python and Rust, so it is no longer a divergence. | Coordinator rule Q4 (fail closed), added in S4a |
 
 | D-22 | `SMTP_CA_FILE` is read at each submission (`smtp_client.py` `_tls_context`): a missing, unreadable or certificate-less file makes every submission fail with 503; with `SMTP_STARTTLS` off the file is never read. | The file is read once at start, also by `--check-config`, and also with STARTTLS off: missing, unreadable, nonregular, over 1 MiB, without a PEM certificate, or holding a certificate rustls cannot use → startup failure (fail closed; production leaves it empty). The roots are built once (system store plus the file), not per request. | Q4 (fail closed), added in S5a |
 | D-23 | Python retains per-operation SMTP timeouts, without an aggregate wire-byte ceiling. | Rust bounds DNS through the delivery outcome to `SMTP_SESSION_TIMEOUT_S` (default 120 s), cleanup separately to `min(SMTP_TIMEOUT_S, 5 s)`, and inbound wire reads to 16 MiB including TLS overhead. Interrupted DATA is ambiguous (503); cleanup never changes acceptance. Verbose sessions can exhaust the byte ceiling. | Bounded SMTP resource retention, round 75 |
@@ -1066,15 +1070,10 @@ not as a build-time 400. Rust still refuses it with 400; normal Unicode display
 names remain accepted. These are synthetic fixture observations, not changes to
 address policy or claims about the running service.
 
-The 3.15 consumer contract also records two parser-only differences in exotic
-D-21 cases: `long header name` becomes body text with
-`MissingHeaderBodySeparatorDefect` (Rust still refuses the field); `attachment
-filenames` gains `InvalidHeaderDefect` for the oversized declared Content-Type.
-Rust replaces that invalid type with `application/octet-stream`, so its canonical
-message and defect budget are unchanged. Each native Python observation is
-checked explicitly; neither difference broadens Rust acceptance. The 3.15
-contract entries are maintained in the generator and verified against native
-3.15 output; a change there needs an inspected contract edit, not just a rewrite.
+The 3.15 consumer contract retains the `long header name` parser observation
+(`MissingHeaderBodySeparatorDefect`, Rust 400). The former oversized Content-Type
+observation in `attachment filenames` no longer differs: Python and Rust use the
+same opaque fallback. Native consumer checks still reject unrecorded drift.
 
 ### 7.3 Corpus generation
 

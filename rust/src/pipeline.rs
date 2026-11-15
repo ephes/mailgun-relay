@@ -6,6 +6,7 @@
 //! [`crate::http`]. Message construction is [`crate::mime`] (step 9), the
 //! submission a [`Submitter`] (step 10, [`crate::smtp`]).
 
+use std::collections::HashSet;
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
@@ -577,7 +578,7 @@ fn read_upload(value: Value, settings: &Settings) -> Result<Attachment, Failure>
     if exceeds(data.len(), settings.max_attachment_bytes) {
         return Err(Failure::too_large("attachment exceeds max size"));
     }
-    Ok(Attachment {
+    let attachment = Attachment {
         filename: if filename.is_empty() {
             "attachment".to_owned()
         } else {
@@ -587,12 +588,24 @@ fn read_upload(value: Value, settings: &Settings) -> Result<Attachment, Failure>
             .filter(|t| !t.is_empty())
             .unwrap_or_else(|| "application/octet-stream".to_owned()),
         data,
-    })
+    };
+    if [&attachment.filename, &attachment.content_type]
+        .iter()
+        .any(|value| exceeds(value.chars().count(), settings.max_header_value_length))
+    {
+        return Err(Failure::bad_request(
+            "BadRequestError",
+            "upload metadata exceeds header value limit",
+        ));
+    }
+    Ok(attachment)
 }
 
 /// Step 4 (`_parse_form`): the fields in form order, first error wins.
 fn parse_form(items: Vec<(String, Value)>, settings: &Settings) -> Result<ParsedForm, Failure> {
     let mut parsed = ParsedForm::default();
+    let mut seen_singletons = HashSet::new();
+    let mut seen_headers = HashSet::new();
     let mut total: usize = 0;
     let aggregate = |total: usize| -> Result<(), Failure> {
         if exceeds(total, settings.max_body_bytes) {
@@ -616,22 +629,33 @@ fn parse_form(items: Vec<(String, Value)>, settings: &Settings) -> Result<Parsed
             ));
         }
         if let Some(name) = key.strip_prefix("h:") {
+            if !seen_headers.insert(name.to_lowercase()) {
+                return Err(Failure::bad_request(
+                    "BadRequestError",
+                    "duplicate custom header",
+                ));
+            }
             let Value::Text(text) = value else {
                 return Err(Failure::bad_request(
                     "BadRequestError",
                     format!("header {key} must be a string"),
                 ));
             };
-            match parsed.headers.iter_mut().find(|(n, _)| n == name) {
-                Some(entry) => entry.1 = text,
-                None => parsed.headers.push((name.to_owned(), text)),
-            }
+            parsed.headers.push((name.to_owned(), text));
             continue;
         }
         if !KNOWN_FIELDS.contains(&key.as_str()) {
             return Err(Failure::bad_request(
                 "BadRequestError",
                 format!("unknown field: {key}"),
+            ));
+        }
+        if matches!(key.as_str(), "subject" | "text" | "html" | "amp-html")
+            && !seen_singletons.insert(key.clone())
+        {
+            return Err(Failure::bad_request(
+                "BadRequestError",
+                "duplicate singleton form field",
             ));
         }
         match key.as_str() {

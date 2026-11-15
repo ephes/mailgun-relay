@@ -458,6 +458,65 @@ def production_cases() -> list[Case]:
     for name, files, html in attachments:
         fields = minimal(**({"html": html} if html else {}))
         cases.append(Case(f"anymail multipart {name}", post(fields, files=files), 200))
+    for upload_field in ("attachment", "inline"):
+        for metadata in ("filename", "content_type"):
+            for length in (40, 41):
+                filename = "ä" * length if metadata == "filename" else "ok.png"
+                ct = (
+                    "image/png; x=" + "a" * (length - 13)
+                    if metadata == "content_type"
+                    else "image/png"
+                )
+                cases.append(
+                    Case(
+                        f"upload metadata {upload_field} {metadata} {length}",
+                        post(minimal(), files=[(upload_field, filename, ct, b"synthetic")]),
+                        200 if length == 40 else 400,
+                        profile="small",
+                    )
+                )
+    cases.append(
+        Case(
+            "duplicate inline ids",
+            post(
+                minimal(),
+                files=[
+                    ("inline", "logo.png", "image/png", b"first"),
+                    ("inline", "logo.png", "image/png", b"second"),
+                ],
+            ),
+            400,
+        )
+    )
+    for encoding in ("urlencoded", "multipart"):
+        for first, second in (
+            ("subject", "subject"),
+            ("text", "text"),
+            ("html", "html"),
+            ("amp-html", "amp-html"),
+            ("h:X-Tag", "h:X-Tag"),
+            ("h:Reply-To", "h:Reply-To"),
+            ("h:Reply-To", "h:reply-to"),
+            ("h:X-Tag", "h:x-tag"),
+        ):
+            fields = [(key, value) for key, value in minimal() if key != first]
+            fields += [(first, "bob@example.org"), (second, "bob@example.org")]
+            cases.append(
+                Case(
+                    f"duplicate singleton {first} {second} {encoding}",
+                    post(fields, encoding=encoding),
+                    400,
+                )
+            )
+    for upload_field in ("attachment", "inline"):
+        for ct in ("text/plain/extra", "a b/c", "tëxt/plain", "x/" + "a" * 128):
+            cases.append(
+                Case(
+                    f"opaque leaf {upload_field} {ct}",
+                    post(minimal(), files=[(upload_field, "x.bin", ct, b"synthetic")]),
+                    200,
+                )
+            )
     cases += _anymail_variants() + _recorder_cases()
     return cases
 
@@ -708,7 +767,7 @@ def field_cases() -> list[Case]:
             [(k, v) for k, v in minimal() if k != "text"] + [("html", "<b>x</b>")],
             200,
         ),
-        ("field last subject wins", [*minimal(), ("subject", "Zweiter")], 200),
+        ("field duplicate subject", [*minimal(), ("subject", "Zweiter")], 400),
         ("field subject crlf", minimal(subject="a\r\nBcc: x@evil.test"), 400),
         ("field subject stripped", minimal(subject="  padded  "), 200),
         ("field subject non-ascii long", minimal(subject="Grüße " * 100), 200),
@@ -723,8 +782,8 @@ def field_cases() -> list[Case]:
         ("field h:1bad name", [*minimal(), ("h:1X", "v")], 400),
         ("field h:X-Foo crlf value", [*minimal(), ("h:X-Foo", "a\r\nBcc: x@evil.test")], 400),
         ("field h:X-Foo unicode", [*minimal(), ("h:X-Foo", "Grüße aus Düsseldorf")], 200),
-        ("field h:X-Foo case variants", [*minimal(), ("h:X-Foo", "a"), ("h:x-foo", "b")], 200),
-        ("field h:X-Foo last wins", [*minimal(), ("h:X-Foo", "a"), ("h:X-Foo", "b")], 200),
+        ("field h:X-Foo case variants", [*minimal(), ("h:X-Foo", "a"), ("h:x-foo", "b")], 400),
+        ("field h:X-Foo duplicate", [*minimal(), ("h:X-Foo", "a"), ("h:X-Foo", "b")], 400),
         (
             "field h:Reply-To case variants",
             [*minimal(), ("h:Reply-To", "a@x.de"), ("h:reply-to", "b@x.de")],

@@ -2625,6 +2625,17 @@ def _mime_cases() -> list[tuple[str, dict[str, Any]]]:
         ("reply-to invalid", {"headers": [["Reply-To", "a@x.de, bad@bad domain"]]}),
         ("reply-to case variants", {"headers": [["Reply-To", "a@x.de"], ["reply-to", "b@x.de"]]}),
         # Attachments (2.10 "Attachments").
+        (
+            "broken inline types",
+            {
+                "inline": [
+                    _upload("a.bin", "text/plain/extra", b"1"),
+                    _upload("b.bin", "a b/c", b"2"),
+                    _upload("c.bin", "tëxt/plain", b"3"),
+                    _upload("d.bin", "x/" + "a" * 128, b"4"),
+                ]
+            },
+        ),
         ("attachment", {"attachments": [_upload("hello.txt", "text/plain", b"hello attachment")]}),
         (
             "attachments",
@@ -2707,6 +2718,29 @@ def _mime_cases() -> list[tuple[str, dict[str, Any]]]:
             },
         ),
         ("inline text only", {"inline": [_upload("logo.png", "image/png", PNG)]}),
+        (
+            "duplicate inline ids",
+            {
+                "inline": [
+                    _upload("logo.png", "image/png", PNG),
+                    _upload("logo.png", "image/png", b"other"),
+                ]
+            },
+        ),
+        (
+            "unique inline ids and repeated attachments",
+            {
+                "html": '<img src="cid:a.png"><img src="cid:b.png">',
+                "inline": [
+                    _upload("a.png", "image/png", PNG),
+                    _upload("b.png", "image/png", b"other"),
+                ],
+                "attachments": [
+                    _upload("a.png", "image/png", PNG),
+                    _upload("a.png", "image/png", b"other"),
+                ],
+            },
+        ),
         (
             "inline text only with attachment",
             {
@@ -2988,8 +3022,12 @@ def _rust_mime_status(case: dict[str, Any]) -> int:
             return 400
     if not all(_rust_display_ok(m, header) for header, m in mailboxes):
         return 400
+    inline_ids: set[str] = set()
     for upload in case["inline"]:
         name = upload["filename"] or "attachment"
+        if name in inline_ids:
+            return 400
+        inline_ids.add(name)
         if name.strip() != name or any(c in "<>" or c < " " or c == "\x7f" for c in name):
             return 400
         if set(name) & {"\x85", "\u2028", "\u2029"}:
@@ -3000,20 +3038,6 @@ def _rust_mime_status(case: dict[str, Any]) -> int:
         if upload["filename"].isascii() and set(upload["filename"]) & _LINE_BOUNDARIES:
             return 400
     return 200
-
-
-def _rust_content_types(node: dict[str, Any], uploads: list[dict[str, str]]) -> None:
-    """Rewrite the leaves whose upload type is not ``token/token`` (D-21).
-    Uploads appear in tree order: inline parts, then attachments."""
-    for part in node.get("parts", []):
-        _rust_content_types(part, uploads)
-    if "disposition" in node:
-        raw = uploads.pop(0)["content_type"]
-        main, _, rest = raw.partition("/")
-        main, sub = main.strip().lower(), rest.split(";", 1)[0].strip().lower()
-        tokens = all(0 < len(t) <= 127 and set(t) <= _TOKEN for t in (main, sub))
-        if not tokens:
-            node["type"] = "application/octet-stream"
 
 
 def build_mime() -> dict[str, Any]:
@@ -3028,17 +3052,6 @@ def build_mime() -> dict[str, Any]:
         expected: dict[str, Any] = (
             copy.deepcopy(python) if status == python["status"] else {"status": status}
         )
-        if status == 200:
-            assert isinstance(expected["message"], dict)
-            uploads = case["inline"] + case["attachments"]
-            _rust_content_types(expected["message"]["body"], list(uploads))
-        if name == "attachment filenames" and status == 200 and sys.version_info[:2] == (3, 15):
-            # Only 3.15 adds this defect for Python's oversized Content-Type.
-            # Rust replaced that type. Keep every other observed defect, and
-            # leave the canonical writer's oracle-derived budget untouched.
-            assert len(case["attachments"][-1]["content_type"].partition("/")[2]) > 127
-            assert expected["message"]["body"]["parts"][-1]["type"] == "application/octet-stream"
-            expected["defects"] = [d for d in expected["defects"] if d != "InvalidHeaderDefect"]
         entry: dict[str, Any] = {"name": name, "input": case, "expected": expected}
         if expected != python:
             entry["python"] = python
@@ -3059,10 +3072,6 @@ def build_mime() -> dict[str, Any]:
             observation["message"]["body"]["text"] = (
                 "=?utf-8?q?X-" + "a" * 64 + "?=\n =?utf-8?q?" + "a" * 16 + "?=: v\n\nhello"
             )
-            entry["python_versions"] = {"3.15": observation}
-        elif name == "attachment filenames":
-            observation = copy.deepcopy(python)
-            observation["defects"] = ["InvalidHeaderDefect", "NonPrintableDefect"]
             entry["python_versions"] = {"3.15": observation}
         cases.append(entry)
     return {

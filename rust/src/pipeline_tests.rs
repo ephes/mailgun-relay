@@ -568,15 +568,14 @@ async fn accepted_variants() {
         without(&["subject"], &[("subject", "")]),
         without(&["text"], &[("text", ""), ("html", "<p>x</p>")]),
         with(&[("html", "")]),
-        // Last value wins; repeated recipients; Cc/Bcc; custom headers.
-        with(&[("subject", "second"), ("text", "second")]),
+        // Repeated recipients; Cc/Bcc; distinct custom headers.
         with(&[
             ("h:Reply-To", "\"Doe, Jane\" <jane@example.test>, b@x.de"),
             ("h:Auto-Submitted", "auto-generated"),
             ("h:X-Mailer", "a"),
-            ("h:X-Mailer", "b"),
+            ("h:X-Other-Mailer", "b"),
         ]),
-        with(&[("subject", "  [Django] ERROR\t  ")]),
+        without(&["subject"], &[("subject", "  [Django] ERROR\t  ")]),
     ];
     for fields in &cases {
         for encoding in ENCODINGS {
@@ -692,11 +691,12 @@ async fn limits_are_413() {
         assert_error(&reply, 413);
     }
     // Starlette's field cap: max_recipients + 100 non-file fields.
-    let many: Vec<(&str, &str)> = (0..106).map(|_| ("h:X-A", "x")).collect();
-    let too_many: Vec<(&str, &str)> = (0..107).map(|_| ("h:X-A", "x")).collect();
+    let names: Vec<String> = (0..107).map(|i| format!("h:X-A-{i}")).collect();
+    let too_many: Vec<(&str, &str)> = names.iter().map(|name| (name.as_str(), "x")).collect();
+    let many = &too_many[..106];
     for encoding in ENCODINGS {
         let h = Harness::new();
-        assert_queued(&h.homepage(encode(encoding, &with(&many))).await);
+        assert_queued(&h.homepage(encode(encoding, &with(many))).await);
         assert_error(&h.homepage(encode(encoding, &with(&too_many))).await, 413);
     }
 }
@@ -1071,11 +1071,14 @@ async fn request_severity_follows_final_status() {
                 recorder,
                 logs,
             };
-            let fields = with(&[
-                ("to", "synthetic-private-recipient@example.test"),
-                ("subject", "synthetic-private-message"),
-                ("text", "synthetic-private-message"),
-            ]);
+            let fields = without(
+                &["subject", "text"],
+                &[
+                    ("to", "synthetic-private-recipient@example.test"),
+                    ("subject", "synthetic-private-message"),
+                    ("text", "synthetic-private-message"),
+                ],
+            );
             let reply = h.homepage(encode(Encoding::Urlencoded, &fields)).await;
             assert_eq!(reply.status(), status);
             let records = h.records("request");
@@ -1646,4 +1649,77 @@ async fn aborted_blocking_waiter_cannot_release_parser_capacity() {
         .await
         .unwrap()
         .unwrap();
+}
+
+#[tokio::test]
+async fn duplicate_inline_ids_never_submit() {
+    let h = Harness::new();
+    let files = [
+        ("inline", "logo.png", "image/png", b"first".as_slice()),
+        ("inline", "logo.png", "image/png", b"second".as_slice()),
+    ];
+    assert_error(&h.homepage(multipart(&MINIMUM, &files)).await, 400);
+    assert!(h.recorder.calls.lock().unwrap().is_empty());
+}
+
+#[tokio::test]
+async fn upload_metadata_header_limit() {
+    for field in ["attachment", "inline"] {
+        for metadata in ["filename", "content_type"] {
+            for length in [40, 41] {
+                let mut config = settings();
+                config.max_header_value_length = 40;
+                let h = Harness::with(config);
+                let filename = if metadata == "filename" {
+                    "ä".repeat(length)
+                } else {
+                    "ok.png".to_owned()
+                };
+                let ct = if metadata == "content_type" {
+                    format!("image/png; x={}", "a".repeat(length - 13))
+                } else {
+                    "image/png".to_owned()
+                };
+                let reply = h
+                    .homepage(multipart(
+                        &MINIMUM,
+                        &[(field, &filename, &ct, b"synthetic")],
+                    ))
+                    .await;
+                assert_eq!(
+                    reply.status(),
+                    if length == 40 { 200 } else { 400 },
+                    "{field} {metadata} {length}: {}",
+                    reply.json
+                );
+                assert_eq!(
+                    h.recorder.calls.lock().unwrap().len(),
+                    usize::from(length == 40)
+                );
+            }
+        }
+    }
+}
+
+#[tokio::test]
+async fn duplicate_singletons_rejected() {
+    for encoding in [Encoding::Urlencoded, Encoding::Multipart] {
+        for (first, second) in [
+            ("subject", "subject"),
+            ("text", "text"),
+            ("html", "html"),
+            ("amp-html", "amp-html"),
+            ("h:X-Tag", "h:X-Tag"),
+            ("h:Reply-To", "h:reply-to"),
+            ("h:X-Tag", "h:x-tag"),
+        ] {
+            let h = Harness::new();
+            let fields = without(
+                &[first],
+                &[(first, "bob@example.org"), (second, "bob@example.org")],
+            );
+            assert_error(&h.homepage(encode(encoding, &fields)).await, 400);
+            assert!(h.recorder.calls.lock().unwrap().is_empty());
+        }
+    }
 }

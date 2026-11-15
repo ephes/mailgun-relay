@@ -17,3 +17,12 @@ Keep docs clear about MVP, production hardening, and non-goals. This service is 
 Never commit real API tokens, SMTP passwords, private keys, SOPS secrets, or raw production secret output.
 
 The core safety boundary is token, domain, and sender validation. Any implementation change that could allow untrusted relay behavior needs tests and documentation before it is considered complete.
+
+## Form and MIME parity
+
+Keep Python and Rust form admission aligned: reject duplicate body singletons,
+case-insensitive duplicate custom headers, duplicate inline IDs, and upload
+metadata exceeding the configured header limit. Preserve repeatable recipients
+and ordinary attachments. Leaf media-type token admission and opaque fallback
+are shared behavior. Update the synthetic fixtures and API/security docs together;
+regenerate with canonical Python 3.14.10 and check the 3.15.2 consumer.
