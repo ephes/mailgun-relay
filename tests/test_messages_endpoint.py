@@ -896,3 +896,103 @@ def test_header_name_with_final_newline_returns_400(
     r = _post_form(client, auth, _with({f"h:{name}": ["x"]}), encoding=encoding)
     assert r.status_code == 400, r.text
     assert recording_smtp.calls == []
+
+
+def test_duplicate_inline_ids_never_submit(
+    client: TestClient, auth: dict[str, str], recording_smtp: RecordingSubmitter
+) -> None:
+    response = client.post(
+        "/v3/mg.wersdoerfer.de/messages",
+        headers=auth,
+        data=_minimum_form(),
+        files=[
+            ("inline", ("logo.png", b"first", "image/png")),
+            ("inline", ("logo.png", b"second", "image/png")),
+        ],
+    )
+    assert response.status_code == 400
+    assert recording_smtp.calls == []
+    assert "logo.png" not in response.text
+
+
+@pytest.mark.parametrize("field", ["attachment", "inline"])
+@pytest.mark.parametrize("metadata", ["filename", "content_type"])
+@pytest.mark.parametrize("length", [40, 41])
+def test_upload_metadata_header_limit(
+    app_state: AppState,
+    auth: dict[str, str],
+    recording_smtp: RecordingSubmitter,
+    monkeypatch: pytest.MonkeyPatch,
+    field: str,
+    metadata: str,
+    length: int,
+) -> None:
+    from email import policy
+    from email.parser import BytesParser
+
+    app_state = replace(
+        app_state, settings=app_state.settings.model_copy(update={"max_header_value_length": 40})
+    )
+    filename = "ä" * length if metadata == "filename" else "ok.png"
+    content_type = (
+        "image/png; x=" + "a" * (length - 13) if metadata == "content_type" else "image/png"
+    )
+    if length > 40:
+
+        def unexpected_build(*args: object, **kwargs: object) -> None:
+            pytest.fail("oversized metadata reached MIME construction")
+
+        monkeypatch.setattr("mailgun_relay.routes.build_message", unexpected_build)
+    with TestClient(create_app(app_state=app_state)) as client:
+        response = client.post(
+            "/v3/mg.wersdoerfer.de/messages",
+            headers=auth,
+            data=_minimum_form(),
+            files=[(field, (filename, b"synthetic", content_type))],
+        )
+    assert response.status_code == (200 if length == 40 else 400), response.text
+    if length > 40:
+        assert recording_smtp.calls == []
+        assert filename not in response.text and content_type not in response.text
+    else:
+        parsed = BytesParser(policy=policy.default).parsebytes(
+            recording_smtp.calls[0].message.as_bytes()
+        )
+        [upload] = list(parsed.iter_attachments())
+        assert upload.get_filename() == filename
+        assert upload.get_content_type() == "image/png"
+        assert upload.get_payload(decode=True) == b"synthetic"
+        assert all(not part.defects for part in parsed.walk())
+
+
+@pytest.mark.parametrize("encoding", _ENCODINGS)
+@pytest.mark.parametrize("field", ["subject", "text", "html", "amp-html", "h:X-Tag", "h:Reply-To"])
+@pytest.mark.parametrize("value", ["", "bob@example.org"])
+def test_duplicate_singletons_rejected(
+    client: TestClient,
+    auth: dict[str, str],
+    recording_smtp: RecordingSubmitter,
+    encoding: str,
+    field: str,
+    value: str,
+) -> None:
+    form = _minimum_form()
+    form[field] = [value, value]
+    response = _post_form(client, auth, form, encoding=encoding)
+    assert response.status_code == 400
+    assert recording_smtp.calls == []
+
+
+@pytest.mark.parametrize("encoding", _ENCODINGS)
+@pytest.mark.parametrize("names", [("h:Reply-To", "h:reply-to"), ("h:X-Tag", "h:x-tag")])
+def test_case_variant_headers_rejected(
+    client: TestClient,
+    auth: dict[str, str],
+    recording_smtp: RecordingSubmitter,
+    encoding: str,
+    names: tuple[str, str],
+) -> None:
+    form = _minimum_form() | {name: ["bob@example.org"] for name in names}
+    response = _post_form(client, auth, form, encoding=encoding)
+    assert response.status_code == 400
+    assert recording_smtp.calls == []

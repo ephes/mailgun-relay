@@ -438,6 +438,8 @@ def _parse_form(form: Any, settings: Settings) -> _ParsedForm:
     attachments: list[Attachment] = []
     inline: list[Attachment] = []
 
+    seen_singletons: set[str] = set()
+    seen_headers: set[str] = set()
     total_body_bytes = 0
 
     def _track_text(field_name: str, content: str) -> str:
@@ -454,6 +456,10 @@ def _parse_form(form: Any, settings: Settings) -> _ParsedForm:
         if key.startswith(("v:", "o:", "t:")) or key == "recipient-variables" or key == "template":
             raise BadRequestError(f"unsupported field: {key}")
         if key.startswith("h:"):
+            name = key[2:].lower()
+            if name in seen_headers:
+                raise BadRequestError("duplicate custom header")
+            seen_headers.add(name)
             if not isinstance(value, str):
                 raise BadRequestError(f"header {key} must be a string")
             custom_headers[key[2:]] = value
@@ -461,6 +467,11 @@ def _parse_form(form: Any, settings: Settings) -> _ParsedForm:
 
         if key not in _KNOWN_FORM_FIELDS:
             raise BadRequestError(f"unknown field: {key}")
+
+        if key in {"subject", "text", "html", "amp-html"}:
+            if key in seen_singletons:
+                raise BadRequestError("duplicate singleton form field")
+            seen_singletons.add(key)
 
         if key == "from":
             from_addresses.append(_require_str(key, value))
@@ -536,10 +547,16 @@ def _read_upload(value: object, settings: Settings) -> Attachment:
         fileobj.seek(0)
         if size > settings.max_attachment_bytes:
             raise PayloadTooLargeError(f"attachment {value.filename!r} exceeds max size")
-        data = fileobj.read()
+        filename = value.filename or "attachment"
         content_type = value.content_type or "application/octet-stream"
+        if any(
+            len(metadata) > settings.max_header_value_length
+            for metadata in (filename, content_type)
+        ):
+            raise BadRequestError("upload metadata exceeds header value limit")
+        data = fileobj.read()
         return Attachment(
-            filename=value.filename or "attachment",
+            filename=filename,
             content_type=content_type,
             data=data,
         )

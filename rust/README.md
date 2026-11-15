@@ -242,15 +242,11 @@ failure classification), separately from a build-time 400. This is a fixture
 observation, not a live-service finding or a runtime policy change. Ordinary
 Unicode display names still serialize successfully on both interpreters.
 
-The 3.15 consumer contract also records two parser-only differences in exotic
-D-21 cases: `long header name` becomes body text with
-`MissingHeaderBodySeparatorDefect` (Rust still refuses the field); `attachment
-filenames` gains `InvalidHeaderDefect` for the oversized declared Content-Type.
-Rust replaces that invalid type with `application/octet-stream`, so its canonical
-message and defect budget are unchanged. Each native Python observation is
-checked explicitly; neither difference broadens Rust acceptance. The 3.15
-contract entries are maintained in the generator and verified against native
-3.15 output; a change there needs an inspected contract edit, not just a rewrite.
+The 3.15 consumer contract records `long header name` becoming body text with
+`MissingHeaderBodySeparatorDefect` (Rust still refuses the field). The former
+oversized Content-Type parser divergence is removed: both runtimes now fall back
+to `application/octet-stream` for malformed or overlong leaf tokens. Native
+observations remain checked explicitly; unknown drift still fails the guard.
 
 The messages the Rust port builds are also read
 with Python's parser (`mime.json`, PLAN.md 2.10):
@@ -569,3 +565,30 @@ provide durable exactly-once delivery. This differs from a consumed final 250:
 a subsequent QUIT failure still returns success. A full-binary loopback test
 records one DATA per explicit HTTP request, reuses admission after a lost ACK,
 and observes an idle restart without replay.
+
+## Form and upload parity
+
+Both implementations reject duplicate inline Content-IDs with HTTP 400 before
+SMTP. IDs are compared exactly after the Python helper's optional explicit-ID
+bracket normalization; HTTP inline IDs come from filenames. Ordinary attachments
+may share filenames. Upload filenames and raw content types (including parameters,
+after empty-value defaults) must each fit `MAX_HEADER_VALUE_LENGTH` Unicode code
+points, inclusive; oversize metadata returns a fixed, value-free 400 before MIME
+assembly. Unicode filenames within the limit remain supported.
+
+`from` must occur exactly once. `subject`, `text`, `html` and `amp-html` may each
+occur at most once, even for identical or empty values. Every `h:*` name is unique
+case-insensitively, including extension headers such as `X-Tag`; duplicates return
+400 at form admission. Repeated `to`, `cc`, `bcc`, `attachment` and `inline` fields
+remain supported subject to existing limits and inline-ID uniqueness.
+
+Uploaded leaf media types in both runtimes use two ASCII RFC 7230 tokens of
+1–127 characters each. Parameters are stripped; malformed types and container
+`multipart/*` or `message/*` types become `application/octet-stream`, preserving
+the filename and bytes. The raw metadata length limit applies before stripping.
+
+The shared `mime.json` corpus includes duplicate-ID refusal, distinct inline IDs,
+same-name ordinary attachments, malformed inline types and attachment types.
+Process parity covers raw repeated form fields in both encodings and Unicode
+filename/raw media-type metadata at and above a small configured limit, with
+synthetic loopback SMTP only.

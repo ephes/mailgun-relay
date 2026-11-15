@@ -28,6 +28,18 @@ All notable changes to mailgun-relay are documented here.
 
 ### Fixed
 
+- Reject duplicate inline Content-IDs before MIME construction in Python and
+  Rust, preserving distinct inline references and repeated ordinary attachments.
+- Apply the configured header-value character ceiling to upload filenames and
+  raw content types, including parameters, before MIME assembly. Errors are
+  bounded and value-free; Unicode filenames at the boundary remain supported.
+- Refuse repeated subject/text/html/amp-html fields and case-insensitive
+  duplicate custom header names at form admission in both runtimes. Repeated
+  recipients and uploads remain supported under their existing limits.
+- Align Python leaf media types with Rust: malformed/non-ASCII/overlong tokens
+  fall back to application/octet-stream. Refresh shared MIME fixtures and remove
+  the corresponding D-21 divergence, retaining bytes and filename semantics.
+
 - Bound local release helper execution to 10 seconds and 1 MiB combined output,
   retiring owned subprocess groups on success, failure and cancellation (B25).
 - Validate release artifact components before I/O; stage, sync and publish the

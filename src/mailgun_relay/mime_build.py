@@ -56,7 +56,14 @@ def _split_ct(content_type: str) -> tuple[str, str]:
     main, _, sub = content_type.partition("/")
     main = main.strip().lower()
     sub = sub.split(";", 1)[0].strip().lower()
-    if not main or not sub or main in _CONTAINER_MAINTYPES:
+
+    # Match Rust's leaf admission: RFC 7230 ASCII tokens, RFC 6838 length.
+    def token(value: str) -> bool:
+        return 0 < len(value) <= 127 and all(
+            ch.isascii() and (ch.isalnum() or ch in "!#$%&'*+-.^_`|~") for ch in value
+        )
+
+    if not token(main) or not token(sub) or main in _CONTAINER_MAINTYPES:
         return _OCTET_STREAM
     return main, sub
 
@@ -111,6 +118,10 @@ def build_message(payload: MessageInput) -> tuple[EmailMessage, str, list[str]]:
         # ``text=""`` (what Anymail sends for an empty Django body) without a
         # non-empty ``html`` is still a client error.
         raise BadRequestError("at least one of 'text' or 'html' must be non-empty")
+
+    inline_ids = [_content_id(att) for att in payload.inline]
+    if len(set(inline_ids)) != len(inline_ids):
+        raise BadRequestError("duplicate inline Content-ID")
 
     msg = EmailMessage()
     [from_addr] = parse_address_list([payload.from_address])
@@ -169,9 +180,8 @@ def build_message(payload: MessageInput) -> tuple[EmailMessage, str, list[str]]:
     # body there is nothing to relate them to; they are then added to the
     # top-level multipart/mixed with ``Content-Disposition: inline``.
     html_part = _find_html_part(msg)
-    for inline_att in payload.inline:
+    for inline_att, cid in zip(payload.inline, inline_ids, strict=True):
         main, sub = _split_ct(inline_att.content_type)
-        cid = _content_id(inline_att)
         try:
             if html_part is not None:
                 html_part.add_related(

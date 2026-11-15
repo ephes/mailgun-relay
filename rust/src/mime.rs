@@ -88,6 +88,14 @@ pub struct InvalidMessage;
 /// Build the message (`build_message` in `relay:mime_build.py`). Bcc
 /// recipients go into the envelope only, never into a header.
 pub fn build(input: MessageInput) -> Result<BuiltMessage, InvalidMessage> {
+    let mut inline_ids = HashSet::new();
+    if input
+        .inline
+        .iter()
+        .any(|upload| !inline_ids.insert(&upload.filename))
+    {
+        return Err(InvalidMessage);
+    }
     let text = input.text.filter(|t| !t.is_empty());
     let html = input.html.filter(|h| !h.is_empty());
     let amp_html = input.amp_html.filter(|a| !a.is_empty());
@@ -782,8 +790,7 @@ fn upload_part(upload: Attachment, inline: bool) -> Result<Tree, InvalidMessage>
 /// `_split_ct`: `main/sub`, lowercased, parameters dropped. Containers
 /// (`multipart/*`, `message/*`) and empty parts become
 /// `application/octet-stream`, and so do types that are not two RFC 7230
-/// tokens of at most 127 characters (RFC 6838), which Python would pass on
-/// raw (D-21).
+/// tokens of at most 127 characters (RFC 6838), matching Python.
 fn leaf_content_type(raw: &str) -> ContentType {
     let octet_stream =
         || ContentType::parse("application/octet-stream").expect("static content type");

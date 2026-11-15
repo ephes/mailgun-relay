@@ -304,3 +304,27 @@ def test_ascii_message_id_headers_are_kept() -> None:
     assert msg["In-Reply-To"] == "<a@b.test>"
     assert msg["References"] == "<a@b> <c@d>"
     assert bytes(msg).isascii()
+
+
+@pytest.mark.parametrize("ids", [(None, None), ("logo", "<logo>"), (None, "<logo.png>")])
+def test_duplicate_final_inline_ids_rejected(ids: tuple[str | None, str | None]) -> None:
+    with pytest.raises(BadRequestError, match="duplicate inline Content-ID"):
+        build_message(_base_input(inline=[_png(content_id=cid) for cid in ids]))
+
+
+@pytest.mark.parametrize("field", ["attachments", "inline"])
+@pytest.mark.parametrize(
+    "content_type", ["text/plain/extra", "a b/c", "tëxt/plain", "x/" + "a" * 128, "a" * 128 + "/b"]
+)
+def test_malformed_leaf_media_type_is_opaque(field: str, content_type: str) -> None:
+    from email import policy
+    from email.parser import BytesParser
+
+    message, _, _ = build_message(
+        _base_input(**{field: [Attachment("x.bin", content_type, b"synthetic")]})
+    )
+    parsed = BytesParser(policy=policy.default).parsebytes(message.as_bytes())
+    [upload] = list(parsed.iter_attachments())
+    assert upload.get_content_type() == "application/octet-stream"
+    assert upload.get_payload(decode=True) == b"synthetic"
+    assert all(not part.defects for part in parsed.walk())

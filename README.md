@@ -152,6 +152,27 @@ Defaults remain unchanged. Rust retains its separately documented parser bounds.
 Token policy and SMTP credentials
 load from the YAML file at `MAILGUN_RELAY_SECRETS_PATH`.
 
+## Form and upload admission
+
+Both implementations reject duplicate inline Content-IDs with HTTP 400 before
+SMTP. IDs are compared exactly after the Python helper's optional explicit-ID
+bracket normalization; HTTP inline IDs come from filenames. Ordinary attachments
+may share filenames. Upload filenames and raw content types (including parameters,
+after empty-value defaults) must each fit `MAX_HEADER_VALUE_LENGTH` Unicode code
+points, inclusive; oversize metadata returns a fixed, value-free 400 before MIME
+assembly. Unicode filenames within the limit remain supported.
+
+`from` must occur exactly once. `subject`, `text`, `html` and `amp-html` may each
+occur at most once, even for identical or empty values. Every `h:*` name is unique
+case-insensitively, including extension headers such as `X-Tag`; duplicates return
+400 at form admission. Repeated `to`, `cc`, `bcc`, `attachment` and `inline` fields
+remain supported subject to existing limits and inline-ID uniqueness.
+
+Uploaded leaf media types in both runtimes use two ASCII RFC 7230 tokens of
+1–127 characters each. Parameters are stripped; malformed types and container
+`multipart/*` or `message/*` types become `application/octet-stream`, preserving
+the filename and bytes. The raw metadata length limit applies before stripping.
+
 ## Intended Flow
 
 ```text

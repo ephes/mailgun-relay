@@ -240,7 +240,7 @@ def test_consumer_drift_check_detects_changed_alternate(
     assert "mime.json" in generator.check_fixtures(tmp_path)
 
 
-@pytest.mark.parametrize("name", ["long header name", "attachment filenames"])
+@pytest.mark.parametrize("name", ["long header name"])
 def test_other_parser_observations_are_explicit(generator: ModuleType, name: str) -> None:
     case = next(c for c in _cases(generator, "mime.json") if c["name"] == name)
     versions = case["python_versions"]
