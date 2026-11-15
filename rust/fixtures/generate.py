@@ -34,7 +34,6 @@ import logging
 import os
 import random
 import re
-import string
 import sys
 import tempfile
 import urllib.parse
@@ -2868,7 +2867,6 @@ _ASCII_CHARSETS |= {f"iso_8859_{n}" for n in range(1, 17)} | {f"iso8859_{n}" for
 _ASCII_CHARSETS |= {f"windows_{n}" for n in range(1250, 1259)} | {
     f"cp{n}" for n in range(1250, 1259)
 }
-_TOKEN = set("!#$%&'*+-.^_`|~") | set(string.ascii_letters + string.digits)
 
 
 def _rust_plain(value: str, reserve: int) -> bool:

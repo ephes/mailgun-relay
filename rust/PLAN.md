@@ -360,10 +360,9 @@ the contract. Each step names its Python source.
      answered 500 before S0-py);
    - a non-ASCII local part in `to`/`cc`/`bcc`/Reply-To → 400 (D-2, Q2);
    - `from`, each `to`, each `cc` must be exactly one valid address → 400;
-   - `h:Reply-To` (any case) is an address list, every element valid → 400;
-     two case variants of a header the Python registry allows once
-     (`Reply-To`, `In-Reply-To`, `References`, `Orig-Date`) → 400 (measured:
-     `h:Reply-To` + `h:reply-to` → 400);
+   - `h:Reply-To` (any case) is an address list, every element valid → 400
+     (two case variants of one header never reach this step: step 4 already
+     refuses case-insensitive duplicate `h:*` names);
    - inline filename empty, with surrounding whitespace, `<`, `>`, or a
      control character (`< 0x20`, `0x7f`) → 400; an inline filename with
      U+0085, U+2028 or U+2029, and an all-ASCII attachment filename with a
@@ -775,8 +774,7 @@ D-16 (Q1), so no divergence remains: a non-ASCII character in the Basic
 credentials → 401 at the auth step (S2a; 2.3 step 2).
 
 Not divergences, recorded so nobody "fixes" them: empty subject accepted;
-recipient limit counted before de-duplication; header name case variants are
-separate headers; partial refusal is 200 by default; `/health` has no
+recipient limit counted before de-duplication; partial refusal is 200 by default; `/health` has no
 version; the 307 trailing-slash redirect; duplicate token hashes resolve to
 the last label.
 
