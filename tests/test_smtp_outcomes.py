@@ -167,3 +167,34 @@ def test_cleanup_reply_and_close_errors_preserve_acceptance(
         len([r for r in caplog.records if getattr(r, "event", None) == "smtp_cleanup_failed"]) == 1
     )
     assert "private" not in caplog.text
+
+
+@pytest.mark.parametrize(
+    "phase", ["construct", "ehlo", "starttls", "login", "send_message", "quit", "close"]
+)
+@pytest.mark.parametrize("kind", ["interrupt", "exit", "cancel"])
+def test_supervisor_exceptions_propagate_after_owned_cleanup(phase: str, kind: str) -> None:
+    import asyncio
+
+    error: BaseException = {
+        "interrupt": KeyboardInterrupt(),
+        "exit": SystemExit(17),
+        "cancel": asyncio.CancelledError(),
+    }[kind]
+    mock, instance = _make_ok_mock_smtp()
+    if phase == "construct":
+        mock.side_effect = error
+    else:
+        getattr(instance, phase).side_effect = error
+    transport = replace(
+        _plain_transport(25), use_starttls=True, username="synthetic", password="synthetic"
+    )
+    with patch("smtplib.SMTP", new=mock), pytest.raises(type(error)) as caught:
+        submit(_msg(), envelope_sender="x@x", recipients=["y@y"], transport=transport)
+    assert caught.value is error
+    if phase == "construct":
+        instance.close.assert_not_called()  # no returned object is owned
+    else:
+        instance.close.assert_called_once()
+    if phase not in {"quit", "close", "send_message"}:
+        instance.send_message.assert_not_called()

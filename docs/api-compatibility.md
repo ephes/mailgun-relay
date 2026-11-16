@@ -31,6 +31,12 @@ Behavior:
 
 - Missing or invalid auth returns `401`, also for malformed credentials
   (wrong scheme, invalid base64, non-ASCII bytes, invalid UTF-8, no `:`).
+- Basic credentials are capped at 4,096 decoded UTF-8 bytes (including `api:`)
+  and 5,464 encoded ASCII bytes, inclusive. The whole Authorization value,
+  including scheme and surrounding whitespace, is capped at 5,470 wire bytes.
+  Python and Rust reject excess before Base64 allocation or token hashing,
+  including decoded excess that fits in the last encoded quartet. Direct
+  authentication helpers enforce these limits too; excess returns the same 401.
 - Username other than `api` returns `401`.
 - Valid token with disallowed domain or sender returns `403`.
 - Responses must not reveal whether a token label exists.
@@ -53,6 +59,15 @@ Required fields:
 - `from`: sender address with optional display name.
 - At least one recipient across `to`, `cc`, or `bcc`.
 - At least one non-empty `text` or `html`. A request that carries only empty ones (`text=""`, `html=""`, or `text=""` with only `amp-html`) is `400`; `text=""` with a non-empty `html` is sent as HTML only.
+
+At field admission, unknown form keys return `{"message":"unknown field"}`
+with HTTP 400;
+unsupported `v:*`, `o:*`, `t:*`, `template` and `recipient-variables` keys return
+`{"message":"unsupported field"}`. Both runtimes use these fixed, value-free
+categories regardless of key length or control characters, before SMTP. No
+caller-supplied field-name description is included in these refusals. Earlier
+multipart decoder limits can instead return the existing fixed `malformed form`
+refusal (for example, for a near-request-limit multipart header).
 
 Supported fields:
 
@@ -193,8 +208,14 @@ with positional, value-free diagnostics before labels can enter logs.
 
 Response body shape is `{"message": "<human readable>"}` on all non-2xx. `django-anymail`'s `AnymailRequestsAPIError` stores the full body so callers can log it; the relay never includes credential material in that message.
 
-Once DATA is accepted, a failed QUIT or connection close preserves the accepted
-result, including partial-refusal policy. Cleanup is attempted without retrying
+Python supervisor/control-flow exceptions (`KeyboardInterrupt`, `SystemExit`,
+`asyncio.CancelledError`) propagate from the synchronous SMTP helper after its
+owned socket cleanup, including when raised during cleanup. Constructor failures
+own no returned SMTP object. Only operational `Exception` failures become
+`SmtpSubmitError`; cancellation is never a delivery-failure category.
+
+Once DATA is accepted, an operational failure of QUIT or connection close
+preserves the accepted result, including partial-refusal policy. Cleanup is attempted without retrying
 the send. A safe `smtp_cleanup_failed` warning records only the exception class,
 never SMTP reply text or recipient addresses. Pre-acceptance failures retain their
 original error category even if cleanup also fails.

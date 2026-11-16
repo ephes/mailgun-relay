@@ -116,7 +116,8 @@ def submit(
 
     Uses STARTTLS when transport.use_starttls is True. Raises SmtpSubmitError on any
     SMTP/connection failure before acceptance; the category drives the HTTP response.
-    Teardown failures do not change an accepted submission outcome.
+    Operational teardown failures do not change an accepted submission outcome.
+    Supervisor/control-flow exceptions propagate after owned socket cleanup.
 
     Returns the recipients the server refused while accepting the message for
     the rest (empty when every recipient was accepted). A refusal of *all*
@@ -178,7 +179,7 @@ def submit(
                     )
     except SmtpSubmitError:
         raise
-    except BaseException as exc:
+    except Exception as exc:
         category = _category_for(exc)
         raise SmtpSubmitError(category, reason=_safe_reason(exc)) from exc
     return dict(refused)

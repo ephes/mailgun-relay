@@ -152,7 +152,20 @@ Defaults remain unchanged. Rust retains its separately documented parser bounds.
 Token policy and SMTP credentials
 load from the YAML file at `MAILGUN_RELAY_SECRETS_PATH`.
 
+## Authentication admission
+
+Both runtimes cap Basic credentials at 4,096 decoded UTF-8 bytes, 5,464 Base64
+bytes and 5,470 total Authorization wire bytes, including scheme and whitespace.
+Excess returns the normal 401 before decoding/hashing. Python malformed-decoder
+errors retain no credential-bearing cause/context. See the
+[authentication contract](docs/api-compatibility.md#authentication).
+
 ## Form and upload admission
+
+At field admission, unknown and unsupported keys return fixed `unknown field` / `unsupported field`
+400 messages without reflecting caller-supplied names, including large or
+control-bearing names. Earlier multipart parser limits retain their fixed
+`malformed form` refusal. These refusals never submit SMTP.
 
 Both implementations reject duplicate inline Content-IDs with HTTP 400 before
 SMTP. IDs are compared exactly after the Python helper's optional explicit-ID
@@ -211,7 +224,9 @@ journald, so `journalctl -u mailgun-relay -f` is the live view.
   are never logged. See `docs/api-compatibility.md` for the HTTP behaviour.
 
 - `event=smtp_cleanup_failed` — a `WARNING` with only the exception class when
-  QUIT or close fails. Accepted sends keep their outcome; closed sessions skip QUIT.
+  QUIT or close fails operationally. Accepted sends keep their outcome; closed
+  sessions skip QUIT. Python supervisor/control-flow exceptions propagate after
+  owned socket cleanup, including interrupts, process exit and asyncio cancellation.
 - `event=upload_cleanup_failed` — a Python rollback `WARNING` with only the
   exception class (at most 80 characters) when an upload close fails. Remaining
   uploads still get a close attempt under the cancellation shield; the HTTP

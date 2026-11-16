@@ -634,10 +634,7 @@ fn parse_form(items: Vec<(String, Value)>, settings: &Settings) -> Result<Parsed
             || key == "recipient-variables"
             || key == "template"
         {
-            return Err(Failure::bad_request(
-                "BadRequestError",
-                format!("unsupported field: {key}"),
-            ));
+            return Err(Failure::bad_request("BadRequestError", "unsupported field"));
         }
         if let Some(name) = key.strip_prefix("h:") {
             if !seen_headers.insert(name.to_lowercase()) {
@@ -656,10 +653,7 @@ fn parse_form(items: Vec<(String, Value)>, settings: &Settings) -> Result<Parsed
             continue;
         }
         if !KNOWN_FIELDS.contains(&key.as_str()) {
-            return Err(Failure::bad_request(
-                "BadRequestError",
-                format!("unknown field: {key}"),
-            ));
+            return Err(Failure::bad_request("BadRequestError", "unknown field"));
         }
         if matches!(key.as_str(), "subject" | "text" | "html" | "amp-html")
             && !seen_singletons.insert(key.clone())

@@ -942,6 +942,10 @@ AUTH_TOKENS = [
     ("umlaut", "pässwört"),
     ("empty", ""),
     ("spaces", " padded "),
+    ("byte-boundary", "a" * 4092),
+    ("unicode-byte-boundary", "ü" * 2046),
+    ("over-decoded-limit", "a" * 4093),
+    ("over-encoded-limit", "a" * 4095),
     ("dup-first", "shared"),
     ("dup-second", "shared"),
 ]
@@ -1002,6 +1006,7 @@ def _auth_headers() -> list[tuple[str, bytes | None]]:
         ]
     ]
     cases += [
+        ("over-header-limit", good + b" " * 5464),
         ("non-ascii before base64", b"Basic \xe9" + encoded),
         ("non-ascii after base64", good + b"\xe9"),
         ("non-ascii inside base64", b"Basic " + encoded[:4] + b"\x80" + encoded[4:]),

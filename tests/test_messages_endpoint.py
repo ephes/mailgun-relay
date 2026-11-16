@@ -996,3 +996,55 @@ def test_case_variant_headers_rejected(
     response = _post_form(client, auth, form, encoding=encoding)
     assert response.status_code == 400
     assert recording_smtp.calls == []
+
+
+@pytest.mark.parametrize(
+    "raw", [b"api:" + b"a" * 4093, b"api:private-sentinel-\xff"], ids=["oversize", "invalid-utf8"]
+)
+def test_invalid_credential_bytes_keep_401_contract(
+    client: TestClient, recording_smtp: RecordingSubmitter, raw: bytes
+) -> None:
+    response = client.post(
+        "/v3/mg.wersdoerfer.de/messages",
+        headers={"Authorization": "Basic " + base64.b64encode(raw).decode("ascii")},
+        data=_minimum_form(),
+    )
+    assert response.status_code == 401
+    assert response.json() == {"message": "Unauthorized"}
+    assert response.headers["WWW-Authenticate"] == 'Basic realm="MG API"'
+    assert not recording_smtp.calls
+
+
+@pytest.mark.parametrize("encoding", _ENCODINGS)
+@pytest.mark.parametrize("prefix", ["", "v:", "o:", "t:"])
+@pytest.mark.parametrize("shape", ["large", "long", "control"])
+def test_unrecognized_form_names_have_fixed_refusals(
+    client: TestClient,
+    auth: dict[str, str],
+    recording_smtp: RecordingSubmitter,
+    caplog: pytest.LogCaptureFixture,
+    encoding: str,
+    prefix: str,
+    shape: str,
+) -> None:
+    sentinel = "synthetic-private-field"
+    suffix = {
+        "large": "x" * 900_000,
+        "long": "x" * 4000,
+        "control": "\x00\x1b[31m\u2028forged-event",
+    }[shape]
+    key = prefix + sentinel + suffix
+    response = _post_form(client, auth, _with({key: ["value"]}), encoding=encoding)
+    assert response.status_code == 400
+    # Huge multipart headers already hit the decoder's fixed preflight refusal.
+    category = (
+        "malformed form"
+        if encoding == "multipart" and shape == "large"
+        else "unsupported field"
+        if prefix
+        else "unknown field"
+    )
+    assert response.json() == {"message": category}
+    assert len(response.content) < 64
+    assert sentinel not in response.text + caplog.text
+    assert not recording_smtp.calls

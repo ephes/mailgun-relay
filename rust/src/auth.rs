@@ -22,6 +22,10 @@ const PY_STRICT_BASE64: GeneralPurpose = GeneralPurpose::new(
         .with_decode_padding_mode(DecodePaddingMode::RequireCanonical),
 );
 
+const MAX_BASIC_DECODED_BYTES: usize = 4096;
+const MAX_BASIC_ENCODED_BYTES: usize = 4 * MAX_BASIC_DECODED_BYTES.div_ceil(3);
+const MAX_AUTHORIZATION_BYTES: usize = b"Basic ".len() + MAX_BASIC_ENCODED_BYTES;
+
 #[derive(Debug, PartialEq, Eq)]
 pub struct AuthError;
 
@@ -33,13 +37,24 @@ pub fn authenticate<'a>(
     authorization: Option<&[u8]>,
     policies: &'a [TokenPolicy],
 ) -> Result<&'a TokenPolicy, AuthError> {
+    // Refuse before allocating even the latin-1 header projection.
+    let authorization = authorization.ok_or(AuthError)?;
+    if authorization.len() > MAX_AUTHORIZATION_BYTES {
+        return Err(AuthError);
+    }
     // Starlette decodes header values as latin-1: one char per byte.
-    let header: String = authorization
-        .ok_or(AuthError)?
-        .iter()
-        .map(|&b| char::from(b))
-        .collect();
+    let header: String = authorization.iter().map(|&b| char::from(b)).collect();
     let encoded = py_strip(header.strip_prefix("Basic ").ok_or(AuthError)?);
+    let padding = if encoded.ends_with("==") {
+        2
+    } else {
+        usize::from(encoded.ends_with('='))
+    };
+    if encoded.len() > MAX_BASIC_ENCODED_BYTES
+        || (encoded.len() * 3 / 4).saturating_sub(padding) > MAX_BASIC_DECODED_BYTES
+    {
+        return Err(AuthError);
+    }
     // A non-ASCII char fails here too (Python: ValueError, also 401).
     let decoded = PY_STRICT_BASE64.decode(encoded).map_err(|_| AuthError)?;
     let decoded = String::from_utf8(decoded).map_err(|_| AuthError)?;
@@ -92,6 +107,26 @@ mod tests {
 
     fn label(header: Option<&[u8]>, policies: &[TokenPolicy]) -> Option<String> {
         authenticate(header, policies).ok().map(|p| p.label.clone())
+    }
+
+    #[test]
+    fn credential_byte_limits() {
+        for token in ["a".repeat(4092), "ü".repeat(2046)] {
+            let policies = [policy("boundary", &token)];
+            assert_eq!(
+                label(Some(&basic("api", &token)), &policies).as_deref(),
+                Some("boundary")
+            );
+        }
+        for extra in 1..=3 {
+            let token = "a".repeat(4092 + extra);
+            let policies = [policy("oversize", &token)];
+            assert_eq!(label(Some(&basic("api", &token)), &policies), None);
+        }
+        let policies = [policy("t", "t")];
+        let mut header = basic("api", "t");
+        header.extend(vec![b' '; 5464]);
+        assert_eq!(label(Some(&header), &policies), None);
     }
 
     /// Every case of `fixtures/auth.json` (Python oracle).

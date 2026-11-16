@@ -124,3 +124,63 @@ def test_password_may_contain_colons_and_be_empty() -> None:
 def test_duplicate_token_hashes_resolve_to_the_last_label() -> None:
     policies = [_policy("first", "shared"), _policy("second", "shared")]
     assert authenticate(_basic("api", "shared"), policies).label == "second"
+
+
+@pytest.mark.parametrize("token", ["a" * 4092, "ü" * 2046])
+def test_credential_byte_boundary_is_inclusive(token: str) -> None:
+    policy = _policy("boundary", token)
+    assert authenticate(_basic("api", token), [policy]) is policy
+
+
+@pytest.mark.parametrize("extra", [1, 2, 3])
+def test_oversize_credentials_are_refused_before_decode_or_hash(
+    monkeypatch: pytest.MonkeyPatch, extra: int
+) -> None:
+    from unittest.mock import Mock
+
+    token = "a" * (4092 + extra)
+    policy = _policy("oversize", token)
+    header = _basic("api", token)
+    decode = Mock(side_effect=AssertionError("must not decode"))
+    digest = Mock(side_effect=AssertionError("must not hash"))
+    monkeypatch.setattr(base64, "b64decode", decode)
+    monkeypatch.setattr(hashlib, "sha256", digest)
+    with pytest.raises(AuthError):
+        authenticate(header, [policy])
+    decode.assert_not_called()
+    digest.assert_not_called()
+
+
+def test_authorization_padding_is_bounded_before_decode(monkeypatch: pytest.MonkeyPatch) -> None:
+    from unittest.mock import Mock
+
+    policy = _policy("t", "t")
+    header = _basic("api", "t") + " " * 5464
+    decode = Mock(side_effect=AssertionError("must not decode"))
+    monkeypatch.setattr(base64, "b64decode", decode)
+    with pytest.raises(AuthError):
+        authenticate(header, [policy])
+    decode.assert_not_called()
+
+
+@pytest.mark.parametrize("kind", ["utf8", "non-ascii", "base64"])
+def test_decoder_errors_leave_no_credential_bearing_exception_chain(kind: str) -> None:
+    import traceback
+
+    sentinel = "synthetic-private-credential"
+    raw = b"api:" + sentinel.encode() + b"\xff"
+    if kind == "utf8":
+        header = "Basic " + base64.b64encode(raw).decode("ascii")
+    elif kind == "non-ascii":
+        header = "Basic " + sentinel + "é"
+    else:
+        header = "Basic " + sentinel + "!"
+    with pytest.raises(AuthError) as caught:
+        authenticate(header, [_policy("t", "t")])
+    error = caught.value
+    assert error.__cause__ is None
+    assert error.__context__ is None
+    for diagnostic in (str(error), repr(error), "".join(traceback.format_exception(error))):
+        assert sentinel not in diagnostic
+        assert repr(raw) not in diagnostic
+        assert "UnicodeDecodeError" not in diagnostic
