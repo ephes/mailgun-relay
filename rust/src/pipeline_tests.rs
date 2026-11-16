@@ -1778,3 +1778,36 @@ async fn duplicate_http_singletons_before_body_and_admission() {
         }
     }
 }
+
+#[tokio::test]
+async fn unrecognized_form_names_have_fixed_refusals() {
+    let sentinel = "synthetic-private-field";
+    for prefix in ["", "v:", "o:", "t:"] {
+        for suffix in [
+            "x".repeat(900_000),
+            "x".repeat(4000),
+            "\0\x1b[31m\u{2028}forged-event".to_owned(),
+        ] {
+            let key = format!("{prefix}{sentinel}{suffix}");
+            for encoding in ENCODINGS {
+                let h = Harness::new();
+                let reply = h
+                    .homepage(encode(encoding, &with(&[(&key, "value")])))
+                    .await;
+                assert_eq!(reply.status(), 400);
+                let category = if matches!(encoding, Encoding::Multipart) && suffix.len() == 900_000
+                {
+                    "malformed form"
+                } else if prefix.is_empty() {
+                    "unknown field"
+                } else {
+                    "unsupported field"
+                };
+                assert_eq!(reply.json, json!({"message": category}));
+                assert!(reply.json.to_string().len() < 64);
+                assert!(h.recorder.calls.lock().unwrap().is_empty());
+                assert!(!h.logs.lock().unwrap().join("").contains(sentinel));
+            }
+        }
+    }
+}

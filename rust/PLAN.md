@@ -238,6 +238,13 @@ the contract. Each step names its Python source.
    `WWW-Authenticate: Basic realm="MG API"`.
    - The singleton `Authorization` header, decoded as latin-1, must start with
      `Basic ` (case-sensitive).
+   - Byte caps, checked in this order before any Base64 decoding or token
+     hashing (each excess → the same 401): the whole header value at most
+     5,470 wire bytes (`Basic ` plus 5,464, including surrounding
+     whitespace); after the strip, at most 5,464 encoded bytes; and at most
+     4,096 decoded credential bytes (`api:` included), estimated from the
+     encoded length minus padding, so excess that fits in the last quartet is
+     refused too. Rust checks the wire length before the latin-1 projection.
    - The rest is stripped with Python `str.strip()` semantics (the whitespace
      set of `str.isspace` over latin-1, including `\x1c`–`\x1f`, `\x85`,
      `\xa0`).

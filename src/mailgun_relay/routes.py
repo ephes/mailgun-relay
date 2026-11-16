@@ -509,7 +509,7 @@ def _parse_form(form: Any, settings: Settings) -> _ParsedForm:
     for key, value in form.multi_items():
         # Reject metadata/variable namespaces wholesale.
         if key.startswith(("v:", "o:", "t:")) or key == "recipient-variables" or key == "template":
-            raise BadRequestError(f"unsupported field: {key}")
+            raise BadRequestError("unsupported field")
         if key.startswith("h:"):
             name = key[2:].lower()
             if name in seen_headers:
@@ -521,7 +521,7 @@ def _parse_form(form: Any, settings: Settings) -> _ParsedForm:
             continue
 
         if key not in _KNOWN_FORM_FIELDS:
-            raise BadRequestError(f"unknown field: {key}")
+            raise BadRequestError("unknown field")
 
         if key in {"subject", "text", "html", "amp-html"}:
             if key in seen_singletons:

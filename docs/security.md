@@ -75,6 +75,16 @@ with 400 before authentication, body reads or SMTP admission, including identica
 values and case variants of field names. Every authentication failure is
 the same `401` with `WWW-Authenticate: Basic realm="MG API"`.
 
+Both helpers admit at most 5,470 Authorization wire bytes (including scheme
+and whitespace), 5,464 Base64 bytes and 4,096 decoded credential UTF-8 bytes,
+inclusive. Length checks precede Base64 allocation and token hashing, independent
+of body/server header limits. In-limit credentials retain all-policy comparisons.
+See the authentication byte-boundary fixtures and helper tests in both runtimes.
+Python malformed-credential refusals are raised outside the decoder exception
+handler, so AuthError retains neither a decoder cause nor a decoder context.
+Ordinary formatted exception chains cannot expose those decoder credential bytes;
+local-variable capture by external debuggers is outside this guarantee.
+
 The hashes are unsalted SHA-256, which is sound only for high-entropy tokens.
 Generate tokens with at least 256 random bits (see the runbook); never use a
 memorable value. The stored hash is not a credential: sending it as the
@@ -179,6 +189,11 @@ inline parts and same-name ordinary attachments.
   characters each, preserving bytes and filenames without defective type headers.
 - `v:*`, `o:*`, `t:*`, `template`, `recipient-variables` and unknown fields
   are `400`.
+
+Unknown and unsupported form keys have fixed, value-free HTTP 400 categories
+(`unknown field` / `unsupported field`). Key length and control characters cannot
+expand or forge these diagnostics; both encodings are covered with near-limit
+synthetic keys and the shared process parity corpus. Refusals never submit SMTP.
 
 Residual: headers outside the denylist pass unchanged, for example
 `List-Unsubscribe`, `Auto-Submitted`, but also `DKIM-Signature`,

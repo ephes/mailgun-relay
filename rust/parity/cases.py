@@ -929,6 +929,18 @@ def field_cases() -> list[Case]:
         # Both encodings of the same fields (PLAN.md 2.3 step 3).
         cases.append(Case(name, post(fields), status))
         cases.append(Case(f"{name} [multipart]", post(fields, encoding="multipart"), status))
+    # Bounded, value-free refusal diagnostics for both form decoders.
+    for prefix in ("", "v:", "o:", "t:"):
+        for shape, suffix in (("large", "x" * 900_000), ("control", "\x00\x1b[31m\u2028forged")):
+            key = prefix + "synthetic-private-field" + suffix
+            for encoding in ("urlencoded", "multipart"):
+                cases.append(
+                    Case(
+                        f"field refusal {prefix or 'unknown'} {shape} {encoding}",
+                        post([*minimal(), (key, "value")], encoding=encoding),
+                        400,
+                    )
+                )
     # Exotic header input Rust refuses (D-21) and address forms it refuses (D-11).
     cases += [
         Case(

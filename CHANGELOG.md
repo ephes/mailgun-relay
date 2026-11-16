@@ -28,6 +28,19 @@ All notable changes to mailgun-relay are documented here.
 
 ### Fixed
 
+- Preserve Python SMTP supervisor/control-flow exceptions through setup, send
+  and cleanup while closing owned sessions; only operational exceptions become
+  submission failures.
+- Use fixed, value-free unknown/unsupported form-key HTTP 400 messages in both
+  runtimes, with large/control-bearing names covered in process parity cases.
+
+- Raise Python malformed Basic refusals without retaining value-bearing decoder
+  causes or contexts, keeping helper tracebacks credential-free and HTTP 401 stable.
+
+- Bound Basic authentication in Python and Rust before Base64 allocation and
+  hashing: 4,096 decoded bytes, 5,464 encoded bytes and 5,470 total Authorization
+  wire bytes, inclusive. Preserve UTF-8 passwords and all-policy matching.
+
 - Refuse repeated Authorization and Content-Type HTTP fields with the same fixed
   400 in Python and Rust before authentication, body reads or SMTP admission,
   including identical values and case variants. Cover raw HTTP process parity.
