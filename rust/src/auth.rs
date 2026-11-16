@@ -25,7 +25,7 @@ const PY_STRICT_BASE64: GeneralPurpose = GeneralPurpose::new(
 #[derive(Debug, PartialEq, Eq)]
 pub struct AuthError;
 
-/// Resolve the first `Authorization` header (raw bytes, `None` when absent)
+/// Resolve the admitted singleton `Authorization` header (raw bytes, `None` when absent)
 /// to the matching token policy. The password's SHA-256 is compared in
 /// constant time against every policy without an early exit; the last match
 /// wins, as in Python.

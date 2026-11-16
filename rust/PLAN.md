@@ -230,10 +230,13 @@ the contract. Each step names its Python source.
    present and `> max_body_bytes` → 413. Unparseable or negative values are
    rejected by the HTTP server before the app in both implementations (see
    D-12).
-2. **Auth** (`relay:auth.py:22-54`), headers only; the body is not read on
-   failure. Any failure → 401 `{"message":"Unauthorized"}` with
+2. **Singleton admission and auth**, headers only; before authentication,
+   body reads or SMTP reservation, repeated `Authorization` or `Content-Type`
+   fields (case-insensitive names, even identical values) return 400
+   `{"message":"duplicate singleton HTTP header"}`. Authentication failure →
+   401 `{"message":"Unauthorized"}` with
    `WWW-Authenticate: Basic realm="MG API"`.
-   - The first `Authorization` header, decoded as latin-1, must start with
+   - The singleton `Authorization` header, decoded as latin-1, must start with
      `Basic ` (case-sensitive).
    - The rest is stripped with Python `str.strip()` semantics (the whitespace
      set of `str.isspace` over latin-1, including `\x1c`–`\x1f`, `\x85`,
@@ -259,7 +262,7 @@ the contract. Each step names its Python source.
    parsed before any field is checked.
    - Streamed bytes beyond `max_body_bytes` → 413 (`request body exceeds N
      bytes`).
-   - Content type: the first `Content-Type` header as python-multipart's
+   - Content type: the singleton `Content-Type` header as python-multipart's
      `parse_options_header` reads it: without a `;` the whole value,
      lowercased and stripped; with parameters the part before the first `;`,
      stripped but **not lowercased** (`Multipart/Form-Data; boundary=x` is no
@@ -273,11 +276,12 @@ the contract. Each step names its Python source.
      a non-file field value `> max_body_bytes` → 413.
    - Malformed multipart: no boundary parameter, a part without
      `Content-Disposition` `name`, or a framing error python-multipart detects
-     → 400. A body that **ends inside a part** (missing final boundary,
-     truncated trailing part) is not an error in Python: the completed parts
-     are kept, the unfinished part is dropped, and the request continues
-     (measured: 200 when the completed parts form a valid message). Rust keeps
-     that behaviour; `form_decoding.json` cuts a two-part body at every byte.
+     → 400. A body that **ends before the complete final boundary** is also
+     refused with 400 (`malformed form`), even if completed earlier parts
+     could form a message. Python requires the public parser's `on_end`
+     signal and closes completed and in-progress upload spools on refusal.
+     Rust requires the same final delimiter; valid epilogues remain accepted.
+     `form_decoding.json` cuts a two-part body at every byte.
    - Multipart framing as python-multipart 0.0.31 does it (S3b,
      `src/form.rs`, pinned by `form_decoding.json`): leading CR and LF bytes
      are skipped (python-multipart skips from a leading CR or LF to the next

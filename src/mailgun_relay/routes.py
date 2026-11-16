@@ -6,6 +6,7 @@ import logging
 import os
 import time
 import uuid
+from collections.abc import AsyncGenerator
 from dataclasses import dataclass
 from typing import Any
 
@@ -13,7 +14,11 @@ import anyio.to_thread
 from anyio import CapacityLimiter, WouldBlock
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
+from python_multipart import MultipartParser
+from python_multipart.exceptions import MultipartParseError
+from python_multipart.multipart import parse_options_header
 from starlette.datastructures import FormData, UploadFile
+from starlette.formparsers import MultiPartException, MultiPartParser
 
 from mailgun_relay.auth import AuthError, authenticate
 from mailgun_relay.config import Secrets, Settings
@@ -118,6 +123,11 @@ def register_routes(app: FastAPI) -> None:
         path_domain_log = path_domain_log[:_PATH_DOMAIN_LOG_MAX_LEN]
 
         try:
+            if any(
+                len(request.headers.getlist(name)) > 1 for name in ("authorization", "content-type")
+            ):
+                raise BadRequestError("duplicate singleton HTTP header")
+
             policy = authenticate(
                 request.headers.get("Authorization"),
                 state.secrets.tokens,
@@ -140,7 +150,8 @@ def register_routes(app: FastAPI) -> None:
                 # cannot spool far more parts/bytes than we will ever accept.
                 # `max_files` leaves room for the relay's own 413 on the
                 # (max_attachments + 1)th file; starlette's cap is a backstop.
-                form = await request.form(
+                form = await _read_form(
+                    request,
                     max_files=state.settings.max_attachments + 1,
                     max_fields=state.settings.max_recipients + _FORM_FIELD_HEADROOM,
                     max_part_size=state.settings.max_body_bytes,
@@ -156,7 +167,7 @@ def register_routes(app: FastAPI) -> None:
                 detail = getattr(exc, "detail", "") or str(exc)
                 if any(marker in detail for marker in _MULTIPART_LIMIT_MARKERS):
                     raise PayloadTooLargeError("request exceeds multipart limits") from exc
-                raise BadRequestError(f"malformed multipart form: {type(exc).__name__}") from exc
+                raise BadRequestError("malformed form") from exc
 
             try:
                 parsed = _parse_form(form, state.settings)
@@ -330,6 +341,50 @@ def register_routes(app: FastAPI) -> None:
                     "duration_ms": duration_ms,
                 },
             )
+
+
+async def _read_form(
+    request: Request,
+    *,
+    max_files: int,
+    max_fields: int,
+    max_part_size: int,
+) -> FormData:
+    limits = dict(max_files=max_files, max_fields=max_fields, max_part_size=max_part_size)
+    content_type, options = parse_options_header(request.headers.get("content-type"))
+    if content_type != b"multipart/form-data" or b"boundary" not in options:
+        return await request.form(**limits)
+
+    complete = False
+
+    def on_end() -> None:
+        nonlocal complete
+        complete = True
+
+    # Starlette does not expose multipart completion and finalize() alone does
+    # not enforce it. Observe the public parser's on_end callback in a bounded,
+    # non-retaining pass over the same stream. Raise *inside* Starlette's parse
+    # so its error cleanup owns both finished and still-in-progress spools.
+    validator = MultipartParser(options[b"boundary"], {"on_end": on_end})
+
+    # A framing error is reported only after Starlette has consumed the bytes
+    # before the offending one, so its limit checks (413) keep their position
+    # in the body regardless of how the body is split into chunks.
+    async def checked_stream() -> AsyncGenerator[bytes]:
+        async for chunk in request.stream():
+            try:
+                validator.write(chunk)
+            except MultipartParseError as exc:
+                prefix = chunk[: min(max(exc.offset, 0), len(chunk))]
+                if prefix:
+                    yield prefix
+                raise MultiPartException("malformed form") from exc
+            yield chunk
+        validator.finalize()
+        if not complete:
+            raise MultiPartException("malformed form")
+
+    return await MultiPartParser(request.headers, checked_stream(), **limits).parse()
 
 
 async def _close_form(form: FormData) -> None:

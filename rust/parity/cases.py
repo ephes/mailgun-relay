@@ -722,6 +722,47 @@ def auth_cases() -> list[Case]:
     for name, header, status in raw:
         request = post(fields, label=None, authorization=header)
         cases.append(Case(name, request, status))
+    # Raw HTTP singleton fields: identical and conflicting repetitions, both
+    # orders and field-name case variants, through the actual HTTP servers.
+    for header in ("Authorization", "Content-Type"):
+        good = (
+            basic("parity-domain-only")
+            if header == "Authorization"
+            else "application/x-www-form-urlencoded"
+        )
+        for identical in (True, False):
+            other = (
+                good
+                if identical
+                else ("Basic invalid" if header == "Authorization" else "text/plain")
+            )
+            for reverse in (True, False):
+                for mixed_case in (True, False):
+                    values = [good, other]
+                    if reverse:
+                        values.reverse()
+                    request = post(
+                        minimal(**{"from": "sender@example.org"}),
+                        label="parity-domain-only",
+                        domain="mg.example.org",
+                    )
+                    request.headers = [
+                        (key, value) for key, value in request.headers if key != header
+                    ]
+                    request.headers.extend(
+                        [
+                            (header, values[0]),
+                            (header.lower() if mixed_case else header, values[1]),
+                        ]
+                    )
+                    cases.append(
+                        Case(
+                            f"http singleton {header} identical={identical} "
+                            f"reverse={reverse} mixed={mixed_case}",
+                            request,
+                            400,
+                        )
+                    )
     # The body is not read when authentication fails.
     malformed = Request(
         headers=[("Content-Type", "multipart/form-data; boundary=x")], body=b"garbage"
@@ -942,9 +983,16 @@ def body_cases() -> list[Case]:
         return Request(headers=headers, body=body, **request)
 
     truncated = good[: good.rindex(b"--b0und4ry--")]
-    # A trailing field after the message fields: cut inside it, the
-    # completed parts form a valid message (PLAN.md 2.3 step 3).
+    # A trailing field after the message fields must still be complete.
     trailing = multipart([*minimal(), ("h:X-Trailer", "t" * 30)], boundary="b0und4ry")[1]
+    uploads = multipart(
+        minimal(),
+        files=[
+            ("attachment", "first.txt", "text/plain", b"complete"),
+            ("attachment", "second.txt", "text/plain", b"synthetic upload"),
+        ],
+        boundary="b0und4ry",
+    )[1]
     form_ct, form_body = urlencoded(minimal())
     latin = multipart(minimal(text="Gr\xfc\xdfe"), boundary="b0und4ry")[1]
     cases = [
@@ -971,13 +1019,24 @@ def body_cases() -> list[Case]:
             raw('multipart/form-data; boundary="b0und4ry"', good),
             200,
         ),
-        # The text part is never closed, so it is dropped: no body (400).
+        # Incomplete MIME is refused even when earlier parts could form a message.
         Case("body multipart no final boundary", raw(content_type, truncated), 400),
         Case("body multipart cut inside the text", raw(content_type, good[:-40]), 400),
-        Case("body multipart cut inside a trailing field", raw(content_type, trailing[:-30]), 200),
+        Case("body multipart cut inside a trailing field", raw(content_type, trailing[:-30]), 400),
         Case(
             "body multipart trailing field without final boundary",
             raw(content_type, trailing[: trailing.rindex(b"--b0und4ry--")]),
+            400,
+        ),
+        Case(
+            "body multipart cut inside final upload",
+            raw(content_type, uploads[: uploads.index(b"synthetic upload") + 5]),
+            400,
+        ),
+        Case("body multipart cut closing delimiter", raw(content_type, uploads[:-3]), 400),
+        Case(
+            "body multipart complete uploads and epilogue",
+            raw(content_type, uploads + b"epilogue"),
             200,
         ),
         Case("body multipart crlf preamble", raw(content_type, b"\r\n\r\n" + good), 200),
@@ -1118,6 +1177,12 @@ def limit_cases() -> list[Case]:
         case("attachment 500 bytes", post(minimal(), files=files(1, 500)), 200),
         case("attachment 501 bytes", post(minimal(), files=files(1, 501)), 413),
         case("files over the parser cap", post(minimal(), files=files(4)), 413),
+        # The file limit is reached before a later framing error: both 413.
+        case(
+            "files over the parser cap before malformed part header",
+            _with_trailing_part(post(minimal(), files=files(4)), b"Bad Header: x\r\n\r\nv"),
+            413,
+        ),
         case("fields over the parser cap", post(minimal() + many, encoding="multipart"), 413),
         case("fields urlencoded many recipients", post(minimal() + many[:20]), 413),
         case("subject 40", post(minimal(subject="ä" * 40)), 200),
@@ -1197,6 +1262,16 @@ def limit_cases() -> list[Case]:
             rust_status=413,
         ),
     ]
+
+
+def _with_trailing_part(request: Request, part: bytes) -> Request:
+    """Insert one raw part before the closing delimiter of a multipart body."""
+    boundary = request.body[2 : request.body.index(b"\r\n")]
+    closing = b"--" + boundary + b"--\r\n"
+    assert request.body.endswith(closing)
+    request.body = request.body[: -len(closing)] + b"--" + boundary + b"\r\n" + part
+    request.body += b"\r\n" + closing
+    return request
 
 
 def _form(parts: list[tuple[str, str] | Upload]) -> Request:
