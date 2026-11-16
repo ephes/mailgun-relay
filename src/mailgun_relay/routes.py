@@ -123,6 +123,11 @@ def register_routes(app: FastAPI) -> None:
         path_domain_log = path_domain_log[:_PATH_DOMAIN_LOG_MAX_LEN]
 
         try:
+            if any(
+                len(request.headers.getlist(name)) > 1 for name in ("authorization", "content-type")
+            ):
+                raise BadRequestError("duplicate singleton HTTP header")
+
             policy = authenticate(
                 request.headers.get("Authorization"),
                 state.secrets.tokens,

@@ -230,10 +230,13 @@ the contract. Each step names its Python source.
    present and `> max_body_bytes` → 413. Unparseable or negative values are
    rejected by the HTTP server before the app in both implementations (see
    D-12).
-2. **Auth** (`relay:auth.py:22-54`), headers only; the body is not read on
-   failure. Any failure → 401 `{"message":"Unauthorized"}` with
+2. **Singleton admission and auth**, headers only; before authentication,
+   body reads or SMTP reservation, repeated `Authorization` or `Content-Type`
+   fields (case-insensitive names, even identical values) return 400
+   `{"message":"duplicate singleton HTTP header"}`. Authentication failure →
+   401 `{"message":"Unauthorized"}` with
    `WWW-Authenticate: Basic realm="MG API"`.
-   - The first `Authorization` header, decoded as latin-1, must start with
+   - The singleton `Authorization` header, decoded as latin-1, must start with
      `Basic ` (case-sensitive).
    - The rest is stripped with Python `str.strip()` semantics (the whitespace
      set of `str.isspace` over latin-1, including `\x1c`–`\x1f`, `\x85`,
@@ -259,7 +262,7 @@ the contract. Each step names its Python source.
    parsed before any field is checked.
    - Streamed bytes beyond `max_body_bytes` → 413 (`request body exceeds N
      bytes`).
-   - Content type: the first `Content-Type` header as python-multipart's
+   - Content type: the singleton `Content-Type` header as python-multipart's
      `parse_options_header` reads it: without a `;` the whole value,
      lowercased and stripped; with parameters the part before the first `;`,
      stripped but **not lowercased** (`Multipart/Form-Data; boundary=x` is no

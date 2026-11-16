@@ -722,6 +722,47 @@ def auth_cases() -> list[Case]:
     for name, header, status in raw:
         request = post(fields, label=None, authorization=header)
         cases.append(Case(name, request, status))
+    # Raw HTTP singleton fields: identical and conflicting repetitions, both
+    # orders and field-name case variants, through the actual HTTP servers.
+    for header in ("Authorization", "Content-Type"):
+        good = (
+            basic("parity-domain-only")
+            if header == "Authorization"
+            else "application/x-www-form-urlencoded"
+        )
+        for identical in (True, False):
+            other = (
+                good
+                if identical
+                else ("Basic invalid" if header == "Authorization" else "text/plain")
+            )
+            for reverse in (True, False):
+                for mixed_case in (True, False):
+                    values = [good, other]
+                    if reverse:
+                        values.reverse()
+                    request = post(
+                        minimal(**{"from": "sender@example.org"}),
+                        label="parity-domain-only",
+                        domain="mg.example.org",
+                    )
+                    request.headers = [
+                        (key, value) for key, value in request.headers if key != header
+                    ]
+                    request.headers.extend(
+                        [
+                            (header, values[0]),
+                            (header.lower() if mixed_case else header, values[1]),
+                        ]
+                    )
+                    cases.append(
+                        Case(
+                            f"http singleton {header} identical={identical} "
+                            f"reverse={reverse} mixed={mixed_case}",
+                            request,
+                            400,
+                        )
+                    )
     # The body is not read when authentication fails.
     malformed = Request(
         headers=[("Content-Type", "multipart/form-data; boundary=x")], body=b"garbage"

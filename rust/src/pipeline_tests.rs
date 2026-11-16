@@ -1723,3 +1723,58 @@ async fn duplicate_singletons_rejected() {
         }
     }
 }
+
+/// Singleton ambiguity wins over authentication, admission and body acquisition.
+#[tokio::test]
+async fn duplicate_http_singletons_before_body_and_admission() {
+    for name in ["authorization", "content-type"] {
+        for identical in [true, false] {
+            for reverse in [true, false] {
+                let h = Harness::new();
+                let _slots = h
+                    .relay
+                    .smtp_slots
+                    .acquire_many(h.relay.settings.smtp_max_concurrency)
+                    .await
+                    .unwrap();
+                let first = if name == "authorization" {
+                    basic("api", HOMEPAGE_TOKEN)
+                } else {
+                    "application/x-www-form-urlencoded".to_owned()
+                };
+                let second = if identical {
+                    first.clone()
+                } else if name == "authorization" {
+                    "Basic invalid".to_owned()
+                } else {
+                    "text/plain".to_owned()
+                };
+                let (first, second) = if reverse {
+                    (second, first)
+                } else {
+                    (first, second)
+                };
+                let body = Body::from_stream(futures_util::stream::poll_fn(
+                    |_| -> std::task::Poll<Option<Result<Vec<u8>, std::io::Error>>> {
+                        panic!("ambiguous request body was read")
+                    },
+                ));
+                let mut request = Request::builder()
+                    .method("POST")
+                    .uri("/v3/mg.wersdoerfer.de/messages")
+                    .header(name, first)
+                    .header(name, second);
+                if name == "content-type" {
+                    request = request.header("authorization", basic("api", HOMEPAGE_TOKEN));
+                }
+                let reply = h.send(request.body(body).unwrap()).await;
+                assert_eq!(reply.status(), 400);
+                assert_eq!(
+                    reply.json,
+                    json!({"message": "duplicate singleton HTTP header"})
+                );
+                assert!(h.recorder.calls.lock().unwrap().is_empty());
+            }
+        }
+    }
+}

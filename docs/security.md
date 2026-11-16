@@ -40,7 +40,7 @@ Trust boundaries:
 | # | Threat | Enforced in | Covered by |
 | --- | --- | --- | --- |
 | T1 | Open relay | `pipeline::decide` step 2, `http::router` | `authentication_failures_are_401_with_realm`, `security::credential_variants_are_401`, `http::tests::health_and_fallbacks`, `route_matching` |
-| T2 | Authentication bypass, token guessing | `auth::authenticate` | `auth::tests::*` (fixture `auth.json`), `security::credential_variants_are_401`, `security::only_the_first_authorization_header_counts` |
+| T2 | Authentication bypass, token guessing | `auth::authenticate` | `auth::tests::*` (fixture `auth.json`), `security::credential_variants_are_401`, `security::repeated_authorization_is_refused` |
 | T3 | Token leakage, a token used outside its scope | `policy::enforce_policy`, `secrets::load_policy` | `policy_decisions`, `policy::tests::*`, `security::tokens_stay_inside_their_scope` |
 | T4 | Sender spoofing (`From:`) | `policy::enforce_policy`, `address::parse_mailbox`, `domain::address_domain` | `policy::tests::policy_fixture` (fixture `policy.json`), `address::tests::address_fixture`, `security::sender_spoofing_attempts_are_refused`, `security::sender_case_variants_match_the_allowed_address` |
 | T5 | SMTP sender/login binding, envelope `MAIL FROM` | `smtp::SmtpConfig::load`, `config::envelope_sender`, `mime::build` | `smtp::tests::python_smtp_submission_tests`, `::envelope_and_reply_codes`, `security::the_envelope_comes_from_the_configuration_and_the_recipient_fields` |
@@ -70,7 +70,9 @@ as its tokens are secret and narrow (T3), and as its volume limits (T11).
 canonical, and nothing inside the credentials is trimmed. The token's SHA-256
 is compared in constant time with **every** configured hash (no early exit),
 and the user check runs after the comparison, so timing does not reveal which
-part failed. Only the first `Authorization` header is read. Every failure is
+part failed. Repeated `Authorization` or `Content-Type` fields are refused
+with 400 before authentication, body reads or SMTP admission, including identical
+values and case variants of field names. Every authentication failure is
 the same `401` with `WWW-Authenticate: Basic realm="MG API"`.
 
 The hashes are unsalted SHA-256, which is sound only for high-entropy tokens.
@@ -441,3 +443,11 @@ boundaries return HTTP 400 with `{"message":"malformed form"}`, without SMTP
 submission. Python closes all already-spooled uploads, including an unfinished
 last upload. Complete multipart bodies with epilogues remain supported. HTTP
 Content-Length completeness alone does not establish MIME completeness.
+
+## HTTP singleton headers
+
+`Authorization` and `Content-Type` may each occur at most once on a send
+request. Both runtimes reject repeated fields with HTTP 400 and
+`{"message":"duplicate singleton HTTP header"}` before authentication, body
+reads or SMTP admission. Header names are compared case-insensitively; identical
+repeated values are also refused. Single-header Anymail requests remain supported.

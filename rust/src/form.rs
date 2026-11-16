@@ -81,7 +81,7 @@ fn latin1_bytes(text: &str) -> Vec<u8> {
         .collect()
 }
 
-/// Decide from the request's first `Content-Type` header (raw bytes) how
+/// Decide from the request's singleton `Content-Type` header (raw bytes) how
 /// the body is parsed, before it is read: Starlette `_get_form` and the
 /// preamble of `MultiPartParser.parse`.
 pub fn encoding(content_type: Option<&[u8]>) -> Result<Encoding, FormError> {

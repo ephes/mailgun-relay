@@ -76,3 +76,45 @@ def test_multipart_completion_before_smtp(
     finally:
         for file in spools:
             file.close()
+
+
+@pytest.mark.parametrize("header", ["Authorization", "Content-Type"])
+@pytest.mark.parametrize("identical", [True, False])
+@pytest.mark.parametrize("reverse", [True, False])
+@pytest.mark.parametrize("mixed_case", [True, False])
+def test_duplicate_http_singletons_before_body_and_admission(
+    client: TestClient,
+    homepage_token: str,
+    recording_smtp: RecordingSubmitter,
+    monkeypatch: pytest.MonkeyPatch,
+    header: str,
+    identical: bool,
+    reverse: bool,
+    mixed_case: bool,
+) -> None:
+    from mailgun_relay import routes
+
+    def forbidden(*args: Any, **kwargs: Any) -> Any:
+        pytest.fail("ambiguous request reached body parsing or admission")
+
+    monkeypatch.setattr(routes, "_read_form", forbidden)
+    monkeypatch.setattr(routes, "CapacityLimiter", forbidden)
+    auth = "Basic " + base64.b64encode(f"api:{homepage_token}".encode()).decode()
+    first = auth if header == "Authorization" else "application/x-www-form-urlencoded"
+    second = (
+        first if identical else ("Basic invalid" if header == "Authorization" else "text/plain")
+    )
+    values = [first, second]
+    if reverse:
+        values.reverse()
+    headers = [(header, values[0]), (header.lower() if mixed_case else header, values[1])]
+    if header == "Content-Type":
+        headers.append(("Authorization", auth))
+    else:
+        headers.append(("Content-Type", "application/x-www-form-urlencoded"))
+    response = client.post(
+        "/v3/mg.wersdoerfer.de/messages", headers=headers, content=b"synthetic body"
+    )
+    assert response.status_code == 400, response.text
+    assert response.json() == {"message": "duplicate singleton HTTP header"}
+    assert not recording_smtp.calls

@@ -27,7 +27,6 @@ import copy
 import email
 import email.header
 import email.policy
-import gc
 import hashlib
 import json
 import logging
@@ -37,7 +36,6 @@ import re
 import sys
 import tempfile
 import urllib.parse
-import warnings
 from collections.abc import Callable, Mapping, Sequence
 from email.errors import HeaderWriteError
 from email.message import EmailMessage
@@ -2368,24 +2366,19 @@ def build_form_decoding() -> dict[str, Any]:
     level = parser_log.level
     parser_log.setLevel(logging.CRITICAL)  # the parser warns about each refused body
     try:
-        with warnings.catch_warnings():
-            # Starlette never closes the spooled file of a part that a
-            # truncated body leaves unfinished; collect those here.
-            warnings.simplefilter("ignore", ResourceWarning)
-            results = [
-                (
-                    name,
-                    content_type,
-                    body,
-                    limits,
-                    [
-                        asyncio.run(_starlette_form(content_type, chunks, limits))
-                        for chunks in _chunkings(body)
-                    ],
-                )
-                for name, content_type, body, limits in _form_cases()
-            ]
-            gc.collect()
+        results = [
+            (
+                name,
+                content_type,
+                body,
+                limits,
+                [
+                    asyncio.run(_starlette_form(content_type, chunks, limits))
+                    for chunks in _chunkings(body)
+                ],
+            )
+            for name, content_type, body, limits in _form_cases()
+        ]
     finally:
         parser_log.setLevel(level)
     for name, content_type, body, limits, python in results:

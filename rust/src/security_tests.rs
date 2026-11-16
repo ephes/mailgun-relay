@@ -98,10 +98,9 @@ async fn credential_variants_are_401() {
     }
 }
 
-/// T2: only the first `Authorization` header is read, so a second, valid
-/// one never rescues a wrong first one.
+/// T2: duplicate Authorization is refused in either order before SMTP.
 #[tokio::test]
-async fn only_the_first_authorization_header_counts() {
+async fn repeated_authorization_is_refused() {
     let form = urlencode(&MINIMUM);
     let request = |first: String, second: String| {
         Request::builder()
@@ -116,10 +115,11 @@ async fn only_the_first_authorization_header_counts() {
     let good = basic("api", HOMEPAGE_TOKEN);
     let h = Harness::new();
     let reply = h.send(request(basic("api", "wrong"), good.clone())).await;
-    assert_error(&reply, 401);
+    assert_error(&reply, 400);
     assert!(h.recorder.calls.lock().unwrap().is_empty());
     let reply = h.send(request(good, basic("api", "wrong"))).await;
-    assert_queued(&reply);
+    assert_error(&reply, 400);
+    assert!(h.recorder.calls.lock().unwrap().is_empty());
 }
 
 /// T3: a valid token outside its scope. Each token is bound to its path

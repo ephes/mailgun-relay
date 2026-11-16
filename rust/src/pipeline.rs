@@ -335,7 +335,18 @@ async fn decide(
 ) -> Result<Response, Failure> {
     let settings = &relay.settings;
 
-    // Step 2: the first Authorization header; the body is not read on failure.
+    // Refuse ambiguous singleton fields before auth, admission or body retention.
+    if [header::AUTHORIZATION, header::CONTENT_TYPE]
+        .iter()
+        .any(|name| headers.get_all(name).iter().count() > 1)
+    {
+        return Err(Failure::bad_request(
+            "BadRequestError",
+            "duplicate singleton HTTP header",
+        ));
+    }
+
+    // Step 2: the unique Authorization header; no body read on failure.
     let authorization = headers
         .get(header::AUTHORIZATION)
         .map(HeaderValue::as_bytes);

@@ -28,6 +28,10 @@ All notable changes to mailgun-relay are documented here.
 
 ### Fixed
 
+- Refuse repeated Authorization and Content-Type HTTP fields with the same fixed
+  400 in Python and Rust before authentication, body reads or SMTP admission,
+  including identical values and case variants. Cover raw HTTP process parity.
+
 - Refuse incomplete multipart forms with a fixed HTTP 400 before SMTP in both
   runtimes; close completed and unfinished Python upload spools. Keep valid
   closing delimiters and epilogues compatible; refresh shared form fixtures.
