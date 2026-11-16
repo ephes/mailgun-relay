@@ -1177,6 +1177,12 @@ def limit_cases() -> list[Case]:
         case("attachment 500 bytes", post(minimal(), files=files(1, 500)), 200),
         case("attachment 501 bytes", post(minimal(), files=files(1, 501)), 413),
         case("files over the parser cap", post(minimal(), files=files(4)), 413),
+        # The file limit is reached before a later framing error: both 413.
+        case(
+            "files over the parser cap before malformed part header",
+            _with_trailing_part(post(minimal(), files=files(4)), b"Bad Header: x\r\n\r\nv"),
+            413,
+        ),
         case("fields over the parser cap", post(minimal() + many, encoding="multipart"), 413),
         case("fields urlencoded many recipients", post(minimal() + many[:20]), 413),
         case("subject 40", post(minimal(subject="ä" * 40)), 200),
@@ -1256,6 +1262,16 @@ def limit_cases() -> list[Case]:
             rust_status=413,
         ),
     ]
+
+
+def _with_trailing_part(request: Request, part: bytes) -> Request:
+    """Insert one raw part before the closing delimiter of a multipart body."""
+    boundary = request.body[2 : request.body.index(b"\r\n")]
+    closing = b"--" + boundary + b"--\r\n"
+    assert request.body.endswith(closing)
+    request.body = request.body[: -len(closing)] + b"--" + boundary + b"\r\n" + part
+    request.body += b"\r\n" + closing
+    return request
 
 
 def _form(parts: list[tuple[str, str] | Upload]) -> Request:

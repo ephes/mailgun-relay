@@ -118,3 +118,49 @@ def test_duplicate_http_singletons_before_body_and_admission(
     assert response.status_code == 400, response.text
     assert response.json() == {"message": "duplicate singleton HTTP header"}
     assert not recording_smtp.calls
+
+
+@pytest.mark.parametrize("over_limit", [True, False])
+def test_multipart_limit_before_later_framing_error(
+    client: TestClient,
+    homepage_token: str,
+    recording_smtp: RecordingSubmitter,
+    monkeypatch: pytest.MonkeyPatch,
+    over_limit: bool,
+) -> None:
+    spools: list[Any] = []
+
+    def spool(*args: Any, **kwargs: Any) -> Any:
+        file = tempfile.SpooledTemporaryFile(*args, **kwargs)
+        spools.append(file)
+        return file
+
+    monkeypatch.setattr(formparsers, "SpooledTemporaryFile", spool)
+    files = 6 if over_limit else 2
+    body = b"".join(
+        f'--admission\r\nContent-Disposition: form-data; name="attachment"; '
+        f'filename="f{index}.txt"\r\n\r\nupload {index}\r\n'.encode()
+        for index in range(files)
+    )
+    # A later part whose header name holds an invalid token character.
+    body += b"--admission\r\nBad Header: x\r\n\r\nvalue\r\n--admission--\r\n"
+    response = client.post(
+        "/v3/mg.wersdoerfer.de/messages",
+        headers={
+            "Authorization": "Basic " + base64.b64encode(f"api:{homepage_token}".encode()).decode(),
+            "Content-Type": "multipart/form-data; boundary=admission",
+        },
+        content=body,
+    )
+    try:
+        if over_limit:
+            assert response.status_code == 413, response.text
+            assert response.json() == {"message": "request exceeds multipart limits"}
+        else:
+            assert response.status_code == 400, response.text
+            assert response.json() == {"message": "malformed form"}
+        assert not recording_smtp.calls
+        assert spools and all(file.closed for file in spools)
+    finally:
+        for file in spools:
+            file.close()

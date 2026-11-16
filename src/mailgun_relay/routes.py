@@ -367,11 +367,17 @@ async def _read_form(
     # so its error cleanup owns both finished and still-in-progress spools.
     validator = MultipartParser(options[b"boundary"], {"on_end": on_end})
 
+    # A framing error is reported only after Starlette has consumed the bytes
+    # before the offending one, so its limit checks (413) keep their position
+    # in the body regardless of how the body is split into chunks.
     async def checked_stream() -> AsyncGenerator[bytes]:
         async for chunk in request.stream():
             try:
                 validator.write(chunk)
             except MultipartParseError as exc:
+                prefix = chunk[: min(max(exc.offset, 0), len(chunk))]
+                if prefix:
+                    yield prefix
                 raise MultiPartException("malformed form") from exc
             yield chunk
         validator.finalize()

@@ -35,6 +35,7 @@ All notable changes to mailgun-relay are documented here.
 - Refuse incomplete multipart forms with a fixed HTTP 400 before SMTP in both
   runtimes; close completed and unfinished Python upload spools. Keep valid
   closing delimiters and epilogues compatible; refresh shared form fixtures.
+  A multipart limit reached before a later framing error stays 413, as in Rust.
 
 - Reject duplicate inline Content-IDs before MIME construction in Python and
   Rust, preserving distinct inline references and repeated ordinary attachments.

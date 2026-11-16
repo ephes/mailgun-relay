@@ -443,6 +443,8 @@ boundaries return HTTP 400 with `{"message":"malformed form"}`, without SMTP
 submission. Python closes all already-spooled uploads, including an unfinished
 last upload. Complete multipart bodies with epilogues remain supported. HTTP
 Content-Length completeness alone does not establish MIME completeness.
+A file or field limit reached earlier in the body than a framing error keeps
+its 413 in both runtimes, independent of how the body is split into chunks.
 
 ## HTTP singleton headers
 
