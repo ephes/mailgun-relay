@@ -432,3 +432,12 @@ inside bounded blocking jobs, including caller cancellation. Rust logging uses
 one-second shutdown drain. A blocked stdout sink owns only its dedicated OS
 thread; it cannot stall health or induce a resend. See architecture for the
 best-effort logging limits and the synthetic blocked-sink regressions.
+
+## Multipart completion
+
+Both runtimes require the multipart parser to reach the complete closing
+boundary before accepting a send request. Truncated fields, uploads or closing
+boundaries return HTTP 400 with `{"message":"malformed form"}`, without SMTP
+submission. Python closes all already-spooled uploads, including an unfinished
+last upload. Complete multipart bodies with epilogues remain supported. HTTP
+Content-Length completeness alone does not establish MIME completeness.

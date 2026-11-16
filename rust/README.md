@@ -592,3 +592,12 @@ same-name ordinary attachments, malformed inline types and attachment types.
 Process parity covers raw repeated form fields in both encodings and Unicode
 filename/raw media-type metadata at and above a small configured limit, with
 synthetic loopback SMTP only.
+
+## Multipart completion
+
+Both runtimes require the multipart parser to reach the complete closing
+boundary before accepting a send request. Truncated fields, uploads or closing
+boundaries return HTTP 400 with `{"message":"malformed form"}`, without SMTP
+submission. Python closes all already-spooled uploads, including an unfinished
+last upload. Complete multipart bodies with epilogues remain supported. HTTP
+Content-Length completeness alone does not establish MIME completeness.

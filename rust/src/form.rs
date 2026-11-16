@@ -344,8 +344,7 @@ fn is_token(b: u8) -> bool {
 }
 
 /// Starlette `MultiPartParser` over python-multipart's `MultipartParser`,
-/// fed the whole body at once. A body that ends early is not an error: the
-/// parts completed so far are the form.
+/// fed the whole body at once. Only a complete final delimiter admits the form.
 fn multipart(
     body: &[u8],
     boundary: &[u8],
@@ -371,13 +370,13 @@ fn multipart(
     }
     for &expected in &delimiter[2..] {
         match body.get(i) {
-            None => return Ok(items),
+            None => return Err(BadRequest),
             Some(&b) if b == expected => i += 1,
             Some(_) => return Err(BadRequest),
         }
     }
     match (body.get(i), body.get(i + 1)) {
-        (None, _) | (Some(b'-' | b'\r'), None) => return Ok(items),
+        (None, _) | (Some(b'-' | b'\r'), None) => return Err(BadRequest),
         (Some(b'-'), Some(b'-')) => return Ok(items),
         (Some(b'\r'), Some(b'\n')) => i += 2,
         _ => return Err(BadRequest),
@@ -391,7 +390,7 @@ fn multipart(
         let mut count = 0;
         loop {
             match (body.get(i), body.get(i + 1)) {
-                (None, _) | (Some(b'\r'), None) => return Ok(items),
+                (None, _) | (Some(b'\r'), None) => return Err(BadRequest),
                 (Some(b'\r'), Some(b'\n')) => {
                     i += 2;
                     break;
@@ -411,7 +410,7 @@ fn multipart(
                 return Err(BadRequest);
             }
             let Some(colon) = colon else {
-                return Ok(items);
+                return Err(BadRequest);
             };
             if name.is_empty() {
                 return Err(BadRequest);
@@ -430,7 +429,7 @@ fn multipart(
                 return Err(BadRequest);
             }
             let Some(cr) = cr else {
-                return Ok(items);
+                return Err(BadRequest);
             };
             let value = &body[i..cr];
             if name.eq_ignore_ascii_case(b"content-disposition") {
@@ -439,7 +438,7 @@ fn multipart(
                 content_type = Some(value);
             }
             match body.get(cr + 1) {
-                None => return Ok(items),
+                None => return Err(BadRequest),
                 Some(b'\n') => i = cr + 2,
                 Some(_) => return Err(BadRequest),
             }
@@ -472,11 +471,11 @@ fn multipart(
         let mut search = i;
         let (end, last) = loop {
             let Some(at) = find_seq(body, &delimiter, search) else {
-                return Ok(items);
+                return Err(BadRequest);
             };
             let after = at + delimiter.len();
             match (body.get(after), body.get(after + 1)) {
-                (None, _) | (Some(b'\r' | b'-'), None) => return Ok(items),
+                (None, _) | (Some(b'\r' | b'-'), None) => return Err(BadRequest),
                 (Some(b'\r'), Some(b'\n')) => break (at, false),
                 (Some(b'-'), Some(b'-')) => break (at, true),
                 (Some(b'\r' | b'-'), Some(_)) => search = after + 1,
@@ -583,6 +582,38 @@ mod tests {
             (upload.content_type.as_deref(), upload.data.as_slice()),
             (Some("text/plain"), b"data".as_slice())
         );
+    }
+
+    #[test]
+    fn multipart_requires_completion() {
+        let encoding = Encoding::Multipart {
+            boundary: b"b".to_vec(),
+            charset: Charset::Utf8,
+        };
+        let body = multipart_body(
+            "b",
+            &[
+                ("Content-Disposition: form-data; name=\"text\"", "body"),
+                (
+                    "Content-Disposition: form-data; name=\"attachment\"; filename=\"a.txt\"",
+                    "upload",
+                ),
+            ],
+        );
+        let closing = body.windows(7).position(|w| w == b"\r\n--b--").unwrap() + 7;
+        for cut in 0..closing {
+            assert_eq!(
+                parse(&encoding, &body[..cut], LIMITS),
+                Err(FormError::BadRequest),
+                "cut {cut}"
+            );
+        }
+        for cut in closing..=body.len() {
+            assert!(parse(&encoding, &body[..cut], LIMITS).is_ok(), "cut {cut}");
+        }
+        let mut epilogue = body;
+        epilogue.extend_from_slice(b"epilogue");
+        assert!(parse(&encoding, &epilogue, LIMITS).is_ok());
     }
 
     #[test]

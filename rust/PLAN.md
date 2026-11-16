@@ -273,11 +273,12 @@ the contract. Each step names its Python source.
      a non-file field value `> max_body_bytes` → 413.
    - Malformed multipart: no boundary parameter, a part without
      `Content-Disposition` `name`, or a framing error python-multipart detects
-     → 400. A body that **ends inside a part** (missing final boundary,
-     truncated trailing part) is not an error in Python: the completed parts
-     are kept, the unfinished part is dropped, and the request continues
-     (measured: 200 when the completed parts form a valid message). Rust keeps
-     that behaviour; `form_decoding.json` cuts a two-part body at every byte.
+     → 400. A body that **ends before the complete final boundary** is also
+     refused with 400 (`malformed form`), even if completed earlier parts
+     could form a message. Python requires the public parser's `on_end`
+     signal and closes completed and in-progress upload spools on refusal.
+     Rust requires the same final delimiter; valid epilogues remain accepted.
+     `form_decoding.json` cuts a two-part body at every byte.
    - Multipart framing as python-multipart 0.0.31 does it (S3b,
      `src/form.rs`, pinned by `form_decoding.json`): leading CR and LF bytes
      are skipped (python-multipart skips from a leading CR or LF to the next

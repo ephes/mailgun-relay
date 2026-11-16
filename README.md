@@ -348,3 +348,12 @@ per-record cap; newest overflow/oversize records drop. Shutdown drains for at
 most one second after requests finish, so a stalled sink may lose records,
 including startup. Health and delivery never wait for stdout. See
 [architecture](docs/architecture.md) for ownership and drain details.
+
+## Multipart completion
+
+Both runtimes require the multipart parser to reach the complete closing
+boundary before accepting a send request. Truncated fields, uploads or closing
+boundaries return HTTP 400 with `{"message":"malformed form"}`, without SMTP
+submission. Python closes all already-spooled uploads, including an unfinished
+last upload. Complete multipart bodies with epilogues remain supported. HTTP
+Content-Length completeness alone does not establish MIME completeness.

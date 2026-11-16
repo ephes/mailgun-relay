@@ -328,3 +328,12 @@ provide durable exactly-once delivery. This differs from a consumed final 250:
 a subsequent QUIT failure still returns success. A full-binary loopback test
 records one DATA per explicit HTTP request, reuses admission after a lost ACK,
 and observes an idle restart without replay.
+
+## Multipart completion
+
+Both runtimes require the multipart parser to reach the complete closing
+boundary before accepting a send request. Truncated fields, uploads or closing
+boundaries return HTTP 400 with `{"message":"malformed form"}`, without SMTP
+submission. Python closes all already-spooled uploads, including an unfinished
+last upload. Complete multipart bodies with epilogues remain supported. HTTP
+Content-Length completeness alone does not establish MIME completeness.

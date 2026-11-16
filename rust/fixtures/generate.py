@@ -2030,8 +2030,7 @@ def _form_cases() -> list[tuple[str, bytes | None, bytes, dict[str, int]]]:
     )
     mp("empty part data", _multipart([(_disposition("text"), "")]))
     mp("binary part data", _multipart([(_disposition("text"), b"\x00\x01\r\n\r")]))
-    # A body cut at every position (PLAN.md 2.3 step 3): the completed parts
-    # are the form.
+    # A body cut at every position: only a complete closing boundary admits the form.
     whole = _multipart(
         [
             (_disposition("from"), "a@b.de"),
@@ -2295,7 +2294,7 @@ async def _starlette_form(
     scope = {"type": "http", "method": "POST", "path": "/", "headers": headers, "app": None}
     request = Request(scope, receive)
     try:
-        form = await request.form(**limits)
+        form = await routes._read_form(request, **limits)
     except Exception as exc:  # mirrors routes.py
         detail = getattr(exc, "detail", "") or str(exc)
         too_large = any(marker in detail for marker in routes._MULTIPART_LIMIT_MARKERS)
@@ -2404,7 +2403,8 @@ def build_form_decoding() -> dict[str, Any]:
         cases.append(case)
     return {
         "source": (
-            "starlette Request.form (FormParser, MultiPartParser over python-multipart) as "
+            "relay completion-checked Starlette form "
+            "(FormParser, MultiPartParser over python-multipart) as "
             "mailgun_relay.routes.post_messages calls it, the body delivered in one piece and "
             "in several chunkings; python: the one-piece result; bytes as their latin-1 decoding"
         ),

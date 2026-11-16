@@ -942,9 +942,16 @@ def body_cases() -> list[Case]:
         return Request(headers=headers, body=body, **request)
 
     truncated = good[: good.rindex(b"--b0und4ry--")]
-    # A trailing field after the message fields: cut inside it, the
-    # completed parts form a valid message (PLAN.md 2.3 step 3).
+    # A trailing field after the message fields must still be complete.
     trailing = multipart([*minimal(), ("h:X-Trailer", "t" * 30)], boundary="b0und4ry")[1]
+    uploads = multipart(
+        minimal(),
+        files=[
+            ("attachment", "first.txt", "text/plain", b"complete"),
+            ("attachment", "second.txt", "text/plain", b"synthetic upload"),
+        ],
+        boundary="b0und4ry",
+    )[1]
     form_ct, form_body = urlencoded(minimal())
     latin = multipart(minimal(text="Gr\xfc\xdfe"), boundary="b0und4ry")[1]
     cases = [
@@ -971,13 +978,24 @@ def body_cases() -> list[Case]:
             raw('multipart/form-data; boundary="b0und4ry"', good),
             200,
         ),
-        # The text part is never closed, so it is dropped: no body (400).
+        # Incomplete MIME is refused even when earlier parts could form a message.
         Case("body multipart no final boundary", raw(content_type, truncated), 400),
         Case("body multipart cut inside the text", raw(content_type, good[:-40]), 400),
-        Case("body multipart cut inside a trailing field", raw(content_type, trailing[:-30]), 200),
+        Case("body multipart cut inside a trailing field", raw(content_type, trailing[:-30]), 400),
         Case(
             "body multipart trailing field without final boundary",
             raw(content_type, trailing[: trailing.rindex(b"--b0und4ry--")]),
+            400,
+        ),
+        Case(
+            "body multipart cut inside final upload",
+            raw(content_type, uploads[: uploads.index(b"synthetic upload") + 5]),
+            400,
+        ),
+        Case("body multipart cut closing delimiter", raw(content_type, uploads[:-3]), 400),
+        Case(
+            "body multipart complete uploads and epilogue",
+            raw(content_type, uploads + b"epilogue"),
             200,
         ),
         Case("body multipart crlf preamble", raw(content_type, b"\r\n\r\n" + good), 200),
