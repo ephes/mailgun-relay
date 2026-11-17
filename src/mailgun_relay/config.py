@@ -81,6 +81,7 @@ class Settings(BaseSettings):
     smtp_port: int = Field(default=587, ge=1, le=65535)
     smtp_starttls: bool = True
     smtp_timeout_s: float = Field(default=30.0, gt=0, le=1e9, allow_inf_nan=False)
+    smtp_session_timeout_s: float = Field(default=120.0, gt=0, le=1e9, allow_inf_nan=False)
     # Optional CA bundle for verifying the SMTP server certificate. Empty means
     # "use the system trust store"; certificate verification is never disabled.
     smtp_ca_file: str = ""

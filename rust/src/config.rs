@@ -329,6 +329,7 @@ mod tests {
             "bind_host": s.bind_host, "bind_port": s.bind_port, "public_host": s.public_host,
             "secrets_path": s.secrets_path, "smtp_host": s.smtp_host, "smtp_port": s.smtp_port,
             "smtp_starttls": s.smtp_starttls, "smtp_timeout_s": s.smtp_timeout_s,
+            "smtp_session_timeout_s": s.smtp_session_timeout_s,
             "smtp_ca_file": s.smtp_ca_file, "smtp_max_concurrency": s.smtp_max_concurrency,
             "envelope_sender": s.envelope_sender,
             "fail_on_partial_refusal": s.fail_on_partial_refusal,

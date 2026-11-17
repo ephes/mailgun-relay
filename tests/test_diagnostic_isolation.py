@@ -113,7 +113,7 @@ def test_upload_close_failure_preserves_outcome_and_attempts_every_upload(
         service_logger().addHandler(handler)
     try:
         with (
-            patch("smtplib.SMTP", new=mock),
+            patch("mailgun_relay.smtp_client._SessionSMTP", new=mock),
             TestClient(create_app(app_state=diagnostic_state)) as client,
         ):
             response = client.post(
@@ -196,7 +196,7 @@ def test_raising_diagnostic_handler_preserves_outcome_and_releases_capacity(
         log.addHandler(handler)
     try:
         with (
-            patch("smtplib.SMTP", new=mock),
+            patch("mailgun_relay.smtp_client._SessionSMTP", new=mock),
             TestClient(create_app(app_state=diagnostic_state)) as client,
         ):
             for number in range(2):
@@ -237,7 +237,7 @@ def test_unavailable_fallback_preserves_accepted_send(
     log.addHandler(handler)
     try:
         with (
-            patch("smtplib.SMTP", new=mock),
+            patch("mailgun_relay.smtp_client._SessionSMTP", new=mock),
             TestClient(create_app(app_state=diagnostic_state)) as client,
         ):
             response = client.post(

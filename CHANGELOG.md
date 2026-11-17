@@ -28,6 +28,12 @@ All notable changes to mailgun-relay are documented here.
 
 ### Fixed
 
+- Apply the validated 120-second default SMTP session budget to Python rollback
+  TCP attempts, greeting, TLS, AUTH and DATA outcomes. Interrupt only the owned
+  connection, bound QUIT separately and retain confirmed acceptance on cleanup
+  failure. Refuse late libc DNS results without abandoning admission; document
+  uncertain DATA outcomes and deliberate retry duplicate risk.
+
 - Move Python rollback form interpretation and MIME assembly off the ASGI event
   loop into the bounded AnyIO worker pool. Keep admission and form ownership
   until worker completion and cancellation-safe cleanup.

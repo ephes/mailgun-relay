@@ -227,9 +227,9 @@ def register_routes(app: FastAPI) -> None:
                 recipient_count = len(envelope_recipients)
 
                 submitter = state.smtp_submit or submit
-                # The submitter is blocking smtplib I/O (up to smtp_timeout_s per
-                # SMTP step). Run it in a worker thread so a slow or unreachable
-                # backend cannot stall the event loop, /health, or other requests.
+                # The submitter is blocking smtplib I/O, bounded by socket
+                # inactivity and the total SMTP outcome budget. Run it in a worker
+                # thread so a slow backend cannot stall /health or other requests.
                 # Admission already reserves capacity; this worker limiter cannot
                 # accumulate an unbounded request queue. A client disconnect does
                 # not abandon a submission already handed to the thread.

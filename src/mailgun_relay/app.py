@@ -88,6 +88,7 @@ def _app_state_from_settings(settings: Settings) -> AppState:
         password=secrets.smtp.password,
         use_starttls=settings.smtp_starttls,
         timeout_s=settings.smtp_timeout_s,
+        session_timeout_s=settings.smtp_session_timeout_s,
         ca_file=settings.smtp_ca_file or None,
     )
     return AppState(settings=settings, secrets=secrets, transport=transport)

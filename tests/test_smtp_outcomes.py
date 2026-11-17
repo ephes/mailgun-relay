@@ -32,7 +32,7 @@ def test_refusal_codes_through_submit_and_endpoint(
     mock, instance = _make_ok_mock_smtp()
     instance.send_message.side_effect = error
     category = FailureCategory.TEMPORARY if code < 500 else FailureCategory.PERMANENT
-    with patch("smtplib.SMTP", new=mock):
+    with patch("mailgun_relay.smtp_client._SessionSMTP", new=mock):
         with pytest.raises(SmtpSubmitError) as caught:
             submit(
                 _msg(), envelope_sender="x@x", recipients=["y@y"], transport=_plain_transport(25)
@@ -52,7 +52,10 @@ def test_all_refused_classifies_every_reply(codes: list[int], temporary: bool) -
     instance.send_message.side_effect = smtplib.SMTPRecipientsRefused(
         {f"user{i}@x.test": (code, b"no") for i, code in enumerate(codes)}
     )
-    with patch("smtplib.SMTP", new=mock), pytest.raises(SmtpSubmitError) as caught:
+    with (
+        patch("mailgun_relay.smtp_client._SessionSMTP", new=mock),
+        pytest.raises(SmtpSubmitError) as caught,
+    ):
         submit(_msg(), envelope_sender="x@x", recipients=["y@y"], transport=_plain_transport(25))
     assert caught.value.category == (
         FailureCategory.TEMPORARY if temporary else FailureCategory.PERMANENT
@@ -89,7 +92,7 @@ def test_quit_failure_preserves_endpoint_outcome(
         app_state,
         settings=app_state.settings.model_copy(update={"fail_on_partial_refusal": strict}),
     )
-    with patch("smtplib.SMTP", new=mock):
+    with patch("mailgun_relay.smtp_client._SessionSMTP", new=mock):
         response = _post(state, homepage_token)
     assert response.status_code == (502 if strict and refused else 200)
     if response.status_code == 200:
@@ -111,7 +114,7 @@ def test_data_failure_is_not_hidden_by_quit_failure(
     instance.send_message.side_effect = smtplib.SMTPDataError(451, b"private DATA reply")
     instance.__exit__.side_effect = smtplib.SMTPResponseException(500, b"private cleanup reply")
     instance.quit.side_effect = instance.__exit__.side_effect
-    with patch("smtplib.SMTP", new=mock):
+    with patch("mailgun_relay.smtp_client._SessionSMTP", new=mock):
         response = _post(app_state, homepage_token)
     assert response.status_code == 503
     assert "id" not in response.json()
@@ -137,7 +140,10 @@ def test_already_closed_send_failure_does_not_warn_about_cleanup(
         raise error
 
     instance.send_message.side_effect = fail_send
-    with patch("smtplib.SMTP", new=mock), pytest.raises(SmtpSubmitError) as caught:
+    with (
+        patch("mailgun_relay.smtp_client._SessionSMTP", new=mock),
+        pytest.raises(SmtpSubmitError) as caught,
+    ):
         submit(_msg(), envelope_sender="x@x", recipients=["y@y"], transport=_plain_transport(25))
     assert caught.value.category == FailureCategory.TEMPORARY
     instance.quit.assert_not_called()
@@ -154,7 +160,7 @@ def test_cleanup_reply_and_close_errors_preserve_acceptance(
         instance.quit.return_value = (500, b"private reply")
     else:
         instance.close.side_effect = OSError("private close detail")
-    with patch("smtplib.SMTP", new=mock):
+    with patch("mailgun_relay.smtp_client._SessionSMTP", new=mock):
         assert (
             submit(
                 _msg(), envelope_sender="x@x", recipients=["y@y"], transport=_plain_transport(25)
@@ -189,7 +195,10 @@ def test_supervisor_exceptions_propagate_after_owned_cleanup(phase: str, kind: s
     transport = replace(
         _plain_transport(25), use_starttls=True, username="synthetic", password="synthetic"
     )
-    with patch("smtplib.SMTP", new=mock), pytest.raises(type(error)) as caught:
+    with (
+        patch("mailgun_relay.smtp_client._SessionSMTP", new=mock),
+        pytest.raises(type(error)) as caught,
+    ):
         submit(_msg(), envelope_sender="x@x", recipients=["y@y"], transport=transport)
     assert caught.value is error
     if phase == "construct":

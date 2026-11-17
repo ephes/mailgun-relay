@@ -150,7 +150,17 @@ finite or outside `(0, 1e9]` seconds. Body and recipient limits must be positive
 attachment count/size and header length limits must be nonnegative. Zero
 attachments disables uploads; a zero attachment byte limit permits only empty
 files, and a zero header length permits only empty subject/header values.
-Defaults remain unchanged. Rust retains its separately documented parser bounds.
+Python rollback uses `MAILGUN_RELAY_SMTP_SESSION_TIMEOUT_S` (default 120 s,
+with the same finite `(0, 1e9]` validation) for the complete SMTP outcome,
+including TCP attempts, banner, TLS, AUTH and recipients/DATA. QUIT gets a separate
+`min(SMTP_TIMEOUT_S, 5 seconds)` budget; cleanup failure preserves confirmed DATA
+acceptance. An expired or missing final DATA result is HTTP 503 with uncertain
+delivery: inspect the upstream outcome before a deliberate retry, which may
+otherwise duplicate mail. The service never automatically replays a send.
+Socket shutdown cannot interrupt Python's libc DNS calls; their elapsed time
+is charged, late results are refused and admission stays occupied until they
+return. See [the deadline contract](docs/security.md#rust-acquisition-deadlines).
+Rust retains its separately documented parser bounds.
 Token policy and SMTP credentials
 load from the YAML file at `MAILGUN_RELAY_SECRETS_PATH`.
 
