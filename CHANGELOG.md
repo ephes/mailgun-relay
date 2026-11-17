@@ -28,6 +28,10 @@ All notable changes to mailgun-relay are documented here.
 
 ### Fixed
 
+- Move Python rollback form interpretation and MIME assembly off the ASGI event
+  loop into the bounded AnyIO worker pool. Keep admission and form ownership
+  until worker completion and cancellation-safe cleanup.
+
 - Preserve Python SMTP supervisor/control-flow exceptions through setup, send
   and cleanup while closing owned sessions; only operational exceptions become
   submission failures.

@@ -93,8 +93,10 @@ wrong-host and untrusted certificates, plus a peer omitting STARTTLS. These test
 reuse the parity server and require `openssl` on PATH; no SMTP account or host
 trust-store changes are needed. Failed TLS sends no AUTH, MAIL or DATA.
 The AUTH regression injects rejection at login and checks the complete call order.
-The AnyIO cancellation test holds admission until the running SMTP worker and
-form cleanup finish, while health remains responsive. Attachment spools close
+Admitted form interpretation, upload reads, address validation and MIME assembly
+run in the same bounded AnyIO worker pool as SMTP. Cancellation holds admission
+and form ownership until the active worker and form cleanup finish, while health
+remains responsive. Cancellation before submission does not start SMTP. Attachment spools close
 when parsing reads their bytes into an attachment, before MIME construction;
 cancellation cannot resubmit the message.
 These checks cover the retained Python source, not a deployed rollback runtime.

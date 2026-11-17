@@ -81,6 +81,10 @@ Callers may retry this overload response with backoff: no SMTP send was attempte
 Do not blindly retry a disconnected or timed-out accepted request, whose delivery
 may already have occurred.
 
+Python rollback form interpretation, upload reads and MIME construction run in a
+bounded AnyIO worker after admission. Cancellation waits for that worker before
+form cleanup and admission release; errors keep their existing HTTP mapping.
+
 In the Python rollback implementation, every successfully parsed multipart form
 is cleaned up after validation, MIME construction and submission, including error
 paths. Every uploaded temporary file gets an independent close attempt, even

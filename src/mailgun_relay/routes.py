@@ -8,6 +8,7 @@ import time
 import uuid
 from collections.abc import AsyncGenerator
 from dataclasses import dataclass
+from email.message import EmailMessage
 from typing import Any
 
 import anyio.to_thread
@@ -170,48 +171,59 @@ def register_routes(app: FastAPI) -> None:
                 raise BadRequestError("malformed form") from exc
 
             try:
-                parsed = _parse_form(form, state.settings)
-                # Cap the logged (attacker-controlled, pre-validation) value so a
-                # huge `from` cannot bloat each log line. JSON encoding already
-                # neutralizes control chars, so truncation is the only gap left.
-                from_for_log = parsed.from_address[:_FROM_LOG_MAX_LEN]
 
-                enforce_policy(
-                    policy,
-                    path_domain=domain,
-                    from_address=parsed.from_address,
-                )
+                def prepare() -> tuple[EmailMessage, str, list[str]]:
+                    nonlocal from_for_log
+                    parsed = _parse_form(form, state.settings)
+                    # Cap the logged (attacker-controlled, pre-validation) value so a
+                    # huge `from` cannot bloat each log line. JSON encoding already
+                    # neutralizes control chars, so truncation is the only gap left.
+                    from_for_log = parsed.from_address[:_FROM_LOG_MAX_LEN]
 
-                payload = MessageInput(
-                    from_address=parsed.from_address,
-                    to=parsed.to,
-                    cc=parsed.cc,
-                    bcc=parsed.bcc,
-                    subject=validate_subject(
-                        parsed.subject,
-                        max_length=state.settings.max_header_value_length,
-                    ),
-                    text=parsed.text,
-                    html=parsed.html,
-                    amp_html=parsed.amp_html,
-                    custom_headers=validate_custom_headers(
-                        parsed.custom_headers,
-                        max_value_length=state.settings.max_header_value_length,
-                    ),
-                    attachments=parsed.attachments,
-                    inline=parsed.inline,
-                    public_host=state.settings.public_host,
-                )
-
-                envelope_count = len(parsed.to) + len(parsed.cc) + len(parsed.bcc)
-                if envelope_count == 0:
-                    raise BadRequestError("at least one of to/cc/bcc is required")
-                if envelope_count > state.settings.max_recipients:
-                    raise PayloadTooLargeError(
-                        f"too many recipients (max {state.settings.max_recipients})"
+                    enforce_policy(
+                        policy,
+                        path_domain=domain,
+                        from_address=parsed.from_address,
                     )
 
-                msg, message_id, envelope_recipients = build_message(payload)
+                    payload = MessageInput(
+                        from_address=parsed.from_address,
+                        to=parsed.to,
+                        cc=parsed.cc,
+                        bcc=parsed.bcc,
+                        subject=validate_subject(
+                            parsed.subject,
+                            max_length=state.settings.max_header_value_length,
+                        ),
+                        text=parsed.text,
+                        html=parsed.html,
+                        amp_html=parsed.amp_html,
+                        custom_headers=validate_custom_headers(
+                            parsed.custom_headers,
+                            max_value_length=state.settings.max_header_value_length,
+                        ),
+                        attachments=parsed.attachments,
+                        inline=parsed.inline,
+                        public_host=state.settings.public_host,
+                    )
+
+                    envelope_count = len(parsed.to) + len(parsed.cc) + len(parsed.bcc)
+                    if envelope_count == 0:
+                        raise BadRequestError("at least one of to/cc/bcc is required")
+                    if envelope_count > state.settings.max_recipients:
+                        raise PayloadTooLargeError(
+                            f"too many recipients (max {state.settings.max_recipients})"
+                        )
+
+                    return build_message(payload)
+
+                # Parsing spools, validating addresses and assembling MIME are
+                # synchronous work too. Keep admission and form ownership until
+                # the non-abandoned worker actually finishes, even on cancellation.
+                msg, message_id, envelope_recipients = await anyio.to_thread.run_sync(
+                    prepare, limiter=_smtp_limiter(state)
+                )
+                await anyio.lowlevel.checkpoint()
                 recipient_count = len(envelope_recipients)
 
                 submitter = state.smtp_submit or submit
