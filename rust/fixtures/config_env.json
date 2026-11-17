@@ -19,10 +19,121 @@
     "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
     "smtp_max_concurrency": 8,
     "smtp_port": 587,
+    "smtp_session_timeout_s": 120.0,
     "smtp_starttls": true,
     "smtp_timeout_s": 30.0
    },
    "name": "defaults"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_SMTP_SESSION_TIMEOUT_S",
+     "0.25"
+    ]
+   ],
+   "expected": {
+    "bind_host": "127.0.0.1",
+    "bind_port": 8085,
+    "envelope_sender": "",
+    "fail_on_partial_refusal": false,
+    "log_level": "INFO",
+    "max_attachment_bytes": 10485760,
+    "max_attachments": 10,
+    "max_body_bytes": 26214400,
+    "max_header_value_length": 998,
+    "max_recipients": 100,
+    "public_host": "mailgun.home.xn--wersdrfer-47a.de",
+    "secrets_path": "/etc/mailgun-relay/secrets.yml",
+    "smtp_ca_file": "",
+    "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
+    "smtp_max_concurrency": 8,
+    "smtp_port": 587,
+    "smtp_session_timeout_s": 0.25,
+    "smtp_starttls": true,
+    "smtp_timeout_s": 30.0
+   },
+   "name": "SMTP session budget '0.25'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_SMTP_SESSION_TIMEOUT_S",
+     "120"
+    ]
+   ],
+   "expected": {
+    "bind_host": "127.0.0.1",
+    "bind_port": 8085,
+    "envelope_sender": "",
+    "fail_on_partial_refusal": false,
+    "log_level": "INFO",
+    "max_attachment_bytes": 10485760,
+    "max_attachments": 10,
+    "max_body_bytes": 26214400,
+    "max_header_value_length": 998,
+    "max_recipients": 100,
+    "public_host": "mailgun.home.xn--wersdrfer-47a.de",
+    "secrets_path": "/etc/mailgun-relay/secrets.yml",
+    "smtp_ca_file": "",
+    "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
+    "smtp_max_concurrency": 8,
+    "smtp_port": 587,
+    "smtp_session_timeout_s": 120.0,
+    "smtp_starttls": true,
+    "smtp_timeout_s": 30.0
+   },
+   "name": "SMTP session budget '120'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_SMTP_SESSION_TIMEOUT_S",
+     "0"
+    ]
+   ],
+   "expected": null,
+   "name": "SMTP session budget '0'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_SMTP_SESSION_TIMEOUT_S",
+     "-1"
+    ]
+   ],
+   "expected": null,
+   "name": "SMTP session budget '-1'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_SMTP_SESSION_TIMEOUT_S",
+     "nan"
+    ]
+   ],
+   "expected": null,
+   "name": "SMTP session budget 'nan'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_SMTP_SESSION_TIMEOUT_S",
+     "inf"
+    ]
+   ],
+   "expected": null,
+   "name": "SMTP session budget 'inf'"
+  },
+  {
+   "env": [
+    [
+     "MAILGUN_RELAY_SMTP_SESSION_TIMEOUT_S",
+     "1000000001"
+    ]
+   ],
+   "expected": null,
+   "name": "SMTP session budget '1000000001'"
   },
   {
    "env": [
@@ -108,6 +219,7 @@
     "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
     "smtp_max_concurrency": 8,
     "smtp_port": 587,
+    "smtp_session_timeout_s": 120.0,
     "smtp_starttls": true,
     "smtp_timeout_s": 30.0
    },
@@ -137,6 +249,7 @@
     "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
     "smtp_max_concurrency": 8,
     "smtp_port": 587,
+    "smtp_session_timeout_s": 120.0,
     "smtp_starttls": true,
     "smtp_timeout_s": 30.0
    },
@@ -170,6 +283,7 @@
     "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
     "smtp_max_concurrency": 8,
     "smtp_port": 587,
+    "smtp_session_timeout_s": 120.0,
     "smtp_starttls": true,
     "smtp_timeout_s": 30.0
    },
@@ -199,6 +313,7 @@
     "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
     "smtp_max_concurrency": 8,
     "smtp_port": 587,
+    "smtp_session_timeout_s": 120.0,
     "smtp_starttls": true,
     "smtp_timeout_s": 30.0
    },
@@ -240,6 +355,7 @@
     "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
     "smtp_max_concurrency": 8,
     "smtp_port": 587,
+    "smtp_session_timeout_s": 120.0,
     "smtp_starttls": true,
     "smtp_timeout_s": 30.0
    },
@@ -269,6 +385,7 @@
     "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
     "smtp_max_concurrency": 8,
     "smtp_port": 587,
+    "smtp_session_timeout_s": 120.0,
     "smtp_starttls": true,
     "smtp_timeout_s": 30.0
    },
@@ -298,6 +415,7 @@
     "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
     "smtp_max_concurrency": 8,
     "smtp_port": 587,
+    "smtp_session_timeout_s": 120.0,
     "smtp_starttls": true,
     "smtp_timeout_s": 30.0
    },
@@ -327,6 +445,7 @@
     "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
     "smtp_max_concurrency": 8,
     "smtp_port": 587,
+    "smtp_session_timeout_s": 120.0,
     "smtp_starttls": true,
     "smtp_timeout_s": 30.0
    },
@@ -356,6 +475,7 @@
     "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
     "smtp_max_concurrency": 8,
     "smtp_port": 587,
+    "smtp_session_timeout_s": 120.0,
     "smtp_starttls": true,
     "smtp_timeout_s": 30.0
    },
@@ -385,6 +505,7 @@
     "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
     "smtp_max_concurrency": 8,
     "smtp_port": 587,
+    "smtp_session_timeout_s": 120.0,
     "smtp_starttls": true,
     "smtp_timeout_s": 30.0
    },
@@ -414,6 +535,7 @@
     "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
     "smtp_max_concurrency": 8,
     "smtp_port": 587,
+    "smtp_session_timeout_s": 120.0,
     "smtp_starttls": true,
     "smtp_timeout_s": 30.0
    },
@@ -443,6 +565,7 @@
     "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
     "smtp_max_concurrency": 8,
     "smtp_port": 587,
+    "smtp_session_timeout_s": 120.0,
     "smtp_starttls": false,
     "smtp_timeout_s": 30.0
    },
@@ -472,6 +595,7 @@
     "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
     "smtp_max_concurrency": 8,
     "smtp_port": 587,
+    "smtp_session_timeout_s": 120.0,
     "smtp_starttls": false,
     "smtp_timeout_s": 30.0
    },
@@ -501,6 +625,7 @@
     "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
     "smtp_max_concurrency": 8,
     "smtp_port": 587,
+    "smtp_session_timeout_s": 120.0,
     "smtp_starttls": false,
     "smtp_timeout_s": 30.0
    },
@@ -530,6 +655,7 @@
     "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
     "smtp_max_concurrency": 8,
     "smtp_port": 587,
+    "smtp_session_timeout_s": 120.0,
     "smtp_starttls": false,
     "smtp_timeout_s": 30.0
    },
@@ -559,6 +685,7 @@
     "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
     "smtp_max_concurrency": 8,
     "smtp_port": 587,
+    "smtp_session_timeout_s": 120.0,
     "smtp_starttls": false,
     "smtp_timeout_s": 30.0
    },
@@ -588,6 +715,7 @@
     "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
     "smtp_max_concurrency": 8,
     "smtp_port": 587,
+    "smtp_session_timeout_s": 120.0,
     "smtp_starttls": false,
     "smtp_timeout_s": 30.0
    },
@@ -617,6 +745,7 @@
     "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
     "smtp_max_concurrency": 8,
     "smtp_port": 587,
+    "smtp_session_timeout_s": 120.0,
     "smtp_starttls": true,
     "smtp_timeout_s": 30.0
    },
@@ -646,6 +775,7 @@
     "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
     "smtp_max_concurrency": 8,
     "smtp_port": 587,
+    "smtp_session_timeout_s": 120.0,
     "smtp_starttls": true,
     "smtp_timeout_s": 30.0
    },
@@ -675,6 +805,7 @@
     "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
     "smtp_max_concurrency": 8,
     "smtp_port": 587,
+    "smtp_session_timeout_s": 120.0,
     "smtp_starttls": true,
     "smtp_timeout_s": 30.0
    },
@@ -704,6 +835,7 @@
     "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
     "smtp_max_concurrency": 8,
     "smtp_port": 587,
+    "smtp_session_timeout_s": 120.0,
     "smtp_starttls": false,
     "smtp_timeout_s": 30.0
    },
@@ -793,6 +925,7 @@
     "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
     "smtp_max_concurrency": 8,
     "smtp_port": 587,
+    "smtp_session_timeout_s": 120.0,
     "smtp_starttls": true,
     "smtp_timeout_s": 30.0
    },
@@ -822,6 +955,7 @@
     "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
     "smtp_max_concurrency": 8,
     "smtp_port": 587,
+    "smtp_session_timeout_s": 120.0,
     "smtp_starttls": true,
     "smtp_timeout_s": 30.0
    },
@@ -861,6 +995,7 @@
     "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
     "smtp_max_concurrency": 8,
     "smtp_port": 587,
+    "smtp_session_timeout_s": 120.0,
     "smtp_starttls": true,
     "smtp_timeout_s": 30.0
    },
@@ -890,6 +1025,7 @@
     "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
     "smtp_max_concurrency": 8,
     "smtp_port": 587,
+    "smtp_session_timeout_s": 120.0,
     "smtp_starttls": true,
     "smtp_timeout_s": 30.0
    },
@@ -919,6 +1055,7 @@
     "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
     "smtp_max_concurrency": 8,
     "smtp_port": 587,
+    "smtp_session_timeout_s": 120.0,
     "smtp_starttls": true,
     "smtp_timeout_s": 30.0
    },
@@ -948,6 +1085,7 @@
     "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
     "smtp_max_concurrency": 8,
     "smtp_port": 587,
+    "smtp_session_timeout_s": 120.0,
     "smtp_starttls": true,
     "smtp_timeout_s": 30.0
    },
@@ -978,6 +1116,7 @@
     "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
     "smtp_max_concurrency": 8,
     "smtp_port": 587,
+    "smtp_session_timeout_s": 120.0,
     "smtp_starttls": true,
     "smtp_timeout_s": 30.0
    },
@@ -1009,6 +1148,7 @@
     "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
     "smtp_max_concurrency": 8,
     "smtp_port": 587,
+    "smtp_session_timeout_s": 120.0,
     "smtp_starttls": true,
     "smtp_timeout_s": 30.0
    },
@@ -1039,6 +1179,7 @@
     "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
     "smtp_max_concurrency": 8,
     "smtp_port": 587,
+    "smtp_session_timeout_s": 120.0,
     "smtp_starttls": true,
     "smtp_timeout_s": 30.0
    },
@@ -1068,6 +1209,7 @@
     "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
     "smtp_max_concurrency": 8,
     "smtp_port": 587,
+    "smtp_session_timeout_s": 120.0,
     "smtp_starttls": true,
     "smtp_timeout_s": 30.0
    },
@@ -1097,6 +1239,7 @@
     "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
     "smtp_max_concurrency": 8,
     "smtp_port": 587,
+    "smtp_session_timeout_s": 120.0,
     "smtp_starttls": true,
     "smtp_timeout_s": 30.0
    },
@@ -1126,6 +1269,7 @@
     "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
     "smtp_max_concurrency": 8,
     "smtp_port": 587,
+    "smtp_session_timeout_s": 120.0,
     "smtp_starttls": true,
     "smtp_timeout_s": 30.0
    },
@@ -1155,6 +1299,7 @@
     "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
     "smtp_max_concurrency": 8,
     "smtp_port": 587,
+    "smtp_session_timeout_s": 120.0,
     "smtp_starttls": true,
     "smtp_timeout_s": 30.0
    },
@@ -1185,6 +1330,7 @@
     "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
     "smtp_max_concurrency": 8,
     "smtp_port": 587,
+    "smtp_session_timeout_s": 120.0,
     "smtp_starttls": true,
     "smtp_timeout_s": 30.0
    },
@@ -1215,6 +1361,7 @@
     "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
     "smtp_max_concurrency": 8,
     "smtp_port": 587,
+    "smtp_session_timeout_s": 120.0,
     "smtp_starttls": true,
     "smtp_timeout_s": 30.0
    },
@@ -1374,6 +1521,7 @@
     "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
     "smtp_max_concurrency": 8,
     "smtp_port": 587,
+    "smtp_session_timeout_s": 120.0,
     "smtp_starttls": true,
     "smtp_timeout_s": 30.0
    },
@@ -1413,6 +1561,7 @@
     "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
     "smtp_max_concurrency": 8,
     "smtp_port": 587,
+    "smtp_session_timeout_s": 120.0,
     "smtp_starttls": true,
     "smtp_timeout_s": 30.0
    },
@@ -1442,6 +1591,7 @@
     "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
     "smtp_max_concurrency": 8,
     "smtp_port": 587,
+    "smtp_session_timeout_s": 120.0,
     "smtp_starttls": true,
     "smtp_timeout_s": 30.0
    },
@@ -1472,6 +1622,7 @@
     "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
     "smtp_max_concurrency": 8,
     "smtp_port": 587,
+    "smtp_session_timeout_s": 120.0,
     "smtp_starttls": true,
     "smtp_timeout_s": 30.0
    },
@@ -1527,6 +1678,7 @@
     "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
     "smtp_max_concurrency": 8,
     "smtp_port": 587,
+    "smtp_session_timeout_s": 120.0,
     "smtp_starttls": true,
     "smtp_timeout_s": 30.0
    },
@@ -1557,6 +1709,7 @@
     "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
     "smtp_max_concurrency": 8,
     "smtp_port": 587,
+    "smtp_session_timeout_s": 120.0,
     "smtp_starttls": true,
     "smtp_timeout_s": 30.0
    },
@@ -1587,6 +1740,7 @@
     "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
     "smtp_max_concurrency": 8,
     "smtp_port": 587,
+    "smtp_session_timeout_s": 120.0,
     "smtp_starttls": true,
     "smtp_timeout_s": 30.0
    },
@@ -1617,6 +1771,7 @@
     "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
     "smtp_max_concurrency": 8,
     "smtp_port": 587,
+    "smtp_session_timeout_s": 120.0,
     "smtp_starttls": true,
     "smtp_timeout_s": 30.0
    },
@@ -1646,6 +1801,7 @@
     "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
     "smtp_max_concurrency": 8,
     "smtp_port": 587,
+    "smtp_session_timeout_s": 120.0,
     "smtp_starttls": true,
     "smtp_timeout_s": 30.0
    },
@@ -1675,6 +1831,7 @@
     "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
     "smtp_max_concurrency": 8,
     "smtp_port": 587,
+    "smtp_session_timeout_s": 120.0,
     "smtp_starttls": true,
     "smtp_timeout_s": 30.0
    },
@@ -1704,6 +1861,7 @@
     "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
     "smtp_max_concurrency": 8,
     "smtp_port": 587,
+    "smtp_session_timeout_s": 120.0,
     "smtp_starttls": true,
     "smtp_timeout_s": 30.0
    },
@@ -1744,6 +1902,7 @@
     "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
     "smtp_max_concurrency": 8,
     "smtp_port": 587,
+    "smtp_session_timeout_s": 120.0,
     "smtp_starttls": true,
     "smtp_timeout_s": 30.0
    },
@@ -1774,6 +1933,7 @@
     "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
     "smtp_max_concurrency": 8,
     "smtp_port": 587,
+    "smtp_session_timeout_s": 120.0,
     "smtp_starttls": true,
     "smtp_timeout_s": 30.0
    },
@@ -1833,6 +1993,7 @@
     "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
     "smtp_max_concurrency": 8,
     "smtp_port": 25,
+    "smtp_session_timeout_s": 120.0,
     "smtp_starttls": true,
     "smtp_timeout_s": 30.0
    },
@@ -1862,6 +2023,7 @@
     "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
     "smtp_max_concurrency": 8,
     "smtp_port": 465,
+    "smtp_session_timeout_s": 120.0,
     "smtp_starttls": true,
     "smtp_timeout_s": 30.0
    },
@@ -1892,6 +2054,7 @@
     "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
     "smtp_max_concurrency": 8,
     "smtp_port": 0,
+    "smtp_session_timeout_s": 120.0,
     "smtp_starttls": true,
     "smtp_timeout_s": 30.0
    },
@@ -1922,6 +2085,7 @@
     "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
     "smtp_max_concurrency": 8,
     "smtp_port": 65535,
+    "smtp_session_timeout_s": 120.0,
     "smtp_starttls": true,
     "smtp_timeout_s": 30.0
    },
@@ -1971,6 +2135,7 @@
     "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
     "smtp_max_concurrency": 8,
     "smtp_port": 587,
+    "smtp_session_timeout_s": 120.0,
     "smtp_starttls": true,
     "smtp_timeout_s": 30.0
    },
@@ -2000,6 +2165,7 @@
     "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
     "smtp_max_concurrency": 8,
     "smtp_port": 587,
+    "smtp_session_timeout_s": 120.0,
     "smtp_starttls": true,
     "smtp_timeout_s": 30.0
    },
@@ -2029,6 +2195,7 @@
     "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
     "smtp_max_concurrency": 8,
     "smtp_port": 587,
+    "smtp_session_timeout_s": 120.0,
     "smtp_starttls": true,
     "smtp_timeout_s": 2.5
    },
@@ -2058,6 +2225,7 @@
     "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
     "smtp_max_concurrency": 8,
     "smtp_port": 587,
+    "smtp_session_timeout_s": 120.0,
     "smtp_starttls": true,
     "smtp_timeout_s": 1000.0
    },
@@ -2087,6 +2255,7 @@
     "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
     "smtp_max_concurrency": 8,
     "smtp_port": 587,
+    "smtp_session_timeout_s": 120.0,
     "smtp_starttls": true,
     "smtp_timeout_s": 100.0
    },
@@ -2116,6 +2285,7 @@
     "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
     "smtp_max_concurrency": 8,
     "smtp_port": 587,
+    "smtp_session_timeout_s": 120.0,
     "smtp_starttls": true,
     "smtp_timeout_s": 0.5
    },
@@ -2145,6 +2315,7 @@
     "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
     "smtp_max_concurrency": 8,
     "smtp_port": 587,
+    "smtp_session_timeout_s": 120.0,
     "smtp_starttls": true,
     "smtp_timeout_s": 5.0
    },
@@ -2174,6 +2345,7 @@
     "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
     "smtp_max_concurrency": 8,
     "smtp_port": 587,
+    "smtp_session_timeout_s": 120.0,
     "smtp_starttls": true,
     "smtp_timeout_s": 7.0
    },
@@ -2203,6 +2375,7 @@
     "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
     "smtp_max_concurrency": 8,
     "smtp_port": 587,
+    "smtp_session_timeout_s": 120.0,
     "smtp_starttls": true,
     "smtp_timeout_s": 10.5
    },
@@ -2232,6 +2405,7 @@
     "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
     "smtp_max_concurrency": 8,
     "smtp_port": 587,
+    "smtp_session_timeout_s": 120.0,
     "smtp_starttls": true,
     "smtp_timeout_s": 1.5
    },
@@ -2261,6 +2435,7 @@
     "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
     "smtp_max_concurrency": 8,
     "smtp_port": 587,
+    "smtp_session_timeout_s": 120.0,
     "smtp_starttls": true,
     "smtp_timeout_s": 10.0
    },
@@ -2291,6 +2466,7 @@
     "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
     "smtp_max_concurrency": 8,
     "smtp_port": 587,
+    "smtp_session_timeout_s": 120.0,
     "smtp_starttls": true,
     "smtp_timeout_s": 0.0
    },
@@ -2322,6 +2498,7 @@
     "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
     "smtp_max_concurrency": 8,
     "smtp_port": 587,
+    "smtp_session_timeout_s": 120.0,
     "smtp_starttls": true,
     "smtp_timeout_s": -0.0
    },
@@ -2353,6 +2530,7 @@
     "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
     "smtp_max_concurrency": 8,
     "smtp_port": 587,
+    "smtp_session_timeout_s": 120.0,
     "smtp_starttls": true,
     "smtp_timeout_s": 0.0
    },
@@ -2503,6 +2681,7 @@
     "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
     "smtp_max_concurrency": 8,
     "smtp_port": 587,
+    "smtp_session_timeout_s": 120.0,
     "smtp_starttls": true,
     "smtp_timeout_s": 1000000000.0
    },
@@ -2552,6 +2731,7 @@
     "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
     "smtp_max_concurrency": 1,
     "smtp_port": 587,
+    "smtp_session_timeout_s": 120.0,
     "smtp_starttls": true,
     "smtp_timeout_s": 30.0
    },
@@ -2601,6 +2781,7 @@
     "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
     "smtp_max_concurrency": 64,
     "smtp_port": 587,
+    "smtp_session_timeout_s": 120.0,
     "smtp_starttls": true,
     "smtp_timeout_s": 30.0
    },
@@ -2630,6 +2811,7 @@
     "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
     "smtp_max_concurrency": 4294967295,
     "smtp_port": 587,
+    "smtp_session_timeout_s": 120.0,
     "smtp_starttls": true,
     "smtp_timeout_s": 30.0
    },
@@ -2671,6 +2853,7 @@
     "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
     "smtp_max_concurrency": 8,
     "smtp_port": 587,
+    "smtp_session_timeout_s": 120.0,
     "smtp_starttls": true,
     "smtp_timeout_s": 30.0
    },
@@ -2700,6 +2883,7 @@
     "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
     "smtp_max_concurrency": 8,
     "smtp_port": 587,
+    "smtp_session_timeout_s": 120.0,
     "smtp_starttls": true,
     "smtp_timeout_s": 30.0
    },
@@ -2729,6 +2913,7 @@
     "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
     "smtp_max_concurrency": 8,
     "smtp_port": 587,
+    "smtp_session_timeout_s": 120.0,
     "smtp_starttls": true,
     "smtp_timeout_s": 30.0
    },
@@ -2758,6 +2943,7 @@
     "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
     "smtp_max_concurrency": 8,
     "smtp_port": 587,
+    "smtp_session_timeout_s": 120.0,
     "smtp_starttls": true,
     "smtp_timeout_s": 30.0
    },
@@ -2787,6 +2973,7 @@
     "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
     "smtp_max_concurrency": 8,
     "smtp_port": 587,
+    "smtp_session_timeout_s": 120.0,
     "smtp_starttls": true,
     "smtp_timeout_s": 30.0
    },
@@ -2816,6 +3003,7 @@
     "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
     "smtp_max_concurrency": 8,
     "smtp_port": 587,
+    "smtp_session_timeout_s": 120.0,
     "smtp_starttls": true,
     "smtp_timeout_s": 30.0
    },
@@ -2905,6 +3093,7 @@
     "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
     "smtp_max_concurrency": 8,
     "smtp_port": 587,
+    "smtp_session_timeout_s": 120.0,
     "smtp_starttls": true,
     "smtp_timeout_s": 30.0
    },
@@ -2934,6 +3123,7 @@
     "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
     "smtp_max_concurrency": 8,
     "smtp_port": 587,
+    "smtp_session_timeout_s": 120.0,
     "smtp_starttls": true,
     "smtp_timeout_s": 30.0
    },
@@ -2963,6 +3153,7 @@
     "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
     "smtp_max_concurrency": 8,
     "smtp_port": 587,
+    "smtp_session_timeout_s": 120.0,
     "smtp_starttls": true,
     "smtp_timeout_s": 30.0
    },
@@ -3004,6 +3195,7 @@
     "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
     "smtp_max_concurrency": 8,
     "smtp_port": 587,
+    "smtp_session_timeout_s": 120.0,
     "smtp_starttls": true,
     "smtp_timeout_s": 30.0
    },
@@ -3033,6 +3225,7 @@
     "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
     "smtp_max_concurrency": 8,
     "smtp_port": 587,
+    "smtp_session_timeout_s": 120.0,
     "smtp_starttls": true,
     "smtp_timeout_s": 30.0
    },
@@ -3168,6 +3361,7 @@
     "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
     "smtp_max_concurrency": 8,
     "smtp_port": 587,
+    "smtp_session_timeout_s": 120.0,
     "smtp_starttls": true,
     "smtp_timeout_s": 30.0
    },
@@ -3281,6 +3475,7 @@
     "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
     "smtp_max_concurrency": 8,
     "smtp_port": 587,
+    "smtp_session_timeout_s": 120.0,
     "smtp_starttls": true,
     "smtp_timeout_s": 30.0
    },
@@ -3370,6 +3565,7 @@
     "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
     "smtp_max_concurrency": 8,
     "smtp_port": 25,
+    "smtp_session_timeout_s": 120.0,
     "smtp_starttls": true,
     "smtp_timeout_s": 30.0
    },
@@ -3399,6 +3595,7 @@
     "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
     "smtp_max_concurrency": 8,
     "smtp_port": 587,
+    "smtp_session_timeout_s": 120.0,
     "smtp_starttls": true,
     "smtp_timeout_s": 30.0
    },
@@ -3429,6 +3626,7 @@
     "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
     "smtp_max_concurrency": 8,
     "smtp_port": 587,
+    "smtp_session_timeout_s": 120.0,
     "smtp_starttls": true,
     "smtp_timeout_s": 30.0
    },
@@ -3460,6 +3658,7 @@
     "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
     "smtp_max_concurrency": 8,
     "smtp_port": 587,
+    "smtp_session_timeout_s": 120.0,
     "smtp_starttls": true,
     "smtp_timeout_s": 30.0
    },
@@ -3490,6 +3689,7 @@
     "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
     "smtp_max_concurrency": 8,
     "smtp_port": 587,
+    "smtp_session_timeout_s": 120.0,
     "smtp_starttls": true,
     "smtp_timeout_s": 30.0
    },
@@ -3531,6 +3731,7 @@
     "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
     "smtp_max_concurrency": 8,
     "smtp_port": 587,
+    "smtp_session_timeout_s": 120.0,
     "smtp_starttls": true,
     "smtp_timeout_s": 30.0
    },
@@ -3616,6 +3817,7 @@
     "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
     "smtp_max_concurrency": 8,
     "smtp_port": 587,
+    "smtp_session_timeout_s": 120.0,
     "smtp_starttls": true,
     "smtp_timeout_s": 30.0
    },

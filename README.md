@@ -93,8 +93,10 @@ wrong-host and untrusted certificates, plus a peer omitting STARTTLS. These test
 reuse the parity server and require `openssl` on PATH; no SMTP account or host
 trust-store changes are needed. Failed TLS sends no AUTH, MAIL or DATA.
 The AUTH regression injects rejection at login and checks the complete call order.
-The AnyIO cancellation test holds admission until the running SMTP worker and
-form cleanup finish, while health remains responsive. Attachment spools close
+Admitted form interpretation, upload reads, address validation and MIME assembly
+run in the same bounded AnyIO worker pool as SMTP. Cancellation holds admission
+and form ownership until the active worker and form cleanup finish, while health
+remains responsive. Cancellation before submission does not start SMTP. Attachment spools close
 when parsing reads their bytes into an attachment, before MIME construction;
 cancellation cannot resubmit the message.
 These checks cover the retained Python source, not a deployed rollback runtime.
@@ -148,7 +150,17 @@ finite or outside `(0, 1e9]` seconds. Body and recipient limits must be positive
 attachment count/size and header length limits must be nonnegative. Zero
 attachments disables uploads; a zero attachment byte limit permits only empty
 files, and a zero header length permits only empty subject/header values.
-Defaults remain unchanged. Rust retains its separately documented parser bounds.
+Python rollback uses `MAILGUN_RELAY_SMTP_SESSION_TIMEOUT_S` (default 120 s,
+with the same finite `(0, 1e9]` validation) for the complete SMTP outcome,
+including TCP attempts, banner, TLS, AUTH and recipients/DATA. QUIT gets a separate
+`min(SMTP_TIMEOUT_S, 5 seconds)` budget; cleanup failure preserves confirmed DATA
+acceptance. An expired or missing final DATA result is HTTP 503 with uncertain
+delivery: inspect the upstream outcome before a deliberate retry, which may
+otherwise duplicate mail. The service never automatically replays a send.
+Socket shutdown cannot interrupt Python's libc DNS calls; their elapsed time
+is charged, late results are refused and admission stays occupied until they
+return. See [the deadline contract](docs/security.md#rust-acquisition-deadlines).
+Rust retains its separately documented parser bounds.
 Token policy and SMTP credentials
 load from the YAML file at `MAILGUN_RELAY_SECRETS_PATH`.
 

@@ -410,6 +410,10 @@ def _rust_start(env: Env) -> tuple[dict[str, Any] | None, str | None]:
 def _env_cases() -> list[tuple[str, Env]]:
     cases: list[tuple[str, Env]] = [
         ("defaults", []),
+        *[
+            (f"SMTP session budget {value!r}", [(f"{PREFIX}SMTP_SESSION_TIMEOUT_S", value)])
+            for value in ["0.25", "120", "0", "-1", "nan", "inf", "1000000001"]
+        ],
         (
             "production shape",
             [

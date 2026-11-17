@@ -384,9 +384,18 @@ refuse unusually verbose sessions (including those with raised recipient limits)
 Exhaustion maps to the same safe transport failure (503 before the outcome;
 cleanup warning only after acceptance), without logging reply contents. OS socket
 buffers and TLS's bounded internal buffers are separate from this wire-read cap.
-Python retains its resolver, per-address connect and socket timeout behavior,
-without these total-session or byte limits. These changes require a future runtime update;
-no deployment is performed by the source changes.
+Python rollback now also validates and applies `SMTP_SESSION_TIMEOUT_S` (the
+same default and bounds) through the SMTP outcome, including TCP attempts,
+trickling replies, STARTTLS and recipient/DATA operations. A session-owned socket
+shutdown interrupts blocking reads and TLS; QUIT has its own
+`min(SMTP_TIMEOUT_S, 5 seconds)` total budget. Confirmed DATA acceptance survives
+cleanup failure. A timeout before a timely final DATA result is HTTP 503 and may
+be ambiguous; neither runtime automatically retries it.
+Python's blocking libc DNS calls (remote resolution and local EHLO hostname
+lookup) cannot be interrupted by socket shutdown. Their elapsed time consumes
+the budget and late results are refused before further SMTP work; admission stays
+owned until resolution actually returns. Python has no Rust wire-byte ceiling.
+These source changes require an explicit runtime update; no deployment is performed.
 
 Tokio's system resolver may keep a blocking `getaddrinfo` call alive after its
 waiting future expires. The deadline releases request admission but cannot

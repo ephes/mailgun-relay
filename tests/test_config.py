@@ -278,7 +278,8 @@ def test_envelope_sender_from_env_fails_startup(monkeypatch: pytest.MonkeyPatch)
 @pytest.mark.parametrize(
     "field,value",
     [
-        ("smtp_timeout_s", value)
+        (field, value)
+        for field in ["smtp_timeout_s", "smtp_session_timeout_s"]
         for value in [float("nan"), float("inf"), float("-inf"), 0, -1, 1e10]
     ]
     + [(field, value) for field in ["smtp_port", "bind_port"] for value in [-1, 0, 65536]]

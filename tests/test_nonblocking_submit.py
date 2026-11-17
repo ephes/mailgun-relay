@@ -25,6 +25,7 @@ from starlette.datastructures import FormData, UploadFile
 from mailgun_relay import routes
 from mailgun_relay.app import create_app
 from mailgun_relay.config import Settings
+from mailgun_relay.mime_build import build_message
 from mailgun_relay.routes import AppState
 from mailgun_relay.smtp_client import FailureCategory, SmtpSubmitError, SmtpTransport
 
@@ -374,5 +375,81 @@ def test_cancelled_send_keeps_admission_until_worker_and_form_cleanup_finish(
                 assert len(closed_forms) == 2
                 assert closed_forms[1] is parsed_forms[1]
                 assert submitter.recipients == [[_SLOW_RECIPIENT], ["retry@example.test"]]
+
+    anyio.run(scenario)
+
+
+@pytest.mark.parametrize("phase", ["parse", "mime"])
+def test_preparation_releases_loop_and_retains_cancelled_admission(
+    app_state: AppState,
+    homepage_token: str,
+    monkeypatch: pytest.MonkeyPatch,
+    phase: str,
+) -> None:
+    entered = threading.Event()
+    release = threading.Event()
+    expired = threading.Event()
+    closed: list[FormData] = []
+    original = routes._parse_form if phase == "parse" else build_message
+    close = routes._close_form
+
+    def gated(*args: Any, **kwargs: Any) -> Any:
+        entered.set()
+        if not release.wait(2):
+            expired.set()
+        return original(*args, **kwargs)
+
+    async def capture_close(form: FormData) -> None:
+        closed.append(form)
+        await close(form)
+
+    monkeypatch.setattr(routes, "_parse_form" if phase == "parse" else "build_message", gated)
+    monkeypatch.setattr(routes, "_close_form", capture_close)
+    submitter = GatedSubmitter()
+    submitter.release.set()
+
+    async def scenario() -> None:
+        scopes: list[anyio.CancelScope] = []
+        done = anyio.Event()
+        async with _client(app_state, submitter, smtp_max_concurrency=1) as client:
+            path = "/v3/mg.wersdoerfer.de/messages"
+
+            async def send() -> None:
+                with anyio.CancelScope() as scope:
+                    scopes.append(scope)
+                    await client.post(
+                        path,
+                        headers=_auth(homepage_token),
+                        data=_form("one@example.test"),
+                        files={"attachment": ("synthetic.txt", b"invented bytes")},
+                    )
+                done.set()
+
+            with anyio.fail_after(_TIMEOUT_S):
+                async with anyio.create_task_group() as group:
+                    group.start_soon(send)
+                    try:
+                        assert await asyncio.to_thread(entered.wait, _TIMEOUT_S)
+                        assert (await client.get("/health")).status_code == 200
+                        assert not expired.is_set(), "preparation blocked the event loop"
+                        scopes[0].cancel()
+                        assert (
+                            await client.post(
+                                path, headers=_auth(homepage_token), data=_form("two@example.test")
+                            )
+                        ).status_code == 503
+                        assert not done.is_set()
+                        assert closed == []
+                        assert submitter.recipients == []
+                    finally:
+                        release.set()
+                    await done.wait()
+                assert len(closed) == 1
+                assert (
+                    await client.post(
+                        path, headers=_auth(homepage_token), data=_form("two@example.test")
+                    )
+                ).status_code == 200
+                assert submitter.recipients == [["two@example.test"]]
 
     anyio.run(scenario)

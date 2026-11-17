@@ -207,7 +207,7 @@ def _make_mock_smtp_with_exc(exc: Exception) -> MagicMock:
 
 def test_smtp_data_5xx_maps_to_permanent() -> None:
     err = smtplib.SMTPDataError(550, b"rejected")
-    with patch("smtplib.SMTP", new=_make_mock_smtp_with_exc(err)):
+    with patch("mailgun_relay.smtp_client._SessionSMTP", new=_make_mock_smtp_with_exc(err)):
         with pytest.raises(SmtpSubmitError) as ei:
             submit(
                 _msg(),
@@ -220,7 +220,7 @@ def test_smtp_data_5xx_maps_to_permanent() -> None:
 
 def test_smtp_data_4xx_maps_to_temporary() -> None:
     err = smtplib.SMTPDataError(421, b"busy")
-    with patch("smtplib.SMTP", new=_make_mock_smtp_with_exc(err)):
+    with patch("mailgun_relay.smtp_client._SessionSMTP", new=_make_mock_smtp_with_exc(err)):
         with pytest.raises(SmtpSubmitError) as ei:
             submit(
                 _msg(),
@@ -233,7 +233,7 @@ def test_smtp_data_4xx_maps_to_temporary() -> None:
 
 def test_smtp_recipients_refused_maps_to_permanent() -> None:
     err = smtplib.SMTPRecipientsRefused({"y@y": (550, b"no")})
-    with patch("smtplib.SMTP", new=_make_mock_smtp_with_exc(err)):
+    with patch("mailgun_relay.smtp_client._SessionSMTP", new=_make_mock_smtp_with_exc(err)):
         with pytest.raises(SmtpSubmitError) as ei:
             submit(
                 _msg(),
@@ -248,7 +248,7 @@ def test_smtp_auth_failure_at_login_stops_submission() -> None:
     auth_marker = "invented-login-marker"
     mock, instance = _make_ok_mock_smtp()
     instance.login.side_effect = smtplib.SMTPAuthenticationError(535, b"bad credentials")
-    with patch("smtplib.SMTP", new=mock):
+    with patch("mailgun_relay.smtp_client._SessionSMTP", new=mock):
         with pytest.raises(SmtpSubmitError) as ei:
             submit(
                 _msg(),
@@ -263,6 +263,7 @@ def test_smtp_auth_failure_at_login_stops_submission() -> None:
         "starttls",
         "ehlo",
         "login",
+        "sock.settimeout",
         "quit",
         "close",
     ]
@@ -297,7 +298,7 @@ def _make_ok_mock_smtp() -> tuple[MagicMock, MagicMock]:
 def test_starttls_uses_verifying_tls_context() -> None:
     """STARTTLS must verify the server cert and hostname (no MITM)."""
     mock, instance = _make_ok_mock_smtp()
-    with patch("smtplib.SMTP", new=mock):
+    with patch("mailgun_relay.smtp_client._SessionSMTP", new=mock):
         submit(
             _msg(),
             envelope_sender="x@x",
@@ -315,6 +316,7 @@ def test_starttls_uses_verifying_tls_context() -> None:
         "ehlo",
         "login",
         "send_message",
+        "sock.settimeout",
         "quit",
         "close",
     ]
@@ -324,7 +326,7 @@ def test_starttls_uses_verifying_tls_context() -> None:
 def test_refuses_cleartext_auth_without_tls() -> None:
     """Credentials must never be sent over a non-TLS connection."""
     mock, instance = _make_ok_mock_smtp()
-    with patch("smtplib.SMTP", new=mock):
+    with patch("mailgun_relay.smtp_client._SessionSMTP", new=mock):
         with pytest.raises(SmtpSubmitError) as ei:
             submit(
                 _msg(),
@@ -342,7 +344,7 @@ def test_refuses_cleartext_auth_without_tls() -> None:
 def test_no_auth_without_credentials_skips_login() -> None:
     """When no credentials are configured, plaintext send is still allowed."""
     mock, instance = _make_ok_mock_smtp()
-    with patch("smtplib.SMTP", new=mock):
+    with patch("mailgun_relay.smtp_client._SessionSMTP", new=mock):
         submit(
             _msg(),
             envelope_sender="x@x",
@@ -355,7 +357,7 @@ def test_no_auth_without_credentials_skips_login() -> None:
 
 def test_smtp_connection_refused_maps_to_temporary() -> None:
     err = ConnectionRefusedError("refused")
-    with patch("smtplib.SMTP", side_effect=err):
+    with patch("mailgun_relay.smtp_client._SessionSMTP", side_effect=err):
         with pytest.raises(SmtpSubmitError) as ei:
             submit(
                 _msg(),
@@ -368,7 +370,7 @@ def test_smtp_connection_refused_maps_to_temporary() -> None:
 
 def test_smtp_timeout_maps_to_temporary() -> None:
     err = TimeoutError("timeout")
-    with patch("smtplib.SMTP", side_effect=err):
+    with patch("mailgun_relay.smtp_client._SessionSMTP", side_effect=err):
         with pytest.raises(SmtpSubmitError) as ei:
             submit(
                 _msg(),
