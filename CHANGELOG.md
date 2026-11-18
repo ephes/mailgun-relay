@@ -4,6 +4,20 @@ All notable changes to mailgun-relay are documented here.
 
 ## Unreleased
 
+### Security
+
+- Raise the Rust port's exact `lettre` pin from 0.11.23 to 0.11.24
+  (`email-encoding` 0.4.2 -> 0.4.3 with it) for RUSTSEC-2026-0560 to
+  RUSTSEC-2026-0565 (STARTTLS response injection, missing dot-stuffing after a
+  bare CR or LF, panics on a white-space EHLO line or a display name with CR or
+  LF, quoted local parts sent to another address, and unbounded buffering of
+  an SMTP reply). `cargo deny --locked check` is clean again.
+  lettre 0.11.24 ends data that already ends in CRLF with only `.` CRLF, so
+  the Rust relay now hands lettre the message with its own final CRLF instead
+  of stripping it; the bytes on the wire are unchanged (a message ending in an
+  empty line would otherwise lose it; caught by the parity harness, pinned by
+  `smtp::tests::trailing_empty_lines_arrive_as_sent`).
+
 ### Release process
 
 - Rust releases are built and published locally by
@@ -533,6 +547,32 @@ public request/response contract changes except the two noted under *Behavior*.
   pytest config ignores exactly that warning so `filterwarnings = error` keeps
   catching everything else; no new dependency is added.
 - No code or API changes. Redeploy the relay to pick up the new lock.
+
+## rs-v0.2.4 — 2026-11-18
+
+Rust port release 0.2.4 (crate version 0.2.4), the first one built and
+published locally by `rust/scripts/local_release.py` (see *Release process*
+under *Unreleased*). It carries the Rust fixes and regression tests merged
+since `rs-v0.2.3`; the Python implementation is not released by this tag. The
+entries themselves stay under *Unreleased* above (most apply to both
+runtimes); in short, for the Rust side:
+
+- `lettre` 0.11.24 for RUSTSEC-2026-0560 to RUSTSEC-2026-0565, with the
+  message's final CRLF now handed to lettre (see *Security* under
+  *Unreleased*).
+- Bounded policy list expansion (entries and bytes across all tokens and
+  scope lists) and request runtime work isolated from startup.
+- Form admission: ambiguous singleton HTTP headers, duplicate body singletons,
+  case-insensitive duplicate custom headers, duplicate inline IDs and
+  oversized upload metadata are rejected before submission; multipart forms
+  must be complete; multipart limit errors win over later framing errors.
+- Basic credential and form admission bounded, with SMTP control flow
+  preserved; the logged path domain is capped.
+- Release helpers bounded (deadlines, output ceiling, durable incomplete
+  markers cleared after a clean rollback) and sink shutdown failures
+  reported.
+- Parity harness exchanges bounded, empty selections rejected, reports
+  published atomically with kept permissions.
 
 ## rs-v0.2.3 — 2026-11-13
 

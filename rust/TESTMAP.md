@@ -98,7 +98,7 @@ and fixture cases generated from the fixed Python.
 | `test_nonblocking_submit.py::test_smtp_errors_from_the_worker_thread_keep_their_mapping` | unit `pipeline::tests::submission_outcomes` | done (S3c) |
 | `test_nonblocking_submit.py::test_smtp_max_concurrency_must_be_positive` | fixture `config_env.json` | done (S1a) |
 | new: delivery end to end, shutdown | process tests `binary.rs::delivers_over_starttls_with_the_ca_file` (STARTTLS with a test CA from `SMTP_CA_FILE`, AUTH, partial refusal, records, `--check-config` with an unusable CA file), `::shutdown_waits_for_a_submission_whose_client_left` | done (S5b) |
-| new: TLS certificate/hostname failure → 503, `SMTP_CA_FILE` read at start (D-22), D-3 classes, exact positive codes, ASCII envelope, dot-stuffing across the 64 KiB pieces | units `smtp::tests::tls_with_the_ca_file`, `::every_row_of_the_outcome_table`, `::envelope_and_reply_codes`, `::long_messages_survive_chunking` | done (S5a) |
+| new: TLS certificate/hostname failure → 503, `SMTP_CA_FILE` read at start (D-22), D-3 classes, exact positive codes, ASCII envelope, dot-stuffing across the 64 KiB pieces, trailing empty lines and the final CRLF as sent | units `smtp::tests::tls_with_the_ca_file`, `::every_row_of_the_outcome_table`, `::envelope_and_reply_codes`, `::long_messages_survive_chunking`, `::trailing_empty_lines_arrive_as_sent` | done (S5a) |
 
 ## Parity harness (S6)
 

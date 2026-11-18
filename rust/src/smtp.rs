@@ -410,12 +410,12 @@ impl SmtpSubmitter {
 
         let data = connection.command(Data).await.map_err(|e| failure(&e))?;
         require(&data, &[354])?;
-        // lettre ends the data with CRLF "." CRLF; the message's own final
-        // CRLF is that first CRLF (as `smtplib` sends it), not an empty line.
-        let formatted = &message.formatted;
-        let body = formatted.strip_suffix(b"\r\n").unwrap_or(formatted);
+        // The message goes with its own final CRLF: lettre (0.11.24) ends
+        // data that ends in CRLF with "." CRLF and anything else with CRLF
+        // "." CRLF, so the wire bytes are those `smtplib` sends (the final
+        // CRLF is never doubled into an empty line, nor dropped).
         let end = connection
-            .message_iter(body.chunks(MESSAGE_CHUNK))
+            .message_iter(message.formatted.chunks(MESSAGE_CHUNK))
             .await
             .map_err(|e| failure(&e))?;
         require(&end, &[250])?;

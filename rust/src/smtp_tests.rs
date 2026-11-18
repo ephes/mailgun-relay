@@ -591,6 +591,32 @@ async fn long_messages_survive_chunking() {
     );
 }
 
+/// The message's own final CRLF ends its last line, and the empty lines
+/// before it arrive as sent: lettre 0.11.24 ends data that already ends in
+/// CRLF with only "." CRLF, so stripping that CRLF here would drop a
+/// trailing empty line (and keeping it with 0.11.23 would add one).
+#[tokio::test]
+async fn trailing_empty_lines_arrive_as_sent() {
+    for formatted in [
+        &b"Subject: blank\r\n\r\na\r\n\r\n"[..],
+        &b"Subject: blank\r\n\r\na\r\n"[..],
+        &b"Subject: blank\r\n\r\n.\r\n\r\n\r\n"[..],
+    ] {
+        let server = FakeSmtp::start(&json!({}), Some(PKI.by_name("good"))).await;
+        let (logger, _) = Logger::capturing(Level::Info);
+        let built = BuiltMessage {
+            formatted: formatted.to_vec(),
+            ..message(&["a@example.test"])
+        };
+        let reply = submitter(server.port, true, 5.0, logger)
+            .submit(built)
+            .await;
+        assert_eq!(reply, Ok(Vec::new()));
+        tokio::time::sleep(Duration::from_millis(20)).await;
+        assert_eq!(server.sessions()[0].message.as_deref(), Some(formatted));
+    }
+}
+
 /// The SMTP socket has TCP_NODELAY: lettre ends DATA and rustls the
 /// handshake with separate small writes, which Nagle held back for the
 /// server's delayed ACK (S9: about 2 x 40 ms per message on Linux).
