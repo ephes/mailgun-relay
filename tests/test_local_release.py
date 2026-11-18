@@ -196,7 +196,7 @@ class FakeGit:
 
     def archive(self, commit: str, paths: Sequence[str], output: Path) -> None:
         with tarfile.open(output, "w") as tar:
-            data = b'[toolchain]\nchannel = "1.99.0"\n'
+            data = b'[toolchain]\nchannel = "1.99.0"\ncomponents = ["rustfmt", "clippy"]\n'
             info = tarfile.TarInfo(f"{CRATE.name}/rust-toolchain.toml")
             info.size = len(data)
             tar.addfile(info, io.BytesIO(data))
@@ -263,7 +263,11 @@ class FakeHost:
             write_dist(Path(env["OUT"]), f"example-{env['VERSION']}-aarch64-apple-darwin.tar.gz")
 
     def output(self, argv: Sequence[str], cwd: Path, env: Mapping[str, str]) -> str:
-        return {"rustc": "rustc 1.99.0 (abc 2026-10-01)\n", "sw_vers": "15.5\n"}[argv[0]]
+        return {
+            "rustc": "rustc 1.99.0 (abc 2026-10-01)\n",
+            "sw_vers": "15.5\n",
+            "rustup": "/fake/toolchains/1.99.0/bin/cargo\n",
+        }[argv[0]]
 
 
 class FakeGitHub:
@@ -443,14 +447,19 @@ def test_macos_build(release: ModuleType, tmp_path: Path, which_rustup: None) ->
         log=lambda line: None,
     )
     scripts = [script for script, _ in host.scripts]
-    assert scripts[0] == "rustup toolchain install && rustup target add aarch64-apple-darwin"
+    assert scripts[0] == (
+        "rustup toolchain install 1.99.0 --profile minimal --component rustfmt"
+        " --component clippy && rustup target add --toolchain 1.99.0 aarch64-apple-darwin"
+    )
     assert scripts[1] == "cargo fetch --locked"
     assert scripts[2] == release.check_script(config)
     assert "macho --max-minos 14.0 --arch arm64" in scripts[3]
     check_env, build_env = host.scripts[2][1], host.scripts[3][1]
     assert check_env["EXAMPLE_REQUIRE"] == "1" and "EXAMPLE_REQUIRE" not in build_env
     assert build_env["MACOSX_DEPLOYMENT_TARGET"] == "14.0"
-    assert build_env["PATH"].startswith("/fake/cargo/bin")
+    assert build_env["RUSTUP_TOOLCHAIN"] == "1.99.0"
+    # The pinned toolchain's own bin first, then rustup's directory.
+    assert build_env["PATH"].startswith("/fake/toolchains/1.99.0/bin:/fake/cargo/bin")
     assert build_env["CARGO_NET_OFFLINE"] == "true"
     assert "macOS >= 14.0" in (out / "notes.md").read_text()
 
@@ -459,11 +468,60 @@ def test_macos_build(release: ModuleType, tmp_path: Path, which_rustup: None) ->
     assert github.created == [("rs-v1.2.3-rc.1", True)]
 
 
+def test_pinned_toolchain_reads_rust_toolchain_toml(release: ModuleType, tmp_path: Path) -> None:
+    (tmp_path / "rust-toolchain.toml").write_text(
+        '[toolchain]\nchannel = "1.99.0"\ncomponents = [\n    "rustfmt",\n    "clippy",\n]\n'
+    )
+    assert release.pinned_toolchain(tmp_path) == ("1.99.0", ["rustfmt", "clippy"])
+    (tmp_path / "rust-toolchain.toml").write_text('[toolchain]\nchannel = "1.99; rm"\n')
+    with pytest.raises(release.ReleaseError, match="no valid channel"):
+        release.pinned_toolchain(tmp_path)
+    (tmp_path / "rust-toolchain.toml").write_text('[toolchain]\nchannel = "--help"\n')
+    with pytest.raises(release.ReleaseError, match="no valid channel"):
+        release.pinned_toolchain(tmp_path)
+    (tmp_path / "rust-toolchain.toml").write_text(
+        '[toolchain]\nchannel = "1.99.0"\ncomponents = ["--force"]\n'
+    )
+    with pytest.raises(release.ReleaseError, match="invalid components"):
+        release.pinned_toolchain(tmp_path)
+
+
+def test_pinned_cargo_environment_wins_over_ambient_toolchains(
+    release: ModuleType, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    (tmp_path / "rust-toolchain.toml").write_text('[toolchain]\nchannel = "1.99.0"\n')
+    monkeypatch.setenv("RUSTUP_TOOLCHAIN", "1.100.0")
+    monkeypatch.setattr(release.shutil, "which", lambda name: "/fake/bin/rustup")
+    calls: list[list[str]] = []
+    installed = {"yes": True}
+
+    def run(argv: Sequence[str], **kwargs: Any) -> str:
+        calls.append(list(argv))
+        assert kwargs["env"]["RUSTUP_TOOLCHAIN"] == "1.99.0"
+        if argv[1] == "which" and not installed["yes"]:
+            raise release.ReleaseError("toolchain not installed")
+        if argv[1] == "toolchain":
+            installed["yes"] = True
+        return "/fake/toolchains/1.99.0/bin/cargo\n"
+
+    monkeypatch.setattr(release, "run", run)
+    env = release.pinned_cargo_environment(tmp_path)
+    assert env["RUSTUP_TOOLCHAIN"] == "1.99.0"
+    assert env["PATH"].startswith("/fake/toolchains/1.99.0/bin")
+    assert [call[1] for call in calls] == ["which"]  # installed: no network
+    calls.clear()
+    installed["yes"] = False
+    release.pinned_cargo_environment(tmp_path)
+    assert [call[1] for call in calls] == ["which", "toolchain", "which"]
+
+
 def test_macos_build_refuses_an_unpinned_toolchain(
     release: ModuleType, tmp_path: Path, which_rustup: None
 ) -> None:
     class OtherRustc(FakeHost):
         def output(self, argv: Sequence[str], cwd: Path, env: Mapping[str, str]) -> str:
+            if argv[0] == "rustup":
+                return "/fake/toolchains/1.99.0/bin/cargo\n"
             return "rustc 1.100.0 (Homebrew)\n"
 
     with pytest.raises(release.ReleaseError, match="not the pinned toolchain"):
@@ -608,6 +666,19 @@ def test_publish_refuses_a_release_replaced_meanwhile_or_flagged_wrong(
     github.prereleases.add("rs-v1.2.3")
     with pytest.raises(release.ReleaseError, match="expected no prerelease"):
         publish(release, built, github=github)
+
+
+def test_publish_refuses_a_partial_release_with_the_wrong_prerelease_flag(
+    release: ModuleType, built: Path
+) -> None:
+    record = json.loads((built / "build.json").read_text())
+    archive = record["archive"]
+    github = FakeGitHub()
+    github.releases["rs-v1.2.3"] = {archive: (built / archive).read_bytes()}
+    github.prereleases.add("rs-v1.2.3")
+    with pytest.raises(release.ReleaseError, match="settle it by hand"):
+        publish(release, built, github=github)
+    assert github.uploaded == []  # refused before anything was uploaded
 
 
 def test_publish_checks_main_also_for_an_existing_tag(release: ModuleType, built: Path) -> None:
