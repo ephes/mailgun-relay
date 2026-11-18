@@ -124,8 +124,13 @@ as a dry run that `publish` refuses). Then:
 1. Image phase, the only one with network: two `ubuntu:22.04` images (base
    pinned by the digest pulled at the start), one of the Docker engine's own
    platform and one `linux/amd64` (glibc 2.35, as the old runner). Each gets
-   `binutils ca-certificates curl gcc git libc6-dev python3`, rustup 1.29.1
-   (sha256-checked), the source as `git archive` of the build commit (`rust/`
+   `binutils ca-certificates curl gcc git libc6-dev python3` (then
+   `ca-certificates` must be at least the USN-8944-1 version
+   `20260816ubuntu0.22.04.1` and the CA bundle must hold neither root of the
+   2026-10-21 incident, as `scripts/ci_rustup.py` required of the hosted job;
+   checked after the APT installation that brings the CA update, before the
+   rustup, toolchain and dependency downloads),
+   rustup 1.29.2 (sha256-checked; 1.29.2 fixes CVE-2026-111943), the source as `git archive` of the build commit (`rust/`
    and `LICENSE`), the pinned toolchain and `cargo fetch --locked`.
 2. Checks job on the engine's own platform: `cargo fmt --check`,
    `cargo clippy --all-targets --locked -- -D warnings`, `cargo test --locked`
@@ -554,6 +559,22 @@ material. A `.NAME.previous` directory is the recovery generation if interruptio
 occurs between renames; the next preparation restores it when NAME is absent.
 A successful replacement refreshes the complete two-day fixture generation;
 it never changes relay TLS verification or the host trust store.
+
+## Published release 0.2.4
+
+Rust 0.2.4 is the first release built and published locally by
+`scripts/local_release.py` (see "Release"): lettre 0.11.24 for
+RUSTSEC-2026-0560 to 0565 with the message's final CRLF handed to lettre,
+and the Rust fixes merged since 0.2.3 (CHANGELOG `rs-v0.2.4`). The tag
+`rs-v0.2.4` (annotated, created through the GitHub API) points at
+`d394fe95d275b0d7fd2ca13b28d1c6d94482eae5`, which the binary embeds; the
+archive `mailgun-relay-0.2.4-x86_64-unknown-linux-gnu.tar.gz` has SHA256
+`abbb1ffaf73c06dbd06210e3d599e0f34d4e06aa8a9c70c95bcc44edd82f7d09`, checked
+after the upload by download and byte comparison, and again through the public
+download URL. Its builder images still used rustup 1.29.1 without the CA
+bundle check that the program has since (rustup 1.29.2, CVE-2026-111943);
+the toolchain was downloaded on a trusted home network. Publication is not
+evidence of running-process protection.
 
 ## Published release 0.2.3
 

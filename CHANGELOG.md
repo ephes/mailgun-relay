@@ -20,6 +20,11 @@ All notable changes to mailgun-relay are documented here.
 
 ### Release process
 
+- The release builder images pin rustup 1.29.2 (CVE-2026-111943, as the
+  removed workflow's `scripts/ci_rustup.py`) and, before rustup-init is
+  downloaded, require `ca-certificates` of USN-8944-1 and a CA bundle without
+  the 2026-10-21 incident roots. `rs-v0.2.4` was built before this change
+  (rustup 1.29.1, no bundle check).
 - Rust releases are built and published locally by
   `rust/scripts/local_release.py` (configuration `rust/local-release.json`,
   rust/README.md "Release") instead of GitHub Actions: workspace checks and a

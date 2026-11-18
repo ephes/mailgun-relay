@@ -66,20 +66,39 @@ AMD64 = "linux/amd64"
 MODES = ("linux-container", "macos-native")
 RUNNER_IMAGE = "ubuntu:22.04"
 BASE_PACKAGES = ("binutils", "ca-certificates", "curl", "gcc", "git", "libc6-dev", "python3")
-RUSTUP_VERSION = "1.29.1"
+# 1.29.2 fixes CVE-2026-111943 (certificate verification of its downloads).
+RUSTUP_VERSION = "1.29.2"
 # rustup-init per container platform: target triple and sha256.
 RUSTUP = {
     AMD64: (
         "x86_64-unknown-linux-gnu",
         # pragma: allowlist nextline secret
-        "dda7234360b7f578ca8b0ddcb80145646fa61a67c1720a5abc7051b35c9fcb71",
+        "5be191e8c70a5007074254cb74d78dbfdd25cd5a61c27de7b8e5410122ec24f4",
     ),
     "linux/arm64": (
         "aarch64-unknown-linux-gnu",
         # pragma: allowlist nextline secret
-        "15f6e4ce9f583b929c996c91562bad6d4454f3281de858b02cdfdef615fac433",
+        "a9c168dbea81a84671c6b7a5c1795cb0eb699020110d107ddfca427bd797e697",
     ),
 }
+# The OS trust store the image downloads rustup and the toolchain with: at
+# least the ca-certificates of USN-8944-1 for ubuntu 22.04, and neither root
+# of the 2026-10-21 incident (SHA-256 of the DER certificate), as the hosted
+# release job's scripts/ci_rustup.py required.
+CA_CERTIFICATES_MINIMUM = "20260816ubuntu0.22.04.1"
+BLOCKED_ROOTS = (
+    "d7a7a0fb5d7e2731d771e9484ebcdef71d5f0c3e0a2948782bc83ee0ea699ef4",  # pragma: allowlist secret
+    "86a1ecba089c4a8d3bbe2734c612ba341d813e043cf9e8a862cd5c57a36bbe6b",  # pragma: allowlist secret
+)
+TRUST_CHECK = (  # one line: it goes into a Dockerfile RUN instruction
+    "import hashlib, re, ssl, sys; "
+    "text = open('/etc/ssl/certs/ca-certificates.crt').read(); "
+    "pems = re.findall('-----BEGIN CERTIFICATE-----.*?-----END CERTIFICATE-----', text, re.S); "
+    "found = {hashlib.sha256(ssl.PEM_cert_to_DER_cert(pem)).hexdigest() for pem in pems}; "
+    "blocked = sorted(found & set(sys.argv[1:])); "
+    "sys.exit('the CA bundle is empty or holds an incident root: ' + ' '.join(blocked)) "
+    "if not pems or blocked else None"
+)
 MEMORY = "8g"
 PIDS = "4096"
 IMAGE_TIMEOUT = 3600
@@ -662,7 +681,10 @@ ENV DEBIAN_FRONTEND=noninteractive \\
     PATH=/opt/cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 RUN apt-get update \\
     && apt-get install -y --no-install-recommends {" ".join(packages)} \\
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \\
+    && dpkg --compare-versions "$(dpkg-query -W -f '${{Version}}' ca-certificates)" \\
+        ge {CA_CERTIFICATES_MINIMUM} \\
+    && python3 -I -c {shlex.quote(TRUST_CHECK)} {" ".join(BLOCKED_ROOTS)}
 RUN curl --proto '=https' --tlsv1.2 -sSfL -o /tmp/rustup-init {url} \\
     && echo "{rustup_sha256}  /tmp/rustup-init" | sha256sum --check \\
     && chmod 0755 /tmp/rustup-init \\

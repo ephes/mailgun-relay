@@ -160,6 +160,16 @@ def test_dockerfile_pins_rustup_and_refuses_bad_packages(release: ModuleType) ->
     assert release.RUSTUP["linux/amd64"][1] in text
     assert "sha256sum --check" in text
     assert "cargo fetch --locked" in text
+    assert release.RUSTUP_VERSION == "1.29.2"
+    # The trust store check runs before curl fetches rustup.
+    trust = text.index("dpkg --compare-versions")
+    assert trust < text.index("RUN curl")
+    # In the same RUN as the APT install: a failed check leaves no cached layer.
+    assert "rm -rf /var/lib/apt/lists/* \\\n    && dpkg --compare-versions" in text
+    assert "ge 20260816ubuntu0.22.04.1" in text
+    for root in release.BLOCKED_ROOTS:
+        assert root in text
+    assert "\n" not in release.TRUST_CHECK
     assert "WORKDIR /work/rust" in text
     with pytest.raises(release.ReleaseError, match="not an apt package name"):
         release.dockerfile("ubuntu", ["bad name"], "linux/amd64", "rust")
