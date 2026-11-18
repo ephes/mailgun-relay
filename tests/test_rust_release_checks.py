@@ -1,6 +1,6 @@
 """Release checks of the Rust port (rust/PLAN.md section 8).
 
-``rust/scripts/release_checks.py`` gates the release workflow: the tag must
+``rust/scripts/release_checks.py`` gates the local release (``local_release.py``): the tag must
 match the crate version, the binary must not need glibc newer than the floor
 or libraries outside glibc/libgcc, ``--version`` must name the version and
 commit, ``--check-config`` must accept a test configuration, and the archive
@@ -314,27 +314,22 @@ def test_cli_smoke_fails_when_check_config_disagrees(tmp_path: Path, checks: Mod
     assert "release check failed: --check-config exited 0" in result.stderr
 
 
-def test_release_workflow_runs_every_check() -> None:
-    workflow = (REPO / ".github" / "workflows" / "rust-release.yml").read_text(encoding="utf-8")
-    for needle in (
-        "runs-on: ubuntu-22.04",
-        'GLIBC_FLOOR: "2.35"',
-        '- "rs-v*"',
-        "MAILGUN_RELAY_GIT_COMMIT: ${{ github.sha }}",
-        "release_checks.py version",
-        "release_checks.py glibc-floor",
-        "release_checks.py smoke",
-        "release_checks.py pack",
+def test_local_release_runs_every_check() -> None:
+    """rust/local-release.json drives rust/scripts/local_release.py (no CI
+    release workflow): the old workflow's checks, floor, tag and commit."""
+    config = json.loads((REPO / "rust" / "local-release.json").read_text(encoding="utf-8"))
+    assert config["github_repository"] == "ephes/mailgun-relay"
+    assert config["tag_prefix"] == "rs-v"
+    assert config["target"] == "x86_64-unknown-linux-gnu"
+    assert config["mode"] == "linux-container"
+    assert config["glibc_floor"] == "2.35"
+    assert config["commit_env"] == "MAILGUN_RELAY_GIT_COMMIT"
+    assert config["checks"] == [
         "cargo fmt --check",
         "cargo clippy --all-targets --locked -- -D warnings",
         "cargo test --locked",
-        'cargo build --release --locked --target "$TARGET"',
-        "sha256sum --check",
-        "--verify-tag",
-        "--prerelease",
-    ):
-        assert needle in workflow, needle
-    assert "actions/cache" not in workflow
+    ]
+    assert not (REPO / ".github" / "workflows" / "rust-release.yml").exists()
 
 
 def test_smoke_secrets_load_with_distinct_credentials(checks: ModuleType, tmp_path: Path) -> None:

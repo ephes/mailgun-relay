@@ -25,7 +25,7 @@ def test_every_sdk_bootstrap_is_preceded_by_hosted_runner_security_gate() -> Non
 
     bootstraps = 0
     uv_pins = []
-    for workflow in ("ci.yml", "rust-release.yml"):
+    for workflow in ("ci.yml",):
         config = yaml.safe_load((ROOT / ".github/workflows" / workflow).read_text())
         for job in config["jobs"].values():
             steps = job.get("steps", [])
@@ -40,5 +40,5 @@ def test_every_sdk_bootstrap_is_preceded_by_hosted_runner_security_gate() -> Non
                 if "rustup toolchain install" in command:
                     assert admitted, f"SDK download precedes security bootstrap in {workflow}"
                     bootstraps += 1
-    assert bootstraps == 3  # Rust CI, parity CI and release.
+    assert bootstraps == 2  # Rust CI and parity CI; releases are local.
     assert uv_pins == ["0.13.4"] * 3

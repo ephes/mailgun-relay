@@ -111,7 +111,7 @@ and fixture cases generated from the fixed Python.
 
 | Python test | Rust test | Status |
 | --- | --- | --- |
-| new: release gate (tag = crate version, glibc floor 2.35 and glibc/libgcc only, `--version` and `--check-config` smoke, deterministic archive with exactly `mailgun-relay` and `LICENSE`, the workflow runs every check) | `tests/test_rust_release_checks.py` (Python suite) for `rust/scripts/release_checks.py`; the real binary in `.github/workflows/rust-release.yml` | done (S7) |
+| new: release gate (tag = crate version, glibc floor 2.35 and glibc/libgcc only, `--version` and `--check-config` smoke, deterministic archive with exactly `mailgun-relay` and `LICENSE`, the local release runs every check) | `tests/test_rust_release_checks.py` and `tests/test_local_release.py` (Python suite) for `rust/scripts/release_checks.py` and `rust/scripts/local_release.py`; the real binary in `local_release.py build` (the release workflow was removed on 2026-11-18) | done (S7) |
 
 ## Security review (no Python counterpart)
 

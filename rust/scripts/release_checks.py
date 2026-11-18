@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Release checks for the Rust port (rust/PLAN.md section 8).
 
-Used by `.github/workflows/rust-release.yml`; stdlib only and Python 3.10
-compatible (the release job runs on ubuntu-22.04's system Python). The pure
+Used by `rust/scripts/local_release.py`; stdlib only and Python 3.10
+compatible (its release job runs on ubuntu-22.04's system Python). The pure
 parts are tested in `tests/test_rust_release_checks.py`. Adapted from
 `nyxmon:agent-rs/scripts/release_checks.py`.
 

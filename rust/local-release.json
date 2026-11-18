@@ -1,0 +1,15 @@
+{
+  "comment": "Local release of the Rust port (rust/README.md \"Release\", rust/scripts/local_release.py). The checks are the old rust-release.yml workflow's fmt, clippy and test steps.",
+  "github_repository": "ephes/mailgun-relay",
+  "binary": "mailgun-relay",
+  "tag_prefix": "rs-v",
+  "target": "x86_64-unknown-linux-gnu",
+  "mode": "linux-container",
+  "commit_env": "MAILGUN_RELAY_GIT_COMMIT",
+  "glibc_floor": "2.35",
+  "checks": [
+    "cargo fmt --check",
+    "cargo clippy --all-targets --locked -- -D warnings",
+    "cargo test --locked"
+  ]
+}

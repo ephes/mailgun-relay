@@ -89,47 +89,89 @@ build embeds the git commit (`MAILGUN_RELAY_GIT_COMMIT`, else
 
 ## Release
 
-`.github/workflows/rust-release.yml` (PLAN.md section 8) builds on
-`ubuntu-22.04` (glibc 2.35) for `x86_64-unknown-linux-gnu` with the pinned
-toolchain and no cargo cache, and runs `scripts/release_checks.py`:
-
-- `version`: the tag must be `rs-v<crate version>` (semver without build
-  metadata);
-- `cargo fmt --check`, `clippy -D warnings`, `cargo test --locked`, then
-  `cargo build --release --locked --target x86_64-unknown-linux-gnu` with
-  `MAILGUN_RELAY_GIT_COMMIT` set to the full commit;
-- `glibc-floor --max 2.35`: no glibc symbol version above 2.35, `NEEDED`
-  only glibc and libgcc (macmini has 2.39);
-- `smoke`: `--version` prints exactly `mailgun-relay <version> (<commit>)`,
-  and `--check-config` with only a test environment (the variables of the
-  role's env file) and a test secrets file (mode 0600) exits 0 with the
-  expected summary;
-- `pack`: `mailgun-relay-<version>-x86_64-unknown-linux-gnu.tar.gz` with
-  exactly `mailgun-relay` (0755) and `LICENSE` (0644), root-owned, the commit
-  time as mtime, gzip without a file name, so a rebuild of the same binary
-  gives the same bytes; plus `<archive>.sha256`, checked with
-  `sha256sum --check`.
-
-A push of a tag `rs-v<semver>` then creates the GitHub release with both
-files (`gh release create --verify-tag`; a version with a pre-release part
-such as `0.3.0-rc.1` becomes a GitHub pre-release). The role downloads
-`https://github.com/ephes/mailgun-relay/releases/download/rs-v<ver>/mailgun-relay-<ver>-x86_64-unknown-linux-gnu.tar.gz`
-and pins its sha256 (PLAN.md 9.1). `workflow_dispatch` runs the same build
-and checks and uploads archive and checksum as a workflow artifact only (no
-tag check, no release):
-
-```bash
-gh workflow run rust-release.yml --ref main
-gh run download <run-id> -n mailgun-relay-<ver>-x86_64-unknown-linux-gnu -D <dir>
-```
+Releases are built and published locally by `scripts/local_release.py`,
+driven by `local-release.json`; there is no release workflow and no CI run
+(the tag-triggered `.github/workflows/rust-release.yml` was removed on
+2026-11-18). The same program releases opsgate, graphyard's and nyxmon's Rust
+binaries, and ops-deploy's `rust/scripts/release.py` follows the same
+approach. Needs Docker with working `linux/amd64` containers (on an Apple
+silicon Mac: colima with `vmType: vz` and `rosetta: true`; the build checks
+that `docker run --platform linux/amd64 ubuntu:22.04 uname -m` prints
+`x86_64`), `git`, `cargo` (for `cargo metadata`) and an authenticated `gh`
+2.74.0 or newer (older versions report no asset digests; `publish` checks
+this before it changes anything).
 
 To release: bump `version` in `Cargo.toml` (and `Cargo.lock`), add the
-CHANGELOG entry, merge to `main`, then tag that commit:
+CHANGELOG entry, merge to `main` and push, then from a clean checkout of that
+commit:
 
 ```bash
-git tag -a rs-v<ver> -m "mailgun-relay <ver> (Rust port)" <commit>
-git push origin rs-v<ver>
+python3 -I rust/scripts/local_release.py build     # builds, publishes nothing
+python3 -I rust/scripts/local_release.py publish   # tag, GitHub release, verify
 ```
+
+Remote facts (is the commit on `main`, does the tag exist) are read from
+GitHub, and the tag is created there, through `gh api --hostname
+github.com` on `ephes/mailgun-relay`: nothing is pushed with git, so no git
+remote, URL rewrite or `GH_HOST` decides where the tag or the release goes
+(`build` and `publish` also refuse a gh `api_host` override for github.com).
+`main` means the branch `refs/heads/main`, resolved exactly.
+`build` refuses a worktree with changes or untracked files, a commit that is
+not on `main` on GitHub, a non-empty output directory and a version whose tag
+`rs-v<version>` already exists (`--compare-released` builds such a version
+as a dry run that `publish` refuses). Then:
+
+1. Image phase, the only one with network: two `ubuntu:22.04` images (base
+   pinned by the digest pulled at the start), one of the Docker engine's own
+   platform and one `linux/amd64` (glibc 2.35, as the old runner). Each gets
+   `binutils ca-certificates curl gcc git libc6-dev python3`, rustup 1.29.1
+   (sha256-checked), the source as `git archive` of the build commit (`rust/`
+   and `LICENSE`), the pinned toolchain and `cargo fetch --locked`.
+2. Checks job on the engine's own platform: `cargo fmt --check`,
+   `cargo clippy --all-targets --locked -- -D warnings`, `cargo test --locked`
+   (under Rosetta, emulation artefacts could fail tests that are about the
+   code, not the target).
+3. Release job on `linux/amd64`, running `scripts/release_checks.py`:
+   - `version`: the tag `rs-v<version>` must equal the crate version (semver
+     without build metadata);
+   - `cargo build --release --locked --target x86_64-unknown-linux-gnu` with
+     `MAILGUN_RELAY_GIT_COMMIT` set to the full commit;
+   - `glibc-floor --max 2.35`: no glibc symbol version above 2.35, `NEEDED`
+     only glibc and libgcc (macmini has 2.39);
+   - `smoke`: `--version` prints exactly `mailgun-relay <version> (<commit>)`,
+     and `--check-config` with only a test environment (the variables of the
+     role's env file) and a test secrets file (mode 0600) exits 0 with the
+     expected summary;
+   - `pack`: `mailgun-relay-<version>-x86_64-unknown-linux-gnu.tar.gz` with
+     exactly `mailgun-relay` (0755) and `LICENSE` (0644), root-owned, the
+     commit time as mtime, gzip without a file name, so a rebuild of the same
+     binary gives the same bytes; plus `<archive>.sha256`, checked with
+     `sha256sum --check`.
+
+   Both jobs run with `--network none`, no mounts, and memory, process and
+   time limits.
+4. The archive, its `.sha256`, `build.json` (commit, sha256, images, package
+   and toolchain versions) and `notes.md` land in
+   `rust/target/local-release/mailgun-relay-<version>/`, staged privately and
+   moved there in one rename, so a concurrent build never mixes into it.
+
+`publish` takes that directory: it checks the archive against `build.json`
+and that `gh` is 2.74.0 or newer, creates the annotated tag `rs-v<version>`
+on the build commit through the GitHub API (only when that commit is on
+`main`; an existing tag must be annotated and point at that commit, it is
+never moved), creates the GitHub release with exactly the archive and its
+`.sha256` (`gh release create --verify-tag`; a version with a pre-release
+part such as `0.3.0-rc.1` becomes a GitHub pre-release), then downloads both
+again and compares them byte for byte. It succeeds only when afterwards the
+same release (same release and asset ids) is published, with the expected
+prerelease flag, exactly those two assets and GitHub's sha256 of each equal
+to the built one. A draft (left by an interrupted `gh release create`) is
+refused: check it, delete the draft by hand (the tag stays) and run `publish`
+again. It never replaces an asset and can be rerun until that end state is
+reached. Fetch the tag afterwards with `git fetch --tags`. The role downloads
+`https://github.com/ephes/mailgun-relay/releases/download/rs-v<ver>/mailgun-relay-<ver>-x86_64-unknown-linux-gnu.tar.gz`
+and pins its sha256 (PLAN.md 9.1); ops-control pins version and sha256
+(`mailgun_relay_rust_version`, `mailgun_relay_rust_sha256`).
 
 The local release helpers run on POSIX. Each version/config/objdump command has
 one 10-second deadline covering process exit and both output pipes, with a
@@ -329,7 +371,8 @@ src/smtp.rs     SMTP submission (lettre connection API)
 tests/binary.rs process-level tests of the built binary
 tests/support/fake_smtp.rs  scripted fake SMTP server (unit and process tests)
 fixtures/       generator + generated JSON; check_mime.py (Python's parser on Rust messages)
-scripts/release_checks.py  release gate of .github/workflows/rust-release.yml
+scripts/release_checks.py  release gate run by scripts/local_release.py
+scripts/local_release.py   local release build and publication (config: local-release.json)
 parity/         process-level parity harness: run_parity.py, cases.py, smtp_fake.py, semantic.py
 ```
 

@@ -4,6 +4,18 @@ All notable changes to mailgun-relay are documented here.
 
 ## Unreleased
 
+### Release process
+
+- Rust releases are built and published locally by
+  `rust/scripts/local_release.py` (configuration `rust/local-release.json`,
+  rust/README.md "Release") instead of GitHub Actions: workspace checks and a
+  `linux/amd64` ubuntu-22.04 release build in local containers without network,
+  the glibc floor, smoke test and deterministic archive of
+  `release_checks.py`, then tag, GitHub release and a byte-for-byte
+  download comparison. The tag-triggered `.github/workflows/rust-release.yml`
+  is removed. Tag names (`rs-v<version>`), archive names and download URLs are
+  unchanged, so ops-control's version and sha256 pins keep working.
+
 ### Tests
 
 - Extend the synthetic TLS peer with phase/session-specific AUTH offers. Pin

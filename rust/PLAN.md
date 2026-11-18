@@ -69,7 +69,9 @@ nyxmon (`nyxmon:agent-rs/`). Reasons:
   The repository is public, so no token is needed to download.
 - **One CI and one CHANGELOG.** `.github/workflows/ci.yml` gains Rust jobs;
   the release workflow is a separate file triggered by `rs-v*` tags (and by
-  `workflow_dispatch` for a workflow artifact without a release).
+  `workflow_dispatch` for a workflow artifact without a release). *Superseded
+  2026-11-18:* releases are built and published locally by
+  `rust/scripts/local_release.py` (README "Release"); the workflow is removed.
 
 Merging Rust code to `main` is safe at any time: nothing deploys `rust/`
 until the role is switched (section 9). One precondition: the role's rsync
@@ -1190,6 +1192,10 @@ committed with this plan).
 ---
 
 ## 8. Release
+
+*Superseded 2026-11-18:* the workflow below is removed; releases are
+built and published locally by `rust/scripts/local_release.py` with the same
+checks (rust/README.md "Release"). The section is kept as history.
 
 Adapted 1:1 from nyxmon (`nyxmon:.github/workflows/agent-rs-release.yml`,
 `agent-rs/scripts/release_checks.py`):
