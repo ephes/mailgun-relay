@@ -196,7 +196,9 @@ The local release helpers run on POSIX. Each version/config/objdump command has
 one 10-second deadline covering process exit and both output pipes, with a
 combined 1 MiB output ceiling. Launch failure, cancellation, timeout or overflow
 fails the check; overflow prints a fixed diagnostic. Cleanup kills the owned
-process group, including pipe-holding descendants.
+process group, including pipe-holding descendants, then attempts to reap the
+helper and close each pipe. Cleanup failures report the failed operations
+alongside any original command failure.
 
 `pack` accepts ASCII semver without build metadata and the supported
 `x86_64-unknown-linux-gnu` target, before reading inputs or creating output.
@@ -205,6 +207,10 @@ publishes the pair with rollback on handled failures. A durable
 `.mailgun-relay-<version>-<target>.tar.gz.incomplete` marker identifies an
 interrupted publication. Do not consume a marked pair, even if one file looks
 complete: rerun the same `pack` command successfully to repair and clear it.
+If a rollback fails, `pack` still attempts to restore both files and reports
+the original publication failure and the private `.pack-*` directory holding
+any remaining backups. Keep that directory until recovery is complete. A retry
+uses a new staging directory and leaves the saved backups available.
 Two file names cannot be atomically replaced together; the marker is the
 interruption boundary. The helper does not publish a release or a tag.
 
@@ -260,9 +266,11 @@ keeps these failures visible while suppressing normal traffic; a partly
 refused message adds a `recipients_refused` WARNING (domains and codes
 only), a `QUIT` that is not answered with 221 an `smtp_cleanup_failed`
 WARNING (the outcome stays). `/health` and the fallbacks log nothing.
-SIGTERM and SIGINT stop the
-server after in-flight requests (exit 0); a configuration or bind failure
-exits 1.
+On SIGTERM or SIGINT, the relay stops all listeners and waits for in-flight
+requests, including submissions whose clients disconnected. A listener that exits
+early triggers the same drain. The relay reports the initiating listener failure
+after the drain and exits 1. Configuration and bind failures also exit 1.
+A signal-triggered shutdown with a successful drain exits 0.
 
 Both secrets loaders refuse a label equal to the SMTP password or any loaded
 token digest, regardless of policy order; digest comparison trims whitespace
@@ -531,7 +539,9 @@ explicit IPv4 loopback addresses, independent of DNS ordering and IPv6 support.
 A later address-in-use error must release earlier listeners immediately; after
 removing the conflict, both addresses must bind successfully. The binary bind
 failure test separately pins exit 1, no startup-success record and safe output.
-Startup logs success only after the complete listener set has been acquired.
+Startup requires at least one resolved listener address and logs success only
+after binding every address. A synthetic empty address list tests exit from
+the startup path before it emits the startup record.
 
 ## Local SMTP fixture ownership and recovery
 

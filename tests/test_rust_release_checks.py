@@ -18,9 +18,11 @@ import re
 import subprocess
 import sys
 import tarfile
+from contextlib import nullcontext
 from pathlib import Path
 from types import ModuleType
 from typing import Any
+from unittest.mock import Mock
 
 import pytest
 
@@ -480,6 +482,47 @@ def test_pack_failed_publication_preserves_previous_pair_and_retry_repairs(
     assert not list(out.glob("*.incomplete"))
 
 
+def test_pack_retains_backups_when_one_restore_fails(
+    checks: ModuleType, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    out = tmp_path / "out"
+    name = "relay.tar.gz"
+    checksum = f"{name}.sha256"
+    checks.publish_archive(out, name, b"old")
+    old_checksum = (out / checksum).read_bytes()
+    replace = os.replace
+    publication_failure = OSError("synthetic checksum install failure")
+    restore_attempts = []
+
+    def fail_replace(src: Any, dst: Any) -> None:
+        if Path(src).name == checksum:
+            raise publication_failure
+        if Path(src).suffix == ".old":
+            restore_attempts.append(Path(dst).name)
+            if Path(dst).name == name:
+                raise OSError("synthetic archive restore failure")
+        replace(src, dst)
+
+    with monkeypatch.context() as patch:
+        patch.setattr(os, "replace", fail_replace)
+        with pytest.raises(
+            checks.CheckError, match=r"^synthetic checksum install failure"
+        ) as error:
+            checks.publish_archive(out, name, b"new")
+
+    assert error.value.__cause__ is publication_failure
+    assert restore_attempts == [name, checksum]
+    assert (out / f".{name}.incomplete").is_file()
+    assert (out / checksum).read_bytes() == old_checksum
+    (stage,) = out.glob(".pack-*")
+    assert str(stage) in str(error.value)
+    assert (stage / f"{name}.old").read_bytes() == b"old"
+
+    checks.publish_archive(out, name, b"new")
+    assert not (out / f".{name}.incomplete").exists()
+    assert (stage / f"{name}.old").read_bytes() == b"old"
+
+
 def test_failed_publication_keeps_an_earlier_incomplete_marker(
     checks: ModuleType, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -546,6 +589,32 @@ def test_command_cancellation_and_launch_errors_become_check_errors(
     monkeypatch.setattr(checks.selectors, "DefaultSelector", checks.selectors.SelectSelector)
     with pytest.raises(checks.CheckError, match="cancellation"):
         checks.run_command([sys.executable, "-c", "import time; time.sleep(5)"])
+
+
+@pytest.mark.parametrize("returncode", [0, 1])
+def test_command_cleanup_preserves_primary_failure_and_closes_both_pipes(
+    checks: ModuleType, monkeypatch: pytest.MonkeyPatch, returncode: int
+) -> None:
+    command = ["synthetic-helper"]
+    process = Mock(pid=42)
+    process.wait.side_effect = [returncode, subprocess.TimeoutExpired(command, 1)]
+    process.stdout.close.side_effect = OSError("synthetic close failure")
+    selector = Mock()
+    selector.get_map.return_value = {}
+    with monkeypatch.context() as patch:
+        patch.setattr(checks.subprocess, "Popen", Mock(return_value=process))
+        patch.setattr(checks.selectors, "DefaultSelector", lambda: nullcontext(selector))
+        patch.setattr(checks.os, "set_blocking", Mock())
+        kill_group = Mock()
+        patch.setattr(checks.os, "killpg", kill_group)
+        primary = "helper command exited unsuccessfully" if returncode else "helper cleanup failed"
+        with pytest.raises(checks.CheckError, match=f"^{primary}") as failure:
+            checks.run_command(command)
+    assert "reap" in str(failure.value)
+    assert "stdout" in str(failure.value)
+    kill_group.assert_called_once_with(42, checks.signal.SIGKILL)
+    process.stdout.close.assert_called_once_with()
+    process.stderr.close.assert_called_once_with()
 
 
 def test_pack_process_death_leaves_marker_and_rerun_repairs_pair(

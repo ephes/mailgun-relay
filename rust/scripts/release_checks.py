@@ -123,6 +123,7 @@ def run_command(
     process: subprocess.Popen[bytes] | None = None
     output = [bytearray(), bytearray()]
     total = 0
+    primary: CheckError | None = None
     try:
         process = subprocess.Popen(  # noqa: S603 - explicit executable under validation
             command,
@@ -155,20 +156,44 @@ def run_command(
         return subprocess.CompletedProcess(
             command, returncode, *(bytes(part).decode("utf-8", "replace") for part in output)
         )
+    except CheckError as error:
+        primary = error
+        raise
     except (OSError, subprocess.TimeoutExpired, KeyboardInterrupt) as error:
-        raise CheckError("helper command launch, deadline or cancellation failure") from error
+        primary = CheckError("helper command launch, deadline or cancellation failure")
+        raise primary from error
     finally:
         if process is not None:
-            # Also retire descendants of an already exited group leader.
+            failures = _retire_helper(process)
+            if failures:
+                evidence = f"helper cleanup failed: {', '.join(failures)}"
+                if primary is None:
+                    raise CheckError(evidence)
+                # Keep the primary diagnostic and cause on Python 3.10 too.
+                primary.args = (f"{primary}; {evidence}",)
+
+
+def _retire_helper(process: subprocess.Popen[bytes]) -> list[str]:
+    """Attempt every cleanup step, recording only bounded operation names."""
+    failures = []
+    try:
+        # Also retire descendants of an already exited group leader.
+        os.killpg(process.pid, signal.SIGKILL)
+    except ProcessLookupError:
+        pass
+    except (OSError, KeyboardInterrupt):
+        failures.append("retire process group")
+    try:
+        process.wait(timeout=1)
+    except (OSError, subprocess.TimeoutExpired, KeyboardInterrupt):
+        failures.append("reap process")
+    for name, pipe in (("stdout", process.stdout), ("stderr", process.stderr)):
+        if pipe is not None:
             try:
-                os.killpg(process.pid, signal.SIGKILL)
-            except ProcessLookupError:
-                pass
-            process.wait(timeout=1)
-            if process.stdout is not None:
-                process.stdout.close()
-            if process.stderr is not None:
-                process.stderr.close()
+                pipe.close()
+            except (OSError, KeyboardInterrupt):
+                failures.append(f"close {name}")
+    return failures
 
 
 def parse_version(text: str) -> tuple[int, ...]:
@@ -365,8 +390,9 @@ def publish_archive(directory: Path, name: str, data: bytes) -> None:
         fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
         marker = directory / f".{name}.incomplete"
         names = (name, f"{name}.sha256")
-        with tempfile.TemporaryDirectory(prefix=".pack-", dir=directory) as staging:
-            stage = Path(staging)
+        stage = Path(tempfile.mkdtemp(prefix=".pack-", dir=directory))
+        retain_stage = False
+        try:
             (stage / name).write_bytes(data)
             (stage / names[1]).write_text(checksum_line(data, name), encoding="utf-8")
             if (stage / name).read_bytes() != data or (
@@ -389,21 +415,41 @@ def publish_archive(directory: Path, name: str, data: bytes) -> None:
                 for item in names:
                     os.replace(stage / item, directory / item)
                 sync_directory(directory)
-            except BaseException:
-                # If rollback itself fails the durable marker remains authoritative.
+            except BaseException as primary:
+                # Keep remaining backups unless the whole rollback succeeds.
+                retain_stage = True
+                failures = []
                 for item in names:
                     backup = stage / f"{item}.old"
-                    if backup.exists():
-                        os.replace(backup, directory / item)
-                    else:
-                        (directory / item).unlink(missing_ok=True)
-                sync_directory(directory)
-                if not previously_marked:
-                    marker.unlink(missing_ok=True)
+                    try:
+                        if backup.exists():
+                            os.replace(backup, directory / item)
+                        else:
+                            (directory / item).unlink(missing_ok=True)
+                    except (OSError, KeyboardInterrupt):
+                        failures.append(f"restore {item}")
+                try:
                     sync_directory(directory)
+                except (OSError, KeyboardInterrupt):
+                    failures.append("sync output directory")
+                if not failures and not previously_marked:
+                    try:
+                        marker.unlink(missing_ok=True)
+                        sync_directory(directory)
+                    except (OSError, KeyboardInterrupt):
+                        failures.append("clear incomplete marker")
+                if failures:
+                    raise CheckError(
+                        f"{primary}; rollback failed ({', '.join(failures)}); "
+                        f"recovery files retained in {stage.absolute()}"
+                    ) from primary
+                retain_stage = False
                 raise
             marker.unlink()
             sync_directory(directory)
+        finally:
+            if not retain_stage:
+                shutil.rmtree(stage)
 
     finally:
         os.close(descriptor)

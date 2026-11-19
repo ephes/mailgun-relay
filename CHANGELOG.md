@@ -20,6 +20,11 @@ All notable changes to mailgun-relay are documented here.
 
 ### Release process
 
+- Preserve the primary release-helper error and report cleanup failures after
+  attempting to retire the process group, reap the helper and close both pipes.
+- Attempt both artifact restores after a failed pack. If rollback fails, retain
+  remaining backups and report their directory with the publication error.
+
 - Recover from a failed tag creation response when GitHub confirms the exact
   annotated tag already points to the build commit.
 - Recheck the annotated tag against the build commit after release asset
@@ -66,6 +71,10 @@ All notable changes to mailgun-relay are documented here.
   keeps health responsive and admits a subsequent send without duplicating the first.
 
 ### Fixed
+
+- Refuse to start the Rust relay when the bind host resolves to no addresses.
+- Stop the remaining Rust listeners and drain tracked submissions before
+  reporting an unexpected listener exit.
 
 - Apply the validated 120-second default SMTP session budget to Python rollback
   TCP attempts, greeting, TLS, AUTH and DATA outcomes. Interrupt only the owned

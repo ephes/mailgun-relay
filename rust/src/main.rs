@@ -21,6 +21,7 @@ mod secrets;
 mod smtp;
 mod yaml;
 
+use std::future::Future;
 use std::net::SocketAddr;
 use std::path::Path;
 use std::process::ExitCode;
@@ -31,6 +32,9 @@ use serde::Serialize;
 use socket2::{Domain, Protocol, Socket, Type};
 use tokio::net::TcpListener;
 use tokio::signal::unix::{Signal, SignalKind, signal};
+use tokio::sync::watch;
+use tokio::task::JoinSet;
+use tokio_util::task::TaskTracker;
 
 use crate::config::{ConfigError, Level, Settings};
 use crate::log::{Logger, SERVICE_LOGGER};
@@ -95,7 +99,10 @@ fn serve() -> ExitCode {
         .thread_keep_alive(Duration::from_secs(10))
         .build();
     let result = match runtime {
-        Ok(runtime) => runtime.block_on(run(settings, secrets, smtp, logger.clone())),
+        Ok(runtime) => runtime.block_on(async {
+            let listeners = bind_all(&settings.bind_host, settings.bind_port).await;
+            run(settings, secrets, smtp, logger.clone(), listeners).await
+        }),
         Err(error) => Err(format!("cannot start the runtime: {error}")),
     };
     logger.shutdown(Duration::from_secs(1));
@@ -113,11 +120,10 @@ async fn run(
     secrets: Secrets,
     smtp: SmtpConfig,
     logger: Logger,
+    listeners: std::io::Result<Vec<TcpListener>>,
 ) -> Result<(), String> {
     let bind = format!("{}:{}", settings.bind_host, settings.bind_port);
-    let listeners = bind_all(&settings.bind_host, settings.bind_port)
-        .await
-        .map_err(|error| format!("cannot bind {bind}: {error}"))?;
+    let listeners = listeners.map_err(|error| format!("cannot bind {bind}: {error}"))?;
     // Handlers are in place before the startup record announces the process.
     let mut shutdown = Shutdown::register().map_err(|error| format!("signals: {error}"))?;
     log_startup(&logger, &settings, &secrets, &bind);
@@ -131,8 +137,8 @@ async fn run(
     let state = Arc::new(http::AppState {
         relay: Arc::clone(&relay),
     });
-    let (stop, stopped) = tokio::sync::watch::channel(false);
-    let mut servers = tokio::task::JoinSet::new();
+    let (stop, stopped) = watch::channel(false);
+    let mut servers = JoinSet::new();
     for listener in listeners {
         let app = http::router(Arc::clone(&state))
             .into_make_service_with_connect_info::<http::Connection>();
@@ -145,22 +151,31 @@ async fn run(
                 .await
         });
     }
-    tokio::select! {
-        () = shutdown.recv() => {}
-        Some(result) = servers.join_next() => {
-            return Err(format!("server stopped: {result:?}"));
-        }
-    }
+    supervise_listeners(servers, stop, &relay.tasks, shutdown.recv()).await
+}
+
+async fn supervise_listeners(
+    mut servers: JoinSet<std::io::Result<()>>,
+    stop: watch::Sender<bool>,
+    tasks: &TaskTracker,
+    shutdown: impl Future<Output = ()>,
+) -> Result<(), String> {
+    let mut outcome = tokio::select! {
+        () = shutdown => Ok(()),
+        Some(result) = servers.join_next() => Err(format!("server stopped: {result:?}")),
+    };
     let _ = stop.send(true);
     while let Some(result) = servers.join_next().await {
-        result
-            .map_err(|error| format!("server task: {error}"))?
-            .map_err(|error| format!("server error: {error}"))?;
+        if outcome.is_ok() {
+            outcome = result
+                .map_err(|error| format!("server task: {error}"))
+                .and_then(|result| result.map_err(|error| format!("server error: {error}")));
+        }
     }
     // Requests whose client went away may still be submitting.
-    relay.tasks.close();
-    relay.tasks.wait().await;
-    Ok(())
+    tasks.close();
+    tasks.wait().await;
+    outcome
 }
 
 /// Bind every address the host resolves to, as asyncio's `create_server`
@@ -176,9 +191,15 @@ async fn bind_all(host: &str, port: u16) -> std::io::Result<Vec<TcpListener>> {
     bind_addresses(&addresses)
 }
 
-/// Acquire the complete listener set before startup can announce success.
+/// Acquire a nonempty, complete listener set before startup can announce success.
 /// Dropping the local vector on any error rolls back earlier binds.
 fn bind_addresses(addresses: &[SocketAddr]) -> std::io::Result<Vec<TcpListener>> {
+    if addresses.is_empty() {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::AddrNotAvailable,
+            "no addresses to listen on",
+        ));
+    }
     let mut listeners = Vec::with_capacity(addresses.len());
     for address in addresses.iter().copied() {
         let socket = Socket::new(
@@ -276,6 +297,32 @@ mod bind_tests {
     use super::*;
 
     #[tokio::test]
+    async fn empty_listener_inventory_fails_before_startup() {
+        let settings =
+            Settings::from_env([("MAILGUN_RELAY_SMTP_STARTTLS".into(), "false".into())]).unwrap();
+        let secrets = Secrets {
+            smtp: secrets::SmtpCredentials {
+                username: "relay@example.org".into(),
+                password: "synthetic-password".into(),
+            },
+            tokens: vec![],
+        };
+        let smtp = SmtpConfig::load(&settings, &secrets.smtp).unwrap();
+        let (logger, records) = Logger::capturing(Level::Info);
+        let result = tokio::time::timeout(
+            Duration::from_millis(100),
+            run(settings, secrets, smtp, logger, bind_addresses(&[])),
+        )
+        .await;
+        assert!(
+            records.lock().unwrap().is_empty(),
+            "announced startup without listeners"
+        );
+        let error = result.expect("startup did not terminate").unwrap_err();
+        assert!(error.contains("no addresses to listen on"), "{error}");
+    }
+
+    #[tokio::test]
     async fn partial_bind_failure_releases_earlier_listeners_and_allows_retry() {
         // Explicit IPv4 addresses avoid DNS order and IPv6 availability.
         let first = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
@@ -298,5 +345,50 @@ mod bind_tests {
         for address in [first_address, second_address] {
             assert!(std::net::TcpListener::bind(address).is_ok());
         }
+    }
+}
+
+#[cfg(test)]
+mod shutdown_tests {
+    use super::*;
+    use tokio::sync::oneshot;
+
+    #[tokio::test]
+    async fn listener_exit_stops_other_listeners_and_drains_submissions() {
+        let (stop, mut stopped) = watch::channel(false);
+        let (listener_stopped, observe_stop) = oneshot::channel();
+        let mut servers = JoinSet::new();
+        servers.spawn(async { Err(std::io::Error::other("initiating listener failure")) });
+        servers.spawn(async move {
+            stopped.wait_for(|stop| *stop).await.unwrap();
+            listener_stopped.send(()).unwrap();
+            Err(std::io::Error::other("secondary listener failure"))
+        });
+
+        let tasks = TaskTracker::new();
+        let (finish, finish_submission) = oneshot::channel();
+        let submission = tasks.spawn(async { finish_submission.await.unwrap() });
+        let service = supervise_listeners(servers, stop, &tasks, std::future::pending());
+        tokio::pin!(service);
+
+        let deadline = Duration::from_secs(2);
+        tokio::select! {
+            result = &mut service => panic!("returned before stopping peer listener: {result:?}"),
+            stopped = tokio::time::timeout(deadline, observe_stop) => stopped.unwrap().unwrap(),
+        }
+        assert!(
+            tokio::time::timeout(Duration::from_millis(20), &mut service)
+                .await
+                .is_err(),
+            "returned before the tracked submission completed"
+        );
+        finish.send(()).unwrap();
+        let error = tokio::time::timeout(deadline, service)
+            .await
+            .unwrap()
+            .unwrap_err();
+        assert!(submission.is_finished());
+        assert!(error.contains("initiating listener failure"), "{error}");
+        assert!(!error.contains("secondary listener failure"), "{error}");
     }
 }

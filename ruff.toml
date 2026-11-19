@@ -1,6 +1,6 @@
 target-version = "py314"
-# The parity harness also runs with a host's bare python3 (PLAN.md 10.1).
-per-file-target-version = { "rust/parity/*.py" = "py312", "scripts/ci_rustup.py" = "py310" }
+# The parity harness and release helpers also run on older host interpreters.
+per-file-target-version = { "rust/parity/*.py" = "py312", "rust/scripts/release_checks.py" = "py310", "scripts/ci_rustup.py" = "py310" }
 line-length = 100
 src = ["src", "tests"]
 
