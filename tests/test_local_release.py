@@ -778,10 +778,17 @@ def test_publish_rechecks_tag_after_download(
 
     tag = "rs-v1.2.3"
     github = ChangedTag()
+    lines: list[str] = []
     with pytest.raises(release.ReleaseError, match=r"tag .* changed during release verification"):
-        publish(release, built, github=github)
+        release.publish(
+            built, config=release.parse_config(linux_data()), github=github, log=lines.append
+        )
     assert github.tag(tag) == tag_after_download
     assert len(github.releases[tag]) == 2
+    # The operator still learns which remote objects this run created.
+    assert lines[0] == f"created tag {tag} -> {COMMIT} on GitHub"
+    assert any(line.startswith("created release") for line in lines)
+    assert lines[-1] == f"verified 2 assets of {tag} byte for byte"
 
 
 def test_publish_checks_main_also_for_an_existing_tag(release: ModuleType, built: Path) -> None:

@@ -177,7 +177,9 @@ prerelease flag, exactly those two assets and GitHub's sha256 of each equal
 to the built one. Every release read requires unique asset names and IDs.
 After verifying the assets, it rereads the exact annotated
 tag and requires it to still point at the build commit. A changed or missing
-tag fails verification and leaves the remote objects in place. A draft
+tag fails verification and leaves the remote objects in place; the steps
+this run took (tag, release, uploads) are logged before that check, so the
+operator knows what to settle by hand. A draft
 (left by an interrupted `gh release create`) is
 refused: check it, delete the draft by hand (the tag stays) and run `publish`
 again. It never replaces an asset and can be rerun until that end state is

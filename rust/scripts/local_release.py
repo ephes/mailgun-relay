@@ -1213,11 +1213,12 @@ def publish(
         if check_sha256_file(staging, archive) != record["sha256"]:
             raise ReleaseError(f"{archive} changed since the build")
         log(ensure_tag(github, tag, commit, title))
-        steps = ensure_release(github, tag, title, notes, files, prerelease="-" in version)
+        # Log the remote actions before the final tag check, so a failing
+        # check still tells the operator what this run created or uploaded.
+        for step in ensure_release(github, tag, title, notes, files, prerelease="-" in version):
+            log(step)
     if github.tag(tag) != commit:
         raise ReleaseError(f"tag {tag} changed during release verification; expected {commit}")
-    for step in steps:
-        log(step)
 
 
 # --- command line --------------------------------------------------------------------
