@@ -380,14 +380,23 @@ class GitHub:
             if "release not found" in str(error):
                 return None
             raise
-        assets = {
-            asset["name"]: (asset.get("digest") or "").removeprefix("sha256:")
-            for asset in data["assets"]
-        }
+        assets: dict[str, str] = {}
+        asset_ids: dict[str, str] = {}
+        seen_ids: set[str] = set()
+        for asset in data["assets"]:
+            name = asset["name"]
+            asset_id = str(asset["id"])
+            if name in assets:
+                raise ReleaseError(f"release {tag} has a duplicate asset name: {name}")
+            if asset_id in seen_ids:
+                raise ReleaseError(f"release {tag} has a duplicate asset id: {asset_id}")
+            assets[name] = (asset.get("digest") or "").removeprefix("sha256:")
+            asset_ids[name] = asset_id
+            seen_ids.add(asset_id)
         return Release(
             id=int(data["databaseId"]),
             assets=assets,
-            asset_ids={asset["name"]: str(asset["id"]) for asset in data["assets"]},
+            asset_ids=asset_ids,
             draft=bool(data["isDraft"]),
             prerelease=bool(data["isPrerelease"]),
         )

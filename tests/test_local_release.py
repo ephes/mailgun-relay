@@ -667,6 +667,51 @@ def test_ensure_release_refuses_a_different_digest(release: ModuleType, tmp_path
         release.ensure_release(Digests(), "t", "t", path, {"a.tar.gz": path})
 
 
+@pytest.mark.parametrize("duplicate", ["name", "id"])
+def test_publish_rejects_duplicate_asset_identities_in_readback(
+    release: ModuleType, built: Path, monkeypatch: pytest.MonkeyPatch, duplicate: str
+) -> None:
+    client = release.GitHub("ephes/example")
+
+    class DuplicateReadback(FakeGitHub):
+        downloaded = False
+
+        def release(self, tag: str) -> Any:
+            return client.release(tag)
+
+        def download(self, tag: str, directory: Path) -> None:
+            super().download(tag, directory)
+            self.downloaded = True
+
+    github = DuplicateReadback()
+    tag = "rs-v1.2.3"
+    github.tags[tag] = COMMIT
+    github.releases[tag] = {
+        path.name: path.read_bytes() for path in built.iterdir() if ".tar.gz" in path.name
+    }
+
+    def run(argv: Sequence[str]) -> str:
+        assert list(argv[:4]) == ["gh", "release", "view", tag]
+        assets = [
+            {"name": name, "id": str(index), "digest": f"sha256:{hashlib.sha256(data).hexdigest()}"}
+            for index, (name, data) in enumerate(github.releases[tag].items())
+        ]
+        if duplicate == "name" and github.downloaded:
+            assets.append(assets[0].copy())
+        if duplicate == "id":
+            for asset in assets:
+                asset["id"] = "shared"
+        return json.dumps(
+            {"databaseId": 100, "assets": assets, "isDraft": False, "isPrerelease": False}
+        )
+
+    monkeypatch.setattr(release, "run", run)
+    with pytest.raises(release.ReleaseError, match=f"duplicate asset {duplicate}"):
+        publish(release, built, github=github)
+    assert github.downloaded == (duplicate == "name")
+    assert github.tagged == [] and github.created == [] and github.uploaded == []
+
+
 def test_publish_refuses_a_draft_left_by_an_interrupted_create(
     release: ModuleType, built: Path
 ) -> None:

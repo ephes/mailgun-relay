@@ -174,7 +174,8 @@ part such as `0.3.0-rc.1` becomes a GitHub pre-release), then downloads both
 again and compares them byte for byte. It succeeds only when afterwards the
 same release (same release and asset ids) is published, with the expected
 prerelease flag, exactly those two assets and GitHub's sha256 of each equal
-to the built one. After verifying the assets, it rereads the exact annotated
+to the built one. Every release read requires unique asset names and IDs.
+After verifying the assets, it rereads the exact annotated
 tag and requires it to still point at the build commit. A changed or missing
 tag fails verification and leaves the remote objects in place. A draft
 (left by an interrupted `gh release create`) is

@@ -26,6 +26,8 @@ All notable changes to mailgun-relay are documented here.
   verification and fail if it disappeared or changed.
 - Stage and validate private copies of release artifacts and notes before
   creating the tag. Use those copies for upload and download comparison.
+- Reject duplicate asset names or IDs reported by GitHub during release
+  readback.
 - The release builder images pin rustup 1.29.2 (CVE-2026-111943, as the
   removed workflow's `scripts/ci_rustup.py`) and, before rustup-init is
   downloaded, require `ca-certificates` of USN-8944-1 and a CA bundle without
