@@ -266,9 +266,11 @@ keeps these failures visible while suppressing normal traffic; a partly
 refused message adds a `recipients_refused` WARNING (domains and codes
 only), a `QUIT` that is not answered with 221 an `smtp_cleanup_failed`
 WARNING (the outcome stays). `/health` and the fallbacks log nothing.
-SIGTERM and SIGINT stop the
-server after in-flight requests (exit 0); a configuration or bind failure
-exits 1.
+On SIGTERM or SIGINT, the relay stops all listeners and waits for in-flight
+requests, including submissions whose clients disconnected. A listener that exits
+early triggers the same drain. The relay reports the initiating listener failure
+after the drain and exits 1. Configuration and bind failures also exit 1.
+A signal-triggered shutdown with a successful drain exits 0.
 
 Both secrets loaders refuse a label equal to the SMTP password or any loaded
 token digest, regardless of policy order; digest comparison trims whitespace
