@@ -20,6 +20,9 @@ All notable changes to mailgun-relay are documented here.
 
 ### Release process
 
+- Preserve the primary release-helper error and report cleanup failures after
+  attempting to retire the process group, reap the helper and close both pipes.
+
 - Recover from a failed tag creation response when GitHub confirms the exact
   annotated tag already points to the build commit.
 - Recheck the annotated tag against the build commit after release asset

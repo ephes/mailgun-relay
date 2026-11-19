@@ -196,7 +196,9 @@ The local release helpers run on POSIX. Each version/config/objdump command has
 one 10-second deadline covering process exit and both output pipes, with a
 combined 1 MiB output ceiling. Launch failure, cancellation, timeout or overflow
 fails the check; overflow prints a fixed diagnostic. Cleanup kills the owned
-process group, including pipe-holding descendants.
+process group, including pipe-holding descendants, then attempts to reap the
+helper and close each pipe. Cleanup failures report the failed operations
+alongside any original command failure.
 
 `pack` accepts ASCII semver without build metadata and the supported
 `x86_64-unknown-linux-gnu` target, before reading inputs or creating output.

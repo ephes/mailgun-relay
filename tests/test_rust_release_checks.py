@@ -18,9 +18,11 @@ import re
 import subprocess
 import sys
 import tarfile
+from contextlib import nullcontext
 from pathlib import Path
 from types import ModuleType
 from typing import Any
+from unittest.mock import Mock
 
 import pytest
 
@@ -546,6 +548,32 @@ def test_command_cancellation_and_launch_errors_become_check_errors(
     monkeypatch.setattr(checks.selectors, "DefaultSelector", checks.selectors.SelectSelector)
     with pytest.raises(checks.CheckError, match="cancellation"):
         checks.run_command([sys.executable, "-c", "import time; time.sleep(5)"])
+
+
+@pytest.mark.parametrize("returncode", [0, 1])
+def test_command_cleanup_preserves_primary_failure_and_closes_both_pipes(
+    checks: ModuleType, monkeypatch: pytest.MonkeyPatch, returncode: int
+) -> None:
+    command = ["synthetic-helper"]
+    process = Mock(pid=42)
+    process.wait.side_effect = [returncode, subprocess.TimeoutExpired(command, 1)]
+    process.stdout.close.side_effect = OSError("synthetic close failure")
+    selector = Mock()
+    selector.get_map.return_value = {}
+    with monkeypatch.context() as patch:
+        patch.setattr(checks.subprocess, "Popen", Mock(return_value=process))
+        patch.setattr(checks.selectors, "DefaultSelector", lambda: nullcontext(selector))
+        patch.setattr(checks.os, "set_blocking", Mock())
+        kill_group = Mock()
+        patch.setattr(checks.os, "killpg", kill_group)
+        primary = "helper command exited unsuccessfully" if returncode else "helper cleanup failed"
+        with pytest.raises(checks.CheckError, match=f"^{primary}") as failure:
+            checks.run_command(command)
+    assert "reap" in str(failure.value)
+    assert "stdout" in str(failure.value)
+    kill_group.assert_called_once_with(42, checks.signal.SIGKILL)
+    process.stdout.close.assert_called_once_with()
+    process.stderr.close.assert_called_once_with()
 
 
 def test_pack_process_death_leaves_marker_and_rerun_repairs_pair(

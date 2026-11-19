@@ -123,6 +123,7 @@ def run_command(
     process: subprocess.Popen[bytes] | None = None
     output = [bytearray(), bytearray()]
     total = 0
+    primary: CheckError | None = None
     try:
         process = subprocess.Popen(  # noqa: S603 - explicit executable under validation
             command,
@@ -155,20 +156,44 @@ def run_command(
         return subprocess.CompletedProcess(
             command, returncode, *(bytes(part).decode("utf-8", "replace") for part in output)
         )
+    except CheckError as error:
+        primary = error
+        raise
     except (OSError, subprocess.TimeoutExpired, KeyboardInterrupt) as error:
-        raise CheckError("helper command launch, deadline or cancellation failure") from error
+        primary = CheckError("helper command launch, deadline or cancellation failure")
+        raise primary from error
     finally:
         if process is not None:
-            # Also retire descendants of an already exited group leader.
+            failures = _retire_helper(process)
+            if failures:
+                evidence = f"helper cleanup failed: {', '.join(failures)}"
+                if primary is None:
+                    raise CheckError(evidence)
+                # Keep the primary diagnostic and cause on Python 3.10 too.
+                primary.args = (f"{primary}; {evidence}",)
+
+
+def _retire_helper(process: subprocess.Popen[bytes]) -> list[str]:
+    """Attempt every cleanup step, recording only bounded operation names."""
+    failures = []
+    try:
+        # Also retire descendants of an already exited group leader.
+        os.killpg(process.pid, signal.SIGKILL)
+    except ProcessLookupError:
+        pass
+    except (OSError, KeyboardInterrupt):
+        failures.append("retire process group")
+    try:
+        process.wait(timeout=1)
+    except (OSError, subprocess.TimeoutExpired, KeyboardInterrupt):
+        failures.append("reap process")
+    for name, pipe in (("stdout", process.stdout), ("stderr", process.stderr)):
+        if pipe is not None:
             try:
-                os.killpg(process.pid, signal.SIGKILL)
-            except ProcessLookupError:
-                pass
-            process.wait(timeout=1)
-            if process.stdout is not None:
-                process.stdout.close()
-            if process.stderr is not None:
-                process.stderr.close()
+                pipe.close()
+            except (OSError, KeyboardInterrupt):
+                failures.append(f"close {name}")
+    return failures
 
 
 def parse_version(text: str) -> tuple[int, ...]:
