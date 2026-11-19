@@ -178,6 +178,10 @@ reached. Fetch the tag afterwards with `git fetch --tags`. The role downloads
 and pins its sha256 (PLAN.md 9.1); ops-control pins version and sha256
 (`mailgun_relay_rust_version`, `mailgun_relay_rust_sha256`).
 
+If tag creation reports an error, publication proceeds only when a fresh
+read of that exact annotated tag confirms the build commit. Otherwise it
+reports the original creation error.
+
 The local release helpers run on POSIX. Each version/config/objdump command has
 one 10-second deadline covering process exit and both output pipes, with a
 combined 1 MiB output ceiling. Launch failure, cancellation, timeout or overflow

@@ -841,6 +841,37 @@ def test_ensure_tag_creates_checks_and_never_moves(release: ModuleType) -> None:
     assert github.tagged == [("v1", COMMIT)]
 
 
+@pytest.mark.parametrize("observed", [COMMIT, OTHER, None, "unreadable"])
+def test_publish_reconciles_a_failed_tag_creation(
+    release: ModuleType, built: Path, observed: str | None
+) -> None:
+    error = release.ReleaseError("tag creation response lost")
+
+    class LostResponse(FakeGitHub):
+        def create_tag(self, tag: str, commit: str, message: str) -> None:
+            self.tagged.append((tag, commit))
+            if observed is not None:
+                self.tags[tag] = observed
+            raise error
+
+        def tag(self, tag: str) -> str | None:
+            result = super().tag(tag)
+            if result == "unreadable":
+                raise release.ReleaseError("cannot read back tag")
+            return result
+
+    github = LostResponse()
+    if observed == COMMIT:
+        publish(release, built, github=github)
+        assert github.created == [("rs-v1.2.3", False)]
+    else:
+        with pytest.raises(release.ReleaseError) as failure:
+            publish(release, built, github=github)
+        assert failure.value is error
+        assert github.created == []
+    assert github.tagged == [("rs-v1.2.3", COMMIT)]
+
+
 def test_gh_version_and_api_host_are_checked(
     release: ModuleType, monkeypatch: pytest.MonkeyPatch
 ) -> None:

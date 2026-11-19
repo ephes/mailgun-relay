@@ -614,7 +614,16 @@ def ensure_tag(github: GitHub, tag: str, commit: str, message: str) -> str:
         if existing != commit:
             raise ReleaseError(f"tag {tag} on GitHub points at {existing}, not {commit}")
         return f"tag {tag} already on GitHub"
-    github.create_tag(tag, commit, message)
+    try:
+        github.create_tag(tag, commit, message)
+    except ReleaseError:
+        try:
+            confirmed = github.tag(tag)
+        except ReleaseError:
+            confirmed = None
+        if confirmed == commit:
+            return f"confirmed tag {tag} -> {commit} on GitHub after a creation error"
+        raise
     if github.tag(tag) != commit:
         raise ReleaseError(f"tag {tag} on GitHub does not point at {commit} after creating it")
     return f"created tag {tag} -> {commit} on GitHub"
