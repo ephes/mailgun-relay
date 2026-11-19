@@ -537,7 +537,9 @@ explicit IPv4 loopback addresses, independent of DNS ordering and IPv6 support.
 A later address-in-use error must release earlier listeners immediately; after
 removing the conflict, both addresses must bind successfully. The binary bind
 failure test separately pins exit 1, no startup-success record and safe output.
-Startup logs success only after the complete listener set has been acquired.
+Startup requires at least one resolved listener address and logs success only
+after binding every address. A synthetic empty address list tests exit from
+the startup path before it emits the startup record.
 
 ## Local SMTP fixture ownership and recovery
 

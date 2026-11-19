@@ -95,7 +95,10 @@ fn serve() -> ExitCode {
         .thread_keep_alive(Duration::from_secs(10))
         .build();
     let result = match runtime {
-        Ok(runtime) => runtime.block_on(run(settings, secrets, smtp, logger.clone())),
+        Ok(runtime) => runtime.block_on(async {
+            let listeners = bind_all(&settings.bind_host, settings.bind_port).await;
+            run(settings, secrets, smtp, logger.clone(), listeners).await
+        }),
         Err(error) => Err(format!("cannot start the runtime: {error}")),
     };
     logger.shutdown(Duration::from_secs(1));
@@ -113,11 +116,10 @@ async fn run(
     secrets: Secrets,
     smtp: SmtpConfig,
     logger: Logger,
+    listeners: std::io::Result<Vec<TcpListener>>,
 ) -> Result<(), String> {
     let bind = format!("{}:{}", settings.bind_host, settings.bind_port);
-    let listeners = bind_all(&settings.bind_host, settings.bind_port)
-        .await
-        .map_err(|error| format!("cannot bind {bind}: {error}"))?;
+    let listeners = listeners.map_err(|error| format!("cannot bind {bind}: {error}"))?;
     // Handlers are in place before the startup record announces the process.
     let mut shutdown = Shutdown::register().map_err(|error| format!("signals: {error}"))?;
     log_startup(&logger, &settings, &secrets, &bind);
@@ -176,9 +178,15 @@ async fn bind_all(host: &str, port: u16) -> std::io::Result<Vec<TcpListener>> {
     bind_addresses(&addresses)
 }
 
-/// Acquire the complete listener set before startup can announce success.
+/// Acquire a nonempty, complete listener set before startup can announce success.
 /// Dropping the local vector on any error rolls back earlier binds.
 fn bind_addresses(addresses: &[SocketAddr]) -> std::io::Result<Vec<TcpListener>> {
+    if addresses.is_empty() {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::AddrNotAvailable,
+            "no addresses to listen on",
+        ));
+    }
     let mut listeners = Vec::with_capacity(addresses.len());
     for address in addresses.iter().copied() {
         let socket = Socket::new(
@@ -274,6 +282,32 @@ fn log_startup(logger: &Logger, settings: &Settings, secrets: &Secrets, bind: &s
 #[cfg(test)]
 mod bind_tests {
     use super::*;
+
+    #[tokio::test]
+    async fn empty_listener_inventory_fails_before_startup() {
+        let settings =
+            Settings::from_env([("MAILGUN_RELAY_SMTP_STARTTLS".into(), "false".into())]).unwrap();
+        let secrets = Secrets {
+            smtp: secrets::SmtpCredentials {
+                username: "relay@example.org".into(),
+                password: "synthetic-password".into(),
+            },
+            tokens: vec![],
+        };
+        let smtp = SmtpConfig::load(&settings, &secrets.smtp).unwrap();
+        let (logger, records) = Logger::capturing(Level::Info);
+        let result = tokio::time::timeout(
+            Duration::from_millis(100),
+            run(settings, secrets, smtp, logger, bind_addresses(&[])),
+        )
+        .await;
+        assert!(
+            records.lock().unwrap().is_empty(),
+            "announced startup without listeners"
+        );
+        let error = result.expect("startup did not terminate").unwrap_err();
+        assert!(error.contains("no addresses to listen on"), "{error}");
+    }
 
     #[tokio::test]
     async fn partial_bind_failure_releases_earlier_listeners_and_allows_retry() {

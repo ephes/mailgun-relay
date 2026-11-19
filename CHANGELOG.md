@@ -72,6 +72,8 @@ All notable changes to mailgun-relay are documented here.
 
 ### Fixed
 
+- Refuse to start the Rust relay when the bind host resolves to no addresses.
+
 - Apply the validated 120-second default SMTP session budget to Python rollback
   TCP attempts, greeting, TLS, AUTH and DATA outcomes. Interrupt only the owned
   connection, bound QUIT separately and retain confirmed acceptance on cleanup
