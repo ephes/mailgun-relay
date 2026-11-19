@@ -160,8 +160,12 @@ as a dry run that `publish` refuses). Then:
    `rust/target/local-release/mailgun-relay-<version>/`, staged privately and
    moved there in one rename, so a concurrent build never mixes into it.
 
-`publish` takes that directory: it checks the archive against `build.json`
-and that `gh` is 2.74.0 or newer, creates the annotated tag `rs-v<version>`
+`publish` takes that directory. It checks that `gh` is 2.74.0 or newer,
+copies the archive, checksum and notes into a private temporary directory,
+and validates the copied archive and checksum against `build.json`. It uses
+those copies for upload and verification, so replacing files in the build
+directory after staging cannot change what is published. It then creates the
+annotated tag `rs-v<version>`
 on the build commit through the GitHub API (only when that commit is on
 `main`; an existing tag must be annotated and point at that commit, it is
 never moved), creates the GitHub release with exactly the archive and its

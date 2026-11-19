@@ -1185,17 +1185,26 @@ def publish(
     )
     if not consistent:
         raise ReleaseError(f"{out}/{BUILD_JSON} is inconsistent")
-    if check_sha256_file(out, archive) != record["sha256"]:
-        raise ReleaseError(f"{archive} changed since the build")
-    files = {archive: out / archive, f"{archive}.sha256": out / f"{archive}.sha256"}
-    extra = sorted({path.name for path in out.iterdir()} - set(files) - {BUILD_JSON, NOTES})
+    names = (archive, f"{archive}.sha256")
+    extra = sorted({path.name for path in out.iterdir()} - {*names, BUILD_JSON, NOTES})
     if extra:
         raise ReleaseError(
             f"{out} holds files that are not part of the release: {', '.join(extra)}"
         )
-    log(ensure_tag(github, tag, commit, f"{config.binary} {version}"))
     title = f"{config.binary} {version}"
-    steps = ensure_release(github, tag, title, out / NOTES, files, prerelease="-" in version)
+    with tempfile.TemporaryDirectory(prefix="release-publish-") as directory:
+        staging = Path(directory)
+        files = {name: staging / name for name in names}
+        notes = staging / NOTES
+        try:
+            for path in (*files.values(), notes):
+                shutil.copyfile(out / path.name, path)
+        except OSError as error:
+            raise ReleaseError(f"cannot stage release files from {out}: {error}") from None
+        if check_sha256_file(staging, archive) != record["sha256"]:
+            raise ReleaseError(f"{archive} changed since the build")
+        log(ensure_tag(github, tag, commit, title))
+        steps = ensure_release(github, tag, title, notes, files, prerelease="-" in version)
     if github.tag(tag) != commit:
         raise ReleaseError(f"tag {tag} changed during release verification; expected {commit}")
     for step in steps:

@@ -595,6 +595,44 @@ def test_publish_never_moves_a_tag(release: ModuleType, built: Path) -> None:
         publish(release, built, github=FakeGitHub(on_main=False))
 
 
+@pytest.mark.parametrize("partial", [False, True])
+def test_publish_uses_staged_files_after_source_replacement(
+    release: ModuleType, built: Path, partial: bool
+) -> None:
+    record = json.loads((built / "build.json").read_text())
+    archive = record["archive"]
+    checksum = f"{archive}.sha256"
+    tag = record["tag"]
+    expected = {name: (built / name).read_bytes() for name in (archive, checksum)}
+    expected_notes = (built / "notes.md").read_bytes()
+
+    class SourceReplacement(FakeGitHub):
+        def on_main(self, commit: str) -> bool:
+            for name in (*expected, "notes.md"):
+                replacement = built / "replacement"
+                replacement.write_bytes(b"replacement")
+                replacement.replace(built / name)
+            return super().on_main(commit)
+
+        def create(
+            self, tag: str, title: str, notes: Path, files: list[Path], prerelease: bool
+        ) -> None:
+            assert all(path.parent != built for path in [notes, *files])
+            assert notes.read_bytes() == expected_notes
+            super().create(tag, title, notes, files, prerelease)
+
+        def upload(self, tag: str, files: list[Path]) -> None:
+            assert all(path.parent != built for path in files)
+            super().upload(tag, files)
+
+    github = SourceReplacement()
+    if partial:
+        github.releases[tag] = {checksum: expected[checksum]}
+    publish(release, built, github=github)
+    assert github.releases[tag] == expected
+    assert github.uploaded == ([archive] if partial else [])
+
+
 def test_publish_completes_and_checks_a_partial_release(release: ModuleType, built: Path) -> None:
     record = json.loads((built / "build.json").read_text())
     archive = record["archive"]
