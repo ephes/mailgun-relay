@@ -170,7 +170,10 @@ part such as `0.3.0-rc.1` becomes a GitHub pre-release), then downloads both
 again and compares them byte for byte. It succeeds only when afterwards the
 same release (same release and asset ids) is published, with the expected
 prerelease flag, exactly those two assets and GitHub's sha256 of each equal
-to the built one. A draft (left by an interrupted `gh release create`) is
+to the built one. After verifying the assets, it rereads the exact annotated
+tag and requires it to still point at the build commit. A changed or missing
+tag fails verification and leaves the remote objects in place. A draft
+(left by an interrupted `gh release create`) is
 refused: check it, delete the draft by hand (the tag stays) and run `publish`
 again. It never replaces an asset and can be rerun until that end state is
 reached. Fetch the tag afterwards with `git fetch --tags`. The role downloads

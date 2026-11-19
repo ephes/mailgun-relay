@@ -681,6 +681,26 @@ def test_publish_refuses_a_partial_release_with_the_wrong_prerelease_flag(
     assert github.uploaded == []  # refused before anything was uploaded
 
 
+@pytest.mark.parametrize("tag_after_download", [OTHER, None])
+def test_publish_rechecks_tag_after_download(
+    release: ModuleType, built: Path, tag_after_download: str | None
+) -> None:
+    class ChangedTag(FakeGitHub):
+        def download(self, tag: str, directory: Path) -> None:
+            super().download(tag, directory)
+            if tag_after_download is None:
+                del self.tags[tag]
+            else:
+                self.tags[tag] = tag_after_download
+
+    tag = "rs-v1.2.3"
+    github = ChangedTag()
+    with pytest.raises(release.ReleaseError, match=r"tag .* changed during release verification"):
+        publish(release, built, github=github)
+    assert github.tag(tag) == tag_after_download
+    assert len(github.releases[tag]) == 2
+
+
 def test_publish_checks_main_also_for_an_existing_tag(release: ModuleType, built: Path) -> None:
     github = FakeGitHub(on_main=False)
     github.tags["rs-v1.2.3"] = COMMIT

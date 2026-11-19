@@ -22,6 +22,8 @@ All notable changes to mailgun-relay are documented here.
 
 - Recover from a failed tag creation response when GitHub confirms the exact
   annotated tag already points to the build commit.
+- Recheck the annotated tag against the build commit after release asset
+  verification and fail if it disappeared or changed.
 - The release builder images pin rustup 1.29.2 (CVE-2026-111943, as the
   removed workflow's `scripts/ci_rustup.py`) and, before rustup-init is
   downloaded, require `ca-certificates` of USN-8944-1 and a CA bundle without

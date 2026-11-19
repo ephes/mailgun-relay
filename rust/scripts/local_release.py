@@ -1195,7 +1195,10 @@ def publish(
         )
     log(ensure_tag(github, tag, commit, f"{config.binary} {version}"))
     title = f"{config.binary} {version}"
-    for step in ensure_release(github, tag, title, out / NOTES, files, prerelease="-" in version):
+    steps = ensure_release(github, tag, title, out / NOTES, files, prerelease="-" in version)
+    if github.tag(tag) != commit:
+        raise ReleaseError(f"tag {tag} changed during release verification; expected {commit}")
+    for step in steps:
         log(step)
 
 
