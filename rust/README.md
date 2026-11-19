@@ -207,6 +207,10 @@ publishes the pair with rollback on handled failures. A durable
 `.mailgun-relay-<version>-<target>.tar.gz.incomplete` marker identifies an
 interrupted publication. Do not consume a marked pair, even if one file looks
 complete: rerun the same `pack` command successfully to repair and clear it.
+If a rollback fails, `pack` still attempts to restore both files and reports
+the original publication failure and the private `.pack-*` directory holding
+any remaining backups. Keep that directory until recovery is complete. A retry
+uses a new staging directory and leaves the saved backups available.
 Two file names cannot be atomically replaced together; the marker is the
 interruption boundary. The helper does not publish a release or a tag.
 

@@ -22,6 +22,8 @@ All notable changes to mailgun-relay are documented here.
 
 - Preserve the primary release-helper error and report cleanup failures after
   attempting to retire the process group, reap the helper and close both pipes.
+- Attempt both artifact restores after a failed pack. If rollback fails, retain
+  remaining backups and report their directory with the publication error.
 
 - Recover from a failed tag creation response when GitHub confirms the exact
   annotated tag already points to the build commit.

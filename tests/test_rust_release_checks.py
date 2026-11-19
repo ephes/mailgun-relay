@@ -482,6 +482,47 @@ def test_pack_failed_publication_preserves_previous_pair_and_retry_repairs(
     assert not list(out.glob("*.incomplete"))
 
 
+def test_pack_retains_backups_when_one_restore_fails(
+    checks: ModuleType, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    out = tmp_path / "out"
+    name = "relay.tar.gz"
+    checksum = f"{name}.sha256"
+    checks.publish_archive(out, name, b"old")
+    old_checksum = (out / checksum).read_bytes()
+    replace = os.replace
+    publication_failure = OSError("synthetic checksum install failure")
+    restore_attempts = []
+
+    def fail_replace(src: Any, dst: Any) -> None:
+        if Path(src).name == checksum:
+            raise publication_failure
+        if Path(src).suffix == ".old":
+            restore_attempts.append(Path(dst).name)
+            if Path(dst).name == name:
+                raise OSError("synthetic archive restore failure")
+        replace(src, dst)
+
+    with monkeypatch.context() as patch:
+        patch.setattr(os, "replace", fail_replace)
+        with pytest.raises(
+            checks.CheckError, match=r"^synthetic checksum install failure"
+        ) as error:
+            checks.publish_archive(out, name, b"new")
+
+    assert error.value.__cause__ is publication_failure
+    assert restore_attempts == [name, checksum]
+    assert (out / f".{name}.incomplete").is_file()
+    assert (out / checksum).read_bytes() == old_checksum
+    (stage,) = out.glob(".pack-*")
+    assert str(stage) in str(error.value)
+    assert (stage / f"{name}.old").read_bytes() == b"old"
+
+    checks.publish_archive(out, name, b"new")
+    assert not (out / f".{name}.incomplete").exists()
+    assert (stage / f"{name}.old").read_bytes() == b"old"
+
+
 def test_failed_publication_keeps_an_earlier_incomplete_marker(
     checks: ModuleType, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
