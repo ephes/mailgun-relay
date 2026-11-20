@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import contextlib
 import functools
 import logging
 import os
@@ -605,28 +604,24 @@ def _require_str(key: str, value: object) -> str:
 def _read_upload(value: object, settings: Settings) -> Attachment:
     if not isinstance(value, UploadFile):
         raise BadRequestError("attachment/inline must be an uploaded file")
-    try:
-        # Determine the spooled size before pulling the whole file into memory,
-        # so an oversized attachment is rejected without a large allocation.
-        fileobj = value.file
-        fileobj.seek(0, os.SEEK_END)
-        size = fileobj.tell()
-        fileobj.seek(0)
-        if size > settings.max_attachment_bytes:
-            raise PayloadTooLargeError(f"attachment {value.filename!r} exceeds max size")
-        filename = value.filename or "attachment"
-        content_type = value.content_type or "application/octet-stream"
-        if any(
-            len(metadata) > settings.max_header_value_length
-            for metadata in (filename, content_type)
-        ):
-            raise BadRequestError("upload metadata exceeds header value limit")
-        data = fileobj.read()
-        return Attachment(
-            filename=filename,
-            content_type=content_type,
-            data=data,
-        )
-    finally:
-        with contextlib.suppress(Exception):
-            value.file.close()
+    # The request owns the spool and closes it after the workers finish.
+    # Determine the spooled size before pulling the whole file into memory,
+    # so an oversized attachment is rejected without a large allocation.
+    fileobj = value.file
+    fileobj.seek(0, os.SEEK_END)
+    size = fileobj.tell()
+    fileobj.seek(0)
+    if size > settings.max_attachment_bytes:
+        raise PayloadTooLargeError(f"attachment {value.filename!r} exceeds max size")
+    filename = value.filename or "attachment"
+    content_type = value.content_type or "application/octet-stream"
+    if any(
+        len(metadata) > settings.max_header_value_length for metadata in (filename, content_type)
+    ):
+        raise BadRequestError("upload metadata exceeds header value limit")
+    data = fileobj.read()
+    return Attachment(
+        filename=filename,
+        content_type=content_type,
+        data=data,
+    )

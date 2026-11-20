@@ -214,17 +214,19 @@ owned socket cleanup, including when raised during cleanup. Constructor failures
 own no returned SMTP object. Only operational `Exception` failures become
 `SmtpSubmitError`; cancellation is never a delivery-failure category.
 
-Once DATA is accepted, an operational failure of QUIT or connection close
-preserves the accepted result, including partial-refusal policy. Cleanup is attempted without retrying
+Once DATA is accepted, an operational failure of QUIT setup, QUIT or connection
+close preserves the accepted result, including partial-refusal policy. Cleanup is attempted without retrying
 the send. A safe `smtp_cleanup_failed` warning records only the exception class,
 never SMTP reply text or recipient addresses. Pre-acceptance failures retain their
-original error category even if cleanup also fails.
+original error category even if cleanup also fails. If the QUIT timer cannot
+start, the adapter skips QUIT and still closes the owned socket.
 
 The retained Python rollback adapter also isolates multipart teardown: under a
-cancellation shield it attempts each parsed upload's close independently, even
-after validation or submission fails. A close failure produces an
-`upload_cleanup_failed` warning with only the exception class (capped at 80
-characters), preserving the HTTP result and attempting the remaining uploads.
+cancellation shield the request attempts each parsed upload's close once after
+its workers finish, even after validation or submission fails. A close failure
+produces an `upload_cleanup_failed` warning with only the exception class
+(capped at 80 characters), preserving the HTTP result and attempting the
+remaining uploads.
 Failed resources are not retried; a close attempt cannot guarantee release if
 the underlying file operation itself fails.
 

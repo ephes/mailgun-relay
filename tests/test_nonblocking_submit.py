@@ -341,9 +341,8 @@ def test_cancelled_send_keeps_admission_until_worker_and_form_cleanup_finish(
                         await _wait_entered(submitter)
                         [form] = parsed_forms
                         [upload] = [v for _, v in form.multi_items() if isinstance(v, UploadFile)]
-                        # Parsing already read the bytes into an Attachment and closed
-                        # the spool. Request-level form cleanup still waits for SMTP.
-                        assert upload.file.closed
+                        # The request keeps the spool until shielded form cleanup.
+                        assert not upload.file.closed
                         scopes[0].cancel()
                         busy = await client.post(
                             path,

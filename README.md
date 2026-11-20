@@ -96,9 +96,9 @@ The AUTH regression injects rejection at login and checks the complete call orde
 Admitted form interpretation, upload reads, address validation and MIME assembly
 run in the same bounded AnyIO worker pool as SMTP. Cancellation holds admission
 and form ownership until the active worker and form cleanup finish, while health
-remains responsive. Cancellation before submission does not start SMTP. Attachment spools close
-when parsing reads their bytes into an attachment, before MIME construction;
-cancellation cannot resubmit the message.
+remains responsive. Cancellation before submission does not start SMTP. The
+request closes each parsed attachment spool once in shielded form cleanup
+after its active worker finishes. Cancellation cannot resubmit the message.
 These checks cover the retained Python source, not a deployed rollback runtime.
 
 Python entrypoint contracts are covered without starting a server:
@@ -239,9 +239,10 @@ journald, so `journalctl -u mailgun-relay -f` is the live view.
   are never logged. See `docs/api-compatibility.md` for the HTTP behaviour.
 
 - `event=smtp_cleanup_failed` — a `WARNING` with only the exception class when
-  QUIT or close fails operationally. Accepted sends keep their outcome; closed
-  sessions skip QUIT. Python supervisor/control-flow exceptions propagate after
-  owned socket cleanup, including interrupts, process exit and asyncio cancellation.
+  QUIT setup, QUIT or close fails operationally. A failed QUIT timer start
+  skips QUIT and still closes the owned socket. The send result is preserved.
+  Python supervisor/control-flow exceptions propagate after owned socket
+  cleanup, including interrupts, process exit and asyncio cancellation.
 - `event=upload_cleanup_failed` — a Python rollback `WARNING` with only the
   exception class (at most 80 characters) when an upload close fails. Remaining
   uploads still get a close attempt under the cancellation shield; the HTTP

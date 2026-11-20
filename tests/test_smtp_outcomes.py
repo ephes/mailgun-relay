@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import smtplib
+import threading
 from dataclasses import replace
 from typing import cast
 from unittest.mock import patch
@@ -149,6 +150,58 @@ def test_already_closed_send_failure_does_not_warn_about_cleanup(
     instance.quit.assert_not_called()
     instance.close.assert_called_once()
     assert not [r for r in caplog.records if getattr(r, "event", None) == "smtp_cleanup_failed"]
+
+
+@pytest.mark.parametrize("data_rejected", [False, True])
+def test_cleanup_timer_start_failure_preserves_smtp_outcome(
+    data_rejected: bool, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    mock, instance = _make_ok_mock_smtp()
+    refused = {"other@example.test": (550, b"private recipient reply")}
+    primary = smtplib.SMTPDataError(451, b"private DATA reply")
+    instance.send_message.return_value = refused
+    if data_rejected:
+        instance.send_message.side_effect = primary
+
+    start_timer = threading.Timer.start
+    starts = 0
+
+    def start(timer: threading.Timer) -> None:
+        nonlocal starts
+        starts += 1
+        if starts == 2:
+            raise RuntimeError("private timer failure")
+        start_timer(timer)
+
+    monkeypatch.setattr(threading.Timer, "start", start)
+    with patch("mailgun_relay.smtp_client._SessionSMTP", new=mock):
+        if data_rejected:
+            with pytest.raises(SmtpSubmitError) as caught:
+                submit(
+                    _msg(),
+                    envelope_sender="x@x",
+                    recipients=["y@y"],
+                    transport=_plain_transport(25),
+                )
+            assert caught.value.category is FailureCategory.TEMPORARY
+            assert caught.value.__cause__ is primary
+        else:
+            assert (
+                submit(
+                    _msg(),
+                    envelope_sender="x@x",
+                    recipients=["y@y"],
+                    transport=_plain_transport(25),
+                )
+                == refused
+            )
+    assert starts == 2
+    instance.send_message.assert_called_once()
+    instance.quit.assert_not_called()
+    instance.close.assert_called_once()
+    [warning] = [r for r in caplog.records if getattr(r, "event", None) == "smtp_cleanup_failed"]
+    assert warning.error_class == "RuntimeError"  # type: ignore[attr-defined]
+    assert "private" not in caplog.text
 
 
 @pytest.mark.parametrize("failure", ["reply", "close"])
