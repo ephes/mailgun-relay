@@ -851,6 +851,59 @@ fn ca_read_bounds_a_growing_source_and_accepts_the_limit() {
     );
 }
 
+#[test]
+fn ca_read_rejects_same_length_rewrite() {
+    let file = tempfile::NamedTempFile::new().unwrap();
+    let pem = format!("{}\n", PKI.ca_pem);
+    std::fs::write(file.path(), &pem).unwrap();
+    let before = std::time::SystemTime::UNIX_EPOCH + Duration::from_secs(10);
+    file.as_file().set_modified(before).unwrap();
+
+    let opened = std::fs::File::open(file.path()).unwrap();
+    let result = read_opened_ca(opened, |opened| {
+        let mut bytes = Vec::new();
+        let mut reader = opened;
+        reader.by_ref().take(1).read_to_end(&mut bytes).unwrap();
+
+        // Rewrite only an ignored PEM character, yielding a same-length
+        // bundle that would still parse. Set distinct times without sleeping.
+        let mut updated = pem.into_bytes();
+        assert_eq!(updated.pop(), Some(b'\n'));
+        updated.push(b' ');
+        std::fs::write(file.path(), updated).unwrap();
+        file.as_file()
+            .set_modified(before + Duration::from_secs(10))
+            .unwrap();
+
+        bytes.extend(read_ca_bytes(opened)?);
+        Ok(bytes)
+    });
+    assert_eq!(result.unwrap_err(), "CA bundle changed while being read");
+}
+
+#[test]
+fn ca_read_accepts_coherent_bundle_across_atomic_path_replacement() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("ca.pem");
+    let replacement = dir.path().join("replacement.pem");
+    std::fs::write(&path, &PKI.ca_pem).unwrap();
+    std::fs::write(&replacement, "different file").unwrap();
+
+    let link = dir.path().join("current.pem");
+    std::os::unix::fs::symlink(&path, &link).unwrap();
+    assert_eq!(
+        read_ca_bundle(link.to_str().unwrap()).unwrap(),
+        PKI.ca_pem.as_bytes()
+    );
+    let opened = std::fs::File::open(&link).unwrap();
+    let bytes = read_opened_ca(opened, |opened| {
+        std::fs::rename(replacement, path).unwrap();
+        read_ca_bytes(opened)
+    })
+    .unwrap();
+    assert_eq!(bytes, PKI.ca_pem.as_bytes());
+}
+
 #[tokio::test]
 async fn auth_uses_only_latest_encrypted_ehlo_for_each_session() {
     let server = FakeSmtp::start(

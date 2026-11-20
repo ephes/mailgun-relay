@@ -25,6 +25,7 @@
 //! the connection is dropped.
 
 use std::collections::HashSet;
+use std::fs::File;
 use std::io::{self, Read};
 use std::net::SocketAddr;
 use std::pin::Pin;
@@ -144,14 +145,29 @@ fn read_ca_bundle(path: &str) -> Result<Vec<u8>, String> {
         Mode::empty(),
     )
     .map_err(|error| format!("cannot open CA bundle (errno {})", error.raw_os_error()))?;
-    let file = std::fs::File::from(fd);
-    let metadata = file
-        .metadata()
-        .map_err(|error| format!("cannot inspect CA bundle: {}", error.kind()))?;
-    if !metadata.is_file() {
+    read_opened_ca(File::from(fd), |file| read_ca_bytes(file))
+}
+
+fn read_opened_ca(
+    file: File,
+    read: impl FnOnce(&File) -> Result<Vec<u8>, String>,
+) -> Result<Vec<u8>, String> {
+    let inspect_error = |error: io::Error| format!("cannot inspect CA bundle: {}", error.kind());
+    let before = file.metadata().map_err(inspect_error)?;
+    if !before.is_file() {
         return Err("CA bundle must be a regular file".to_owned());
     }
-    read_ca_bytes(file)
+    let modified = before.modified().map_err(inspect_error)?;
+    let bytes = read(&file)?;
+    let after = file.metadata().map_err(inspect_error)?;
+    // A rename or unlink can change ctime without changing the opened bundle.
+    if before.len() != after.len()
+        || after.len() != bytes.len() as u64
+        || after.modified().map_err(inspect_error)? != modified
+    {
+        return Err("CA bundle changed while being read".to_owned());
+    }
+    Ok(bytes)
 }
 
 fn read_ca_bytes(file: impl Read) -> Result<Vec<u8>, String> {
