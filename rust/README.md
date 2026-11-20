@@ -715,6 +715,9 @@ boundaries return HTTP 400 with `{"message":"malformed form"}`, without SMTP
 submission. Python closes all already-spooled uploads, including an unfinished
 last upload. Complete multipart bodies with epilogues remain supported. HTTP
 Content-Length completeness alone does not establish MIME completeness.
+The Rust multipart parser reuses one byte searcher for the request boundary
+across all parts. A boundary look-alike inside part data stays in the payload
+unless followed by CRLF or the closing `--`.
 
 ## HTTP singleton headers
 

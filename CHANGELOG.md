@@ -72,6 +72,9 @@ All notable changes to mailgun-relay are documented here.
 
 ### Fixed
 
+- Reuse a single multipart boundary searcher across Rust form parts and keep
+  embedded boundary look-alikes in their payloads.
+
 - Reject Rust custom SMTP CA bundles when the opened file's modification time
   or length changes during startup reads. Atomic path and symlink rotation
   remain supported.

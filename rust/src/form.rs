@@ -9,6 +9,8 @@
 //! anything but CRLF or `--` is data, a truncated body ends the form and
 //! drops the unfinished part). Pinned by `fixtures/form_decoding.json`.
 
+use memchr::memmem::Finder;
+
 use crate::pystr::{is_py_space, py_strip};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -331,11 +333,9 @@ fn find_byte(body: &[u8], byte: u8, from: usize) -> Option<usize> {
         .map(|p| from + p)
 }
 
-fn find_seq(body: &[u8], needle: &[u8], from: usize) -> Option<usize> {
-    body.get(from..)?
-        .windows(needle.len())
-        .position(|w| w == needle)
-        .map(|p| from + p)
+#[cfg(test)]
+thread_local! {
+    static DELIMITER_CANDIDATES: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
 }
 
 /// RFC 7230 token characters, python-multipart's `TOKEN_CHARS`.
@@ -353,6 +353,7 @@ fn multipart(
 ) -> Result<Vec<(String, Value)>, FormError> {
     use FormError::{BadRequest, TooLarge};
     let delimiter = [b"\r\n--".as_slice(), boundary].concat();
+    let delimiter_finder = Finder::new(&delimiter);
     let mut items = Vec::new();
     let (mut files, mut fields) = (0usize, 0usize);
 
@@ -470,9 +471,12 @@ fn multipart(
         let start = i;
         let mut search = i;
         let (end, last) = loop {
-            let Some(at) = find_seq(body, &delimiter, search) else {
+            let Some(offset) = delimiter_finder.find(&body[search..]) else {
                 return Err(BadRequest);
             };
+            #[cfg(test)]
+            DELIMITER_CANDIDATES.with(|count| count.set(count.get() + 1));
+            let at = search + offset;
             let after = at + delimiter.len();
             match (body.get(after), body.get(after + 1)) {
                 (None, _) | (Some(b'\r' | b'-'), None) => return Err(BadRequest),
@@ -582,6 +586,26 @@ mod tests {
             (upload.content_type.as_deref(), upload.data.as_slice()),
             (Some("text/plain"), b"data".as_slice())
         );
+    }
+
+    #[test]
+    fn multipart_search_checks_only_full_delimiter_candidates() {
+        let boundary = "a".repeat(128);
+        let prefix = format!("\r\n--{}b", &boundary[..127]);
+        let near_delimiters = format!("\r\n--{boundary}-x\r\n--{boundary}\rx");
+        let data = format!("{}{near_delimiters}", prefix.repeat(256));
+        let body = multipart_body(
+            &boundary,
+            &[
+                ("Content-Disposition: form-data; name=\"text\"", &data),
+                ("Content-Disposition: form-data; name=\"subject\"", "ok"),
+            ],
+        );
+
+        DELIMITER_CANDIDATES.with(|count| count.set(0));
+        let items = multipart(&body, boundary.as_bytes(), Charset::Utf8, LIMITS).unwrap();
+        assert_eq!(texts(&items), [("text", data.as_str()), ("subject", "ok")]);
+        assert_eq!(DELIMITER_CANDIDATES.with(|count| count.get()), 4);
     }
 
     #[test]
