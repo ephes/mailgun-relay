@@ -27,6 +27,17 @@ def test_all_spooled_uploads_close(
     outcome: str,
 ) -> None:
     uploads: list[UploadFile] = []
+    close_attempts: list[UploadFile] = []
+
+    def track_close(upload: UploadFile, spool: tempfile.SpooledTemporaryFile[bytes]) -> None:
+        close = spool.close
+
+        def recorded_close() -> None:
+            close_attempts.append(upload)
+            close()
+
+        monkeypatch.setattr(spool, "close", recorded_close)
+
     parse = routes._parse_form
 
     def capture(form: FormData, settings: Settings) -> routes._ParsedForm:
@@ -35,6 +46,7 @@ def test_all_spooled_uploads_close(
         for upload in uploads:
             assert isinstance(upload.file, tempfile.SpooledTemporaryFile)
             upload.file.rollover()
+            track_close(upload, upload.file)
         if outcome == "parse_error":
             raise RuntimeError("synthetic parse failure")
         return parse(form, settings)
@@ -55,10 +67,12 @@ def test_all_spooled_uploads_close(
     ]
     if outcome == "bad_field":
         fields.insert(0, ("unsupported", (None, "value")))
-    first = b"x" * (test_settings.max_attachment_bytes + 1) if outcome == "oversized" else b"first"
+    second = (
+        b"x" * (test_settings.max_attachment_bytes + 1) if outcome == "oversized" else b"second"
+    )
     files = [
-        ("attachment", ("a.txt", first)),
-        ("attachment", ("b.txt", b"second")),
+        ("attachment", ("a.txt", b"first")),
+        ("attachment", ("b.txt", second)),
         ("inline", ("c.txt", b"third")),
     ]
     response = client.post(
@@ -79,10 +93,12 @@ def test_all_spooled_uploads_close(
     assert response.status_code == expected[outcome], response.text
     assert len(uploads) == 3
     try:
+        assert close_attempts == uploads
         assert all(upload.file.closed for upload in uploads)
     finally:
         for upload in uploads:
-            upload.file.close()
+            if not upload.file.closed:
+                upload.file.close()
     if outcome == "success":
         parts = list(recording_smtp.calls[0].message.iter_attachments())
         assert {part.get_filename(): part.get_payload(decode=True) for part in parts} == {

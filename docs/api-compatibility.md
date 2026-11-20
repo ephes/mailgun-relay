@@ -222,10 +222,11 @@ original error category even if cleanup also fails. If the QUIT timer cannot
 start, the adapter skips QUIT and still closes the owned socket.
 
 The retained Python rollback adapter also isolates multipart teardown: under a
-cancellation shield it attempts each parsed upload's close independently, even
-after validation or submission fails. A close failure produces an
-`upload_cleanup_failed` warning with only the exception class (capped at 80
-characters), preserving the HTTP result and attempting the remaining uploads.
+cancellation shield the request attempts each parsed upload's close once after
+its workers finish, even after validation or submission fails. A close failure
+produces an `upload_cleanup_failed` warning with only the exception class
+(capped at 80 characters), preserving the HTTP result and attempting the
+remaining uploads.
 Failed resources are not retried; a close attempt cannot guarantee release if
 the underlying file operation itself fails.
 

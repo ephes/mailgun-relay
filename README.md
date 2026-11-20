@@ -96,9 +96,9 @@ The AUTH regression injects rejection at login and checks the complete call orde
 Admitted form interpretation, upload reads, address validation and MIME assembly
 run in the same bounded AnyIO worker pool as SMTP. Cancellation holds admission
 and form ownership until the active worker and form cleanup finish, while health
-remains responsive. Cancellation before submission does not start SMTP. Attachment spools close
-when parsing reads their bytes into an attachment, before MIME construction;
-cancellation cannot resubmit the message.
+remains responsive. Cancellation before submission does not start SMTP. The
+request closes each parsed attachment spool once in shielded form cleanup
+after its active worker finishes. Cancellation cannot resubmit the message.
 These checks cover the retained Python source, not a deployed rollback runtime.
 
 Python entrypoint contracts are covered without starting a server:
