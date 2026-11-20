@@ -443,6 +443,10 @@ retryable HTTP 503, releasing admission. If DATA was interrupted before its fina
 250 was received, delivery is ambiguous: the upstream may have accepted it;
 retrying can duplicate mail. There is no automatic retry.
 
+During initial SMTP setup, the relay uses banner failure handling until the
+current connection's transport accepts at least one outbound byte. Pending,
+failed and zero-byte writes leave the classification at the banner stage.
+
 QUIT has a separate total budget of `min(SMTP_TIMEOUT_S, 5 seconds)` and never
 changes an already determined outcome, including accepted DATA. Rust also caps
 inbound wire bytes at 16 MiB per connection, counted before TLS decryption and

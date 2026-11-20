@@ -72,6 +72,8 @@ All notable changes to mailgun-relay are documented here.
 
 ### Fixed
 
+- Classify initial Rust SMTP failures as banner failures until the transport
+  accepts outbound bytes on that connection.
 - Reject a Rust request body frame that exceeds the remaining byte allowance
   before copying it into the body buffer.
 - Reject underscores outside digit pairs in Rust SMTP timeout settings during
