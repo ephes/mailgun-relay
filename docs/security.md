@@ -419,8 +419,9 @@ relay environments; it performs no real secret or host access in tests.
 
 Each token digest must be unique after trimming and lowercase normalization,
 even across labels with different scopes. Use one credential per policy identity;
-rotation must use a new digest. Duplicate digests fail startup with positional, value-free diagnostics;
-this check never prints a digest. This intentionally rejects
+rotation must use a new digest. Rust indexes exact labels and normalized digests
+as it admits each policy in source order. A duplicate fails startup with a
+value-free diagnostic at the first duplicate entry. This intentionally rejects
 previously ambiguous configurations. Adoption requires a runtime update/restart;
 these source changes do not deploy anything.
 

@@ -6,7 +6,7 @@
 //! `allowed_from_addresses` (D-17) fail the load. Error messages never
 //! contain the password or a token hash.
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeSet, HashSet};
 use std::fmt;
 use std::io::Read;
 use std::os::unix::fs::PermissionsExt;
@@ -152,21 +152,26 @@ pub fn from_yaml(text: &str) -> Result<Secrets, ConfigError> {
         Some(Node::Seq(items)) if !items.is_empty() => items,
         _ => return Err(invalid("tokens must be a non-empty list")),
     };
-    let mut tokens: Vec<TokenPolicy> = Vec::new();
+    let mut tokens = Vec::new();
+    let mut labels = HashSet::new();
+    let mut digests = HashSet::new();
     let mut budget = PolicyBudget::default();
     for (index, entry) in entries.iter().enumerate() {
         let policy = load_policy(entry, &format!("tokens[{index}]"), &mut budget)?;
-        if tokens.iter().any(|t| t.label == policy.label) {
+        #[cfg(test)]
+        tests::record_duplicate_probe();
+        if !labels.insert(policy.label.clone()) {
             return Err(invalid(format!("tokens[{index}]: duplicate token label")));
         }
-        if tokens.iter().any(|t| t.token_sha256 == policy.token_sha256) {
+        #[cfg(test)]
+        tests::record_duplicate_probe();
+        if !digests.insert(policy.token_sha256.clone()) {
             return Err(invalid(format!("tokens[{index}]: duplicate token digest")));
         }
         tokens.push(policy);
     }
     // Labels enter logs and Debug output. Check every loaded digest, including
     // policies later in the document and noncanonical digest spellings.
-    let digests: BTreeSet<&str> = tokens.iter().map(|t| t.token_sha256.as_str()).collect();
     for (index, policy) in tokens.iter().enumerate() {
         if policy.label == smtp.password
             || digests.contains(py_strip(&policy.label).to_lowercase().as_str())
@@ -476,6 +481,58 @@ mod tests {
         std::fs::write(&path, [0xff]).unwrap();
         std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o600)).unwrap();
         assert!(load(&path).unwrap_err().0.contains("UTF-8"));
+    }
+
+    thread_local! {
+        static DUPLICATE_PROBES: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+    }
+
+    pub(super) fn record_duplicate_probe() {
+        DUPLICATE_PROBES.set(DUPLICATE_PROBES.get() + 1);
+    }
+
+    #[test]
+    fn large_policy_list_bounds_duplicate_probes_and_preserves_order() {
+        use std::fmt::Write;
+
+        const COUNT: usize = 4000;
+        let mut doc = "smtp: {username: relay, password: synthetic-password}\ntokens:\n".to_owned();
+        for index in 0..COUNT {
+            // Reverse label order to distinguish admission order from index order.
+            let label = COUNT - index;
+            writeln!(
+                doc,
+                "  - {{label: policy-{label:04}, token_sha256: '{index:064x}', \
+                 mailgun_domains: [example.test], allowed_from_domains: [example.test]}}"
+            )
+            .unwrap();
+        }
+        assert!(doc.len() < 1_048_576);
+        DUPLICATE_PROBES.set(0);
+        let loaded = from_yaml(&doc).unwrap();
+        assert_eq!(loaded.tokens.len(), COUNT);
+        for (index, token) in loaded.tokens.iter().enumerate() {
+            assert_eq!(token.label, format!("policy-{:04}", COUNT - index));
+        }
+        let probes = DUPLICATE_PROBES.get();
+        assert_eq!(probes, 2 * COUNT, "one lookup per key");
+
+        for (label, digest, expected, extra_probes) in [
+            ("policy-4001", 10, "digest", 2),
+            ("policy-0001", COUNT, "label", 1),
+            ("policy-0001", 10, "label", 1),
+        ] {
+            let duplicate = format!(
+                "{doc}  - {{label: {label}, token_sha256: '  {digest:064X}  ', \
+                 mailgun_domains: [other.test], allowed_from_domains: [other.test]}}\n"
+            );
+            DUPLICATE_PROBES.set(0);
+            assert_eq!(
+                from_yaml(&duplicate).unwrap_err().0,
+                format!("tokens[{COUNT}]: duplicate token {expected}")
+            );
+            assert_eq!(DUPLICATE_PROBES.get(), 2 * COUNT + extra_probes);
+        }
     }
 
     #[test]
