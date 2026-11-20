@@ -193,6 +193,9 @@ case-insensitively, including extension headers such as `X-Tag`; duplicates retu
 400 at form admission. Repeated `to`, `cc`, `bcc`, `attachment` and `inline` fields
 remain supported subject to existing limits and inline-ID uniqueness.
 
+Both runtimes cap custom header names at 76 ASCII bytes excluding `h:`.
+Longer names return HTTP 400 before MIME assembly or SMTP.
+
 Uploaded leaf media types in both runtimes use two ASCII RFC 7230 tokens of
 1–127 characters each. Parameters are stripped; malformed types and container
 `multipart/*` or `message/*` types become `application/octet-stream`, preserving
@@ -253,6 +256,8 @@ nonblocking stdout queue (details below). No diagnostic failure retries a send.
 Python structured records select their explicit `event` without formatting the
 raw message or its arguments; exception/stack objects remain excluded. Records
 without an explicit event retain the formatted-message fallback.
+Nonfinite numbers in structured fields trigger the fixed stderr fallback so
+every emitted record stays valid JSON.
 
 These records contain no token values or hashes, the `Authorization` header,
 SMTP credentials, message bodies, or attachment content.

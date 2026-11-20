@@ -512,6 +512,25 @@ async fn policy_decisions() {
 static LONG_VALUE: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| "ü".repeat(999));
 
 #[tokio::test]
+async fn custom_header_name_limit_precedes_mime() {
+    let h = Harness::new();
+    let field = format!("h:X-{}", "a".repeat(74));
+    let reply = h
+        .homepage(encode(Encoding::Urlencoded, &with(&[(&field, "tag")])))
+        .await;
+    assert_eq!(reply.status(), 200, "{}", reply.json);
+    assert_eq!(h.recorder.calls.lock().unwrap().len(), 1);
+
+    let over_limit = format!("{field}a");
+    let reply = h
+        .homepage(encode(Encoding::Urlencoded, &with(&[(&over_limit, "tag")])))
+        .await;
+    assert_eq!(reply.status(), 400);
+    assert_eq!(h.records("request")[1]["error_class"], "HeaderTooLongError");
+    assert_eq!(h.recorder.calls.lock().unwrap().len(), 1);
+}
+
+#[tokio::test]
 async fn field_rules_are_400() {
     let bad_from_crlf = "jochen-homepage@wersdoerfer.de\nBcc: evil@wersdoerfer.de";
     let cases: Vec<Vec<(&str, &str)>> = vec![

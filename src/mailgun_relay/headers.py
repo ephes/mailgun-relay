@@ -12,7 +12,7 @@ class HeaderInjectionError(ValueError):
 
 
 class HeaderTooLongError(ValueError):
-    """Raised when a header value exceeds the configured maximum."""
+    """Raised when a header name or value exceeds its limit."""
 
 
 class DangerousHeaderError(ValueError):
@@ -20,6 +20,8 @@ class DangerousHeaderError(ValueError):
 
 
 _HEADER_NAME_RE = re.compile(r"^[A-Za-z][A-Za-z0-9-]*$")
+# Match lettre's HeaderName limit. The name syntax only allows ASCII.
+_MAX_HEADER_NAME_BYTES = 76
 
 # Characters that can break header framing, truncate a value, or be treated as
 # a line break by a downstream parser. Tab (\x09) is permitted as legitimate
@@ -100,6 +102,7 @@ def validate_custom_headers(
     - Names must match `^[A-Za-z][A-Za-z0-9-]*$` in full (``fullmatch``: with
       ``match``, ``$`` would also accept a final newline, ``X-Foo\n``).
     - Names on the dangerous list (case-insensitive) raise DangerousHeaderError.
+    - Names must fit within 76 ASCII bytes.
     - Values must not contain CR/LF and must be <= max_value_length characters.
     """
     cleaned: dict[str, str] = {}
@@ -108,6 +111,8 @@ def validate_custom_headers(
             raise HeaderInjectionError(f"invalid header name: {raw_name!r}")
         if _is_dangerous(raw_name):
             raise DangerousHeaderError(f"header {raw_name!r} is not accepted from clients")
+        if len(raw_name) > _MAX_HEADER_NAME_BYTES:
+            raise HeaderTooLongError(f"custom header name exceeds {_MAX_HEADER_NAME_BYTES} bytes")
         if not isinstance(raw_value, str):  # pragma: no cover - upstream callers send strings
             raise HeaderInjectionError(f"header {raw_name!r} value must be a string")
         _ensure_no_crlf(raw_value)

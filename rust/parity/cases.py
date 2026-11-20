@@ -887,6 +887,8 @@ def field_cases() -> list[Case]:
         ("field reply-to crlf display name", [*minimal(), ("h:Reply-To", crlf_name)], 400),
         ("field header value 998", [*minimal(), ("h:X-Long", "x" * 998)], 200),
         ("field header value 999", [*minimal(), ("h:X-Long", "x" * 999)], 400),
+        ("field header name 76", [*minimal(), ("h:X-" + "a" * 74, "tag")], 200),
+        ("field header name 77", [*minimal(), ("h:X-" + "a" * 75, "tag")], 400),
         ("field subject 998", minimal(subject="s" * 998), 200),
         ("field subject 999", minimal(subject="s" * 999), 400),
         (

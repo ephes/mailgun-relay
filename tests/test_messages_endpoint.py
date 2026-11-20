@@ -616,6 +616,29 @@ def _records(buf: io.StringIO) -> list[dict[str, object]]:
     return [json.loads(line) for line in buf.getvalue().splitlines() if line.strip()]
 
 
+@pytest.mark.parametrize(("name_length", "expected"), [(76, 200), (77, 400)])
+def test_custom_header_name_limit_precedes_mime(
+    client: TestClient,
+    auth: dict[str, str],
+    recording_smtp: RecordingSubmitter,
+    access_log_lines: io.StringIO,
+    name_length: int,
+    expected: int,
+) -> None:
+    name = "X-" + "a" * (name_length - 2)
+    response = client.post(
+        "/v3/mg.wersdoerfer.de/messages", headers=auth, data=_with({f"h:{name}": ["tag"]})
+    )
+    assert response.status_code == expected
+    if expected == 400:
+        assert _records(access_log_lines)[0]["error_class"] == "HeaderTooLongError"
+        assert name not in response.text
+        assert not recording_smtp.calls
+    else:
+        assert len(recording_smtp.calls) == 1
+        assert recording_smtp.calls[0].message[name] == "tag"
+
+
 def test_partial_refusal_answers_200_and_reports_refusals_in_logs(
     client: TestClient,
     auth: dict[str, str],

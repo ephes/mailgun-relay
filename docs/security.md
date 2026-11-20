@@ -176,6 +176,9 @@ inline parts and same-name ordinary attachments.
   `From`, `To`, `Cc`, `Subject`, `Sender`, `MIME-Version`, `Content-Type`,
   `Content-Transfer-Encoding`, `Content-Disposition`, `Content-ID`,
   `Disposition-Notification-To`, `Return-Receipt-To` and every `Resent-*`.
+- Both runtimes cap custom header names at 76 ASCII bytes excluding `h:`,
+  matching the Rust encoder's limit. The HTTP 400 length error omits the name
+  and value and is returned before MIME assembly or SMTP.
 - RFC 2047 encoded words in `to`/`cc` display names that decode to a line
   break are refused (D-16).
 - Upload filenames with a line break are refused: CR and LF already by the
@@ -230,8 +233,10 @@ stdout write failures inside the configured stdout handler (its `handleError`
 is replaced so no stdlib traceback is printed). Its fallback writes only the
 fixed line `{"event":"diagnostic_logging_failed"}` directly to stderr: no
 record fields, exception text, credentials or message content, and no recursive
-call into the failed sink. An unavailable fallback is ignored. Upload-close
-warnings include only the exception class (at most 80 characters), with no
+call into the failed sink. The formatter rejects nonfinite numbers, including
+nested diagnostic values, and uses this same fallback. An unavailable fallback
+is ignored. Upload-close warnings include only the exception class (at most
+80 characters), with no
 filename/content/reply text. Close failures preserve the decided HTTP/SMTP
 outcome and do not stop remaining upload close attempts under the cancellation
 shield. This avoids duplicate-send incentives from diagnostic/cleanup failures;

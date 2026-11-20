@@ -72,6 +72,11 @@ All notable changes to mailgun-relay are documented here.
 
 ### Fixed
 
+- Reject custom header names over 76 ASCII bytes in both runtimes before
+  MIME assembly, with HTTP 400 and diagnostic class `HeaderTooLongError`.
+- Keep Python diagnostic lines valid JSON by routing records with nonfinite
+  numbers to the fixed stderr fallback while preserving delivery outcomes.
+
 - Refuse to start the Rust relay when the bind host resolves to no addresses.
 - Stop the remaining Rust listeners and drain tracked submissions before
   reporting an unexpected listener exit.

@@ -29,7 +29,7 @@ class _JsonFormatter(logging.Formatter):
             if key in _LOG_RECORD_RESERVED or key == "event":
                 continue
             payload[key] = value
-        return json.dumps(payload, default=str, separators=(",", ":"))
+        return json.dumps(payload, default=str, allow_nan=False, separators=(",", ":"))
 
 
 _LOG_RECORD_RESERVED = {
