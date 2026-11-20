@@ -72,6 +72,10 @@ All notable changes to mailgun-relay are documented here.
 
 ### Fixed
 
+- Reject Rust custom SMTP CA bundles when the opened file's modification time
+  or length changes during startup reads. Atomic path and symlink rotation
+  remain supported.
+
 - Close each parsed Python upload spool once in request cleanup after workers
   finish. Report close failures with a bounded, class-only warning.
 - Preserve the Python SMTP send result and close the owned socket when the

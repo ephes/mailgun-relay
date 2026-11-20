@@ -519,9 +519,12 @@ update/restart; no deployment is part of this change.
 
 Rust opens `SMTP_CA_FILE` once with nonblocking I/O, requires that descriptor to
 be a regular file, and reads at most 1 MiB (1,048,576 bytes), including growth
-after inspection. Symlinks remain supported for operator-managed trust bundles.
-Both startup and `--check-config` refuse nonregular or oversized bundles before
-binding or SMTP AUTH. System roots, multi-certificate PEM bundles, chain and
+after inspection. It checks the opened descriptor's modification time and
+length before and after the read and verifies the final length against the byte
+count. Startup and `--check-config` refuse bundles with detected changes before
+PEM parsing, and refuse nonregular or oversized bundles before binding or SMTP
+AUTH. Publish updates by atomically replacing the path or symlink so a reader
+can finish using the bundle it already opened. System roots, multi-certificate PEM bundles, chain and
 hostname verification retain their existing behavior (D-22).
 
 The binary loopback tests send raw conflicting Content-Length headers,
