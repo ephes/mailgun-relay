@@ -255,6 +255,10 @@ PLAN.md section 3):
   or a certificate rustls cannot use, also with `SMTP_STARTTLS` off (D-22;
   Python reads the file per message and answers 503).
 
+In Rust, `SMTP_TIMEOUT_S` and `SMTP_SESSION_TIMEOUT_S` allow underscores only
+between ASCII digits. For example, `1_000.5` is valid, while `1_.5` and
+`1e_2` fail configuration validation before listener startup.
+
 Run `--check-config` against the production files before any switch.
 
 Logs are one JSON object per line on stdout. Every start writes
