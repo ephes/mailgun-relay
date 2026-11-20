@@ -282,14 +282,12 @@ def submit(
                 # A result returned after expiry is an uncertain outcome.
                 budget.remaining(transport.timeout_s)
             finally:
-                budget.stop()
-                with _SocketDeadline(min(transport.timeout_s, 5.0)) as cleanup:
-                    # Preserve both successful DATA acceptance and the original send
-                    # failure: QUIT is connection cleanup, not a delivery decision.
-                    try:
-                        # smtplib already closes on 421 and connection loss; there is
-                        # no remaining session to QUIT in that case.
-                        if smtp.sock is not None and not budget.expired:
+                # QUIT and its timer are optional once the send has an outcome.
+                try:
+                    budget.stop()
+                    # smtplib already closes on 421 and connection loss.
+                    if smtp.sock is not None and not budget.expired:
+                        with _SocketDeadline(min(transport.timeout_s, 5.0)) as cleanup:
                             if budget.socket is not None:
                                 cleanup.watch(budget.socket)
                             smtp.sock.settimeout(min(transport.timeout_s, 5.0))
@@ -297,6 +295,19 @@ def submit(
                             cleanup.remaining(transport.timeout_s)
                             if code != 221:
                                 raise smtplib.SMTPResponseException(code, reply)
+                except (smtplib.SMTPException, OSError, RuntimeError) as exc:
+                    log_safely(
+                        service_logger(),
+                        logging.WARNING,
+                        "smtp_cleanup_failed",
+                        extra={
+                            "event": "smtp_cleanup_failed",
+                            "error_class": type(exc).__name__,
+                        },
+                    )
+                finally:
+                    try:
+                        smtp.close()
                     except (smtplib.SMTPException, OSError) as exc:
                         log_safely(
                             service_logger(),
@@ -307,19 +318,6 @@ def submit(
                                 "error_class": type(exc).__name__,
                             },
                         )
-                    finally:
-                        try:
-                            smtp.close()
-                        except (smtplib.SMTPException, OSError) as exc:
-                            log_safely(
-                                service_logger(),
-                                logging.WARNING,
-                                "smtp_cleanup_failed",
-                                extra={
-                                    "event": "smtp_cleanup_failed",
-                                    "error_class": type(exc).__name__,
-                                },
-                            )
     except SmtpSubmitError:
         raise
     except Exception as exc:

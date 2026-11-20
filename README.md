@@ -239,9 +239,10 @@ journald, so `journalctl -u mailgun-relay -f` is the live view.
   are never logged. See `docs/api-compatibility.md` for the HTTP behaviour.
 
 - `event=smtp_cleanup_failed` — a `WARNING` with only the exception class when
-  QUIT or close fails operationally. Accepted sends keep their outcome; closed
-  sessions skip QUIT. Python supervisor/control-flow exceptions propagate after
-  owned socket cleanup, including interrupts, process exit and asyncio cancellation.
+  QUIT setup, QUIT or close fails operationally. A failed QUIT timer start
+  skips QUIT and still closes the owned socket. The send result is preserved.
+  Python supervisor/control-flow exceptions propagate after owned socket
+  cleanup, including interrupts, process exit and asyncio cancellation.
 - `event=upload_cleanup_failed` — a Python rollback `WARNING` with only the
   exception class (at most 80 characters) when an upload close fails. Remaining
   uploads still get a close attempt under the cancellation shield; the HTTP
