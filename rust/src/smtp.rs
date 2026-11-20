@@ -24,6 +24,7 @@
 //! outcome and is logged as `smtp_cleanup_failed`. The socket closes when
 //! the connection is dropped.
 
+use std::collections::HashSet;
 use std::io::{self, Read};
 use std::net::SocketAddr;
 use std::pin::Pin;
@@ -498,7 +499,12 @@ where
     let deadline = tokio::time::Instant::now() + budget;
     tokio::time::timeout_at(deadline, async {
         let mut last = io::Error::new(io::ErrorKind::NotFound, "no address");
-        let addresses: Vec<_> = resolve.await?.into_iter().collect();
+        let mut seen = HashSet::new();
+        let addresses: Vec<_> = resolve
+            .await?
+            .into_iter()
+            .filter(|address| seen.insert(*address))
+            .collect();
         for (index, address) in addresses.iter().enumerate() {
             // Reserve a share for later addresses when an earlier one hangs.
             let left = u32::try_from(addresses.len() - index).unwrap_or(u32::MAX);

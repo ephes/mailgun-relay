@@ -370,9 +370,10 @@ trickling uploads. A full 25 MiB upload needs roughly 7 Mbit/s sustained through
 and releases the admission slot before MIME or SMTP. Overload still returns 503
 before reading the body. Python rollback has no application body deadline.
 Rust also uses one `MAILGUN_RELAY_SMTP_TIMEOUT_S` budget for DNS resolution and
-all TCP connection attempts together, sharing remaining time equally among
-remaining addresses so a stalled address permits fallback; expiry is retryable HTTP 503. Later SMTP
-socket operations retain their individual timeouts. In addition,
+all TCP connection attempts together. It tries each distinct socket address in
+first resolver order and divides the remaining time equally among untried
+addresses, so a stalled address permits fallback. Expiry returns retryable
+HTTP 503. Each later SMTP socket operation has its own timeout. In addition,
 `MAILGUN_RELAY_SMTP_SESSION_TIMEOUT_S` (default 120 seconds, finite and
 `0 < value <= 1e9`) bounds DNS, connect, banner, EHLO, STARTTLS, AUTH and DATA
 through the delivery outcome together. Expiry closes the connection and returns

@@ -132,8 +132,9 @@ and fixture cases generated from the fixed Python.
 - `smtp::tests::connection_budget_includes_resolution_and_all_attempts`: pending
   DNS and delayed address attempts share one budget; timely connection succeeds.
   These are intentional Rust/Python differences, using synthetic futures only.
-- `smtp::tests::connection_budget_reserves_time_for_fallback`: a pending first
-  address yields to a succeeding second address within the shared budget.
+- `smtp::tests::connection_budget_reserves_time_for_distinct_fallback`: duplicate
+  resolver entries use one share per address in first resolver order. A pending
+  first address yields to a succeeding second address within the shared budget.
 
 ## Secret descriptor and policy identity
 
