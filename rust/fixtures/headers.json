@@ -1521,6 +1521,24 @@
    ]
   },
   {
+   "expected": "ok",
+   "headers": [
+    [
+     "X-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+     "tag"
+    ]
+   ]
+  },
+  {
+   "expected": "too_long",
+   "headers": [
+    [
+     "X-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+     "tag"
+    ]
+   ]
+  },
+  {
    "expected": "too_long",
    "headers": [
     [

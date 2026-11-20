@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import logging
 import smtplib
 from dataclasses import replace
+from typing import Never
 from unittest.mock import patch
 
 import pytest
@@ -15,7 +17,7 @@ from starlette.datastructures import FormData, UploadFile
 from mailgun_relay import routes
 from mailgun_relay.app import create_app
 from mailgun_relay.config import Secrets, Settings, SmtpCredentials, TokenPolicy
-from mailgun_relay.logging_setup import access_logger, service_logger
+from mailgun_relay.logging_setup import access_logger, configure_logging, service_logger
 from mailgun_relay.routes import AppState
 from mailgun_relay.smtp_client import submit
 from tests.test_messages_endpoint import basic
@@ -250,6 +252,49 @@ def test_unavailable_fallback_preserves_accepted_send(
         log.removeHandler(handler)
 
 
+def test_nonfinite_request_diagnostic_writes_strict_json_and_preserves_delivery(
+    diagnostic_state: AppState,
+    capfd: pytest.CaptureFixture[str],
+) -> None:
+    def add_nonfinite_extra(record: logging.LogRecord) -> bool:
+        record.__dict__["diagnostic"] = {"measurement": float("inf")}
+        return True
+
+    def reject_constant(value: str) -> Never:
+        raise ValueError(f"nonstandard JSON token: {value}")
+
+    mock, smtp = _make_ok_mock_smtp()
+    root = logging.getLogger()
+    saved_handlers, saved_level = root.handlers, root.level
+    log = access_logger()
+    log.addFilter(add_nonfinite_extra)
+    try:
+        configure_logging()
+        with (
+            patch("mailgun_relay.smtp_client._SessionSMTP", new=mock),
+            TestClient(create_app(app_state=diagnostic_state)) as client,
+        ):
+            response = client.post(
+                _PATH, headers={"Authorization": basic("api", _TOKEN)}, data=_fields()
+            )
+    finally:
+        root.handlers, root.level = saved_handlers, saved_level
+        log.removeFilter(add_nonfinite_extra)
+
+    assert response.status_code == 200
+    assert response.json()["id"]
+    smtp.send_message.assert_called_once()
+    captured = capfd.readouterr()
+    records = [
+        json.loads(line, parse_constant=reject_constant) for line in captured.out.splitlines()
+    ]
+    assert all(record["event"] != "request" for record in records)
+    assert captured.err.splitlines() == ['{"event":"diagnostic_logging_failed"}']
+    assert json.loads(captured.err, parse_constant=reject_constant) == {
+        "event": "diagnostic_logging_failed"
+    }
+
+
 class _SecretFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord) -> str:
         raise RuntimeError("SECRET " + _PRIVATE)
@@ -267,7 +312,7 @@ class _BrokenStream:
 def test_configured_handler_failures_write_only_the_fixed_line(
     capfd: pytest.CaptureFixture[str], failure: str
 ) -> None:
-    from mailgun_relay.logging_setup import configure_logging, log_safely
+    from mailgun_relay.logging_setup import log_safely
 
     root = logging.getLogger()
     saved_handlers, saved_level = root.handlers, root.level

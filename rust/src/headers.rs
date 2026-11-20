@@ -67,6 +67,9 @@ fn is_header_name(name: &str) -> bool {
         && bytes.all(|b| b.is_ascii_alphanumeric() || b == b'-')
 }
 
+/// The maximum name length accepted by lettre's `HeaderName`.
+const MAX_HEADER_NAME_BYTES: usize = 76;
+
 /// Python's `len()`: code points. A negative maximum refuses every value.
 fn longer_than(value: &str, max: i64) -> bool {
     i64::try_from(value.chars().count()).map_or(true, |len| len > max)
@@ -86,7 +89,7 @@ pub fn validate_subject(value: &str, max_length: i64) -> Result<String, HeaderEr
 }
 
 /// The `h:*` headers in map order, first error wins: name syntax, denylist,
-/// control characters in the value, value length.
+/// name length, control characters in the value, value length.
 pub fn validate_custom_headers(
     headers: &[(String, String)],
     max_value_length: i64,
@@ -97,6 +100,9 @@ pub fn validate_custom_headers(
         }
         if is_dangerous(name) {
             return Err(HeaderError::Dangerous);
+        }
+        if name.len() > MAX_HEADER_NAME_BYTES {
+            return Err(HeaderError::TooLong);
         }
         if contains_forbidden_control_chars(value) {
             return Err(HeaderError::Injection);

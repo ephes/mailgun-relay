@@ -1841,6 +1841,8 @@ def build_headers() -> dict[str, Any]:
     header_sets: list[list[tuple[str, str]]] = [[(name, "ok")] for name in HEADER_NAMES]
     header_sets += [[("X-Custom", value)] for value in HEADER_VALUES]
     header_sets += [
+        [("X-" + "a" * 74, "tag")],
+        [("X-" + "a" * 75, "tag")],
         # Map order decides which error wins.
         [("X-Long", "x" * (HEADER_MAX + 1)), ("Bcc", "a@b.de")],
         [("Bcc", "a@b.de"), ("X-Long", "x" * (HEADER_MAX + 1))],
