@@ -24,6 +24,7 @@
 //! outcome and is logged as `smtp_cleanup_failed`. The socket closes when
 //! the connection is dropped.
 
+use std::collections::HashSet;
 use std::io::{self, Read};
 use std::net::SocketAddr;
 use std::pin::Pin;
@@ -498,7 +499,12 @@ where
     let deadline = tokio::time::Instant::now() + budget;
     tokio::time::timeout_at(deadline, async {
         let mut last = io::Error::new(io::ErrorKind::NotFound, "no address");
-        let addresses: Vec<_> = resolve.await?.into_iter().collect();
+        let mut seen = HashSet::new();
+        let addresses: Vec<_> = resolve
+            .await?
+            .into_iter()
+            .filter(|address| seen.insert(*address))
+            .collect();
         for (index, address) in addresses.iter().enumerate() {
             // Reserve a share for later addresses when an earlier one hangs.
             let left = u32::try_from(addresses.len() - index).unwrap_or(u32::MAX);
@@ -517,10 +523,10 @@ where
 
 /// The TCP stream lettre talks over: read and write timeouts per socket
 /// operation (`SMTP_TIMEOUT_S`, Python's socket timeout; rustls wraps this
-/// stream, so they also hold under TLS) and a flag set by the first write,
-/// which tells a banner failure from an EHLO failure.
-struct RelayStream {
-    inner: Pin<Box<TimeoutStream<TcpStream>>>,
+/// stream, so they also hold under TLS) and a flag set when the first write
+/// accepts bytes, which tells a banner failure from an EHLO failure.
+struct RelayStream<T = TimeoutStream<TcpStream>> {
+    inner: Pin<Box<T>>,
     written: Arc<AtomicBool>,
     inbound_remaining: usize,
 }
@@ -538,13 +544,13 @@ impl RelayStream {
     }
 }
 
-impl std::fmt::Debug for RelayStream {
+impl<T> std::fmt::Debug for RelayStream<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str("RelayStream")
     }
 }
 
-impl AsyncRead for RelayStream {
+impl<T: AsyncRead> AsyncRead for RelayStream<T> {
     fn poll_read(
         mut self: Pin<&mut Self>,
         cx: &mut Context<'_>,
@@ -569,14 +575,17 @@ impl AsyncRead for RelayStream {
     }
 }
 
-impl AsyncWrite for RelayStream {
+impl<T: AsyncWrite> AsyncWrite for RelayStream<T> {
     fn poll_write(
         mut self: Pin<&mut Self>,
         cx: &mut Context<'_>,
         buf: &[u8],
     ) -> Poll<io::Result<usize>> {
-        self.written.store(true, Ordering::SeqCst);
-        self.inner.as_mut().poll_write(cx, buf)
+        let result = self.inner.as_mut().poll_write(cx, buf);
+        if matches!(result, Poll::Ready(Ok(bytes)) if bytes > 0) {
+            self.written.store(true, Ordering::SeqCst);
+        }
+        result
     }
 
     fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<io::Result<()>> {

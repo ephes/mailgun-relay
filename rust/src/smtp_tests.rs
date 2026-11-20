@@ -632,11 +632,66 @@ async fn the_smtp_socket_sends_without_delay() {
     assert!(stream.inner.get_ref().nodelay().unwrap());
 }
 
+#[test]
+fn first_write_requires_positive_progress() {
+    struct ScriptedWriter(std::vec::IntoIter<Poll<io::Result<usize>>>);
+
+    impl AsyncWrite for ScriptedWriter {
+        fn poll_write(
+            mut self: Pin<&mut Self>,
+            _: &mut Context<'_>,
+            _: &[u8],
+        ) -> Poll<io::Result<usize>> {
+            self.0.next().unwrap()
+        }
+
+        fn poll_flush(self: Pin<&mut Self>, _: &mut Context<'_>) -> Poll<io::Result<()>> {
+            Poll::Ready(Ok(()))
+        }
+
+        fn poll_shutdown(self: Pin<&mut Self>, _: &mut Context<'_>) -> Poll<io::Result<()>> {
+            Poll::Ready(Ok(()))
+        }
+    }
+
+    let writer = ScriptedWriter(
+        vec![
+            Poll::Pending,
+            Poll::Ready(Ok(0)),
+            Poll::Ready(Err(io::ErrorKind::BrokenPipe.into())),
+            Poll::Ready(Ok(1)),
+            Poll::Ready(Ok(0)),
+        ]
+        .into_iter(),
+    );
+    let written = Arc::new(AtomicBool::new(false));
+    let mut stream = RelayStream {
+        inner: Box::pin(writer),
+        written: Arc::clone(&written),
+        inbound_remaining: INBOUND_BYTES,
+    };
+    let mut cx = Context::from_waker(std::task::Waker::noop());
+    let mut write = || Pin::new(&mut stream).poll_write(&mut cx, b"EHLO");
+
+    assert!(write().is_pending());
+    assert!(!written.load(Ordering::SeqCst), "pending write");
+    assert!(matches!(write(), Poll::Ready(Ok(0))));
+    assert!(!written.load(Ordering::SeqCst), "zero-byte write");
+    assert!(matches!(write(), Poll::Ready(Err(_))));
+    assert!(!written.load(Ordering::SeqCst), "failed write");
+    assert!(matches!(write(), Poll::Ready(Ok(1))));
+    assert!(written.load(Ordering::SeqCst), "partial write");
+    assert!(matches!(write(), Poll::Ready(Ok(0))));
+    assert!(written.load(Ordering::SeqCst), "prior progress");
+}
+
 #[tokio::test(start_paused = true)]
 async fn connection_budget_includes_resolution_and_all_attempts() {
     use std::cell::Cell;
     let budget = Duration::from_secs(5);
-    let addresses = vec!["192.0.2.1:587".parse().unwrap(); 4];
+    let addresses: Vec<_> = (1..=4)
+        .map(|octet| SocketAddr::from(([192, 0, 2, octet], 587)))
+        .collect();
     let calls = Cell::new(0);
     let start = tokio::time::Instant::now();
     let result = tokio::time::timeout(
@@ -673,7 +728,7 @@ async fn connection_budget_includes_resolution_and_all_attempts() {
     )
     .await;
     assert_eq!(result.unwrap_err().kind(), io::ErrorKind::TimedOut);
-    assert!(calls.get() >= 2);
+    assert_eq!(calls.get(), 4);
     assert_eq!(tokio::time::Instant::now() - start, budget);
 
     let result = connect_with_budget(
@@ -686,24 +741,38 @@ async fn connection_budget_includes_resolution_and_all_attempts() {
 }
 
 #[tokio::test(start_paused = true)]
-async fn connection_budget_reserves_time_for_fallback() {
-    let first = "192.0.2.1:587".parse().unwrap();
-    let second = "192.0.2.2:587".parse().unwrap();
+async fn connection_budget_reserves_time_for_distinct_fallback() {
+    let first = "192.0.2.2:587".parse().unwrap();
+    let second = "192.0.2.1:587".parse().unwrap();
     let start = tokio::time::Instant::now();
+    let mut attempts = Vec::new();
     let result = connect_with_budget(
-        Duration::from_secs(6),
-        async { Ok(vec![first, second]) },
-        |address| async move {
-            if address == first {
-                std::future::pending::<()>().await;
+        Duration::from_secs(8),
+        async {
+            tokio::time::sleep(Duration::from_secs(2)).await;
+            Ok(vec![first, first, second, first, second])
+        },
+        |address| {
+            attempts.push((address, start.elapsed()));
+            async move {
+                if address == first {
+                    std::future::pending::<()>().await;
+                }
+                tokio::time::sleep(Duration::from_secs(2)).await;
+                Ok::<_, io::Error>(address)
             }
-            Ok::<_, io::Error>(address)
         },
     )
-    .await
-    .unwrap();
-    assert_eq!(result, second);
-    assert_eq!(tokio::time::Instant::now() - start, Duration::from_secs(3));
+    .await;
+    assert_eq!(
+        attempts,
+        [
+            (first, Duration::from_secs(2)),
+            (second, Duration::from_secs(5))
+        ]
+    );
+    assert_eq!(result.unwrap(), second);
+    assert_eq!(start.elapsed(), Duration::from_secs(7));
 }
 
 #[tokio::test]
