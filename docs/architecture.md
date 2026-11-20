@@ -126,7 +126,7 @@ The service emits these record types, each as one JSON object per line on stdout
 - `event=startup`, once per process start, carrying the effective configuration (version, bind address, public host, SMTP host/port/STARTTLS, custom-CA flag, log level, configured token labels, body and recipient caps).
 - `event=request`, once per `POST /v3/{domain}/messages`, including `refused_count`.
 - `event=recipients_refused` (WARNING), only when the backend refused some but not all recipients.
-- `event=smtp_cleanup_failed` (WARNING), when QUIT or close fails; contains only the exception class, without reply text or request identifiers. Already closed connections skip QUIT. Cleanup failures preserve the submission outcome.
+- `event=smtp_cleanup_failed` (WARNING), when QUIT setup, QUIT or close fails; contains only the exception class, without reply text or request identifiers. Already closed connections skip QUIT. If the Python QUIT timer cannot start, QUIT is skipped and the connection is still closed. Cleanup failures preserve the submission outcome.
 - `event=upload_cleanup_failed` (WARNING, Python rollback), when an upload close
   fails; only the exception class, capped at 80 characters, without file names,
   content or exception text.
