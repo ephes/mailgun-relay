@@ -2263,7 +2263,37 @@ def _form_cases() -> list[tuple[str, bytes | None, bytes, dict[str, int]]]:
     mp("fields at limit", _multipart(fields3), limits=tight)
     mp("fields over limit", _multipart([*fields3, (_disposition("d"), "1")]), limits=tight)
     mp("files do not count as fields", _multipart(fields3 + files[:1]), limits=tight)
-    mp("part at size limit", _multipart([(_disposition("a"), "12345678")]), limits=tight)
+    exact = [(_disposition("a"), "ääää")]
+    mp("part at byte limit", _multipart(exact), limits=tight)
+    mp(
+        "delimiter look-alike extends a field beyond its byte limit",
+        _multipart([(_disposition("a"), b"12345678\r\n--b0und4ry-X")]),
+        limits=tight,
+    )
+    next_field = f"\r\n{_disposition('b')}\r\n\r\n".encode()
+    next_prefix = _multipart(exact, tail=next_field)
+    mp("oversized unfinished field after exact field", next_prefix + b"x" * 128, limits=tight)
+    mp("field one byte over at EOF", next_prefix + b"x" * 9, limits=tight)
+    mp(
+        "oversized field before incomplete closing delimiter",
+        next_prefix + b"x" * 9 + b"\r\n--b0und4ry-",
+        limits=tight,
+    )
+    mp(
+        "field at byte limit before partial delimiter",
+        next_prefix + b"x" * 8 + b"\r\n--b0und",
+        limits=tight,
+    )
+    mp(
+        "field at byte limit before incomplete closing delimiter",
+        next_prefix + b"x" * 8 + b"\r\n--b0und4ry-",
+        limits=tight,
+    )
+    mp(
+        "malformed header after exact field",
+        _multipart(exact, tail=b"\r\nInvalid Header: x\r\n\r\n" + b"x" * 128),
+        limits=tight,
+    )
     mp("part over size limit", _multipart([(_disposition("a"), "123456789")]), limits=tight)
     mp(
         "file has no part size limit",

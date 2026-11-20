@@ -710,14 +710,20 @@ synthetic loopback SMTP only.
 ## Multipart completion
 
 Both runtimes require the multipart parser to reach the complete closing
-boundary before accepting a send request. Truncated fields, uploads or closing
-boundaries return HTTP 400 with `{"message":"malformed form"}`, without SMTP
+boundary before accepting a send request. Truncation within the applicable
+limits returns HTTP 400 with `{"message":"malformed form"}`, without SMTP
 submission. Python closes all already-spooled uploads, including an unfinished
 last upload. Complete multipart bodies with epilogues remain supported. HTTP
 Content-Length completeness alone does not establish MIME completeness.
 The Rust multipart parser reuses one byte searcher for the request boundary
 across all parts. A boundary look-alike inside part data stays in the payload
 unless followed by CRLF or the closing `--`.
+Rust searches for text-field delimiters through the inclusive field byte
+limit, with lookahead for the delimiter and its two-byte continuation.
+Field data beyond the limit returns HTTP 413 even if the part is unfinished.
+Uploads are scanned under the request body limit and checked against their
+separate attachment limits. The send route currently uses the same configured
+byte limit for the whole request and for each text field.
 
 ## HTTP singleton headers
 

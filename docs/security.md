@@ -469,8 +469,8 @@ best-effort logging limits and the synthetic blocked-sink regressions.
 ## Multipart completion
 
 Both runtimes require the multipart parser to reach the complete closing
-boundary before accepting a send request. Truncated fields, uploads or closing
-boundaries return HTTP 400 with `{"message":"malformed form"}`, without SMTP
+boundary before accepting a send request. Truncation within the applicable
+limits returns HTTP 400 with `{"message":"malformed form"}`, without SMTP
 submission. Python closes all already-spooled uploads, including an unfinished
 last upload. Complete multipart bodies with epilogues remain supported. HTTP
 Content-Length completeness alone does not establish MIME completeness.

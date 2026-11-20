@@ -285,9 +285,11 @@ the contract. Each step names its Python source.
      a non-file field value `> max_body_bytes` → 413.
    - Malformed multipart: no boundary parameter, a part without
      `Content-Disposition` `name`, or a framing error python-multipart detects
-     → 400. A body that **ends before the complete final boundary** is also
-     refused with 400 (`malformed form`), even if completed earlier parts
-     could form a message. Python requires the public parser's `on_end`
+     → 400. Within the applicable limits, a body that **ends before the
+     complete final boundary** is also refused with 400 (`malformed form`),
+     even if completed earlier parts could form a message. An oversized text
+     field returns 413 even when it ends without a complete delimiter.
+     Python requires the public parser's `on_end`
      signal and closes completed and in-progress upload spools on refusal.
      Rust requires the same final delimiter; valid epilogues remain accepted.
      `form_decoding.json` cuts a two-part body at every byte.
@@ -303,7 +305,9 @@ the contract. Each step names its Python source.
      line, a `:` without name → 400; the last `Content-Disposition` and the
      first `Content-Type` of a part count; part data ends at the first
      `CRLF--boundary` followed by CRLF or `--`, any other continuation is
-     data; everything after the closing delimiter is ignored. Name, filename
+     data. Rust reuses a byte searcher across parts and examines text-field
+     delimiter starts only through the inclusive byte limit. Everything after
+     the closing delimiter is ignored. Name, filename
      and charset come from `parse_options_header` (parameter keys
      lowercased, keys with `*` ignored, one level of quotes removed, an IE6
      path `C:\…` cut to its last component); a disposition without `name`
