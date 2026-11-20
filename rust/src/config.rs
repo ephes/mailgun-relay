@@ -257,11 +257,16 @@ fn parse_bool(value: &str) -> Result<bool, String> {
     }
 }
 
-/// pydantic's float from a string (trimmed, `_` only between characters,
-/// Rust's `f64` grammar), then finite and in `0..=1e9` seconds (D-18).
+/// Parse a trimmed float with `_` allowed only between ASCII digits.
+/// Require a finite value in `0..=1e9` seconds (D-18).
 fn parse_timeout(value: &str) -> Result<f64, String> {
     let trimmed = value.trim();
-    if trimmed.starts_with('_') || trimmed.ends_with('_') || trimmed.contains("__") {
+    let bytes = trimmed.as_bytes();
+    if trimmed.match_indices('_').any(|(index, _)| {
+        index == 0
+            || !bytes[index - 1].is_ascii_digit()
+            || !bytes.get(index + 1).is_some_and(u8::is_ascii_digit)
+    }) {
         return Err("not a valid number".to_owned());
     }
     let seconds: f64 = trimmed
@@ -302,6 +307,38 @@ mod tests {
     use serde_json::{Value, json};
 
     use super::*;
+
+    #[test]
+    fn timeout_underscores_must_separate_digits() {
+        let settings = Settings::from_env([
+            (
+                "MAILGUN_RELAY_SMTP_TIMEOUT_S".into(),
+                " +1_2.5_0e+0_1 ".into(),
+            ),
+            (
+                "MAILGUN_RELAY_SMTP_SESSION_TIMEOUT_S".into(),
+                " +1_2.5_0e+0_1 ".into(),
+            ),
+        ])
+        .unwrap();
+        assert_eq!(settings.smtp_timeout_s, 125.0);
+        assert_eq!(settings.smtp_session_timeout_s, 125.0);
+
+        for field in [
+            "MAILGUN_RELAY_SMTP_TIMEOUT_S",
+            "MAILGUN_RELAY_SMTP_SESSION_TIMEOUT_S",
+        ] {
+            for value in [
+                "1_.5", "1._5", "1_e2", "1e_2", "1e+_2", "+_1", "_1", "1_", "1__2",
+            ] {
+                assert_eq!(
+                    Settings::from_env([(field.into(), value.into())]).unwrap_err(),
+                    ConfigError(format!("{field}: not a valid number")),
+                    "{field}={value}"
+                );
+            }
+        }
+    }
 
     #[test]
     fn session_timeout_is_positive_finite_and_bounded() {

@@ -255,6 +255,10 @@ PLAN.md section 3):
   or a certificate rustls cannot use, also with `SMTP_STARTTLS` off (D-22;
   Python reads the file per message and answers 503).
 
+In Rust, `SMTP_TIMEOUT_S` and `SMTP_SESSION_TIMEOUT_S` allow underscores only
+between ASCII digits. For example, `1_000.5` is valid, while `1_.5` and
+`1e_2` fail configuration validation before listener startup.
+
 Run `--check-config` against the production files before any switch.
 
 Logs are one JSON object per line on stdout. Every start writes
@@ -418,6 +422,11 @@ Python source/version, SMTP/API semantics and database/configuration remain
 unchanged. Publication is not evidence of running-process protection.
 
 ## Rust acquisition deadlines
+
+For streamed form bodies, Rust checks each incoming data frame against the
+remaining `MAX_BODY_BYTES` allowance before copying it into the body buffer.
+The byte limit is inclusive. A frame over the remaining limit returns HTTP 413
+before form parsing.
 
 Rust bounds form-body acquisition to 30 seconds total after admission, including
 trickling uploads. A full 25 MiB upload needs roughly 7 Mbit/s sustained throughput. Expiry returns HTTP 408 (`BodyTimeoutError`), drops the body

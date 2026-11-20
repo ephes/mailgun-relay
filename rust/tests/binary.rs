@@ -67,7 +67,7 @@ fn check_config_exit_codes() {
     assert_eq!(ok.status.code(), Some(0), "{ok:?}");
     assert_eq!(String::from_utf8(ok.stdout).unwrap().lines().count(), 1);
 
-    let failures: [&[(&str, &str)]; 5] = [
+    let failures: &[&[(&str, &str)]] = &[
         &[("MAILGUN_RELAY_SECRETS_PATH", "/nonexistent/secrets.yml")],
         &[
             ("MAILGUN_RELAY_SECRETS_PATH", path),
@@ -80,6 +80,14 @@ fn check_config_exit_codes() {
         &[
             ("MAILGUN_RELAY_SECRETS_PATH", path),
             ("MAILGUN_RELAY_SMTP_TIMEOUT_S", "nan"),
+        ],
+        &[
+            ("MAILGUN_RELAY_SECRETS_PATH", path),
+            ("MAILGUN_RELAY_SMTP_TIMEOUT_S", "1_.5"),
+        ],
+        &[
+            ("MAILGUN_RELAY_SECRETS_PATH", path),
+            ("MAILGUN_RELAY_SMTP_SESSION_TIMEOUT_S", "1e_2"),
         ],
         &[
             ("MAILGUN_RELAY_SECRETS_PATH", path),

@@ -138,6 +138,48 @@
   {
    "env": [
     [
+     "MAILGUN_RELAY_SMTP_SESSION_TIMEOUT_S",
+     "1_0.5"
+    ]
+   ],
+   "expected": {
+    "bind_host": "127.0.0.1",
+    "bind_port": 8085,
+    "envelope_sender": "",
+    "fail_on_partial_refusal": false,
+    "log_level": "INFO",
+    "max_attachment_bytes": 10485760,
+    "max_attachments": 10,
+    "max_body_bytes": 26214400,
+    "max_header_value_length": 998,
+    "max_recipients": 100,
+    "public_host": "mailgun.home.xn--wersdrfer-47a.de",
+    "secrets_path": "/etc/mailgun-relay/secrets.yml",
+    "smtp_ca_file": "",
+    "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
+    "smtp_max_concurrency": 8,
+    "smtp_port": 587,
+    "smtp_session_timeout_s": 10.5,
+    "smtp_starttls": true,
+    "smtp_timeout_s": 30.0
+   },
+   "name": "SMTP session budget '1_0.5'"
+  },
+  {
+   "divergence": "D-18",
+   "env": [
+    [
+     "MAILGUN_RELAY_SMTP_SESSION_TIMEOUT_S",
+     "1e_2"
+    ]
+   ],
+   "expected": null,
+   "name": "SMTP session budget '1e_2'",
+   "python_starts": true
+  },
+  {
+   "env": [
+    [
      "MAILGUN_RELAY_BIND_HOST",
      "127.0.0.1"
     ],
@@ -2382,64 +2424,28 @@
    "name": "float '1_0.5'"
   },
   {
+   "divergence": "D-18",
    "env": [
     [
      "MAILGUN_RELAY_SMTP_TIMEOUT_S",
      "1._5"
     ]
    ],
-   "expected": {
-    "bind_host": "127.0.0.1",
-    "bind_port": 8085,
-    "envelope_sender": "",
-    "fail_on_partial_refusal": false,
-    "log_level": "INFO",
-    "max_attachment_bytes": 10485760,
-    "max_attachments": 10,
-    "max_body_bytes": 26214400,
-    "max_header_value_length": 998,
-    "max_recipients": 100,
-    "public_host": "mailgun.home.xn--wersdrfer-47a.de",
-    "secrets_path": "/etc/mailgun-relay/secrets.yml",
-    "smtp_ca_file": "",
-    "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
-    "smtp_max_concurrency": 8,
-    "smtp_port": 587,
-    "smtp_session_timeout_s": 120.0,
-    "smtp_starttls": true,
-    "smtp_timeout_s": 1.5
-   },
-   "name": "float '1._5'"
+   "expected": null,
+   "name": "float '1._5'",
+   "python_starts": true
   },
   {
+   "divergence": "D-18",
    "env": [
     [
      "MAILGUN_RELAY_SMTP_TIMEOUT_S",
      "1_e1"
     ]
    ],
-   "expected": {
-    "bind_host": "127.0.0.1",
-    "bind_port": 8085,
-    "envelope_sender": "",
-    "fail_on_partial_refusal": false,
-    "log_level": "INFO",
-    "max_attachment_bytes": 10485760,
-    "max_attachments": 10,
-    "max_body_bytes": 26214400,
-    "max_header_value_length": 998,
-    "max_recipients": 100,
-    "public_host": "mailgun.home.xn--wersdrfer-47a.de",
-    "secrets_path": "/etc/mailgun-relay/secrets.yml",
-    "smtp_ca_file": "",
-    "smtp_host": "smtp.home.xn--wersdrfer-47a.de",
-    "smtp_max_concurrency": 8,
-    "smtp_port": 587,
-    "smtp_session_timeout_s": 120.0,
-    "smtp_starttls": true,
-    "smtp_timeout_s": 10.0
-   },
-   "name": "float '1_e1'"
+   "expected": null,
+   "name": "float '1_e1'",
+   "python_starts": true
   },
   {
    "divergence": "D-18",

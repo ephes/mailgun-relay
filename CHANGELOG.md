@@ -72,6 +72,10 @@ All notable changes to mailgun-relay are documented here.
 
 ### Fixed
 
+- Reject a Rust request body frame that exceeds the remaining byte allowance
+  before copying it into the body buffer.
+- Reject underscores outside digit pairs in Rust SMTP timeout settings during
+  startup configuration validation.
 - Reject custom header names over 76 ASCII bytes in both runtimes before
   MIME assembly, with HTTP 400 and diagnostic class `HeaderTooLongError`.
 - Keep Python diagnostic lines valid JSON by routing records with nonfinite

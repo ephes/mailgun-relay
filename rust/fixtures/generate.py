@@ -355,7 +355,7 @@ def _python_start(env: Env) -> dict[str, Any] | None:
 
 def _rust_start(env: Env) -> tuple[dict[str, Any] | None, str | None]:
     """The decided Rust behaviour: Python's start with one reader per
-    variable (D-7), then the range checks of D-18 and the domain set of
+    variable (D-7), then the numeric checks of D-18 and the domain set of
     D-10. Returns the result and the divergence that rejected it."""
     values = dict(env)
     canonical: Env = []
@@ -372,6 +372,10 @@ def _rust_start(env: Env) -> tuple[dict[str, Any] | None, str | None]:
     remaining: Env = []
     for name, value in canonical:
         field = name.removeprefix(PREFIX).lower()
+        if field in ("smtp_timeout_s", "smtp_session_timeout_s") and re.search(
+            r"(?<![0-9])_|_(?![0-9])", value
+        ):
+            return None, "D-18"
         if field in (*INT_FIELDS, "bind_port", "smtp_port", "smtp_timeout_s"):
             try:
                 numeric[field] = (
@@ -412,7 +416,7 @@ def _env_cases() -> list[tuple[str, Env]]:
         ("defaults", []),
         *[
             (f"SMTP session budget {value!r}", [(f"{PREFIX}SMTP_SESSION_TIMEOUT_S", value)])
-            for value in ["0.25", "120", "0", "-1", "nan", "inf", "1000000001"]
+            for value in ["0.25", "120", "0", "-1", "nan", "inf", "1000000001", "1_0.5", "1e_2"]
         ],
         (
             "production shape",

@@ -374,17 +374,20 @@ async fn decide(
     // Step 3: the content type decides whether and how the body is read.
     let content_type = headers.get(header::CONTENT_TYPE).map(HeaderValue::as_bytes);
     let encoding = form::encoding(content_type).map_err(form_failure)?;
-    let bytes = match encoding {
-        form::Encoding::None => Vec::new(),
-        _ => tokio::time::timeout(BODY_READ_TIMEOUT, read_body(body, settings.max_body_bytes))
-            .await
-            .map_err(|_| Failure {
-                status: StatusCode::REQUEST_TIMEOUT,
-                result: "body_timeout",
-                class: "BodyTimeoutError",
-                message: "Request body deadline exceeded".to_owned(),
-            })??,
-    };
+    let mut bytes = Vec::new();
+    if !matches!(encoding, form::Encoding::None) {
+        tokio::time::timeout(
+            BODY_READ_TIMEOUT,
+            read_body(body, settings.max_body_bytes, &mut bytes),
+        )
+        .await
+        .map_err(|_| Failure {
+            status: StatusCode::REQUEST_TIMEOUT,
+            result: "body_timeout",
+            class: "BodyTimeoutError",
+            message: "Request body deadline exceeded".to_owned(),
+        })??;
+    }
     let limits = Limits {
         max_files: settings.max_attachments.saturating_add(1),
         max_fields: settings.max_recipients.saturating_add(FORM_FIELD_HEADROOM),
@@ -543,23 +546,30 @@ fn exceeds(len: usize, max: i64) -> bool {
 /// The body up to `max_body_bytes` (the byte count of
 /// `BodySizeLimitMiddleware`, also for a chunked body); a read error is the
 /// 400 Python gives a client disconnect inside `request.form()`.
-async fn read_body(mut body: Body, max_body_bytes: i64) -> Result<Vec<u8>, Failure> {
+async fn read_body(
+    mut body: Body,
+    max_body_bytes: i64,
+    bytes: &mut Vec<u8>,
+) -> Result<(), Failure> {
     let too_large = || Failure::too_large(format!("request body exceeds {max_body_bytes} bytes"));
-    let mut bytes = Vec::new();
     while let Some(frame) = body.frame().await {
         let frame = frame.map_err(|_| Failure::bad_request("BadRequestError", "malformed form"))?;
         if let Ok(data) = frame.into_data() {
-            bytes.extend_from_slice(&data);
-            if exceeds(bytes.len(), max_body_bytes) {
+            if bytes
+                .len()
+                .checked_add(data.len())
+                .is_none_or(|len| exceeds(len, max_body_bytes))
+            {
                 return Err(too_large());
             }
+            bytes.extend_from_slice(&data);
         }
     }
     // Python counts at least one (possibly empty) chunk.
     if exceeds(bytes.len(), max_body_bytes) {
         return Err(too_large());
     }
-    Ok(bytes)
+    Ok(())
 }
 
 fn require_text(key: &str, value: Value) -> Result<String, Failure> {

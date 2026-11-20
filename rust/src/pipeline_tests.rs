@@ -758,6 +758,25 @@ async fn inline_filenames() {
 }
 
 #[tokio::test]
+async fn body_frame_limit_checked_before_copy() {
+    fn body(second: &'static [u8]) -> Body {
+        let chunks = [Ok::<_, std::io::Error>(b"abc".as_slice()), Ok(second)];
+        Body::from_stream(futures_util::stream::iter(chunks))
+    }
+
+    let mut bytes = Vec::new();
+    read_body(Body::empty(), 0, &mut bytes).await.unwrap();
+    assert!(bytes.is_empty());
+    read_body(body(b"de"), 5, &mut bytes).await.unwrap();
+    assert_eq!(bytes, b"abcde");
+
+    bytes.clear();
+    let failure = read_body(body(b"def"), 5, &mut bytes).await.unwrap_err();
+    assert_eq!(failure.status, StatusCode::PAYLOAD_TOO_LARGE);
+    assert_eq!(bytes, b"abc");
+}
+
+#[tokio::test]
 async fn body_reading() {
     let h = Harness::new();
     // Malformed multipart: no boundary, broken framing.
