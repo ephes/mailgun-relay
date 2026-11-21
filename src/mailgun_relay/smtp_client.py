@@ -156,11 +156,13 @@ class _SessionSMTP(smtplib.SMTP):
                 # start reading a greeting from a connection returned late.
                 self.budget.remaining(self.inactivity_timeout)
             except OSError as exc:
-                sock.close()
+                with contextlib.suppress(OSError):
+                    sock.close()
                 error = exc
                 continue
             except BaseException:
-                sock.close()
+                with contextlib.suppress(OSError):
+                    sock.close()
                 raise
             self.sock = sock
             self.file = None

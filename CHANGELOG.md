@@ -75,6 +75,9 @@ All notable changes to mailgun-relay are documented here.
 
 ### Fixed
 
+- Preserve Python SMTP connect failures and cancellation when closing a failed
+  candidate socket raises an OS error. Ordinary failures still allow fallback
+  to the next address within the session budget.
 - Reuse Python's validated `To` and `Cc` addresses when building the SMTP
   envelope, preserving recipient order and deduplication.
 - Reject unpaired angle brackets in explicit Python inline Content-IDs.

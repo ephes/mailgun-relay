@@ -393,7 +393,11 @@ cleanup warning only after acceptance), without logging reply contents. OS socke
 buffers and TLS's bounded internal buffers are separate from this wire-read cap.
 Python rollback now also validates and applies `SMTP_SESSION_TIMEOUT_S` (the
 same default and bounds) through the SMTP outcome, including TCP attempts,
-trickling replies, STARTTLS and recipient/DATA operations. A session-owned socket
+trickling replies, STARTTLS and recipient/DATA operations. A failed TCP attempt
+closes its candidate socket. If close raises an OS error, the relay still tries
+the next address within the session budget and preserves the final connect error
+if all attempts fail. Cancellation still propagates after the close attempt.
+A session-owned socket
 shutdown interrupts blocking reads and TLS; QUIT has its own
 `min(SMTP_TIMEOUT_S, 5 seconds)` total budget. Confirmed DATA acceptance survives
 cleanup failure. A timeout before a timely final DATA result is HTTP 503 and may
