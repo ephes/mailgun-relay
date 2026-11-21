@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+import asyncio
 import dataclasses
+import socket
 import socketserver
 import threading
 import time
 from collections.abc import Iterator
 from typing import cast
+from unittest.mock import Mock
 
 import pytest
 from fastapi.testclient import TestClient
@@ -15,7 +18,7 @@ from httpx import Response
 
 from mailgun_relay.app import create_app
 from mailgun_relay.routes import AppState
-from mailgun_relay.smtp_client import submit
+from mailgun_relay.smtp_client import _SessionSMTP, _SocketDeadline, submit
 from tests.test_messages_endpoint import _minimum_form, basic
 from tests.test_smtp_submission import _plain_transport
 
@@ -195,8 +198,6 @@ def test_app_passes_session_budget_to_transport(
 
 
 def test_late_resolver_result_does_not_open_connection(monkeypatch: pytest.MonkeyPatch) -> None:
-    import socket
-
     from mailgun_relay.smtp_client import FailureCategory, SmtpSubmitError
     from tests.test_smtp_submission import _msg
 
@@ -213,3 +214,53 @@ def test_late_resolver_result_does_not_open_connection(monkeypatch: pytest.Monke
         submit(_msg(), envelope_sender="x@x", recipients=["y@y"], transport=transport)
     assert caught.value.category == FailureCategory.TEMPORARY
     assert caught.value.reason == "TimeoutError"
+
+
+@pytest.mark.parametrize("outcome", ["fallback", "exhausted", "cancelled"])
+def test_failed_candidate_close_preserves_connect_result(
+    monkeypatch: pytest.MonkeyPatch, outcome: str
+) -> None:
+    first_error = ConnectionRefusedError("synthetic connect failure")
+    final_error = TimeoutError("synthetic final connect failure")
+    cancellation = asyncio.CancelledError("synthetic cancellation")
+    first = Mock()
+    first.connect.side_effect = cancellation if outcome == "cancelled" else first_error
+    first.close.side_effect = OSError("synthetic close failure")
+    second = Mock()
+    if outcome == "exhausted":
+        second.connect.side_effect = final_error
+        second.close.side_effect = OSError("synthetic final close failure")
+    candidates = Mock(side_effect=[first, second])
+    addresses = [
+        (socket.AF_INET, socket.SOCK_STREAM, socket.IPPROTO_TCP, "", (host, 25))
+        for host in ("192.0.2.1", "192.0.2.2")
+    ]
+    monkeypatch.setattr(socket, "getaddrinfo", lambda *_args, **_kwargs: addresses)
+    monkeypatch.setattr(socket, "socket", candidates)
+    budget = _SocketDeadline(30)
+    monkeypatch.setattr(budget, "watch", Mock())
+    smtp = _SessionSMTP("", 0, timeout=5, budget=budget)
+    banner = Mock(return_value=(220, b"synthetic SMTP"))
+    monkeypatch.setattr(smtp, "getreply", banner)
+
+    if outcome == "cancelled":
+        with pytest.raises(asyncio.CancelledError) as cancelled:
+            smtp.connect("smtp.example")
+        assert cancelled.value is cancellation
+        assert candidates.call_count == 1
+        banner.assert_not_called()
+    elif outcome == "exhausted":
+        with pytest.raises(TimeoutError) as failed:
+            smtp.connect("smtp.example")
+        assert failed.value is final_error
+        second.connect.assert_called_once_with(addresses[1][4])
+        second.close.assert_called_once_with()
+        banner.assert_not_called()
+    else:
+        assert smtp.connect("smtp.example") == (220, b"synthetic SMTP")
+        assert smtp.sock is second
+        second.connect.assert_called_once_with(addresses[1][4])
+        second.close.assert_not_called()
+        banner.assert_called_once_with()
+    first.connect.assert_called_once_with(addresses[0][4])
+    first.close.assert_called_once_with()

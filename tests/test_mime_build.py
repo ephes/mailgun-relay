@@ -175,7 +175,7 @@ def test_inline_explicit_content_id_has_one_pair_of_brackets(content_id: str) ->
 # Same asymmetric spellings as the shared malformed inline filename fixtures.
 @pytest.mark.parametrize("content_id", ["<logo.png", "logo.png>"])
 def test_inline_explicit_content_id_rejects_unpaired_brackets(content_id: str) -> None:
-    with pytest.raises(HeaderInjectionError, match=r"invalid inline filename 'upload\.png'"):
+    with pytest.raises(HeaderInjectionError, match=r"^invalid inline filename$"):
         build_message(_base_input(html="<p>x</p>", inline=[_png("upload.png", content_id)]))
 
 

@@ -7,6 +7,7 @@ import logging
 import tomllib
 from collections.abc import Iterator
 from dataclasses import replace
+from email.message import EmailMessage
 from pathlib import Path
 from typing import cast
 
@@ -767,19 +768,85 @@ def test_inline_upload_is_related_to_html_with_bracketed_content_id(
     assert "application/octet-stream" in types
 
 
+_MIME_UPLOAD_FORM = {
+    "from": "sender@example.com",
+    "to": "recipient@example.com",
+    "subject": "test",
+    "html": "<p>test</p>",
+}
+
+
+@pytest.fixture
+def mime_upload_client(app_state: AppState) -> Iterator[TestClient]:
+    policy = replace(
+        app_state.secrets.tokens[0],
+        mailgun_domains=frozenset({"mg.example.com"}),
+        allowed_from_domains=frozenset({"example.com"}),
+        allowed_from_addresses=frozenset({"sender@example.com"}),
+    )
+    state = replace(app_state, secrets=replace(app_state.secrets, tokens=(policy,)))
+    with TestClient(create_app(app_state=state)) as client:
+        yield client
+
+
 # Control characters are covered in test_mime_build; the multipart client and
 # parser strip a leading tab before it reaches the route.
-@pytest.mark.parametrize("filename", ["<logo.png>", "<logo.png", "logo.png>"])
+@pytest.mark.parametrize(
+    "filename", ["<synthetic-private.png>", "<synthetic-private.png", "synthetic-private.png>"]
+)
 def test_malformed_inline_filename_returns_400(
-    client: TestClient,
+    mime_upload_client: TestClient,
     auth: dict[str, str],
     recording_smtp: RecordingSubmitter,
+    caplog: pytest.LogCaptureFixture,
     filename: str,
 ) -> None:
+    caplog.set_level(logging.INFO, logger=access_logger().name)
     files = [("inline", (filename, b"\x89PNG\r\n", "image/png"))]
-    form = _with({"html": ['<img src="cid:logo.png">']})
-    r = client.post("/v3/mg.wersdoerfer.de/messages", headers=auth, data=form, files=files)
+    r = mime_upload_client.post(
+        "/v3/mg.example.com/messages", headers=auth, data=_MIME_UPLOAD_FORM, files=files
+    )
     assert r.status_code == 400, r.text
+    assert "synthetic-private" not in r.text + caplog.text
+    assert r.json() == {"message": "invalid inline filename"}
+    [record] = [record for record in caplog.records if getattr(record, "event", None) == "request"]
+    assert getattr(record, "error_class", None) == "HeaderInjectionError"
+    assert recording_smtp.calls == []
+
+
+@pytest.mark.parametrize(
+    ("field", "method", "message"),
+    [
+        ("inline", "add_related", "invalid inline file"),
+        ("attachment", "add_attachment", "invalid attachment"),
+    ],
+)
+def test_mime_upload_library_errors_are_private(
+    mime_upload_client: TestClient,
+    auth: dict[str, str],
+    recording_smtp: RecordingSubmitter,
+    caplog: pytest.LogCaptureFixture,
+    monkeypatch: pytest.MonkeyPatch,
+    field: str,
+    method: str,
+    message: str,
+) -> None:
+    def reject_upload(_message: EmailMessage, _data: bytes, **_kwargs: object) -> None:
+        raise ValueError("synthetic-private-library-detail")
+
+    caplog.set_level(logging.INFO, logger=access_logger().name)
+    monkeypatch.setattr(EmailMessage, method, reject_upload)
+    response = mime_upload_client.post(
+        "/v3/mg.example.com/messages",
+        headers=auth,
+        data=_MIME_UPLOAD_FORM,
+        files=[(field, ("synthetic-private.png", b"synthetic", "image/png"))],
+    )
+    assert response.status_code == 400
+    assert "synthetic-private" not in response.text + caplog.text
+    assert response.json() == {"message": message}
+    [record] = [record for record in caplog.records if getattr(record, "event", None) == "request"]
+    assert getattr(record, "error_class", None) == "HeaderInjectionError"
     assert recording_smtp.calls == []
 
 

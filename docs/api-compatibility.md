@@ -103,6 +103,10 @@ attachments may share filenames. Upload filenames and raw content types
 returns a fixed, value-free 400 before MIME assembly. Unicode filenames within
 the limit remain supported.
 
+Python MIME upload rejections return HTTP 400 with a fixed diagnostic:
+`invalid inline filename`, `invalid inline file`, or `invalid attachment`.
+The response omits upload filenames and email library exception text.
+
 `from` must occur exactly once. `subject`, `text`, `html` and `amp-html` may each
 occur at most once, even for identical or empty values. Every `h:*` name is unique
 case-insensitively, including extension headers such as `X-Tag`; duplicates return
