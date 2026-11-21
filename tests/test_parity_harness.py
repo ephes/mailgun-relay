@@ -299,6 +299,47 @@ def test_exchange_bounds_real_loopback_response(
         assert closed.is_set()
 
 
+@pytest.mark.parametrize("name", ["python", "rust"])
+def test_start_rejects_competing_listener(monkeypatch: pytest.MonkeyPatch, name: str) -> None:
+    import io
+    import socket
+    import subprocess
+    from unittest.mock import Mock, call
+
+    with socket.socket() as listener:
+        listener.bind(("127.0.0.1", 0))
+        listener.listen()
+        port = listener.getsockname()[1]
+        children: list[subprocess.Popen[bytes]] = []
+
+        def spawn(command: list[str], env: dict[str, str]) -> subprocess.Popen[bytes]:
+            assert env["MAILGUN_RELAY_BIND_PORT"] == str(port)
+            # Python emits the structured startup record before binding.
+            # A Rust startup record for a different port also proves nothing.
+            startup = {"event": "startup", "bind": f"127.0.0.1:{port}"}
+            if name == "rust":
+                startup.update(impl="rust", bind="127.0.0.1:0")
+            process = Mock(spec=subprocess.Popen, returncode=1)
+            process.stdout = io.BytesIO(json.dumps(startup).encode() + b"\n")
+            process.stderr = io.BytesIO()
+            process.poll.side_effect = [None, 1, 1]
+            children.append(process)
+            return process
+
+        monkeypatch.setattr(run_parity, "free_port", lambda: port)
+        monkeypatch.setattr(run_parity, "spawn", spawn)
+        stop = Mock(wraps=run_parity.stop)
+        monkeypatch.setattr(run_parity, "stop", stop)
+        probe = Mock(wraps=socket.create_connection)
+        monkeypatch.setattr(socket, "create_connection", probe)
+        with pytest.raises(run_parity.StartError):
+            run_parity.start(name, [], {}, None)  # type: ignore[arg-type]
+
+    probe.assert_not_called()
+    assert len(children) == 5
+    assert stop.call_args_list == [call(child) for child in children]
+
+
 @pytest.mark.parametrize("failure", [RuntimeError("probe failed"), KeyboardInterrupt()])
 def test_start_unwinds_probe_failure(
     monkeypatch: pytest.MonkeyPatch, failure: BaseException
@@ -323,7 +364,13 @@ def test_start_unwinds_probe_failure(
         with pytest.raises(type(failure)) as caught:
             run_parity.start(
                 "python",
-                [sys.executable, "-c", "import time; time.sleep(60)"],
+                [
+                    sys.executable,
+                    "-c",
+                    "import os, sys, time; port = os.environ['MAILGUN_RELAY_BIND_PORT']; "
+                    "print(f'INFO: Uvicorn running on http://127.0.0.1:{port} "
+                    "(Press CTRL+C to quit)', file=sys.stderr, flush=True); time.sleep(60)",
+                ],
                 {},
                 None,  # type: ignore[arg-type]
             )
@@ -559,11 +606,36 @@ def test_report_publication_failure_preserves_previous_json(
         assert "report publication failed" in capsys.readouterr().err
 
 
+def test_report_directory_sync_failure_preserves_published_receipt(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    import os
+    import stat
+
+    report = tmp_path / "report.json"
+    report.write_text('{"previous":true}\n')
+    original_fsync = os.fsync
+
+    def fsync(fd: int) -> None:
+        if stat.S_ISDIR(os.fstat(fd).st_mode):
+            assert json.loads(report.read_text())["failed"] == 0
+            raise OSError("injected directory sync failure")
+        original_fsync(fd)
+
+    monkeypatch.setattr(run_parity, "run_local", _record_one_case)
+    monkeypatch.setattr(os, "fsync", fsync)
+    assert run_parity.main(["--report", str(report)]) == 1
+    assert "report published with durability uncertain" in capsys.readouterr().err
+    assert json.loads(report.read_text())["failed"] == 0
+    assert list(tmp_path.iterdir()) == [report]
+
+
 @pytest.mark.parametrize("failed", [False, True])
 def test_complete_report_is_published_after_sync(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path, failed: bool
 ) -> None:
     import os
+    import stat
 
     report = tmp_path / "report.json"
     report.write_text('{"previous":true}\n')
@@ -576,7 +648,7 @@ def test_complete_report_is_published_after_sync(
             receipt.record("synthetic failure", ["mismatch"], None, False)
 
     def fsync(fd: int) -> None:
-        events.append("sync")
+        events.append("sync directory" if stat.S_ISDIR(os.fstat(fd).st_mode) else "sync file")
         original_fsync(fd)
 
     def replace(source: Any, destination: Any) -> None:
@@ -590,7 +662,7 @@ def test_complete_report_is_published_after_sync(
     monkeypatch.setattr(os, "fsync", fsync)
     monkeypatch.setattr(os, "replace", replace)
     assert run_parity.main(["--report", str(report)]) == int(failed)
-    assert events == ["sync", "replace"]
+    assert events == ["sync file", "replace", "sync directory"]
     assert json.loads(report.read_text())["failed"] == int(failed)
     assert list(tmp_path.iterdir()) == [report]
 

@@ -61,7 +61,7 @@ from collections import Counter
 from contextlib import ExitStack
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import IO, Any
 from urllib.parse import urlsplit
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -549,7 +549,7 @@ def spawn(command: list[str], env: dict[str, str]) -> subprocess.Popen[bytes]:
         cwd=REPO,
         stdin=subprocess.DEVNULL,
         stdout=subprocess.PIPE,
-        stderr=subprocess.DEVNULL,
+        stderr=subprocess.PIPE,
     )
 
 
@@ -568,6 +568,21 @@ def _port_free(port: int) -> bool:
         return True
 
 
+def _watch_uvicorn_bind(stream: IO[bytes], bind: str) -> threading.Event:
+    ready = threading.Event()
+    message = f"Uvicorn running on http://{bind} (Press CTRL+C to quit)".encode()
+
+    def pump() -> None:
+        # Drain stderr without retaining unstructured errors or tracebacks.
+        with stream:
+            for line in stream:
+                if line.startswith(b"INFO:") and line[5:].strip() == message:
+                    ready.set()
+
+    threading.Thread(target=pump, daemon=True).start()
+    return ready
+
+
 def start(name: str, command: list[str], env: dict[str, str], sink: Sink) -> Target:
     """Start one implementation on a free port and wait until it serves.
     Another process can take the port before the bind; then another port
@@ -578,16 +593,42 @@ def start(name: str, command: list[str], env: dict[str, str], sink: Sink) -> Tar
         with ExitStack() as owner:
             owner.callback(stop, process)
             log = LogTail()
-            assert process.stdout is not None
+            assert process.stdout is not None and process.stderr is not None
             log.follow_pipe(process.stdout)
+            bind = f"127.0.0.1:{port}"
+            address = ("127.0.0.1", port)
+            uvicorn_ready = _watch_uvicorn_bind(process.stderr, bind)
             deadline = time.monotonic() + 30
             while time.monotonic() < deadline and process.poll() is None:
-                try:
-                    socket.create_connection(("127.0.0.1", port), timeout=1).close()
-                    owner.pop_all()
-                    return Target(name, ("127.0.0.1", port), sink=sink, log=log, process=process)
-                except OSError:
-                    time.sleep(0.05)
+                # Uvicorn's app factory logs startup before the socket is bound.
+                # Rust emits its structured startup record after acquiring listeners.
+                if name == "python":
+                    ready = uvicorn_ready.is_set()
+                else:
+                    ready = (
+                        log.wait(
+                            lambda r, bind=bind: (
+                                r.get("event") == "startup"
+                                and r.get("impl") == "rust"
+                                and r.get("bind") == bind
+                            ),
+                            0,
+                        )
+                        is not None
+                    )
+                remaining = deadline - time.monotonic()
+                if ready and remaining > 0:
+                    try:
+                        socket.create_connection(address, timeout=min(1, remaining)).close()
+                    except OSError:
+                        pass
+                    else:
+                        if process.poll() is not None:
+                            break
+                        target = Target(name, address, sink=sink, log=log, process=process)
+                        owner.pop_all()
+                        return target
+                time.sleep(0.05)
         code = process.returncode
         if _port_free(port):
             raise StartError(name, code, log.lines)
@@ -828,8 +869,12 @@ def run_targets(args: argparse.Namespace, cases: list[corpus.Case], report: Repo
     run_cases(targets[0], targets[1], cases, report, counter, args.verbose)
 
 
+class ReportDurabilityError(OSError):
+    """The new receipt is visible, but its directory entry may not survive a crash."""
+
+
 def publish_report(path: Path, detail: dict[str, Any]) -> None:
-    """Keep the previous receipt until its complete replacement is synced."""
+    """Sync the complete receipt before replacement, then sync its directory."""
     serialized = json.dumps(detail, indent=2, ensure_ascii=False) + "\n"
     temporary: Path | None = None
     try:
@@ -856,9 +901,19 @@ def publish_report(path: Path, detail: dict[str, Any]) -> None:
             os.fchmod(stream.fileno(), mode)
             os.fsync(stream.fileno())
         os.replace(temporary, path)
+        temporary = None
     finally:
         if temporary is not None:
             temporary.unlink(missing_ok=True)
+
+    try:
+        directory = os.open(path.parent, os.O_RDONLY | os.O_DIRECTORY)
+        try:
+            os.fsync(directory)
+        finally:
+            os.close(directory)
+    except OSError as exc:
+        raise ReportDurabilityError(f"could not sync {path.parent}: {exc}") from exc
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -930,6 +985,9 @@ def main(argv: list[str] | None = None) -> int:
         }
         try:
             publish_report(args.report, detail)
+        except ReportDurabilityError as exc:
+            print(f"report published with durability uncertain: {exc}", file=sys.stderr)
+            return 1
         except OSError as exc:
             print(f"report publication failed: {exc}", file=sys.stderr)
             return 1
