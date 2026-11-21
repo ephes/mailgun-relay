@@ -475,6 +475,9 @@ best-effort logging limits and the synthetic blocked-sink regressions.
 
 Rust rejects missing, empty or oversized multipart boundaries from the
 Content-Type header before polling the body.
+Within the admitted body, Rust bounds colon and carriage return searches by
+the 4,224-byte budget for each part header line, with one byte of lookahead
+for a carriage return at the limit.
 
 Both runtimes require the multipart parser to reach the complete closing
 boundary before accepting a send request. Truncation within the applicable

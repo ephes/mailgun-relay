@@ -303,8 +303,11 @@ the contract. Each step names its Python source.
      empty form); part headers
      are `token: value` lines (leading spaces skipped, the value up to CR,
      CR must be followed by LF), at most 8 per part, at most 4,224 bytes per
-     line, a `:` without name → 400; the last `Content-Disposition` and the
-     first `Content-Type` of a part count; part data ends at the first
+     line including the colon and leading value spaces, excluding CRLF. Rust
+     bounds header delimiter searches by the remaining line budget, with one
+     byte of lookahead for CR. An empty header name returns 400. Rust uses the
+     last `Content-Disposition` and the first `Content-Type` of a part.
+     Part data ends at the first
      `CRLF--boundary` followed by CRLF or `--`, any other continuation is
      data. Rust reuses a byte searcher across parts and examines text-field
      delimiter starts only through the inclusive byte limit. Everything after
