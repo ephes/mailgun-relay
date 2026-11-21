@@ -5689,14 +5689,14 @@
    "name": "multipart files do not count as fields"
   },
   {
-   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"a\"\r\n\r\n12345678\r\n--b0und4ry--\r\n",
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"a\"\r\n\r\n\u00c3\u00a4\u00c3\u00a4\u00c3\u00a4\u00c3\u00a4\r\n--b0und4ry--\r\n",
    "content_type": "multipart/form-data; boundary=b0und4ry",
    "expected": {
     "items": [
      [
       "a",
       {
-       "text": "12345678"
+       "text": "\u00e4\u00e4\u00e4\u00e4"
       }
      ]
     ]
@@ -5706,7 +5706,98 @@
     "max_files": 1,
     "max_part_size": 8
    },
-   "name": "multipart part at size limit"
+   "name": "multipart part at byte limit"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"a\"\r\n\r\n12345678\r\n--b0und4ry-X\r\n--b0und4ry--\r\n",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "status": 413
+   },
+   "limits": {
+    "max_fields": 3,
+    "max_files": 1,
+    "max_part_size": 8
+   },
+   "name": "multipart delimiter look-alike extends a field beyond its byte limit"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"a\"\r\n\r\n\u00c3\u00a4\u00c3\u00a4\u00c3\u00a4\u00c3\u00a4\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"b\"\r\n\r\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "status": 413
+   },
+   "limits": {
+    "max_fields": 3,
+    "max_files": 1,
+    "max_part_size": 8
+   },
+   "name": "multipart oversized unfinished field after exact field"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"a\"\r\n\r\n\u00c3\u00a4\u00c3\u00a4\u00c3\u00a4\u00c3\u00a4\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"b\"\r\n\r\nxxxxxxxxx",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "status": 413
+   },
+   "limits": {
+    "max_fields": 3,
+    "max_files": 1,
+    "max_part_size": 8
+   },
+   "name": "multipart field one byte over at EOF"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"a\"\r\n\r\n\u00c3\u00a4\u00c3\u00a4\u00c3\u00a4\u00c3\u00a4\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"b\"\r\n\r\nxxxxxxxxx\r\n--b0und4ry-",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "status": 413
+   },
+   "limits": {
+    "max_fields": 3,
+    "max_files": 1,
+    "max_part_size": 8
+   },
+   "name": "multipart oversized field before incomplete closing delimiter"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"a\"\r\n\r\n\u00c3\u00a4\u00c3\u00a4\u00c3\u00a4\u00c3\u00a4\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"b\"\r\n\r\nxxxxxxxx\r\n--b0und",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "status": 400
+   },
+   "limits": {
+    "max_fields": 3,
+    "max_files": 1,
+    "max_part_size": 8
+   },
+   "name": "multipart field at byte limit before partial delimiter"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"a\"\r\n\r\n\u00c3\u00a4\u00c3\u00a4\u00c3\u00a4\u00c3\u00a4\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"b\"\r\n\r\nxxxxxxxx\r\n--b0und4ry-",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "status": 400
+   },
+   "limits": {
+    "max_fields": 3,
+    "max_files": 1,
+    "max_part_size": 8
+   },
+   "name": "multipart field at byte limit before incomplete closing delimiter"
+  },
+  {
+   "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"a\"\r\n\r\n\u00c3\u00a4\u00c3\u00a4\u00c3\u00a4\u00c3\u00a4\r\n--b0und4ry\r\nInvalid Header: x\r\n\r\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+   "content_type": "multipart/form-data; boundary=b0und4ry",
+   "expected": {
+    "status": 400
+   },
+   "limits": {
+    "max_fields": 3,
+    "max_files": 1,
+    "max_part_size": 8
+   },
+   "name": "multipart malformed header after exact field"
   },
   {
    "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"a\"\r\n\r\n123456789\r\n--b0und4ry--\r\n",

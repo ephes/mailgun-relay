@@ -726,6 +726,7 @@ dependencies = [
  "idna",
  "lettre",
  "mail-parser",
+ "memchr",
  "rcgen",
  "regex",
  "rustix",

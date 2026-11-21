@@ -5,9 +5,11 @@
 //! decisions must not widen what Python accepts: the urlencoded decoding is
 //! Starlette's (latin-1, then `unquote_plus`), and the multipart framing is
 //! the one of python-multipart 0.0.31 (strict start boundary, token header
-//! names, at most 8 headers of 4224 bytes per part, a delimiter followed by
-//! anything but CRLF or `--` is data, a truncated body ends the form and
-//! drops the unfinished part). Pinned by `fixtures/form_decoding.json`.
+//! names, at most 8 headers of 4224 bytes per part, and a delimiter followed
+//! by anything but CRLF or `--` is data). The relay also checks field byte
+//! limits and requires multipart completion. Pinned by `fixtures/form_decoding.json`.
+
+use memchr::memmem::Finder;
 
 use crate::pystr::{is_py_space, py_strip};
 
@@ -331,11 +333,44 @@ fn find_byte(body: &[u8], byte: u8, from: usize) -> Option<usize> {
         .map(|p| from + p)
 }
 
-fn find_seq(body: &[u8], needle: &[u8], from: usize) -> Option<usize> {
-    body.get(from..)?
-        .windows(needle.len())
-        .position(|w| w == needle)
-        .map(|p| from + p)
+#[cfg(test)]
+thread_local! {
+    static DELIMITER_CANDIDATES: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+}
+
+/// Find the delimiter that ends this part. Only consider starts through
+/// `max_end` (inclusive), with lookahead for the delimiter and its continuation.
+fn part_end(data: &[u8], finder: &Finder<'_>, max_end: usize) -> Result<(usize, bool), FormError> {
+    use FormError::{BadRequest, TooLarge};
+    let delimiter = finder.needle();
+    let search_end = max_end.saturating_add(delimiter.len()).min(data.len());
+    let mut search = 0;
+    while let Some(offset) = data
+        .get(search..search_end)
+        .and_then(|bytes| finder.find(bytes))
+    {
+        #[cfg(test)]
+        DELIMITER_CANDIDATES.with(|count| count.set(count.get() + 1));
+        let at = search + offset;
+        let after = at + delimiter.len();
+        match (data.get(after), data.get(after + 1)) {
+            (None, _) | (Some(b'\r' | b'-'), None) => return Err(BadRequest),
+            (Some(b'\r'), Some(b'\n')) => return Ok((at, false)),
+            (Some(b'-'), Some(b'-')) => return Ok((at, true)),
+            (Some(b'\r' | b'-'), Some(_)) => search = after + 1,
+            _ => search = after,
+        }
+    }
+
+    if data.len() > max_end {
+        // At EOF, an unfinished delimiter can withhold a suffix from the
+        // field. Consider only suffixes that could start within its budget.
+        let earliest = search.max(data.len().saturating_sub(delimiter.len() - 1));
+        if !(earliest..=max_end).any(|at| delimiter.starts_with(&data[at..])) {
+            return Err(TooLarge);
+        }
+    }
+    Err(BadRequest)
 }
 
 /// RFC 7230 token characters, python-multipart's `TOKEN_CHARS`.
@@ -353,6 +388,7 @@ fn multipart(
 ) -> Result<Vec<(String, Value)>, FormError> {
     use FormError::{BadRequest, TooLarge};
     let delimiter = [b"\r\n--".as_slice(), boundary].concat();
+    let delimiter_finder = Finder::new(&delimiter);
     let mut items = Vec::new();
     let (mut files, mut fields) = (0usize, 0usize);
 
@@ -465,42 +501,27 @@ fn multipart(
             }
         }
 
-        // Part data up to a delimiter followed by CRLF or "--"; any other
-        // continuation is data.
-        let start = i;
-        let mut search = i;
-        let (end, last) = loop {
-            let Some(at) = find_seq(body, &delimiter, search) else {
-                return Err(BadRequest);
-            };
-            let after = at + delimiter.len();
-            match (body.get(after), body.get(after + 1)) {
-                (None, _) | (Some(b'\r' | b'-'), None) => return Err(BadRequest),
-                (Some(b'\r'), Some(b'\n')) => break (at, false),
-                (Some(b'-'), Some(b'-')) => break (at, true),
-                (Some(b'\r' | b'-'), Some(_)) => search = after + 1,
-                _ => search = after,
-            }
+        let remaining = &body[i..];
+        let max_end = if filename.is_some() {
+            remaining.len()
+        } else {
+            usize::try_from(limits.max_part_size.max(0)).unwrap_or(usize::MAX)
         };
-        let data = &body[start..end];
+        let (end, last) = part_end(remaining, &delimiter_finder, max_end)?;
+        let data = &remaining[..end];
         let value = match filename {
             Some(filename) => Value::File(Upload {
                 filename,
                 content_type: content_type.map(latin1),
                 data: data.to_vec(),
             }),
-            None => {
-                if !data.is_empty() && exceeds(data.len(), limits.max_part_size) {
-                    return Err(TooLarge);
-                }
-                Value::Text(decode(data, charset))
-            }
+            None => Value::Text(decode(data, charset)),
         };
         items.push((name, value));
         if last {
             return Ok(items);
         }
-        i = end + delimiter.len() + 2;
+        i += end + delimiter.len() + 2;
     }
 }
 
@@ -582,6 +603,26 @@ mod tests {
             (upload.content_type.as_deref(), upload.data.as_slice()),
             (Some("text/plain"), b"data".as_slice())
         );
+    }
+
+    #[test]
+    fn multipart_search_checks_only_full_delimiter_candidates() {
+        let boundary = "a".repeat(128);
+        let prefix = format!("\r\n--{}b", &boundary[..127]);
+        let near_delimiters = format!("\r\n--{boundary}-x\r\n--{boundary}\rx");
+        let data = format!("{}{near_delimiters}", prefix.repeat(256));
+        let body = multipart_body(
+            &boundary,
+            &[
+                ("Content-Disposition: form-data; name=\"text\"", &data),
+                ("Content-Disposition: form-data; name=\"subject\"", "ok"),
+            ],
+        );
+
+        DELIMITER_CANDIDATES.with(|count| count.set(0));
+        let items = multipart(&body, boundary.as_bytes(), Charset::Utf8, LIMITS).unwrap();
+        assert_eq!(texts(&items), [("text", data.as_str()), ("subject", "ok")]);
+        assert_eq!(DELIMITER_CANDIDATES.with(|count| count.get()), 4);
     }
 
     #[test]

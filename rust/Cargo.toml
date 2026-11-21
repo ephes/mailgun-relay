@@ -27,6 +27,7 @@ lettre = { version = "=0.11.24", default-features = false, features = [
     "ring",
     "hostname",
 ] }
+memchr = "2"
 rustls-pki-types = "1"
 regex = { version = "1", default-features = false, features = ["std"] }
 serde = { version = "1", features = ["derive"] }
