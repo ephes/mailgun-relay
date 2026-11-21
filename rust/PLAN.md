@@ -1144,11 +1144,13 @@ the runner's `python3`):
   `email.message_from_bytes(policy=default)` into the semantic view of
   `parity/semantic.py` (shared with `generate.py` and `check_mime.py`:
   decoded headers incl. From/To/Cc/Reply-To as (display name, addr-spec),
-  the MIME tree, decoded bodies with one trailing newline tolerated, parts
-  with disposition, filename, Content-ID, type and data), no Bcc header,
+  the MIME tree with disposition, filename and Content-ID on containers and
+  leaves, decoded bodies with one trailing newline tolerated, and part types
+  and data), no Bcc header,
   Message-Id equal to the response `id`, Date present; for the Rust
   message additionally 7-bit, CRLF only, lines ≤ 998, encoded words ≤ 75
-  and no parser defects beyond Python's own; the `event=request` and
+  and no parser defects beyond Python's own, including defects in any header
+  occurrence and duplicate singleton fields; the `event=request` and
   `recipients_refused` records (`token_label`, `result`, `status_code`,
   counts, refused domains and codes, a message id exactly when Python logs
   one); the `event=startup` record of each pair (labels and effective

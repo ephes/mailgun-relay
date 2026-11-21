@@ -17,14 +17,17 @@ import email.header
 import email.policy
 import json
 import re
+from email.headerregistry import BaseHeader
 from email.message import EmailMessage
-from typing import Any
+from typing import Any, cast
 
 # Headers the semantic view leaves out: per-message values (Message-Id is
 # checked against the response id, Date for presence) and MIME structure,
 # which the tree carries.
 SKIPPED = {"message-id", "date", "mime-version", "content-type", "content-transfer-encoding"}
 ADDRESS_HEADERS = {"from", "to", "cc", "reply-to", "bcc"}
+# These MIME fields are unstructured in the default header registry.
+UNSTRUCTURED_MIME_SINGLETONS = {"content-id", "content-description"}
 
 
 def parse(raw: bytes) -> EmailMessage:
@@ -34,16 +37,24 @@ def parse(raw: bytes) -> EmailMessage:
 
 
 def defects(message: EmailMessage) -> list[str]:
-    """Parser defects of the message, its headers and its parts. A part
-    records transfer-encoding defects only when it is decoded."""
+    """Parser and duplicate singleton defects in the message and its parts."""
     found: set[str] = set()
     for part in message.walk():
         if not part.is_multipart():
+            # Decoding records transfer-encoding defects on the part.
             part.get_payload(decode=True)
         found.update(type(d).__name__ for d in part.defects)
-        for name, _ in part.raw_items():
+        seen: set[str] = set()
+        for name, value in part.raw_items():
+            key = name.lower()
+            if key in seen and (
+                key in UNSTRUCTURED_MIME_SINGLETONS or part.policy.header_max_count(name) == 1
+            ):
+                found.add(f"DuplicateSingletonHeader: {key}")
+            seen.add(key)
             try:
-                found.update(type(d).__name__ for d in part[name].defects)
+                parsed = cast(BaseHeader, part.policy.header_fetch_parse(name, value))
+                found.update(type(d).__name__ for d in parsed.defects)
             except ValueError:
                 found.add("ValueError")
     return sorted(found)
@@ -55,15 +66,15 @@ def _addresses(header: Any) -> list[list[str]]:
 
 def _node(part: EmailMessage) -> dict[str, Any]:
     node: dict[str, Any] = {"type": part.get_content_type()}
-    if part.is_multipart():
-        node["parts"] = [_node(p) for p in part.iter_parts()]  # type: ignore[arg-type]
-        return node
     disposition = part.get_content_disposition()
     if disposition is not None:
         node["disposition"] = disposition
         node["filename"] = part.get_filename()
     if part["Content-ID"] is not None:
         node["content_id"] = str(part["Content-ID"])
+    if part.is_multipart():
+        node["parts"] = [_node(p) for p in part.iter_parts()]  # type: ignore[arg-type]
+        return node
     if node["type"].startswith("text/") and disposition is None:
         node["charset"] = part.get_content_charset()
         text = part.get_content().replace("\r\n", "\n")

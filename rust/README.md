@@ -338,6 +338,11 @@ SMTP server (STARTTLS with a throwaway CA, AUTH, scripted replies), sends
 every case of `parity/cases.py` to both byte for byte, and compares what the
 parity contract fixes: status, contract headers and JSON, the SMTP
 envelope, the message as Python's parser reads it, and the log records.
+The parser defect check inspects each header occurrence on each MIME part.
+It reports duplicates of singleton fields by case-insensitive name and allows
+repeatable fields such as Received.
+The MIME tree compares Content-ID, disposition and its filename on containers
+as well as leaf parts.
 Expected differences name their entry of PLAN.md section 3; any other
 difference fails. From the repository root:
 
