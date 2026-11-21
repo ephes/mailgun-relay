@@ -345,10 +345,11 @@ limits and validation order are unchanged.
 
 Rust stdout logging uses a dedicated OS writer thread and the standard library's
 bounded `sync_channel` with nonblocking `try_send`: 256 queued records, each at
-most 65,536 serialized bytes (at most 16 MiB queued payload, plus one writing
-record and queue metadata).
-The newest record is dropped on saturation; oversized records and write/flush
-errors are also dropped. There is no recursive fallback or send retry. The
+most 65,536 serialized bytes including the newline (at most 16 MiB queued
+payload, plus one writing record and queue metadata). The encoder stops when
+the next write would exceed that limit and drops the record before enqueueing.
+The newest record is dropped on saturation. Write and flush errors also drop
+records. There is no recursive fallback or send retry. The
 writer flushes each accepted record. After requests drain, shutdown stops log
 admission and waits at most one second for queued records; a stalled sink may
 lose the tail when the process exits. Health, SMTP outcomes and capacity release

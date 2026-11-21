@@ -21,6 +21,7 @@ mod secrets;
 mod smtp;
 mod yaml;
 
+use std::collections::HashSet;
 use std::future::Future;
 use std::net::SocketAddr;
 use std::path::Path;
@@ -182,18 +183,23 @@ async fn supervise_listeners(
 /// does for uvicorn: `localhost` gets an IPv4 and an IPv6 listener, IPv6
 /// sockets are IPv6-only, `SO_REUSEADDR` is set, uvicorn's backlog.
 async fn bind_all(host: &str, port: u16) -> std::io::Result<Vec<TcpListener>> {
-    let mut addresses: Vec<SocketAddr> = Vec::new();
-    for address in tokio::net::lookup_host((host, port)).await? {
-        if !addresses.contains(&address) {
-            addresses.push(address);
-        }
-    }
-    bind_addresses(&addresses)
+    bind_addresses(tokio::net::lookup_host((host, port)).await?)
+}
+
+fn unique_bind_addresses(resolved: impl IntoIterator<Item = SocketAddr>) -> Vec<SocketAddr> {
+    let mut seen = HashSet::new();
+    resolved
+        .into_iter()
+        .filter(|address| seen.insert(*address))
+        .collect()
 }
 
 /// Acquire a nonempty, complete listener set before startup can announce success.
 /// Dropping the local vector on any error rolls back earlier binds.
-fn bind_addresses(addresses: &[SocketAddr]) -> std::io::Result<Vec<TcpListener>> {
+fn bind_addresses(
+    resolved: impl IntoIterator<Item = SocketAddr>,
+) -> std::io::Result<Vec<TcpListener>> {
+    let addresses = unique_bind_addresses(resolved);
     if addresses.is_empty() {
         return Err(std::io::Error::new(
             std::io::ErrorKind::AddrNotAvailable,
@@ -201,7 +207,7 @@ fn bind_addresses(addresses: &[SocketAddr]) -> std::io::Result<Vec<TcpListener>>
         ));
     }
     let mut listeners = Vec::with_capacity(addresses.len());
-    for address in addresses.iter().copied() {
+    for address in addresses {
         let socket = Socket::new(
             Domain::for_address(address),
             Type::STREAM,
@@ -296,6 +302,27 @@ fn log_startup(logger: &Logger, settings: &Settings, secrets: &Secrets, bind: &s
 mod bind_tests {
     use super::*;
 
+    #[test]
+    fn large_resolver_sequence_deduplicates_in_first_seen_order() {
+        let first_seen: Vec<_> = (0..100_000u32)
+            .rev()
+            .map(|index| SocketAddr::from(((0x7f00_0000 + index).to_be_bytes(), 8080)))
+            .collect();
+        let start = std::time::Instant::now();
+        // A generous deadline catches quadratic scans without letting a
+        // regression run all the way through billions of comparisons.
+        let resolved = first_seen
+            .iter()
+            .flat_map(|&address| [address, first_seen[0], address])
+            .inspect(|_| {
+                assert!(
+                    start.elapsed() < Duration::from_secs(5),
+                    "resolver deduplication exceeded the test budget"
+                );
+            });
+        assert_eq!(unique_bind_addresses(resolved), first_seen);
+    }
+
     #[tokio::test]
     async fn empty_listener_inventory_fails_before_startup() {
         let settings =
@@ -311,7 +338,7 @@ mod bind_tests {
         let (logger, records) = Logger::capturing(Level::Info);
         let result = tokio::time::timeout(
             Duration::from_millis(100),
-            run(settings, secrets, smtp, logger, bind_addresses(&[])),
+            run(settings, secrets, smtp, logger, bind_addresses([])),
         )
         .await;
         assert!(
@@ -329,15 +356,16 @@ mod bind_tests {
         let first_address = first.local_addr().unwrap();
         let busy = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
         let second_address = busy.local_addr().unwrap();
+        let resolved = [first_address, first_address, second_address, first_address];
         drop(first);
-        let error = bind_addresses(&[first_address, second_address]).unwrap_err();
+        let error = bind_addresses(resolved).unwrap_err();
         assert_eq!(error.kind(), std::io::ErrorKind::AddrInUse);
         // The first bind succeeded before the second failed. Its listener
         // must have been dropped, before startup could publish success.
         let rebound = std::net::TcpListener::bind(first_address).unwrap();
         drop(rebound);
         drop(busy);
-        let listeners = bind_addresses(&[first_address, second_address]).unwrap();
+        let listeners = bind_addresses(resolved).unwrap();
         assert_eq!(listeners.len(), 2);
         assert_eq!(listeners[0].local_addr().unwrap(), first_address);
         assert_eq!(listeners[1].local_addr().unwrap(), second_address);

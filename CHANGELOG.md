@@ -72,6 +72,10 @@ All notable changes to mailgun-relay are documented here.
 
 ### Fixed
 
+- Bound Rust JSON log encoding at 64 KiB per line, including the newline.
+  Drop oversize records before queue admission.
+- Deduplicate resolved Rust listener addresses in one pass and bind each
+  distinct address in first-seen order.
 - Preserve Python rollback secret-file read and permission errors when
   closing the descriptor also fails. Report a standalone close failure as a
   value-free policy error.
