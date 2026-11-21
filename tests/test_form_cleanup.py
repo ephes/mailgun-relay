@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import asyncio
 import base64
+import io
 import tempfile
 from typing import Any
 
@@ -13,6 +15,50 @@ from starlette.datastructures import FormData, UploadFile
 from mailgun_relay import routes
 from mailgun_relay.config import Settings
 from tests.conftest import RecordingSubmitter
+
+
+def test_form_cleanup_drains_uploads_before_propagating_task_cancellation() -> None:
+    async def scenario() -> None:
+        entered = asyncio.Event()
+        release = asyncio.Event()
+        attempts: list[UploadFile] = []
+
+        class TrackedUpload(UploadFile):
+            async def close(self) -> None:
+                attempts.append(self)
+                if self.filename == "first.txt":
+                    entered.set()
+                    await release.wait()
+                await super().close()
+                if self.filename == "second.txt":
+                    raise OSError("synthetic upload close failure")
+
+        with io.BytesIO() as first, io.BytesIO() as second, io.BytesIO() as third:
+            uploads = [
+                TrackedUpload(first, filename="first.txt"),
+                TrackedUpload(second, filename="second.txt"),
+                TrackedUpload(third, filename="third.txt"),
+            ]
+            form = FormData([("attachment", upload) for upload in uploads])
+            async with asyncio.timeout(5):
+                cleanup = asyncio.create_task(routes._close_form(form))
+                try:
+                    await entered.wait()
+                    cleanup.cancel("primary cancellation")
+                    await asyncio.sleep(0)
+                    cleanup.cancel("second cancellation")
+                    await asyncio.sleep(0)
+                    finished_before_release = cleanup.done()
+                finally:
+                    release.set()
+                with pytest.raises(asyncio.CancelledError, match=r"^primary cancellation$"):
+                    await cleanup
+
+            assert not finished_before_release
+            assert attempts == uploads
+            assert first.closed and second.closed and third.closed
+
+    asyncio.run(scenario())
 
 
 @pytest.mark.parametrize(

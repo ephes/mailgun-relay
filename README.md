@@ -98,7 +98,9 @@ run in the same bounded AnyIO worker pool as SMTP. Cancellation holds admission
 and form ownership until the active worker and form cleanup finish, while health
 remains responsive. Cancellation before submission does not start SMTP. The
 request closes each parsed attachment spool once in shielded form cleanup
-after its active worker finishes. Cancellation cannot resubmit the message.
+after its active worker finishes. If Uvicorn cancels the request task during
+cleanup, the request waits for every upload close attempt before propagating
+the cancellation. Cancellation cannot resubmit the message.
 These checks cover the retained Python source, not a deployed rollback runtime.
 
 Python entrypoint contracts are covered without starting a server:
@@ -326,6 +328,9 @@ value-free errors. A final-component symlink is refused; operator-controlled
 parent directories may contain symlinks. Path replacement after open cannot
 substitute unchecked file bytes. This interface targets the supported POSIX
 relay environments; it performs no real secret or host access in tests.
+On Python rollback, a descriptor close failure preserves any earlier file
+permission or read error. A close failure on its own stops startup with a
+fixed diagnostic that includes only the errno.
 
 Each token digest must be unique after trimming and lowercase normalization,
 even across labels with different scopes. Use one credential per policy identity;

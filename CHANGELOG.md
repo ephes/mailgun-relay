@@ -72,6 +72,11 @@ All notable changes to mailgun-relay are documented here.
 
 ### Fixed
 
+- Preserve Python rollback secret-file read and permission errors when
+  closing the descriptor also fails. Report a standalone close failure as a
+  value-free policy error.
+- Finish all Python rollback upload close attempts before propagating direct
+  request-task cancellation during form cleanup.
 - Reuse a single multipart boundary searcher across Rust form parts and keep
   embedded boundary look-alikes in their payloads.
 - Bound Rust multipart text-field scanning by the inclusive byte limit and
