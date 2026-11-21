@@ -5,7 +5,7 @@
 //! record's fields in declaration order, as `relay:logging_setup.py` emits
 //! them.
 
-use std::io::Write;
+use std::io::{self, Write};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, mpsc};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
@@ -29,6 +29,33 @@ struct Record<'a, T: Serialize> {
 /// A fixed count AND byte envelope. Oversize and newest overflow records drop.
 const LOG_QUEUE_RECORDS: usize = 256;
 pub(crate) const MAX_LOG_RECORD_BYTES: usize = 65_536;
+
+struct RecordBuffer(Vec<u8>);
+
+impl Write for RecordBuffer {
+    fn write(&mut self, bytes: &[u8]) -> io::Result<usize> {
+        let len = self.0.len();
+        if bytes.len() > MAX_LOG_RECORD_BYTES - len {
+            return Err(io::Error::new(
+                io::ErrorKind::FileTooLarge,
+                "log record exceeds byte limit",
+            ));
+        }
+        let required = len + bytes.len();
+        let capacity = self.0.capacity();
+        if required > capacity {
+            // Grow geometrically without reserving past the record limit.
+            let next_capacity = required.max(capacity * 2).min(MAX_LOG_RECORD_BYTES);
+            self.0.reserve_exact(next_capacity - len);
+        }
+        self.0.extend_from_slice(bytes);
+        Ok(bytes.len())
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        Ok(())
+    }
+}
 
 #[derive(Debug)]
 struct Writer {
@@ -124,7 +151,7 @@ impl Logger {
         self.threshold
     }
 
-    /// Render one record, or `None` below the threshold.
+    /// Render one complete line, or `None` if filtered or encoding fails.
     pub fn render<T: Serialize>(
         &self,
         level: Level,
@@ -142,9 +169,10 @@ impl Logger {
             event,
             fields,
         };
-        let mut line = serde_json::to_vec(&record).expect("log records serialise");
-        line.push(b'\n');
-        Some(line)
+        let mut line = RecordBuffer(Vec::with_capacity(128));
+        serde_json::to_writer(&mut line, &record).ok()?;
+        line.write_all(b"\n").ok()?;
+        Some(line.0)
     }
 
     /// Serialize and enqueue without waiting for stdout. Failed writes, full
@@ -242,6 +270,73 @@ mod tests {
         assert_eq!(at(0), "1970-01-01T00:00:00Z");
         assert_eq!(at(951_782_400), "2000-02-29T00:00:00Z");
         assert_eq!(at(1_792_065_599), "2026-10-15T11:59:59Z");
+    }
+
+    #[test]
+    fn encoded_record_limit_includes_escaping_and_newline() {
+        #[derive(Serialize)]
+        struct Fields<'a> {
+            value: &'a str,
+        }
+
+        let (logger, capture) = Logger::capturing(Level::Info);
+        let render = |value: &str| logger.render(Level::Info, "x", "e", &Fields { value });
+        let overhead = render("").unwrap().len();
+        let room = MAX_LOG_RECORD_BYTES - overhead;
+        let mut value = "\n".repeat(room / 2);
+        if !room.is_multiple_of(2) {
+            value.push('x');
+        }
+        let at_limit = render(&value).unwrap();
+        assert_eq!(at_limit.len(), MAX_LOG_RECORD_BYTES);
+        assert_eq!(at_limit.capacity(), MAX_LOG_RECORD_BYTES);
+        assert_eq!(at_limit.last(), Some(&b'\n'));
+        logger.emit(Level::Info, "x", "e", &Fields { value: &value });
+
+        // The JSON object still fits by itself, but its line terminator would not.
+        value.push('x');
+        assert!(render(&value).is_none());
+        // Now the escaped JSON object itself exceeds the budget.
+        value.push('\n');
+        assert!(render(&value).is_none());
+        logger.emit(Level::Info, "x", "e", &Fields { value: &value });
+
+        let lines = capture.lock().unwrap();
+        assert_eq!(lines.len(), 1);
+        // The timestamp can roll over between render and emit.
+        let at_limit = std::str::from_utf8(&at_limit).unwrap();
+        assert_eq!(
+            lines[0].split_once(',').unwrap().1,
+            at_limit.split_once(',').unwrap().1
+        );
+    }
+
+    #[test]
+    fn encoded_record_limit_stops_serializing_remaining_fields() {
+        struct Tail<'a>(&'a std::cell::Cell<bool>);
+
+        impl Serialize for Tail<'_> {
+            fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+                self.0.set(true);
+                serializer.serialize_bool(true)
+            }
+        }
+
+        #[derive(Serialize)]
+        struct Fields<'a> {
+            value: &'a str,
+            tail: Tail<'a>,
+        }
+
+        let (logger, _) = Logger::capturing(Level::Info);
+        let visited_tail = std::cell::Cell::new(false);
+        let value = "\n".repeat(MAX_LOG_RECORD_BYTES / 2);
+        let fields = Fields {
+            value: &value,
+            tail: Tail(&visited_tail),
+        };
+        logger.emit(Level::Info, "x", "e", &fields);
+        assert!(!visited_tail.get());
     }
 
     #[test]

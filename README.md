@@ -382,8 +382,9 @@ until it is updated and restarted.
 
 Rust parsing runs in the bounded blocking pool while retaining admission.
 Rust stdout has a dedicated writer thread with a 256-record queue and 64 KiB
-per-record cap; newest overflow/oversize records drop. Shutdown drains for at
-most one second after requests finish, so a stalled sink may lose records,
+cap on JSON encoding, including the trailing newline. Oversized records drop
+during encoding, and queue saturation drops the newest record. Shutdown drains
+for at most one second after requests finish, so a stalled sink may lose records,
 including startup. Health and delivery never wait for stdout. See
 [architecture](docs/architecture.md) for ownership and drain details.
 
