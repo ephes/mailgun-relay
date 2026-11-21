@@ -606,11 +606,36 @@ def test_report_publication_failure_preserves_previous_json(
         assert "report publication failed" in capsys.readouterr().err
 
 
+def test_report_directory_sync_failure_preserves_published_receipt(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    import os
+    import stat
+
+    report = tmp_path / "report.json"
+    report.write_text('{"previous":true}\n')
+    original_fsync = os.fsync
+
+    def fsync(fd: int) -> None:
+        if stat.S_ISDIR(os.fstat(fd).st_mode):
+            assert json.loads(report.read_text())["failed"] == 0
+            raise OSError("injected directory sync failure")
+        original_fsync(fd)
+
+    monkeypatch.setattr(run_parity, "run_local", _record_one_case)
+    monkeypatch.setattr(os, "fsync", fsync)
+    assert run_parity.main(["--report", str(report)]) == 1
+    assert "report published with durability uncertain" in capsys.readouterr().err
+    assert json.loads(report.read_text())["failed"] == 0
+    assert list(tmp_path.iterdir()) == [report]
+
+
 @pytest.mark.parametrize("failed", [False, True])
 def test_complete_report_is_published_after_sync(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path, failed: bool
 ) -> None:
     import os
+    import stat
 
     report = tmp_path / "report.json"
     report.write_text('{"previous":true}\n')
@@ -623,7 +648,7 @@ def test_complete_report_is_published_after_sync(
             receipt.record("synthetic failure", ["mismatch"], None, False)
 
     def fsync(fd: int) -> None:
-        events.append("sync")
+        events.append("sync directory" if stat.S_ISDIR(os.fstat(fd).st_mode) else "sync file")
         original_fsync(fd)
 
     def replace(source: Any, destination: Any) -> None:
@@ -637,7 +662,7 @@ def test_complete_report_is_published_after_sync(
     monkeypatch.setattr(os, "fsync", fsync)
     monkeypatch.setattr(os, "replace", replace)
     assert run_parity.main(["--report", str(report)]) == int(failed)
-    assert events == ["sync", "replace"]
+    assert events == ["sync file", "replace", "sync directory"]
     assert json.loads(report.read_text())["failed"] == int(failed)
     assert list(tmp_path.iterdir()) == [report]
 

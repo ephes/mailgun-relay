@@ -869,8 +869,12 @@ def run_targets(args: argparse.Namespace, cases: list[corpus.Case], report: Repo
     run_cases(targets[0], targets[1], cases, report, counter, args.verbose)
 
 
+class ReportDurabilityError(OSError):
+    """The new receipt is visible, but its directory entry may not survive a crash."""
+
+
 def publish_report(path: Path, detail: dict[str, Any]) -> None:
-    """Keep the previous receipt until its complete replacement is synced."""
+    """Sync the complete receipt before replacement, then sync its directory."""
     serialized = json.dumps(detail, indent=2, ensure_ascii=False) + "\n"
     temporary: Path | None = None
     try:
@@ -897,9 +901,19 @@ def publish_report(path: Path, detail: dict[str, Any]) -> None:
             os.fchmod(stream.fileno(), mode)
             os.fsync(stream.fileno())
         os.replace(temporary, path)
+        temporary = None
     finally:
         if temporary is not None:
             temporary.unlink(missing_ok=True)
+
+    try:
+        directory = os.open(path.parent, os.O_RDONLY | os.O_DIRECTORY)
+        try:
+            os.fsync(directory)
+        finally:
+            os.close(directory)
+    except OSError as exc:
+        raise ReportDurabilityError(f"could not sync {path.parent}: {exc}") from exc
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -971,6 +985,9 @@ def main(argv: list[str] | None = None) -> int:
         }
         try:
             publish_report(args.report, detail)
+        except ReportDurabilityError as exc:
+            print(f"report published with durability uncertain: {exc}", file=sys.stderr)
+            return 1
         except OSError as exc:
             print(f"report publication failed: {exc}", file=sys.stderr)
             return 1

@@ -376,14 +376,15 @@ cases exits nonzero before starting relays or reading capture files. The explici
 (runnable requests), and list skipped cases separately.
 
 `--report FILE` serializes a complete success or failure receipt first, writes a
-sibling temporary file, flushes and fsyncs it, then atomically replaces FILE.
-The replacement keeps the previous report's permission bits, or the
-umask-derived mode for a new report.
-Write, sync or replacement failures return nonzero with a separate publication
-error and preserve the previous report; temporary files are removed on ordinary
-failure unwinding. This provides atomic visibility, without promising directory
-entry durability across power loss. Abrupt process termination can leave a
-sibling temporary file, but cannot publish partial JSON to FILE.
+sibling temporary file, flushes and fsyncs it, then atomically replaces FILE
+and fsyncs the parent directory. The replacement keeps the previous report's
+permission bits, or the umask-derived mode for a new report.
+Failures before replacement return nonzero with a publication error, preserve
+the previous report and remove the temporary file during ordinary unwinding.
+A directory sync failure after replacement also returns nonzero and reports
+that the receipt was published with uncertain durability. The complete new
+receipt stays visible. Abrupt process termination can leave a sibling temporary
+file but cannot publish partial JSON to FILE.
 
 ## Layout
 
