@@ -557,8 +557,10 @@ A later address-in-use error must release earlier listeners immediately; after
 removing the conflict, both addresses must bind successfully. The binary bind
 failure test separately pins exit 1, no startup-success record and safe output.
 Startup requires at least one resolved listener address and logs success only
-after binding every address. A synthetic empty address list tests exit from
-the startup path before it emits the startup record.
+after binding every distinct address. Startup deduplicates resolver results in
+one pass and binds each unique socket address in first-seen order. Synthetic
+resolver results cover duplicates, order and refusal of an empty address list
+before startup logging.
 
 ## Local SMTP fixture ownership and recovery
 
