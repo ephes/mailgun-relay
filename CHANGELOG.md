@@ -4,6 +4,11 @@ All notable changes to mailgun-relay are documented here.
 
 ## Unreleased
 
+### Parity harness
+
+- Require post-bind confirmation from the spawned relay before probing its
+  selected loopback listener, and retry a bounded number of port collisions.
+
 ### Security
 
 - Use fixed HTTP 400 diagnostics for Python MIME upload rejections, omitting

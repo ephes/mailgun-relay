@@ -346,6 +346,12 @@ difference fails. From the repository root:
 uv run python rust/parity/run_parity.py            # -v: every case; --filter TEXT
 ```
 
+Before probing a locally chosen loopback port, the harness waits for post-bind
+confirmation for that address from the spawned child's own output. Python uses
+Uvicorn's INFO listening line on stderr, while Rust uses the structured startup
+record on stdout. Local command overrides must preserve those signals. Startup
+retries at most five port selections if another process takes the port.
+
 Each HTTP exchange has a 60-second monotonic deadline covering connection,
 split request writes and all response reads. Responses are limited to 64 KiB
 of headers (before the separator) and 1 MiB of wire body, including chunk
