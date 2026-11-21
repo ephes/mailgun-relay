@@ -972,10 +972,6 @@ mod tests {
             .to_lowercase()
         });
         let mut node = json!({"type": content_type});
-        if let PartType::Multipart(children) = &part.body {
-            node["parts"] = children.iter().map(|&i| node_of(parts, i)).collect();
-            return node;
-        }
         let disposition = part.content_disposition().map(|d| d.c_type.to_lowercase());
         if let Some(disposition) = &disposition {
             node["disposition"] = json!(disposition);
@@ -983,6 +979,10 @@ mod tests {
         }
         if let Some(id) = part.content_id() {
             node["content_id"] = json!(id.trim());
+        }
+        if let PartType::Multipart(children) = &part.body {
+            node["parts"] = children.iter().map(|&i| node_of(parts, i)).collect();
+            return node;
         }
         if content_type.starts_with("text/") && disposition.is_none() {
             node["charset"] = json!(part.content_type().and_then(|ct| ct.attribute("charset")));
