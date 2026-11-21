@@ -6,6 +6,8 @@ All notable changes to mailgun-relay are documented here.
 
 ### Parity harness
 
+- Inspect every MIME header occurrence for parser defects and report duplicate
+  singleton fields separately.
 - Require post-bind confirmation from the spawned relay before probing its
   selected loopback listener, and retry a bounded number of port collisions.
 

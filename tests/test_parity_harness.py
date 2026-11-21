@@ -22,6 +22,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "rust" / "parity"))
 import cases as corpus
 import run_parity
+import semantic
 from smtp_fake import ScriptedSmtp, make_certificates, server_contexts, session_from_json
 
 PLAN = Path(__file__).resolve().parents[1] / "rust" / "PLAN.md"
@@ -135,6 +136,34 @@ def _set_message(outcome: run_parity.Outcome, old: bytes, new: bytes) -> None:
 
 def test_identical_outcomes_pass() -> None:
     assert _differences(lambda rust: None) == []
+
+
+@pytest.mark.parametrize("invalid_first", [False, True])
+def test_mime_defects_include_each_duplicate_header_value(invalid_first: bool) -> None:
+    headers = [b"Content-Type: text/plain", b"cOnTeNt-TyPe: invalid"]
+    if invalid_first:
+        headers.reverse()
+    raw = b"\r\n".join([*headers, b"", b"body", b""])
+    defects = semantic.defects(semantic.parse(raw))
+    assert "InvalidHeaderDefect" in defects
+    assert "DuplicateSingletonHeader: content-type" in defects
+
+
+def test_mime_defects_distinguish_singleton_and_repeatable_headers() -> None:
+    raw = (
+        b"Received: by relay.example.test; Thu, 15 Oct 2026 12:00:00 +0000\r\n"
+        b"received: by sender.example.test; Thu, 15 Oct 2026 11:59:00 +0000\r\n"
+        b"X-Tag: first\r\n"
+        b"x-tag: second\r\n"
+        b"Content-Type: multipart/mixed; boundary=test\r\n"
+        b"\r\n--test\r\n"
+        b"Content-ID: <part@example.test>\r\n"
+        b"content-id: <part@example.test>\r\n"
+        b"\r\nbody\r\n--test--\r\n"
+    )
+    assert semantic.defects(semantic.parse(raw)) == ["DuplicateSingletonHeader: content-id"]
+    single_id = raw.replace(b"content-id: <part@example.test>\r\n", b"")
+    assert semantic.defects(semantic.parse(single_id)) == []
 
 
 @pytest.mark.parametrize(
