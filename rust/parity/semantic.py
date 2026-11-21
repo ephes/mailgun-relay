@@ -66,15 +66,15 @@ def _addresses(header: Any) -> list[list[str]]:
 
 def _node(part: EmailMessage) -> dict[str, Any]:
     node: dict[str, Any] = {"type": part.get_content_type()}
-    if part.is_multipart():
-        node["parts"] = [_node(p) for p in part.iter_parts()]  # type: ignore[arg-type]
-        return node
     disposition = part.get_content_disposition()
     if disposition is not None:
         node["disposition"] = disposition
         node["filename"] = part.get_filename()
     if part["Content-ID"] is not None:
         node["content_id"] = str(part["Content-ID"])
+    if part.is_multipart():
+        node["parts"] = [_node(p) for p in part.iter_parts()]  # type: ignore[arg-type]
+        return node
     if node["type"].startswith("text/") and disposition is None:
         node["charset"] = part.get_content_charset()
         text = part.get_content().replace("\r\n", "\n")

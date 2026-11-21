@@ -167,6 +167,40 @@ def test_mime_defects_distinguish_singleton_and_repeatable_headers() -> None:
 
 
 @pytest.mark.parametrize(
+    ("header", "replacement"),
+    [
+        (b"Content-ID: <container@example.test>\r\n", b""),
+        (b"Content-Disposition: attachment;", b"Content-Disposition: inline;"),
+        (b"filename=bundle.mime", b"filename=renamed.mime"),
+    ],
+    ids=["content-id", "disposition", "filename"],
+)
+def test_mime_comparison_catches_nested_multipart_metadata(
+    header: bytes, replacement: bytes
+) -> None:
+    raw = (
+        b"Content-Type: multipart/mixed; boundary=outer\r\n"
+        b"\r\n--outer\r\n"
+        b"Content-Type: multipart/mixed; boundary=inner\r\n"
+        b"Content-ID: <container@example.test>\r\n"
+        b"Content-Disposition: attachment; filename=bundle.mime\r\n"
+        b"\r\n--inner\r\n"
+        b"Content-Type: text/plain; charset=utf-8\r\n"
+        b"\r\nbody\r\n--inner--\r\n"
+        b"--outer--\r\n"
+    )
+    expected = semantic.semantic_message(raw)
+    changed = semantic.semantic_message(raw.replace(header, replacement))
+    assert expected != changed
+    [container] = expected["body"]["parts"]
+    [changed_container] = changed["body"]["parts"]
+    assert container["parts"] == changed_container["parts"]
+    assert container["content_id"] == "<container@example.test>"
+    assert container["disposition"] == "attachment"
+    assert container["filename"] == "bundle.mime"
+
+
+@pytest.mark.parametrize(
     ("change", "expected"),
     [
         (lambda o: setattr(o.response, "status", 503), "status"),

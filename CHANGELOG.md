@@ -8,6 +8,8 @@ All notable changes to mailgun-relay are documented here.
 
 - Inspect every MIME header occurrence for parser defects and report duplicate
   singleton fields separately.
+- Compare multipart container Content-ID, disposition and filename alongside
+  their children.
 - Require post-bind confirmation from the spawned relay before probing its
   selected loopback listener, and retry a bounded number of port collisions.
 
