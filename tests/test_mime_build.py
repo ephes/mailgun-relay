@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 from email.message import EmailMessage
+from unittest.mock import call, patch
 
 import pytest
 
+from mailgun_relay import mime_build
 from mailgun_relay.errors import BadRequestError
-from mailgun_relay.headers import HeaderInjectionError
+from mailgun_relay.headers import HeaderInjectionError, parse_address_list
 from mailgun_relay.mime_build import Attachment, MessageInput, build_message
 
 
@@ -73,6 +75,27 @@ def test_bcc_in_envelope_not_headers() -> None:
     assert b"secret@example.test" not in serialized
     assert b"secret2@example.test" not in serialized
     assert set(recipients) == {"a@example.test", "secret@example.test", "secret2@example.test"}
+
+
+def test_recipient_fields_are_parsed_once_for_headers_and_envelope() -> None:
+    payload = _base_input(
+        to=["Primary <First@bü.test>"],
+        cc=["Copy <First@xn--b-eha.test>", "first@bü.test"],
+        bcc=["First@bü.test", "hidden@example.test"],
+    )
+    with patch.object(mime_build, "parse_address_list", wraps=parse_address_list) as parse:
+        msg, _, recipients = build_message(payload)
+
+    assert msg["To"] == "Primary <First@xn--b-eha.test>"
+    assert msg["Cc"] == "Copy <First@xn--b-eha.test>, first@xn--b-eha.test"
+    assert msg.get("Bcc") is None
+    assert recipients == ["First@xn--b-eha.test", "first@xn--b-eha.test", "hidden@example.test"]
+    assert parse.call_args_list == [
+        call([payload.from_address]),
+        call(payload.to),
+        call(payload.cc),
+        call(payload.bcc),
+    ]
 
 
 def test_reply_to_via_custom_header() -> None:

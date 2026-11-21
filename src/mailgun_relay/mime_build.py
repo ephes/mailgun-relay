@@ -103,10 +103,6 @@ def _find_html_part(msg: EmailMessage) -> EmailMessage | None:
     return None
 
 
-def _addr_only(values: list[str]) -> list[str]:
-    return [a.addr_spec for a in parse_address_list(values)]
-
-
 def build_message(payload: MessageInput) -> tuple[EmailMessage, str, list[str]]:
     """Construct an EmailMessage from validated form fields.
 
@@ -213,17 +209,12 @@ def build_message(payload: MessageInput) -> tuple[EmailMessage, str, list[str]]:
         except ValueError as exc:
             raise HeaderInjectionError(f"invalid attachment {att.filename!r}: {exc}") from exc
 
-    envelope: list[str] = []
-    envelope.extend(_addr_only(payload.to) if payload.to else [])
-    envelope.extend(_addr_only(payload.cc) if payload.cc else [])
-    envelope.extend(_addr_only(payload.bcc) if payload.bcc else [])
-    # Deduplicate while preserving order.
-    seen: set[str] = set()
-    unique_envelope: list[str] = []
-    for addr in envelope:
-        if addr not in seen:
-            seen.add(addr)
-            unique_envelope.append(addr)
+    bcc_list = parse_address_list(payload.bcc) if payload.bcc else []
+    unique_envelope = list(
+        dict.fromkeys(
+            address.addr_spec for group in (to_list, cc_list, bcc_list) for address in group
+        )
+    )
 
     return msg, message_id, unique_envelope
 
