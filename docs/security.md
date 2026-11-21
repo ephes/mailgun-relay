@@ -165,8 +165,9 @@ header-value character limit before MIME assembly. Oversize errors carry no
 uploaded value. Boundary Unicode filenames remain supported. Rust regression
 coverage: `duplicate_singletons_rejected`, `duplicate_inline_ids_never_submit`,
 `upload_metadata_header_limit`; Python has corresponding route tests and
-explicit-ID normalization cases. Shared MIME fixtures independently parse unique
-inline parts and same-name ordinary attachments.
+rejects unpaired brackets in explicit MIME helper IDs. Shared MIME fixtures
+cover malformed inline filenames, unique inline parts and same-name ordinary
+attachments.
 
 - The subject, every `h:*` value and every address field refuse C0 and C1
   controls (TAB excepted), DEL, U+2028 and U+2029 (`contains_forbidden_control_chars`).

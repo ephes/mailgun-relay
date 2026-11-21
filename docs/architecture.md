@@ -196,6 +196,9 @@ The service must distinguish the message headers from the SMTP envelope:
 
 - Message `From:` is the application-provided Mailgun `from` field after token policy validation.
 - SMTP envelope recipients are derived from `to`, `cc`, and `bcc`.
+  Python builds the envelope from the same validated addresses used for `To`
+  and `Cc`, plus the validated `bcc` addresses. It keeps the first occurrence
+  of each normalized address in `to`, `cc`, `bcc` order.
 - `bcc` recipients are never written to message headers.
 - SMTP envelope sender is an explicit configuration choice, not an accidental copy of the `From:` header. `MAILGUN_RELAY_ENVELOPE_SENDER` is made ASCII at startup (IDN domain to A-label; a non-ASCII local part stops the process; empty is the null sender).
 

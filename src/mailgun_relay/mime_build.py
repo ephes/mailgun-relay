@@ -76,8 +76,9 @@ def _content_id(inline_att: Attachment) -> str:
     clients to match that reference.
     """
     if inline_att.content_id is not None:
-        # An explicitly supplied id may already be in the bracketed form.
-        name = inline_att.content_id.strip().removeprefix("<").removesuffix(">")
+        name = inline_att.content_id.strip()
+        if name.startswith("<") and name.endswith(">"):
+            name = name[1:-1]
     else:
         # The uploaded filename is used as-is; it is never normalized, so a
         # malformed name is rejected rather than silently rewritten.
@@ -101,10 +102,6 @@ def _find_html_part(msg: EmailMessage) -> EmailMessage | None:
                 assert isinstance(part, EmailMessage)
                 return part
     return None
-
-
-def _addr_only(values: list[str]) -> list[str]:
-    return [a.addr_spec for a in parse_address_list(values)]
 
 
 def build_message(payload: MessageInput) -> tuple[EmailMessage, str, list[str]]:
@@ -213,17 +210,12 @@ def build_message(payload: MessageInput) -> tuple[EmailMessage, str, list[str]]:
         except ValueError as exc:
             raise HeaderInjectionError(f"invalid attachment {att.filename!r}: {exc}") from exc
 
-    envelope: list[str] = []
-    envelope.extend(_addr_only(payload.to) if payload.to else [])
-    envelope.extend(_addr_only(payload.cc) if payload.cc else [])
-    envelope.extend(_addr_only(payload.bcc) if payload.bcc else [])
-    # Deduplicate while preserving order.
-    seen: set[str] = set()
-    unique_envelope: list[str] = []
-    for addr in envelope:
-        if addr not in seen:
-            seen.add(addr)
-            unique_envelope.append(addr)
+    bcc_list = parse_address_list(payload.bcc) if payload.bcc else []
+    unique_envelope = list(
+        dict.fromkeys(
+            address.addr_spec for group in (to_list, cc_list, bcc_list) for address in group
+        )
+    )
 
     return msg, message_id, unique_envelope
 

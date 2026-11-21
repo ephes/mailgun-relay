@@ -182,11 +182,12 @@ control-bearing names. Earlier multipart parser limits retain their fixed
 `malformed form` refusal. These refusals never submit SMTP.
 
 Both implementations reject duplicate inline Content-IDs with HTTP 400 before
-SMTP. IDs are compared exactly after the Python helper's optional explicit-ID
-bracket normalization; HTTP inline IDs come from filenames. Ordinary attachments
-may share filenames. Upload filenames and raw content types (including parameters,
-after empty-value defaults) must each fit `MAX_HEADER_VALUE_LENGTH` Unicode code
-points, inclusive; oversize metadata returns a fixed, value-free 400 before MIME
+SMTP. HTTP inline IDs come from filenames. The Python MIME helper accepts
+explicit IDs as `id` or `<id>` and rejects unpaired brackets. IDs are compared
+exactly after normalization. Ordinary attachments may share filenames. Upload
+filenames and raw content types (including parameters, after empty-value
+defaults) must each fit `MAX_HEADER_VALUE_LENGTH` Unicode code points,
+inclusive. Oversize metadata returns a fixed, value-free 400 before MIME
 assembly. Unicode filenames within the limit remain supported.
 
 `from` must occur exactly once. `subject`, `text`, `html` and `amp-html` may each
