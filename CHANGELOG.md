@@ -6,6 +6,9 @@ All notable changes to mailgun-relay are documented here.
 
 ### Security
 
+- Use fixed HTTP 400 diagnostics for Python MIME upload rejections, omitting
+  filenames and email library exception text.
+
 - Raise the Rust port's exact `lettre` pin from 0.11.23 to 0.11.24
   (`email-encoding` 0.4.2 -> 0.4.3 with it) for RUSTSEC-2026-0560 to
   RUSTSEC-2026-0565 (STARTTLS response injection, missing dot-stuffing after a

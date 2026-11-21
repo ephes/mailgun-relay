@@ -89,7 +89,7 @@ def _content_id(inline_att: Attachment) -> str:
         or any(ch in name for ch in "<>")
         or any(ord(ch) < 0x20 or ord(ch) == 0x7F for ch in name)
     ):
-        raise HeaderInjectionError(f"invalid inline filename {inline_att.filename!r}")
+        raise HeaderInjectionError("invalid inline filename")
     return f"<{name}>"
 
 
@@ -198,17 +198,15 @@ def build_message(payload: MessageInput) -> tuple[EmailMessage, str, list[str]]:
                     disposition="inline",
                     cid=cid,
                 )
-        except ValueError as exc:
-            raise HeaderInjectionError(
-                f"invalid inline file {inline_att.filename!r}: {exc}"
-            ) from exc
+        except ValueError:
+            raise HeaderInjectionError("invalid inline file") from None
 
     for att in payload.attachments:
         main, sub = _split_ct(att.content_type)
         try:
             msg.add_attachment(att.data, maintype=main, subtype=sub, filename=att.filename)
-        except ValueError as exc:
-            raise HeaderInjectionError(f"invalid attachment {att.filename!r}: {exc}") from exc
+        except ValueError:
+            raise HeaderInjectionError("invalid attachment") from None
 
     bcc_list = parse_address_list(payload.bcc) if payload.bcc else []
     unique_envelope = list(
