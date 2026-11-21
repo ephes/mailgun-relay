@@ -473,6 +473,9 @@ best-effort logging limits and the synthetic blocked-sink regressions.
 
 ## Multipart completion
 
+Rust rejects missing, empty or oversized multipart boundaries from the
+Content-Type header before polling the body.
+
 Both runtimes require the multipart parser to reach the complete closing
 boundary before accepting a send request. Truncation within the applicable
 limits returns HTTP 400 with `{"message":"malformed form"}`, without SMTP

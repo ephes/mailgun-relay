@@ -97,7 +97,7 @@ pub fn encoding(content_type: Option<&[u8]>) -> Result<Encoding, FormError> {
                 Some(name) => charset(name).ok_or(FormError::BadRequest)?,
             };
             let boundary = latin1_bytes(param(&params, "boundary").ok_or(FormError::BadRequest)?);
-            if boundary.len() > MAX_BOUNDARY_LENGTH {
+            if boundary.is_empty() || boundary.len() > MAX_BOUNDARY_LENGTH {
                 return Err(FormError::BadRequest);
             }
             Ok(Encoding::Multipart { boundary, charset })

@@ -372,6 +372,10 @@ and observes an idle restart without replay.
 
 ## Multipart completion
 
+The Rust relay requires a `multipart/form-data` boundary of 1–256 bytes.
+A missing or empty boundary returns HTTP 400 (`malformed form`) before the
+request body is read.
+
 Both runtimes require the multipart parser to reach the complete closing
 boundary before accepting a send request. A text field whose data exceeds its
 byte limit returns HTTP 413 even if a later delimiter is missing or incomplete.

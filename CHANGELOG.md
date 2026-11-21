@@ -11,6 +11,8 @@ All notable changes to mailgun-relay are documented here.
 
 ### Security
 
+- Reject empty Rust multipart boundaries with HTTP 400 before reading the body.
+
 - Use fixed HTTP 400 diagnostics for Python MIME upload rejections, omitting
   filenames and email library exception text.
 
