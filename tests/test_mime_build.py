@@ -161,10 +161,22 @@ def test_inline_content_id_has_angle_brackets() -> None:
     assert "Content-ID: <logo.png>" in msg.as_string()
 
 
-def test_inline_explicit_content_id_is_not_double_bracketed() -> None:
-    msg, _, _ = build_message(_base_input(html="<p>x</p>", inline=[_png(content_id="<logo>")]))
+@pytest.mark.parametrize("content_id", ["logo.png", "<logo.png>", " <logo.png> "])
+def test_inline_explicit_content_id_has_one_pair_of_brackets(content_id: str) -> None:
+    msg, _, _ = build_message(
+        _base_input(html='<img src="cid:logo.png">', inline=[_png("upload.png", content_id)])
+    )
     [image] = _parts_by_type(msg)["image/png"]
-    assert image["Content-ID"] == "<logo>"
+    assert image["Content-ID"] == "<logo.png>"
+    assert image.get_filename() == "upload.png"
+    assert b"Content-ID: <logo.png>" in bytes(msg)
+
+
+# Same asymmetric spellings as the shared malformed inline filename fixtures.
+@pytest.mark.parametrize("content_id", ["<logo.png", "logo.png>"])
+def test_inline_explicit_content_id_rejects_unpaired_brackets(content_id: str) -> None:
+    with pytest.raises(HeaderInjectionError, match=r"invalid inline filename 'upload\.png'"):
+        build_message(_base_input(html="<p>x</p>", inline=[_png("upload.png", content_id)]))
 
 
 def test_inline_part_grouped_with_html_in_multipart_related() -> None:

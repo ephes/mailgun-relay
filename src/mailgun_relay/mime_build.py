@@ -76,8 +76,9 @@ def _content_id(inline_att: Attachment) -> str:
     clients to match that reference.
     """
     if inline_att.content_id is not None:
-        # An explicitly supplied id may already be in the bracketed form.
-        name = inline_att.content_id.strip().removeprefix("<").removesuffix(">")
+        name = inline_att.content_id.strip()
+        if name.startswith("<") and name.endswith(">"):
+            name = name[1:-1]
     else:
         # The uploaded filename is used as-is; it is never normalized, so a
         # malformed name is rejected rather than silently rewritten.

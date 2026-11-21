@@ -74,6 +74,7 @@ All notable changes to mailgun-relay are documented here.
 
 - Reuse Python's validated `To` and `Cc` addresses when building the SMTP
   envelope, preserving recipient order and deduplication.
+- Reject unpaired angle brackets in explicit Python inline Content-IDs.
 
 - Bound Rust JSON log encoding at 64 KiB per line, including the newline.
   Drop oversize records before queue admission.

@@ -93,12 +93,15 @@ Supported fields:
 ## Duplicate fields and upload metadata
 
 Both implementations reject duplicate inline Content-IDs with HTTP 400 before
-SMTP. IDs are compared exactly after the Python helper's optional explicit-ID
-bracket normalization; HTTP inline IDs come from filenames. Ordinary attachments
-may share filenames. Upload filenames and raw content types (including parameters,
-after empty-value defaults) must each fit `MAX_HEADER_VALUE_LENGTH` Unicode code
-points, inclusive; oversize metadata returns a fixed, value-free 400 before MIME
-assembly. Unicode filenames within the limit remain supported.
+SMTP. HTTP inline IDs come from filenames. For callers of the Python MIME
+helper, an explicit ID may be bare or enclosed in a single pair of angle
+brackets, with optional surrounding whitespace. A single opening or closing
+bracket is invalid. IDs are compared exactly after normalization. Ordinary
+attachments may share filenames. Upload filenames and raw content types
+(including parameters, after empty-value defaults) must each fit
+`MAX_HEADER_VALUE_LENGTH` Unicode code points, inclusive. Oversize metadata
+returns a fixed, value-free 400 before MIME assembly. Unicode filenames within
+the limit remain supported.
 
 `from` must occur exactly once. `subject`, `text`, `html` and `amp-html` may each
 occur at most once, even for identical or empty values. Every `h:*` name is unique
