@@ -97,7 +97,7 @@ pub fn encoding(content_type: Option<&[u8]>) -> Result<Encoding, FormError> {
                 Some(name) => charset(name).ok_or(FormError::BadRequest)?,
             };
             let boundary = latin1_bytes(param(&params, "boundary").ok_or(FormError::BadRequest)?);
-            if boundary.len() > MAX_BOUNDARY_LENGTH {
+            if boundary.is_empty() || boundary.len() > MAX_BOUNDARY_LENGTH {
                 return Err(FormError::BadRequest);
             }
             Ok(Encoding::Multipart { boundary, charset })
@@ -326,16 +326,22 @@ fn parseparam(text: &str) -> Vec<String> {
     plist
 }
 
-fn find_byte(body: &[u8], byte: u8, from: usize) -> Option<usize> {
-    body.get(from..)?
+fn find_byte(body: &[u8], byte: u8, from: usize, max_len: usize) -> Option<usize> {
+    let remaining = body.get(from..)?;
+    remaining[..remaining.len().min(max_len)]
         .iter()
-        .position(|&b| b == byte)
+        .position(|&b| {
+            #[cfg(test)]
+            HEADER_SEARCH_BYTES.with(|count| count.set(count.get() + 1));
+            b == byte
+        })
         .map(|p| from + p)
 }
 
 #[cfg(test)]
 thread_local! {
     static DELIMITER_CANDIDATES: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+    static HEADER_SEARCH_BYTES: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
 }
 
 /// Find the delimiter that ends this part. Only consider starts through
@@ -438,19 +444,15 @@ fn multipart(
             if count > MAX_HEADER_COUNT {
                 return Err(BadRequest);
             }
-            let colon = find_byte(body, b':', i);
-            let end = colon.unwrap_or(body.len());
-            let mut size = end - i + usize::from(colon.is_some());
-            let name = &body[i..end];
-            if size > MAX_HEADER_SIZE || !name.iter().all(|&b| is_token(b)) {
-                return Err(BadRequest);
-            }
-            let Some(colon) = colon else {
+            // The colon counts toward the line limit.
+            let Some(colon) = find_byte(body, b':', i, MAX_HEADER_SIZE) else {
                 return Err(BadRequest);
             };
-            if name.is_empty() {
+            let name = &body[i..colon];
+            if name.is_empty() || !name.iter().all(|&b| is_token(b)) {
                 return Err(BadRequest);
             }
+            let mut size = colon + 1 - i;
             i = colon + 1;
             while body.get(i) == Some(&b' ') {
                 size += 1;
@@ -459,12 +461,9 @@ fn multipart(
                     return Err(BadRequest);
                 }
             }
-            let cr = find_byte(body, b'\r', i);
-            size += cr.unwrap_or(body.len()) - i;
-            if size > MAX_HEADER_SIZE {
-                return Err(BadRequest);
-            }
-            let Some(cr) = cr else {
+            // Allow CR just after a value that fills the budget. CRLF
+            // frames the line and does not count toward its size.
+            let Some(cr) = find_byte(body, b'\r', i, MAX_HEADER_SIZE - size + 1) else {
                 return Err(BadRequest);
             };
             let value = &body[i..cr];
@@ -623,6 +622,45 @@ mod tests {
         let items = multipart(&body, boundary.as_bytes(), Charset::Utf8, LIMITS).unwrap();
         assert_eq!(texts(&items), [("text", data.as_str()), ("subject", "ok")]);
         assert_eq!(DELIMITER_CANDIDATES.with(|count| count.get()), 4);
+    }
+
+    #[test]
+    fn multipart_header_search_stops_at_line_budget() {
+        let suffix = "x".repeat(2 * MAX_HEADER_SIZE);
+        for (prefix, budget) in [
+            ("", MAX_HEADER_SIZE),
+            ("X-Test:  ", MAX_HEADER_SIZE + 1 - 2),
+        ] {
+            let body = format!("--b\r\n{prefix}{suffix}");
+            HEADER_SEARCH_BYTES.with(|count| count.set(0));
+            assert_eq!(
+                multipart(body.as_bytes(), b"b", Charset::Utf8, LIMITS),
+                Err(FormError::BadRequest)
+            );
+            assert_eq!(HEADER_SEARCH_BYTES.with(|count| count.get()), budget);
+        }
+    }
+
+    #[test]
+    fn multipart_header_line_limit_includes_colon_and_spaces() {
+        let disposition = "Content-Disposition: form-data; name=\"text\"";
+        for size in [MAX_HEADER_SIZE - 1, MAX_HEADER_SIZE, MAX_HEADER_SIZE + 1] {
+            let prefix = "X-Test:  ";
+            let lines = [
+                format!("{}:", "X".repeat(size - 1)),
+                format!("{prefix}{}", "x".repeat(size - prefix.len())),
+            ];
+            for line in lines {
+                let headers = format!("{line}\r\n{disposition}");
+                let body = multipart_body("b", &[(&headers, "value")]);
+                let result = multipart(&body, b"b", Charset::Utf8, LIMITS);
+                if size <= MAX_HEADER_SIZE {
+                    assert_eq!(texts(&result.unwrap()), [("text", "value")]);
+                } else {
+                    assert_eq!(result, Err(FormError::BadRequest));
+                }
+            }
+        }
     }
 
     #[test]

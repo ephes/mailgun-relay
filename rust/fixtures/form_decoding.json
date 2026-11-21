@@ -5336,7 +5336,17 @@
   {
    "body": "--\r\nContent-Disposition: form-data; name=\"a\"\r\n\r\nx\r\n----\r\n",
    "content_type": "multipart/form-data; boundary=",
+   "divergence": "D-24",
    "expected": {
+    "status": 400
+   },
+   "limits": {
+    "max_fields": 110,
+    "max_files": 4,
+    "max_part_size": 1048576
+   },
+   "name": "multipart empty boundary",
+   "python": {
     "items": [
      [
       "a",
@@ -5345,13 +5355,7 @@
       }
      ]
     ]
-   },
-   "limits": {
-    "max_fields": 110,
-    "max_files": 4,
-    "max_part_size": 1048576
-   },
-   "name": "multipart empty boundary"
+   }
   },
   {
    "body": "--b0und4ry\r\nContent-Disposition: form-data; name=\"from\"\r\n\r\nRecorder <recorder@wersdoerfer.de>\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"to\"\r\n\r\njochen@wersdoerfer.de\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"subject\"\r\n\r\nDein Anmeldelink\r\n--b0und4ry\r\nContent-Disposition: form-data; name=\"text\"\r\n\r\nHallo,\n\nhier ist dein Link: https://example.test/x?y=1&z=2\n\r\n--b0und4ry--\r\n",

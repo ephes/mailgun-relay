@@ -1818,6 +1818,63 @@ async fn duplicate_http_singletons_before_body_and_admission() {
 }
 
 #[tokio::test]
+async fn empty_multipart_boundary_rejected_before_body() {
+    use std::sync::atomic::{AtomicUsize, Ordering};
+
+    let recorder = relay_recorder();
+    let (logger, logs) = Logger::capturing(Level::Info);
+    let domain = "example.test";
+    let password = "synthetic-form-token";
+    let auth = basic("api", password);
+    let h = Harness {
+        relay: Arc::new(Relay::new(
+            settings(),
+            vec![token("form-test", password, domain, domain, &[])],
+            logger,
+            Box::new(Shared(Arc::clone(&recorder))),
+        )),
+        recorder,
+        logs,
+    };
+
+    for boundary in ["", "\"\""] {
+        let polls = Arc::new(AtomicUsize::new(0));
+        let stream_polls = Arc::clone(&polls);
+        let body = Body::from_stream(futures_util::stream::poll_fn(move |_| {
+            stream_polls.fetch_add(1, Ordering::Relaxed);
+            std::task::Poll::Ready(None::<Result<Vec<u8>, std::io::Error>>)
+        }));
+        let request = Request::builder()
+            .method("POST")
+            .uri(format!("/v3/{domain}/messages"))
+            .header("authorization", &auth)
+            .header(
+                "content-type",
+                format!("multipart/form-data; boundary={boundary}"),
+            )
+            .body(body)
+            .unwrap();
+        let reply = h.send(request).await;
+        assert_eq!(polls.load(Ordering::Relaxed), 0, "boundary={boundary}");
+        assert_eq!(reply.status(), 400);
+        assert_eq!(reply.json, json!({"message": "malformed form"}));
+        assert!(h.recorder.calls.lock().unwrap().is_empty());
+    }
+
+    let body = multipart(
+        &[
+            ("from", "sender@example.test"),
+            ("to", "recipient@example.test"),
+            ("subject", "Test"),
+            ("text", "Test"),
+        ],
+        &[],
+    );
+    assert_queued(&h.post(Some(&auth), domain, body).await);
+    assert_eq!(h.recorder.calls.lock().unwrap().len(), 1);
+}
+
+#[tokio::test]
 async fn unrecognized_form_names_have_fixed_refusals() {
     let sentinel = "synthetic-private-field";
     for prefix in ["", "v:", "o:", "t:"] {

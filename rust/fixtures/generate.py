@@ -2390,7 +2390,8 @@ def _rust_form(
     """``form::encoding`` + ``form::parse`` and the divergence label: a
     declared multipart charset outside the implemented set is a 400 (D-9); a
     body Python decides differently depending on how it is chunked is a 400,
-    a decision Python also makes (D-20); otherwise Python's result."""
+    a decision Python also makes (D-20); an empty multipart boundary is
+    a 400 (D-24); otherwise Python's result."""
     essence, params = parse_options_header(content_type)
     charset = params.get(b"charset")
     if (
@@ -2399,6 +2400,8 @@ def _rust_form(
         and charset.decode("latin-1").lower() not in RUST_CHARSETS
     ):
         return {"status": 400}, "D-9"
+    if essence == b"multipart/form-data" and params.get(b"boundary") == b"":
+        return {"status": 400}, "D-24"
     if any(result != python[0] for result in python):
         assert {"status": 400} in python, python
         return {"status": 400}, "D-20"

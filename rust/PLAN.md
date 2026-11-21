@@ -278,8 +278,9 @@ the contract. Each step names its Python source.
      form). `multipart/form-data` or `application/x-www-form-urlencoded`;
      anything else, or none, gives an empty form **without reading the body**
      (→ 400 in step 4 for the missing `from`; a chunked body over the limit
-     is then never counted, so no 413). For multipart, a missing `boundary`
-     parameter or one longer than 256 bytes → 400 before the body is read.
+     is then never counted, so no 413). Rust requires a multipart
+     `boundary` parameter of 1–256 bytes. Other boundary lengths and missing
+     boundaries return 400 before the body is read (D-24 for empty boundaries).
    - Parser limits as Starlette is called: non-file fields
      `> max_recipients + 100` → 413; file parts `> max_attachments + 1` → 413;
      a non-file field value `> max_body_bytes` → 413.
@@ -302,8 +303,11 @@ the contract. Each step names its Python source.
      empty form); part headers
      are `token: value` lines (leading spaces skipped, the value up to CR,
      CR must be followed by LF), at most 8 per part, at most 4,224 bytes per
-     line, a `:` without name → 400; the last `Content-Disposition` and the
-     first `Content-Type` of a part count; part data ends at the first
+     line including the colon and leading value spaces, excluding CRLF. Rust
+     bounds header delimiter searches by the remaining line budget, with one
+     byte of lookahead for CR. An empty header name returns 400. Rust uses the
+     last `Content-Disposition` and the first `Content-Type` of a part.
+     Part data ends at the first
      `CRLF--boundary` followed by CRLF or `--`, any other continuation is
      data. Rust reuses a byte searcher across parts and examines text-field
      delimiter starts only through the inclusive byte limit. Everything after
@@ -787,6 +791,7 @@ where Python starts), never the reverse.
 
 | D-22 | `SMTP_CA_FILE` is read at each submission (`smtp_client.py` `_tls_context`): a missing, unreadable or certificate-less file makes every submission fail with 503; with `SMTP_STARTTLS` off the file is never read. | The file is read once at start, also by `--check-config`, and also with STARTTLS off: missing, unreadable, nonregular, over 1 MiB, changed during the descriptor read (modification time or length), without a PEM certificate, or holding a certificate rustls cannot use → startup failure (fail closed; production leaves it empty). The roots are built once (system store plus the file), not per request. | Q4 (fail closed), added in S5a |
 | D-23 | Python retains per-operation SMTP timeouts, without an aggregate wire-byte ceiling. | Rust bounds DNS through the delivery outcome to `SMTP_SESSION_TIMEOUT_S` (default 120 s), cleanup separately to `min(SMTP_TIMEOUT_S, 5 s)`, and inbound wire reads to 16 MiB including TLS overhead. Interrupted DATA is ambiguous (503); cleanup never changes acceptance. Verbose sessions can exhaust the byte ceiling. | Bounded SMTP resource retention, round 75 |
+| D-24 | The Python multipart parser accepts an empty boundary parameter when the body uses matching framing. | Rust returns 400 before body acquisition. `form_decoding.json` records both parser outcomes. | Q4 (fail closed), round 176 |
 
 Python 500s on client input fixed in Python by the same rule as D-1 and
 D-16 (Q1), so no divergence remains: a non-ASCII character in the Basic
