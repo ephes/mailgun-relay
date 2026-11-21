@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import functools
 import logging
 import os
@@ -399,22 +400,43 @@ async def _read_form(
 
 
 async def _close_form(form: FormData) -> None:
+    uploads = [value for _, value in form.multi_items() if isinstance(value, UploadFile)]
+    if not uploads:
+        return
+
+    # The request's AnyIO shield covers cancel scopes. Uvicorn can also cancel
+    # the asyncio request task directly. Keep waiting for the same cleanup task.
+    cleanup = asyncio.create_task(_close_uploads(uploads))
+    cancellation: asyncio.CancelledError | None = None
+    while True:
+        try:
+            await asyncio.shield(cleanup)
+            break
+        except asyncio.CancelledError as exc:
+            if cancellation is None:
+                cancellation = exc
+            if cleanup.cancelled():
+                break
+    if cancellation is not None:
+        raise cancellation
+
+
+async def _close_uploads(uploads: list[UploadFile]) -> None:
     # FormData.close stops at the first failure. Each owned upload must get
     # its own attempt, without replacing an accepted send or a primary error.
-    for _, value in form.multi_items():
-        if isinstance(value, UploadFile):
-            try:
-                await value.close()
-            except Exception as exc:
-                log_safely(
-                    service_logger(),
-                    logging.WARNING,
-                    "upload_cleanup_failed",
-                    extra={
-                        "event": "upload_cleanup_failed",
-                        "error_class": type(exc).__name__[:80],
-                    },
-                )
+    for upload in uploads:
+        try:
+            await upload.close()
+        except Exception as exc:
+            log_safely(
+                service_logger(),
+                logging.WARNING,
+                "upload_cleanup_failed",
+                extra={
+                    "event": "upload_cleanup_failed",
+                    "error_class": type(exc).__name__[:80],
+                },
+            )
 
 
 def _refused_domain(address: str) -> str:

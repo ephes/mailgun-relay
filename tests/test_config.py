@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import errno
 import os
 import subprocess
 import sys
 import traceback
 from pathlib import Path
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -327,6 +329,52 @@ def test_secret_file_read_cap(tmp_path: Path) -> None:
     path = write_secrets(tmp_path, _VALID_BODY + "#" + "x" * 1_048_576)
     with pytest.raises(InvalidPolicyError, match="exceeds"):
         load_secrets(path)
+
+
+@pytest.mark.parametrize(
+    ("failure", "message"),
+    [
+        ("close", "cannot close secrets file"),
+        ("read", "cannot read secrets file"),
+        ("permissions", "secrets file is world-accessible or group-writable"),
+    ],
+)
+def test_secret_file_close_failure_preserves_primary_error(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, failure: str, message: str
+) -> None:
+    path = write_secrets(tmp_path, _VALID_BODY.replace("wersdoerfer.de", "example.test"))
+    if failure == "permissions":
+        path.chmod(0o644)
+    opened = os.open
+    close = os.close
+    secret_fds: list[int] = []
+    close_attempts: list[int] = []
+
+    def track_open(name: Path, flags: int) -> int:
+        fd = opened(name, flags)
+        secret_fds.append(fd)
+        return fd
+
+    def fail_close(fd: int) -> None:
+        close_attempts.append(fd)
+        close(fd)
+        raise OSError(errno.EIO, "synthetic close detail")
+
+    with monkeypatch.context() as patch:
+        patch.setattr(os, "open", track_open)
+        patch.setattr(os, "close", fail_close)
+        if failure == "read":
+            stream = MagicMock()
+            stream.__enter__.return_value.read.side_effect = OSError(
+                errno.EBADF, "synthetic read detail"
+            )
+            patch.setattr(os, "fdopen", MagicMock(return_value=stream))
+        with pytest.raises(InvalidPolicyError, match=message) as caught:
+            load_secrets(path)
+
+    assert "synthetic" not in "".join(traceback.format_exception(caught.value))
+    assert len(secret_fds) == 1
+    assert close_attempts == secret_fds
 
 
 def test_secret_file_special_files_and_symlinks(tmp_path: Path) -> None:

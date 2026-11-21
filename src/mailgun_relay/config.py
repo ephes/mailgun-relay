@@ -308,6 +308,7 @@ def _read_secret_file(path: Path) -> str:
         fd = os.open(path, flags)
     except OSError as exc:
         raise InvalidPolicyError(f"secrets file cannot be opened (errno {exc.errno})") from None
+    read_succeeded = False
     try:
         metadata = os.fstat(fd)
         if not stat.S_ISREG(metadata.st_mode):
@@ -318,10 +319,16 @@ def _read_secret_file(path: Path) -> str:
             )
         with os.fdopen(fd, "rb", closefd=False) as stream:
             data = stream.read(MAX_SECRET_BYTES + 1)
+        read_succeeded = True
     except OSError as exc:
         raise InvalidPolicyError(f"cannot read secrets file (errno {exc.errno})") from None
     finally:
-        os.close(fd)
+        try:
+            os.close(fd)
+        except OSError as exc:
+            # Retire the descriptor once and preserve any earlier refusal.
+            if read_succeeded:
+                raise InvalidPolicyError(f"cannot close secrets file (errno {exc.errno})") from None
     if len(data) > MAX_SECRET_BYTES:
         raise InvalidPolicyError("secrets file exceeds 1048576 bytes")
     try:
