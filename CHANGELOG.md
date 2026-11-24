@@ -642,10 +642,12 @@ public request/response contract changes except the two noted under *Behavior*.
 
 ## rs-v0.2.5 — 2026-11-24
 
-Rust port release 0.2.5 (crate version 0.2.5), prepared for a local build and
-publication by `rust/scripts/local_release.py` with the hardened builder
-images (rustup 1.29.2, CA bundle check); the tag, archive and checksum are
-recorded in `rust/README.md` once published. It carries the Rust fixes and regression tests
+Rust port release 0.2.5 (crate version 0.2.5), built and published locally by
+`rust/scripts/local_release.py` with the hardened builder images (rustup
+1.29.2, CA bundle check). Tag `rs-v0.2.5` on `d1a5b2b`; archive
+`mailgun-relay-0.2.5-x86_64-unknown-linux-gnu.tar.gz` with SHA256
+`424033a94aef543cae62a9f2d64c3e75b5cacc468ca35a8671d58dafb89a9908` (rust/README.md
+"Published release 0.2.5"). It carries the Rust fixes and regression tests
 merged since `rs-v0.2.4`; the Python implementation is not released by this
 tag. The entries themselves stay under *Unreleased* above; in short, for the
 Rust side:

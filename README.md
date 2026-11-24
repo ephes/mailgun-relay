@@ -6,9 +6,9 @@ The goal is compatibility with the Mailgun send API surface Anymail needs, not a
 
 ## Status
 
-The current published release is [`rs-v0.2.3`](https://github.com/ephes/mailgun-relay/releases/tag/rs-v0.2.3),
-published on 2026-11-13 from `d2a4ddbccc549feeaaa0ae90dab111ee0d8e7870`
-(previous: `rs-v0.2.2`, 2026-10-21, `9fd78bf88bbe488d3d27ef81030ee89364f58b6c`).
+The current published release is [`rs-v0.2.5`](https://github.com/ephes/mailgun-relay/releases/tag/rs-v0.2.5),
+published on 2026-11-24 from `d1a5b2b5f8402f6207d9bb908306b8a674b48f82`
+(previous: `rs-v0.2.4`, 2026-11-18, `d394fe95d275b0d7fd2ca13b28d1c6d94482eae5`).
 Publication is separate from controller selection and running-process verification.
 
 Rust **0.2.1** (`rs-v0.2.1`) was switched into production on macmini on
