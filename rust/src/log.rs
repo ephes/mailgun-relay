@@ -6,7 +6,7 @@
 //! them.
 
 use std::io::{self, Write};
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, mpsc};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
@@ -62,6 +62,15 @@ struct Writer {
     sender: mpsc::SyncSender<Box<[u8]>>,
     stopping: Arc<AtomicBool>,
     finished: Mutex<mpsc::Receiver<()>>,
+    losses: Arc<LossCounters>,
+}
+
+#[derive(Debug, Default)]
+struct LossCounters {
+    encoding: AtomicU64,
+    queue_full: AtomicU64,
+    queue_unavailable: AtomicU64,
+    sink_io: AtomicU64,
 }
 
 impl Writer {
@@ -70,13 +79,17 @@ impl Writer {
         let (done, finished) = mpsc::channel();
         let stopping = Arc::new(AtomicBool::new(false));
         let stopped = stopping.clone();
+        let losses = Arc::new(LossCounters::default());
+        let writer_losses = losses.clone();
         // A dedicated OS thread: a live blocked sink cannot occupy Tokio's
         // runtime or its bounded blocking pool. It is detached on drain expiry.
         std::thread::spawn(move || {
             loop {
                 match receiver.recv_timeout(Duration::from_millis(10)) {
                     Ok(line) => {
-                        let _ = sink.write_all(&line).and_then(|()| sink.flush());
+                        if sink.write_all(&line).and_then(|()| sink.flush()).is_err() {
+                            writer_losses.sink_io.fetch_add(1, Ordering::Relaxed);
+                        }
                     }
                     Err(mpsc::RecvTimeoutError::Disconnected) => break,
                     Err(mpsc::RecvTimeoutError::Timeout) if stopped.load(Ordering::Acquire) => {
@@ -91,13 +104,24 @@ impl Writer {
             sender,
             stopping,
             finished: Mutex::new(finished),
+            losses,
         }
     }
 
     fn send(&self, line: Vec<u8>) -> bool {
-        line.len() <= MAX_LOG_RECORD_BYTES
-            && !self.stopping.load(Ordering::Acquire)
-            && self.sender.try_send(line.into_boxed_slice()).is_ok()
+        let counter = if line.len() > MAX_LOG_RECORD_BYTES {
+            &self.losses.encoding
+        } else if self.stopping.load(Ordering::Acquire) {
+            &self.losses.queue_unavailable
+        } else {
+            match self.sender.try_send(line.into_boxed_slice()) {
+                Ok(()) => return true,
+                Err(mpsc::TrySendError::Full(_)) => &self.losses.queue_full,
+                Err(mpsc::TrySendError::Disconnected(_)) => &self.losses.queue_unavailable,
+            }
+        };
+        counter.fetch_add(1, Ordering::Relaxed);
+        false
     }
 
     fn shutdown(&self, budget: Duration) {
@@ -108,6 +132,14 @@ impl Writer {
             .unwrap_or_else(|e| e.into_inner())
             .recv_timeout(budget);
     }
+}
+
+#[derive(Debug, Default, PartialEq, Eq)]
+pub struct LogLosses {
+    pub encoding: u64,
+    pub queue_full: u64,
+    pub queue_unavailable: u64,
+    pub sink_io: u64,
 }
 
 #[derive(Debug, Clone)]
@@ -147,20 +179,34 @@ impl Logger {
         }
     }
 
+    pub fn losses(&self) -> LogLosses {
+        self.writer
+            .as_ref()
+            .map_or_else(LogLosses::default, |writer| {
+                let losses = &writer.losses;
+                LogLosses {
+                    encoding: losses.encoding.load(Ordering::Relaxed),
+                    queue_full: losses.queue_full.load(Ordering::Relaxed),
+                    queue_unavailable: losses.queue_unavailable.load(Ordering::Relaxed),
+                    sink_io: losses.sink_io.load(Ordering::Relaxed),
+                }
+            })
+    }
+
     pub fn threshold(&self) -> Level {
         self.threshold
     }
 
-    /// Render one complete line, or `None` if filtered or encoding fails.
-    pub fn render<T: Serialize>(
+    /// Render one complete line, or `Ok(None)` if filtered.
+    fn render<T: Serialize>(
         &self,
         level: Level,
         logger: &str,
         event: &str,
         fields: &T,
-    ) -> Option<Vec<u8>> {
+    ) -> io::Result<Option<Vec<u8>>> {
         if level < self.threshold {
-            return None;
+            return Ok(None);
         }
         let record = Record {
             ts: utc_timestamp(SystemTime::now()),
@@ -170,23 +216,28 @@ impl Logger {
             fields,
         };
         let mut line = RecordBuffer(Vec::with_capacity(128));
-        serde_json::to_writer(&mut line, &record).ok()?;
-        line.write_all(b"\n").ok()?;
-        Some(line.0)
+        serde_json::to_writer(&mut line, &record)?;
+        line.write_all(b"\n")?;
+        Ok(Some(line.0))
     }
 
-    /// Serialize and enqueue without waiting for stdout. Failed writes, full
-    /// queues and records over 64 KiB are best effort drops, never send retries.
+    /// Serialize and enqueue without waiting for stdout or retrying lost records.
     pub fn emit<T: Serialize>(&self, level: Level, logger: &str, event: &str, fields: &T) {
-        if let Some(line) = self.render(level, logger, event, fields) {
-            if let Some(lines) = self.capture {
-                let text = String::from_utf8_lossy(&line).into_owned();
-                lines.lock().unwrap_or_else(|e| e.into_inner()).push(text);
-                return;
+        match self.render(level, logger, event, fields) {
+            Ok(Some(line)) => {
+                if let Some(lines) = self.capture {
+                    let text = String::from_utf8_lossy(&line).into_owned();
+                    lines.lock().unwrap_or_else(|e| e.into_inner()).push(text);
+                } else if let Some(writer) = &self.writer {
+                    writer.send(line);
+                }
             }
-            if let Some(writer) = &self.writer {
-                let _ = writer.send(line);
+            Err(_) => {
+                if let Some(writer) = &self.writer {
+                    writer.losses.encoding.fetch_add(1, Ordering::Relaxed);
+                }
             }
+            Ok(None) => {}
         }
     }
 }
@@ -265,6 +316,72 @@ mod tests {
     }
 
     #[test]
+    fn counts_log_losses_across_clones_without_counting_filtered_records() {
+        struct FailingSink {
+            entered: mpsc::Sender<()>,
+            release: mpsc::Receiver<()>,
+        }
+
+        impl Write for FailingSink {
+            fn write(&mut self, _: &[u8]) -> io::Result<usize> {
+                self.entered.send(()).unwrap();
+                self.release.recv_timeout(Duration::from_secs(2)).unwrap();
+                Err(io::ErrorKind::BrokenPipe.into())
+            }
+
+            fn flush(&mut self) -> io::Result<()> {
+                unreachable!("flush after a failed write")
+            }
+        }
+
+        let (entered, writing) = mpsc::channel();
+        let (release, released) = mpsc::channel();
+        let logger = Logger {
+            threshold: Level::Warning,
+            writer: Some(Arc::new(Writer::new(
+                FailingSink {
+                    entered,
+                    release: released,
+                },
+                1,
+            ))),
+            capture: None,
+        };
+        let producer = logger.clone();
+        let fields = serde_json::json!({});
+        let oversized = serde_json::json!({"value": "x".repeat(MAX_LOG_RECORD_BYTES)});
+        producer.emit(Level::Warning, "x", "writing", &fields);
+        writing.recv_timeout(Duration::from_secs(2)).unwrap();
+        producer.emit(Level::Warning, "x", "queued", &fields);
+        producer.emit(Level::Info, "x", "filtered", &oversized);
+        producer.emit(Level::Info, "x", "filtered", &fields);
+        assert_eq!(logger.losses(), LogLosses::default());
+
+        producer.emit(Level::Warning, "x", "oversized", &oversized);
+        producer.emit(Level::Warning, "x", "overflow", &fields);
+        let before_drain = logger.losses();
+        for _ in 0..2 {
+            release.send(()).unwrap();
+        }
+        logger.shutdown(Duration::from_secs(2));
+        assert_eq!(
+            before_drain,
+            LogLosses {
+                encoding: 1,
+                queue_full: 1,
+                ..LogLosses::default()
+            }
+        );
+        assert_eq!(
+            logger.losses(),
+            LogLosses {
+                sink_io: 2,
+                ..before_drain
+            }
+        );
+    }
+
+    #[test]
     fn timestamps() {
         let at = |secs| utc_timestamp(UNIX_EPOCH + Duration::from_secs(secs));
         assert_eq!(at(0), "1970-01-01T00:00:00Z");
@@ -281,13 +398,13 @@ mod tests {
 
         let (logger, capture) = Logger::capturing(Level::Info);
         let render = |value: &str| logger.render(Level::Info, "x", "e", &Fields { value });
-        let overhead = render("").unwrap().len();
+        let overhead = render("").unwrap().unwrap().len();
         let room = MAX_LOG_RECORD_BYTES - overhead;
         let mut value = "\n".repeat(room / 2);
         if !room.is_multiple_of(2) {
             value.push('x');
         }
-        let at_limit = render(&value).unwrap();
+        let at_limit = render(&value).unwrap().unwrap();
         assert_eq!(at_limit.len(), MAX_LOG_RECORD_BYTES);
         assert_eq!(at_limit.capacity(), MAX_LOG_RECORD_BYTES);
         assert_eq!(at_limit.last(), Some(&b'\n'));
@@ -295,10 +412,10 @@ mod tests {
 
         // The JSON object still fits by itself, but its line terminator would not.
         value.push('x');
-        assert!(render(&value).is_none());
+        assert!(render(&value).is_err());
         // Now the escaped JSON object itself exceeds the budget.
         value.push('\n');
-        assert!(render(&value).is_none());
+        assert!(render(&value).is_err());
         logger.emit(Level::Info, "x", "e", &Fields { value: &value });
 
         let lines = capture.lock().unwrap();
@@ -348,8 +465,16 @@ mod tests {
         }
         let logger = Logger::new(Level::Warning);
         let fields = Fields { b: 1, a: "ü" };
-        assert!(logger.render(Level::Info, "x", "e", &fields).is_none());
-        let line = logger.render(Level::Error, "x", "e", &fields).unwrap();
+        assert!(
+            logger
+                .render(Level::Info, "x", "e", &fields)
+                .unwrap()
+                .is_none()
+        );
+        let line = logger
+            .render(Level::Error, "x", "e", &fields)
+            .unwrap()
+            .unwrap();
         let text = String::from_utf8(line).unwrap();
         let rest = text.split_once(",\"level\"").unwrap().1;
         assert_eq!(

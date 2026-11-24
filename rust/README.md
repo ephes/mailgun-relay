@@ -270,6 +270,12 @@ keeps these failures visible while suppressing normal traffic; a partly
 refused message adds a `recipients_refused` WARNING (domains and codes
 only), a `QUIT` that is not answered with 221 an `smtp_cleanup_failed`
 WARNING (the outcome stays). `/health` and the fallbacks log nothing.
+On shutdown, Rust reports nonzero log losses in one best-effort stderr summary
+with counts for encoding failures (including oversized records), full queues,
+unavailable queues and stdout write or flush failures. Filtered records are
+excluded. Shutdown waits at most 100 ms for the summary. A stalled stdout
+sink may still leave pending records beyond the
+drain deadline, so the summary counts observed failures only.
 On SIGTERM or SIGINT, the relay stops all listeners and waits for in-flight
 requests, including submissions whose clients disconnected. A listener that exits
 early triggers the same drain. The relay reports the initiating listener failure

@@ -4,6 +4,11 @@ All notable changes to mailgun-relay are documented here.
 
 ## Unreleased
 
+### Rust relay
+
+- Count lost log records by encoding, queue and sink failure, and report observed
+  losses on stderr at shutdown.
+
 ### Parity harness
 
 - Inspect every MIME header occurrence for parser defects and report duplicate

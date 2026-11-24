@@ -352,9 +352,12 @@ most 65,536 serialized bytes including the newline (at most 16 MiB queued
 payload, plus one writing record and queue metadata). The encoder stops when
 the next write would exceed that limit and drops the record before enqueueing.
 The newest record is dropped on saturation. Write and flush errors also drop
-records. There is no recursive fallback or send retry. The
-writer flushes each accepted record. After requests drain, shutdown stops log
-admission and waits at most one second for queued records; a stalled sink may
+records. The shared logger counts encoding failures, full or unavailable queues,
+and write or flush failures separately. Filtered records do not count. The Rust
+process reports observed losses on stderr after its bounded drain if any
+counter is nonzero. The writer attempts to flush each successfully written
+record. After requests drain, shutdown stops log admission and waits at most
+one second for queued records; a stalled sink may
 lose the tail when the process exits. Health, SMTP outcomes and capacity release
 do not depend on stdout progress. Startup logging is best effort too, so a
 missing startup record alone does not prove startup failed. Python's retained

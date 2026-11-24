@@ -938,6 +938,19 @@ fn stalled_stdout_does_not_block_health_delivery_or_shutdown() {
     let stopped = std::time::Instant::now();
     assert!(terminate(&mut server.child).success());
     assert!(stopped.elapsed() < Duration::from_secs(3));
+    let mut diagnostics = String::new();
+    server
+        .child
+        .stderr
+        .take()
+        .unwrap()
+        .read_to_string(&mut diagnostics)
+        .unwrap();
+    let queue_full = diagnostics
+        .split_whitespace()
+        .find_map(|field| field.strip_prefix("queue_full="))
+        .and_then(|count| count.parse::<u64>().ok());
+    assert!(queue_full.is_some_and(|count| count > 0), "{diagnostics}");
     let sessions = smtp.sessions();
     assert_eq!(sessions.len(), 1);
     assert!(sessions[0].message.is_some());

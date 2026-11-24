@@ -23,10 +23,12 @@ mod yaml;
 
 use std::collections::HashSet;
 use std::future::Future;
+use std::io::{self, Write};
 use std::net::SocketAddr;
 use std::path::Path;
 use std::process::ExitCode;
 use std::sync::Arc;
+use std::sync::mpsc;
 use std::time::Duration;
 
 use serde::Serialize;
@@ -38,7 +40,7 @@ use tokio::task::JoinSet;
 use tokio_util::task::TaskTracker;
 
 use crate::config::{ConfigError, Level, Settings};
-use crate::log::{Logger, SERVICE_LOGGER};
+use crate::log::{LogLosses, Logger, SERVICE_LOGGER};
 use crate::secrets::Secrets;
 use crate::smtp::{SmtpConfig, SmtpSubmitter};
 
@@ -107,6 +109,7 @@ fn serve() -> ExitCode {
         Err(error) => Err(format!("cannot start the runtime: {error}")),
     };
     logger.shutdown(Duration::from_secs(1));
+    report_log_losses(logger.losses());
     match result {
         Ok(()) => ExitCode::SUCCESS,
         Err(message) => {
@@ -114,6 +117,28 @@ fn serve() -> ExitCode {
             ExitCode::FAILURE
         }
     }
+}
+
+fn report_log_losses(losses: LogLosses) {
+    if losses == LogLosses::default() {
+        return;
+    }
+    let LogLosses {
+        encoding,
+        queue_full,
+        queue_unavailable,
+        sink_io,
+    } = losses;
+    // Stderr can share the same stalled destination as stdout.
+    let (done, finished) = mpsc::channel();
+    let _ = std::thread::Builder::new().spawn(move || {
+        let _ = writeln!(
+            io::stderr().lock(),
+            "mailgun-relay: log records lost: encoding={encoding} queue_full={queue_full} queue_unavailable={queue_unavailable} sink_io={sink_io}"
+        );
+        let _ = done.send(());
+    });
+    let _ = finished.recv_timeout(Duration::from_millis(100));
 }
 
 async fn run(
