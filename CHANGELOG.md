@@ -15,6 +15,12 @@ All notable changes to mailgun-relay are documented here.
 
 ### Security
 
+- Update the Rust lockfile from `url` 2.5.8 to 2.5.9 (`form_urlencoded`
+  1.2.2 -> 1.2.3 with it), a dependency of lettre, to resolve
+  RUSTSEC-2026-0592 (unbounded recursion in `Url::origin()` on nested `blob:`
+  URLs), without adding advisory exceptions. `cargo deny --locked check` is
+  clean again.
+
 - Reject empty Rust multipart boundaries with HTTP 400 before reading the body.
 - Bound Rust multipart header searches by the existing per-line byte limit.
 
@@ -633,6 +639,39 @@ public request/response contract changes except the two noted under *Behavior*.
   pytest config ignores exactly that warning so `filterwarnings = error` keeps
   catching everything else; no new dependency is added.
 - No code or API changes. Redeploy the relay to pick up the new lock.
+
+## rs-v0.2.5 — 2026-11-24
+
+Rust port release 0.2.5 (crate version 0.2.5), prepared for a local build and
+publication by `rust/scripts/local_release.py` with the hardened builder
+images (rustup 1.29.2, CA bundle check); the tag, archive and checksum are
+recorded in `rust/README.md` once published. It carries the Rust fixes and regression tests
+merged since `rs-v0.2.4`; the Python implementation is not released by this
+tag. The entries themselves stay under *Unreleased* above; in short, for the
+Rust side:
+
+- `url` 2.5.9 for RUSTSEC-2026-0592 (lockfile only, through lettre).
+- Request admission: a body frame larger than the remaining byte allowance is
+  rejected before it is copied; empty multipart boundaries are rejected with
+  400 before the body is read; multipart header searches stay within the
+  per-line byte limit; text-field scans are bounded (oversized field data is
+  413 even without a closing delimiter), with one boundary searcher per
+  request; custom header names over 76 ASCII bytes are 400
+  (`HeaderTooLongError`) before MIME assembly.
+- SMTP: each resolved address is tried once in resolver order within the
+  shared connection budget; an initial failure counts as a banner failure
+  until the connection accepted outbound bytes; underscores in SMTP timeout
+  settings are allowed only between digits (checked at startup).
+- Startup and runtime: a custom SMTP CA bundle whose modification time or
+  length changes while it is read is refused; token labels and digests are
+  indexed during startup (same order and diagnostics); a bind host that
+  resolves to no addresses is refused and duplicate listener addresses are
+  dropped in one pass; an unexpected listener exit stops the other listeners
+  and drains tracked submissions; JSON log lines are bounded at 64 KiB while
+  encoding, oversize records are dropped before the queue.
+- Release program hardening (staged artifacts, tag recheck, duplicate-asset
+  refusal, preserved helper errors and rollback backups) and parity harness
+  fixes.
 
 ## rs-v0.2.4 — 2026-11-18
 
