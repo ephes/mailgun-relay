@@ -15,6 +15,8 @@ All notable changes to mailgun-relay are documented here.
   records can be parsed independently.
 - Exit with a fixed startup diagnostic if the Rust log writer thread cannot
   start, before creating listeners.
+- Report an unconfirmed log drain on stderr when the shutdown deadline
+  expires, even with no observed log losses.
 
 ### Parity harness
 

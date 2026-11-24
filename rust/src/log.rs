@@ -161,6 +161,12 @@ pub struct LogLosses {
     pub sink_io: u64,
 }
 
+#[derive(Debug, PartialEq, Eq)]
+pub enum DrainOutcome {
+    Completed,
+    TimedOut,
+}
+
 #[derive(Debug, Clone)]
 pub struct Logger {
     threshold: Level,
@@ -199,10 +205,17 @@ impl Logger {
     }
 
     /// Stop admission and drain for a bounded interval after request shutdown.
-    /// A stalled sink may lose the queued tail when the process exits.
-    pub fn shutdown(&self, budget: Duration) {
-        if let Some(writer) = &self.writer {
-            writer.shutdown(budget);
+    /// Completion means all accepted records were processed. Sink failures
+    /// are tracked separately. A timeout leaves the remaining tail unconfirmed.
+    pub fn shutdown(&self, budget: Duration) -> DrainOutcome {
+        if self
+            .writer
+            .as_ref()
+            .is_none_or(|writer| writer.shutdown(budget))
+        {
+            DrainOutcome::Completed
+        } else {
+            DrainOutcome::TimedOut
         }
     }
 
@@ -368,6 +381,42 @@ mod tests {
         release_tx.send(()).unwrap();
         writer.shutdown(Duration::from_secs(2));
         assert_eq!(*lines.lock().unwrap(), [vec![1], vec![2], vec![3]]);
+    }
+
+    #[test]
+    fn unconfirmed_drain_is_reported_even_with_zero_observed_losses() {
+        let (entered, writing) = mpsc::channel();
+        let (release, released) = mpsc::channel();
+        let lines = Arc::new(Mutex::new(Vec::new()));
+        let logger = Logger {
+            threshold: Level::Info,
+            writer: Some(Arc::new(test_writer(
+                BlockingSink {
+                    entered: Some(entered),
+                    release: released,
+                    lines: lines.clone(),
+                },
+                1,
+            ))),
+            capture: None,
+        };
+        let fields = serde_json::json!({});
+        logger.emit(Level::Info, "x", "writing", &fields);
+        writing.recv_timeout(Duration::from_secs(2)).unwrap();
+        logger.emit(Level::Info, "x", "queued", &fields);
+
+        let summary = crate::log_shutdown_summary(&logger, Duration::ZERO);
+        let losses = logger.losses();
+        release.send(()).unwrap();
+        let completed = crate::log_shutdown_summary(&logger, Duration::from_secs(2));
+
+        assert_eq!(losses, LogLosses::default());
+        assert_eq!(
+            summary.as_deref(),
+            Some("log drain unconfirmed (deadline expired)")
+        );
+        assert_eq!(completed, None);
+        assert_eq!(lines.lock().unwrap().len(), 2);
     }
 
     #[test]

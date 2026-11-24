@@ -40,7 +40,7 @@ use tokio::task::JoinSet;
 use tokio_util::task::TaskTracker;
 
 use crate::config::{ConfigError, Level, Settings};
-use crate::log::{LogLosses, Logger, SERVICE_LOGGER};
+use crate::log::{DrainOutcome, LogLosses, Logger, SERVICE_LOGGER};
 use crate::secrets::Secrets;
 use crate::smtp::{SmtpConfig, SmtpSubmitter};
 
@@ -125,8 +125,9 @@ fn serve_with(
         return ExitCode::FAILURE;
     };
     let result = run_service(&logger);
-    logger.shutdown(Duration::from_secs(1));
-    report_log_losses(logger.losses());
+    if let Some(summary) = log_shutdown_summary(&logger, Duration::from_secs(1)) {
+        report_log_shutdown(summary);
+    }
     match result {
         Ok(()) => ExitCode::SUCCESS,
         Err(message) => {
@@ -136,23 +137,35 @@ fn serve_with(
     }
 }
 
-fn report_log_losses(losses: LogLosses) {
-    if losses == LogLosses::default() {
-        return;
+fn log_shutdown_summary(logger: &Logger, budget: Duration) -> Option<String> {
+    let drain = logger.shutdown(budget);
+    let losses = logger.losses();
+    let mut summary = String::new();
+    if losses != LogLosses::default() {
+        let LogLosses {
+            encoding,
+            queue_full,
+            queue_unavailable,
+            sink_io,
+        } = losses;
+        summary = format!(
+            "log records lost: encoding={encoding} queue_full={queue_full} queue_unavailable={queue_unavailable} sink_io={sink_io}"
+        );
     }
-    let LogLosses {
-        encoding,
-        queue_full,
-        queue_unavailable,
-        sink_io,
-    } = losses;
+    if drain == DrainOutcome::TimedOut {
+        if !summary.is_empty() {
+            summary.push(' ');
+        }
+        summary.push_str("log drain unconfirmed (deadline expired)");
+    }
+    (!summary.is_empty()).then_some(summary)
+}
+
+fn report_log_shutdown(summary: String) {
     // Stderr can share the same stalled destination as stdout.
     let (done, finished) = mpsc::channel();
     let _ = std::thread::Builder::new().spawn(move || {
-        let _ = writeln!(
-            io::stderr().lock(),
-            "mailgun-relay: log records lost: encoding={encoding} queue_full={queue_full} queue_unavailable={queue_unavailable} sink_io={sink_io}"
-        );
+        let _ = writeln!(io::stderr().lock(), "mailgun-relay: {summary}");
         let _ = done.send(());
     });
     let _ = finished.recv_timeout(Duration::from_millis(100));

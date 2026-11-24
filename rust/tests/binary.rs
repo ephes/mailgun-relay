@@ -951,6 +951,10 @@ fn stalled_stdout_does_not_block_health_delivery_or_shutdown() {
         .find_map(|field| field.strip_prefix("queue_full="))
         .and_then(|count| count.parse::<u64>().ok());
     assert!(queue_full.is_some_and(|count| count > 0), "{diagnostics}");
+    assert!(
+        diagnostics.contains("log drain unconfirmed (deadline expired)"),
+        "{diagnostics}"
+    );
     let sessions = smtp.sessions();
     assert_eq!(sessions.len(), 1);
     assert!(sessions[0].message.is_some());

@@ -353,20 +353,21 @@ payload, plus one writing record and queue metadata). The encoder stops when
 the next write would exceed that limit and drops the record before enqueueing.
 The newest record is dropped on saturation. Write and flush errors also drop
 records. The shared logger counts encoding failures, full or unavailable queues,
-and write or flush failures separately. Filtered records do not count. The Rust
-process reports observed losses on stderr after its bounded drain if any
-counter is nonzero. The writer attempts to flush each successfully written
-record. After a failed write, the writer restores the line boundary with a
+and write or flush failures separately. Filtered records do not count. After
+its bounded drain, the Rust process attempts one stderr summary when any
+counter is nonzero or the drain remains unconfirmed. The summary counts
+observed losses and flags an expired drain deadline. The writer attempts to
+flush each successfully written record. After a failed write, the writer restores the line boundary with a
 newline before the next record. A failed separator write drops that next
-record and counts as a sink failure. After requests drain, shutdown closes the queue under the same guard
-used for enqueueing. The writer drains accepted records until disconnection.
+record and counts as a sink failure. After requests drain, shutdown closes the
+queue under the same guard used for enqueueing. The writer drains accepted
+records until disconnection.
 Sink writes and the one-second drain wait occur outside the guard. Drain
 completion is shared, with an independent wait budget per caller. A stalled
 sink may lose the tail when the process exits. Health, SMTP outcomes and
 capacity release do not depend on stdout progress. If the log writer thread
 cannot start, the relay reports a fixed startup failure on stderr and exits 1
-before creating listeners. Startup logging is best
-effort too, so a missing startup record alone does not prove startup failed.
+before creating listeners. The startup log record is best effort.
 Python's retained logging path keeps its documented exception-isolation behavior.
 
 A completed DATA whose final 250 is lost remains uncertain: HTTP 503 cannot

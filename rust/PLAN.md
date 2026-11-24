@@ -1793,19 +1793,20 @@ record and queue metadata).
 The newest record is dropped on saturation; oversized records and write/flush
 errors are also dropped. After a failed write, the writer restores the line
 boundary with a newline before the next record. A failed separator write drops
-that next record and counts as a sink failure. The shared logger counts encoding failures, full or
-unavailable queues, and write or flush failures separately, excluding filtered
-records. The Rust process reports observed losses on stderr after its bounded
-drain if any counter is nonzero. After requests drain, closure and enqueueing
+that next record and counts as a sink failure. The shared logger counts
+encoding failures, full or unavailable queues, and write or flush failures
+separately, excluding filtered records. After its bounded drain, the Rust
+process attempts one stderr summary when any counter is nonzero or the drain
+remains unconfirmed. The summary counts observed losses and flags an expired
+drain deadline. After requests drain, closure and enqueueing
 share a short guard. Closing the sole sender lets the writer drain all accepted
 records before disconnecting. Sink writes and the one-second drain wait happen
 outside the guard. Drain completion is shared, with an independent wait budget
 per caller. A stalled sink may lose the tail when the process exits.
 Health, SMTP outcomes and capacity release do not depend on stdout progress.
 If the log writer thread cannot start, the relay reports a fixed startup
-failure on stderr and exits 1 before creating listeners. Startup logging is
-best effort too, so a missing startup record alone does not
-prove startup failed. Python's retained logging path keeps its documented
+failure on stderr and exits 1 before creating listeners. The startup log
+record is best effort. Python's retained logging path keeps its documented
 exception-isolation behavior.
 
 STARTTLS authentication uses only the latest encrypted EHLO capabilities; a
