@@ -13,6 +13,8 @@ All notable changes to mailgun-relay are documented here.
   budgets independent.
 - Restore the JSON log line boundary after a failed write so subsequent
   records can be parsed independently.
+- Exit with a fixed startup diagnostic if the Rust log writer thread cannot
+  start, before creating listeners.
 
 ### Parity harness
 

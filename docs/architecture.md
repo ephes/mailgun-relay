@@ -363,7 +363,9 @@ used for enqueueing. The writer drains accepted records until disconnection.
 Sink writes and the one-second drain wait occur outside the guard. Drain
 completion is shared, with an independent wait budget per caller. A stalled
 sink may lose the tail when the process exits. Health, SMTP outcomes and
-capacity release do not depend on stdout progress. Startup logging is best
+capacity release do not depend on stdout progress. If the log writer thread
+cannot start, the relay reports a fixed startup failure on stderr and exits 1
+before creating listeners. Startup logging is best
 effort too, so a missing startup record alone does not prove startup failed.
 Python's retained logging path keeps its documented exception-isolation behavior.
 

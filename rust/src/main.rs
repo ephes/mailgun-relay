@@ -95,19 +95,36 @@ fn serve() -> ExitCode {
         Ok(loaded) => loaded,
         Err(error) => return config_failure(&error),
     };
-    let logger = Logger::new(settings.log_level);
-    let runtime = tokio::runtime::Builder::new_current_thread()
-        .enable_all()
-        .max_blocking_threads(2)
-        .thread_keep_alive(Duration::from_secs(10))
-        .build();
-    let result = match runtime {
-        Ok(runtime) => runtime.block_on(async {
-            let listeners = bind_all(&settings.bind_host, settings.bind_port).await;
-            run(settings, secrets, smtp, logger.clone(), listeners).await
-        }),
-        Err(error) => Err(format!("cannot start the runtime: {error}")),
+    let level = settings.log_level;
+    serve_with(
+        || Logger::new(level),
+        |logger| {
+            let runtime = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .max_blocking_threads(2)
+                .thread_keep_alive(Duration::from_secs(10))
+                .build()
+                .map_err(|error| format!("cannot start the runtime: {error}"))?;
+            runtime.block_on(async {
+                let listeners = bind_all(&settings.bind_host, settings.bind_port).await;
+                run(settings, secrets, smtp, logger.clone(), listeners).await
+            })
+        },
+    )
+}
+
+fn serve_with(
+    start_logger: impl FnOnce() -> io::Result<Logger>,
+    run_service: impl FnOnce(&Logger) -> Result<(), String>,
+) -> ExitCode {
+    let Ok(logger) = start_logger() else {
+        let _ = writeln!(
+            io::stderr().lock(),
+            "mailgun-relay: cannot start the log writer"
+        );
+        return ExitCode::FAILURE;
     };
+    let result = run_service(&logger);
     logger.shutdown(Duration::from_secs(1));
     report_log_losses(logger.losses());
     match result {

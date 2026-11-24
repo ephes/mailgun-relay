@@ -282,7 +282,9 @@ closes log admission before waiting up to one second for accepted records to
 drain. Shutdown callers wait independently and share the writer's completed
 drain state. A listener that exits early triggers the same drain. The relay reports
 the initiating listener failure after the drain and exits 1. Configuration
-and bind failures also exit 1.
+and bind failures also exit 1. If the named log writer thread cannot start,
+the relay reports `cannot start the log writer` on stderr and exits 1 before
+creating any listeners.
 A signal-triggered shutdown with a successful drain exits 0.
 
 Both secrets loaders refuse a label equal to the SMTP password or any loaded

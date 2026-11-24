@@ -72,8 +72,21 @@ struct LossCounters {
     sink_io: AtomicU64,
 }
 
+type WriterTask = Box<dyn FnOnce() + Send>;
+
+fn spawn_writer(task: WriterTask) -> io::Result<()> {
+    std::thread::Builder::new()
+        .name("relay-log-writer".into())
+        .spawn(task)
+        .map(drop)
+}
+
 impl Writer {
-    fn new(mut sink: impl Write + Send + 'static, capacity: usize) -> Self {
+    fn new(
+        mut sink: impl Write + Send + 'static,
+        capacity: usize,
+        spawn: impl FnOnce(WriterTask) -> io::Result<()>,
+    ) -> io::Result<Self> {
         let (sender, receiver) = mpsc::sync_channel::<Box<[u8]>>(capacity);
         let finished = Arc::new((Mutex::new(false), Condvar::new()));
         let writer_finished = finished.clone();
@@ -81,7 +94,7 @@ impl Writer {
         let writer_losses = losses.clone();
         // A dedicated OS thread: a live blocked sink cannot occupy Tokio's
         // runtime or its bounded blocking pool. It is detached on drain expiry.
-        std::thread::spawn(move || {
+        spawn(Box::new(move || {
             // The channel yields all accepted records before disconnecting.
             let mut needs_boundary = false;
             for line in receiver {
@@ -98,12 +111,12 @@ impl Writer {
             let (completed, notify) = &*writer_finished;
             *completed.lock().unwrap_or_else(|e| e.into_inner()) = true;
             notify.notify_all();
-        });
-        Self {
+        }))?;
+        Ok(Self {
             sender: Mutex::new(Some(sender)),
             finished,
             losses,
-        }
+        })
     }
 
     fn send(&self, line: impl Into<Box<[u8]>>) -> bool {
@@ -157,12 +170,20 @@ pub struct Logger {
 }
 
 impl Logger {
-    pub fn new(threshold: Level) -> Self {
-        Logger {
+    pub fn new(threshold: Level) -> io::Result<Self> {
+        Self::with_spawner(threshold, spawn_writer)
+    }
+
+    fn with_spawner(
+        threshold: Level,
+        spawn: impl FnOnce(WriterTask) -> io::Result<()>,
+    ) -> io::Result<Self> {
+        let writer = Writer::new(io::stdout(), LOG_QUEUE_RECORDS, spawn)?;
+        Ok(Self {
             threshold,
-            writer: Some(Arc::new(Writer::new(std::io::stdout(), LOG_QUEUE_RECORDS))),
+            writer: Some(Arc::new(writer)),
             capture: None,
-        }
+        })
     }
 
     /// A logger whose lines go to the returned buffer (tests).
@@ -275,6 +296,33 @@ mod tests {
 
     use super::*;
 
+    fn test_writer(sink: impl Write + Send + 'static, capacity: usize) -> Writer {
+        Writer::new(sink, capacity, spawn_writer).unwrap()
+    }
+
+    #[test]
+    fn log_writer_start_refusal_exits_before_listener_setup() {
+        use std::cell::Cell;
+        use std::process::ExitCode;
+
+        let listener_setups = Cell::new(0);
+        let setup_listeners = |_: &Logger| {
+            listener_setups.set(listener_setups.get() + 1);
+            Ok(())
+        };
+
+        let exit = crate::serve_with(
+            || Logger::with_spawner(Level::Info, |_| Err(io::ErrorKind::WouldBlock.into())),
+            setup_listeners,
+        );
+        assert_eq!(exit, ExitCode::FAILURE);
+        assert_eq!(listener_setups.get(), 0);
+
+        let exit = crate::serve_with(|| Logger::new(Level::Info), setup_listeners);
+        assert_eq!(exit, ExitCode::SUCCESS);
+        assert_eq!(listener_setups.get(), 1);
+    }
+
     struct BlockingSink {
         entered: Option<mpsc::Sender<()>>,
         release: mpsc::Receiver<()>,
@@ -299,7 +347,7 @@ mod tests {
         let (entered_tx, entered_rx) = mpsc::channel();
         let (release_tx, release_rx) = mpsc::channel();
         let lines = Arc::new(Mutex::new(Vec::new()));
-        let writer = Writer::new(
+        let writer = test_writer(
             BlockingSink {
                 entered: Some(entered_tx),
                 release: release_rx,
@@ -326,7 +374,7 @@ mod tests {
     fn concurrent_log_shutdowns_have_independent_budgets_and_share_completion() {
         let (entered, writing) = mpsc::channel();
         let (release, released) = mpsc::channel();
-        let writer = Writer::new(
+        let writer = test_writer(
             BlockingSink {
                 entered: Some(entered),
                 release: released,
@@ -379,7 +427,7 @@ mod tests {
         let (entered, writing) = mpsc::channel();
         let (release, released) = mpsc::channel();
         let lines = Arc::new(Mutex::new(Vec::new()));
-        let writer = Writer::new(
+        let writer = test_writer(
             BlockingSink {
                 entered: Some(entered),
                 release: released,
@@ -448,7 +496,7 @@ mod tests {
 
         for fail_first_separator in [false, true] {
             let output = Arc::new(Mutex::new(Vec::new()));
-            let writer = Writer::new(
+            let writer = test_writer(
                 PartialSink {
                     writes: 0,
                     fail_first_separator,
@@ -500,7 +548,7 @@ mod tests {
         let (release, released) = mpsc::channel();
         let logger = Logger {
             threshold: Level::Warning,
-            writer: Some(Arc::new(Writer::new(
+            writer: Some(Arc::new(test_writer(
                 FailingSink {
                     entered,
                     release: released,
@@ -625,7 +673,7 @@ mod tests {
             b: u8,
             a: &'static str,
         }
-        let logger = Logger::new(Level::Warning);
+        let logger = Logger::new(Level::Warning).unwrap();
         let fields = Fields { b: 1, a: "ü" };
         assert!(
             logger
