@@ -6,7 +6,7 @@
 //! them.
 
 use std::io::{self, Write};
-use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, mpsc};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
@@ -59,8 +59,7 @@ impl Write for RecordBuffer {
 
 #[derive(Debug)]
 struct Writer {
-    sender: mpsc::SyncSender<Box<[u8]>>,
-    stopping: Arc<AtomicBool>,
+    sender: Mutex<Option<mpsc::SyncSender<Box<[u8]>>>>,
     finished: Mutex<mpsc::Receiver<()>>,
     losses: Arc<LossCounters>,
 }
@@ -77,55 +76,51 @@ impl Writer {
     fn new(mut sink: impl Write + Send + 'static, capacity: usize) -> Self {
         let (sender, receiver) = mpsc::sync_channel::<Box<[u8]>>(capacity);
         let (done, finished) = mpsc::channel();
-        let stopping = Arc::new(AtomicBool::new(false));
-        let stopped = stopping.clone();
         let losses = Arc::new(LossCounters::default());
         let writer_losses = losses.clone();
         // A dedicated OS thread: a live blocked sink cannot occupy Tokio's
         // runtime or its bounded blocking pool. It is detached on drain expiry.
         std::thread::spawn(move || {
-            loop {
-                match receiver.recv_timeout(Duration::from_millis(10)) {
-                    Ok(line) => {
-                        if sink.write_all(&line).and_then(|()| sink.flush()).is_err() {
-                            writer_losses.sink_io.fetch_add(1, Ordering::Relaxed);
-                        }
-                    }
-                    Err(mpsc::RecvTimeoutError::Disconnected) => break,
-                    Err(mpsc::RecvTimeoutError::Timeout) if stopped.load(Ordering::Acquire) => {
-                        break;
-                    }
-                    Err(mpsc::RecvTimeoutError::Timeout) => {}
+            // The channel yields all accepted records before disconnecting.
+            for line in receiver {
+                if sink.write_all(&line).and_then(|()| sink.flush()).is_err() {
+                    writer_losses.sink_io.fetch_add(1, Ordering::Relaxed);
                 }
             }
             let _ = done.send(());
         });
         Self {
-            sender,
-            stopping,
+            sender: Mutex::new(Some(sender)),
             finished: Mutex::new(finished),
             losses,
         }
     }
 
-    fn send(&self, line: Vec<u8>) -> bool {
-        let counter = if line.len() > MAX_LOG_RECORD_BYTES {
-            &self.losses.encoding
-        } else if self.stopping.load(Ordering::Acquire) {
-            &self.losses.queue_unavailable
-        } else {
-            match self.sender.try_send(line.into_boxed_slice()) {
-                Ok(()) => return true,
-                Err(mpsc::TrySendError::Full(_)) => &self.losses.queue_full,
-                Err(mpsc::TrySendError::Disconnected(_)) => &self.losses.queue_unavailable,
+    fn send(&self, line: impl Into<Box<[u8]>>) -> bool {
+        let line = line.into();
+        if line.len() > MAX_LOG_RECORD_BYTES {
+            self.losses.encoding.fetch_add(1, Ordering::Relaxed);
+            return false;
+        }
+        let result = {
+            let sender = self.sender.lock().unwrap_or_else(|e| e.into_inner());
+            match sender.as_ref() {
+                Some(sender) => sender.try_send(line),
+                None => Err(mpsc::TrySendError::Disconnected(line)),
             }
+        };
+        let counter = match result {
+            Ok(()) => return true,
+            Err(mpsc::TrySendError::Full(_)) => &self.losses.queue_full,
+            Err(mpsc::TrySendError::Disconnected(_)) => &self.losses.queue_unavailable,
         };
         counter.fetch_add(1, Ordering::Relaxed);
         false
     }
 
     fn shutdown(&self, budget: Duration) {
-        self.stopping.store(true, Ordering::Release);
+        let sender = self.sender.lock().unwrap_or_else(|e| e.into_inner()).take();
+        drop(sender);
         let _ = self
             .finished
             .lock()
@@ -269,31 +264,32 @@ mod tests {
 
     use super::*;
 
+    struct BlockingSink {
+        entered: Option<mpsc::Sender<()>>,
+        release: mpsc::Receiver<()>,
+        lines: Arc<Mutex<Vec<Vec<u8>>>>,
+    }
+    impl Write for BlockingSink {
+        fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
+            if let Some(entered) = self.entered.take() {
+                entered.send(()).unwrap();
+                self.release.recv_timeout(Duration::from_secs(2)).unwrap();
+            }
+            self.lines.lock().unwrap().push(bytes.to_vec());
+            Ok(bytes.len())
+        }
+        fn flush(&mut self) -> std::io::Result<()> {
+            Ok(())
+        }
+    }
+
     #[test]
     fn blocked_sink_has_fixed_queue_and_bounded_drain() {
-        struct Sink {
-            entered: Option<mpsc::Sender<()>>,
-            release: mpsc::Receiver<()>,
-            lines: Arc<Mutex<Vec<Vec<u8>>>>,
-        }
-        impl Write for Sink {
-            fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
-                if let Some(entered) = self.entered.take() {
-                    entered.send(()).unwrap();
-                    self.release.recv_timeout(Duration::from_secs(2)).unwrap();
-                }
-                self.lines.lock().unwrap().push(bytes.to_vec());
-                Ok(bytes.len())
-            }
-            fn flush(&mut self) -> std::io::Result<()> {
-                Ok(())
-            }
-        }
         let (entered_tx, entered_rx) = mpsc::channel();
         let (release_tx, release_rx) = mpsc::channel();
         let lines = Arc::new(Mutex::new(Vec::new()));
         let writer = Writer::new(
-            Sink {
+            BlockingSink {
                 entered: Some(entered_tx),
                 release: release_rx,
                 lines: lines.clone(),
@@ -313,6 +309,59 @@ mod tests {
         release_tx.send(()).unwrap();
         writer.shutdown(Duration::from_secs(2));
         assert_eq!(*lines.lock().unwrap(), [vec![1], vec![2], vec![3]]);
+    }
+
+    #[test]
+    fn shutdown_refuses_paused_producer_and_drains_accepted_records() {
+        struct PausedRecord {
+            ready: mpsc::Sender<()>,
+            resume: mpsc::Receiver<()>,
+        }
+
+        impl From<PausedRecord> for Box<[u8]> {
+            fn from(record: PausedRecord) -> Self {
+                record.ready.send(()).unwrap();
+                record.resume.recv_timeout(Duration::from_secs(2)).unwrap();
+                Box::new([3])
+            }
+        }
+
+        let (entered, writing) = mpsc::channel();
+        let (release, released) = mpsc::channel();
+        let lines = Arc::new(Mutex::new(Vec::new()));
+        let writer = Writer::new(
+            BlockingSink {
+                entered: Some(entered),
+                release: released,
+                lines: lines.clone(),
+            },
+            2,
+        );
+        assert!(writer.send(vec![1]));
+        writing.recv_timeout(Duration::from_secs(2)).unwrap();
+        assert!(writer.send(vec![2]));
+
+        let late_accepted = std::thread::scope(|scope| {
+            let (ready, preparing) = mpsc::channel();
+            let (resume, paused) = mpsc::channel();
+            let producer = scope.spawn(|| {
+                writer.send(PausedRecord {
+                    ready,
+                    resume: paused,
+                })
+            });
+            preparing.recv_timeout(Duration::from_secs(2)).unwrap();
+            writer.shutdown(Duration::ZERO);
+            // The sink is still blocked and the queue has a spare slot.
+            resume.send(()).unwrap();
+            producer.join().unwrap()
+        });
+        release.send(()).unwrap();
+        writer.shutdown(Duration::from_secs(2));
+
+        assert!(!late_accepted);
+        assert_eq!(*lines.lock().unwrap(), [vec![1], vec![2]]);
+        assert_eq!(writer.losses.queue_unavailable.load(Ordering::Relaxed), 1);
     }
 
     #[test]

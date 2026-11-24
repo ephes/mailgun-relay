@@ -356,12 +356,13 @@ records. The shared logger counts encoding failures, full or unavailable queues,
 and write or flush failures separately. Filtered records do not count. The Rust
 process reports observed losses on stderr after its bounded drain if any
 counter is nonzero. The writer attempts to flush each successfully written
-record. After requests drain, shutdown stops log admission and waits at most
-one second for queued records; a stalled sink may
-lose the tail when the process exits. Health, SMTP outcomes and capacity release
-do not depend on stdout progress. Startup logging is best effort too, so a
-missing startup record alone does not prove startup failed. Python's retained
-logging path keeps its documented exception-isolation behavior.
+record. After requests drain, shutdown closes the queue under the same guard
+used for enqueueing. The writer drains accepted records until disconnection.
+Sink writes and the one-second drain wait occur outside the guard. A stalled
+sink may lose the tail when the process exits. Health, SMTP outcomes and
+capacity release do not depend on stdout progress. Startup logging is best
+effort too, so a missing startup record alone does not prove startup failed.
+Python's retained logging path keeps its documented exception-isolation behavior.
 
 A completed DATA whose final 250 is lost remains uncertain: HTTP 503 cannot
 prove non-delivery. There is no internal retry or persisted replay after restart;

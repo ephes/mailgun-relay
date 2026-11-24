@@ -274,12 +274,14 @@ On shutdown, Rust reports nonzero log losses in one best-effort stderr summary
 with counts for encoding failures (including oversized records), full queues,
 unavailable queues and stdout write or flush failures. Filtered records are
 excluded. Shutdown waits at most 100 ms for the summary. A stalled stdout
-sink may still leave pending records beyond the
-drain deadline, so the summary counts observed failures only.
+sink may still leave pending records beyond the drain deadline, so the summary
+counts observed failures only.
 On SIGTERM or SIGINT, the relay stops all listeners and waits for in-flight
-requests, including submissions whose clients disconnected. A listener that exits
-early triggers the same drain. The relay reports the initiating listener failure
-after the drain and exits 1. Configuration and bind failures also exit 1.
+requests, including submissions whose clients disconnected. The relay then
+closes log admission before waiting up to one second for accepted records to
+drain. A listener that exits early triggers the same drain. The relay reports
+the initiating listener failure after the drain and exits 1. Configuration
+and bind failures also exit 1.
 A signal-triggered shutdown with a successful drain exits 0.
 
 Both secrets loaders refuse a label equal to the SMTP password or any loaded

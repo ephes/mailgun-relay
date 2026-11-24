@@ -8,6 +8,7 @@ All notable changes to mailgun-relay are documented here.
 
 - Count lost log records by encoding, queue and sink failure, and report observed
   losses on stderr at shutdown.
+- Close log admission before draining accepted records during shutdown.
 
 ### Parity harness
 

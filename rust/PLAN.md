@@ -1794,12 +1794,14 @@ The newest record is dropped on saturation; oversized records and write/flush
 errors are also dropped. The shared logger counts encoding failures, full or
 unavailable queues, and write or flush failures separately, excluding filtered
 records. The Rust process reports observed losses on stderr after its bounded
-drain if any counter is nonzero. After requests drain, shutdown stops log
-admission and waits at most one second for queued records; a stalled sink may
-lose the tail when the process exits. Health, SMTP outcomes and capacity release
-do not depend on stdout progress. Startup logging is best effort too, so a
-missing startup record alone does not prove startup failed. Python's retained
-logging path keeps its documented exception-isolation behavior.
+drain if any counter is nonzero. After requests drain, closure and enqueueing
+share a short guard. Closing the sole sender lets the writer drain all accepted
+records before disconnecting. Sink writes and the one-second drain wait happen
+outside the guard. A stalled sink may lose the tail when the process exits.
+Health, SMTP outcomes and capacity release do not depend on stdout progress.
+Startup logging is best effort too, so a missing startup record alone does not
+prove startup failed. Python's retained logging path keeps its documented
+exception-isolation behavior.
 
 STARTTLS authentication uses only the latest encrypted EHLO capabilities; a
 pre-TLS AUTH offer never authorizes sending credentials after upgrade. Each
