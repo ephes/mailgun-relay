@@ -693,7 +693,9 @@ most 65,536 serialized bytes (at most 16 MiB queued payload, plus one writing
 record and queue metadata).
 The newest record is dropped on saturation; oversized records and write/flush
 errors are also dropped. There is no recursive fallback or send retry. The
-writer flushes each accepted record. After requests drain, shutdown stops log
+writer flushes each successfully written record. After a write error it
+restores a newline boundary before the next record. A failed separator write
+drops that record and counts as a sink failure. After requests drain, shutdown stops log
 admission and waits at most one second for queued records; a stalled sink may
 lose the tail when the process exits. Health, SMTP outcomes and capacity release
 do not depend on stdout progress. Startup logging is best effort too, so a

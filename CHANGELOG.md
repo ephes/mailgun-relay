@@ -11,6 +11,8 @@ All notable changes to mailgun-relay are documented here.
 - Close log admission before draining accepted records during shutdown.
 - Share completed log drains across shutdown callers while keeping their wait
   budgets independent.
+- Restore the JSON log line boundary after a failed write so subsequent
+  records can be parsed independently.
 
 ### Parity harness
 

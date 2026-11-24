@@ -356,7 +356,9 @@ records. The shared logger counts encoding failures, full or unavailable queues,
 and write or flush failures separately. Filtered records do not count. The Rust
 process reports observed losses on stderr after its bounded drain if any
 counter is nonzero. The writer attempts to flush each successfully written
-record. After requests drain, shutdown closes the queue under the same guard
+record. After a failed write, the writer restores the line boundary with a
+newline before the next record. A failed separator write drops that next
+record and counts as a sink failure. After requests drain, shutdown closes the queue under the same guard
 used for enqueueing. The writer drains accepted records until disconnection.
 Sink writes and the one-second drain wait occur outside the guard. Drain
 completion is shared, with an independent wait budget per caller. A stalled

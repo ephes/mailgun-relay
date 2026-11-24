@@ -1791,7 +1791,9 @@ bounded `sync_channel` with nonblocking `try_send`: 256 queued records, each at
 most 65,536 serialized bytes (at most 16 MiB queued payload, plus one writing
 record and queue metadata).
 The newest record is dropped on saturation; oversized records and write/flush
-errors are also dropped. The shared logger counts encoding failures, full or
+errors are also dropped. After a failed write, the writer restores the line
+boundary with a newline before the next record. A failed separator write drops
+that next record and counts as a sink failure. The shared logger counts encoding failures, full or
 unavailable queues, and write or flush failures separately, excluding filtered
 records. The Rust process reports observed losses on stderr after its bounded
 drain if any counter is nonzero. After requests drain, closure and enqueueing

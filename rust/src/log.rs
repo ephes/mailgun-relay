@@ -83,8 +83,15 @@ impl Writer {
         // runtime or its bounded blocking pool. It is detached on drain expiry.
         std::thread::spawn(move || {
             // The channel yields all accepted records before disconnecting.
+            let mut needs_boundary = false;
             for line in receiver {
-                if sink.write_all(&line).and_then(|()| sink.flush()).is_err() {
+                // A failed write may have left a prefix in the stream.
+                if needs_boundary && sink.write_all(b"\n").is_err() {
+                    writer_losses.sink_io.fetch_add(1, Ordering::Relaxed);
+                    continue;
+                }
+                needs_boundary = sink.write_all(&line).is_err();
+                if needs_boundary || sink.flush().is_err() {
                     writer_losses.sink_io.fetch_add(1, Ordering::Relaxed);
                 }
             }
@@ -405,6 +412,69 @@ mod tests {
         assert!(!late_accepted);
         assert_eq!(*lines.lock().unwrap(), [vec![1], vec![2]]);
         assert_eq!(writer.losses.queue_unavailable.load(Ordering::Relaxed), 1);
+    }
+
+    #[test]
+    fn a_partial_log_write_leaves_the_next_record_on_its_own_line() {
+        struct PartialSink {
+            writes: usize,
+            fail_first_separator: bool,
+            output: Arc<Mutex<Vec<u8>>>,
+        }
+
+        impl Write for PartialSink {
+            fn write(&mut self, bytes: &[u8]) -> io::Result<usize> {
+                self.writes += 1;
+                match self.writes {
+                    1 => {
+                        self.output.lock().unwrap().extend_from_slice(&bytes[..1]);
+                        return Ok(1);
+                    }
+                    2 => return Err(io::ErrorKind::BrokenPipe.into()),
+                    _ if self.fail_first_separator && bytes == b"\n" => {
+                        self.fail_first_separator = false;
+                        return Err(io::ErrorKind::BrokenPipe.into());
+                    }
+                    _ => {}
+                }
+                self.output.lock().unwrap().extend_from_slice(bytes);
+                Ok(bytes.len())
+            }
+
+            fn flush(&mut self) -> io::Result<()> {
+                Ok(())
+            }
+        }
+
+        for fail_first_separator in [false, true] {
+            let output = Arc::new(Mutex::new(Vec::new()));
+            let writer = Writer::new(
+                PartialSink {
+                    writes: 0,
+                    fail_first_separator,
+                    output: output.clone(),
+                },
+                3,
+            );
+            assert!(writer.send(b"{\"first\":1}\n".to_vec()));
+            if fail_first_separator {
+                assert!(writer.send(b"{\"dropped\":2}\n".to_vec()));
+            }
+            assert!(writer.send(b"{\"healthy\":3}\n".to_vec()));
+            assert!(writer.shutdown(Duration::from_secs(2)));
+
+            let output = output.lock().unwrap();
+            let mut lines = output.split(|byte| *byte == b'\n');
+            assert_eq!(lines.next().unwrap(), b"{");
+            let recovered = serde_json::from_slice::<serde_json::Value>(lines.next().unwrap());
+            assert_eq!(recovered.unwrap(), serde_json::json!({"healthy": 3}));
+            assert_eq!(lines.next(), Some(b"".as_slice()));
+            assert_eq!(lines.next(), None);
+            assert_eq!(
+                writer.losses.sink_io.load(Ordering::Relaxed),
+                1 + u64::from(fail_first_separator)
+            );
+        }
     }
 
     #[test]
