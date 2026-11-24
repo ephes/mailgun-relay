@@ -279,7 +279,8 @@ counts observed failures only.
 On SIGTERM or SIGINT, the relay stops all listeners and waits for in-flight
 requests, including submissions whose clients disconnected. The relay then
 closes log admission before waiting up to one second for accepted records to
-drain. A listener that exits early triggers the same drain. The relay reports
+drain. Shutdown callers wait independently and share the writer's completed
+drain state. A listener that exits early triggers the same drain. The relay reports
 the initiating listener failure after the drain and exits 1. Configuration
 and bind failures also exit 1.
 A signal-triggered shutdown with a successful drain exits 0.

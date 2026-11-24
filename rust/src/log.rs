@@ -7,7 +7,7 @@
 
 use std::io::{self, Write};
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::{Arc, Mutex, mpsc};
+use std::sync::{Arc, Condvar, Mutex, mpsc};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use serde::Serialize;
@@ -60,7 +60,7 @@ impl Write for RecordBuffer {
 #[derive(Debug)]
 struct Writer {
     sender: Mutex<Option<mpsc::SyncSender<Box<[u8]>>>>,
-    finished: Mutex<mpsc::Receiver<()>>,
+    finished: Arc<(Mutex<bool>, Condvar)>,
     losses: Arc<LossCounters>,
 }
 
@@ -75,7 +75,8 @@ struct LossCounters {
 impl Writer {
     fn new(mut sink: impl Write + Send + 'static, capacity: usize) -> Self {
         let (sender, receiver) = mpsc::sync_channel::<Box<[u8]>>(capacity);
-        let (done, finished) = mpsc::channel();
+        let finished = Arc::new((Mutex::new(false), Condvar::new()));
+        let writer_finished = finished.clone();
         let losses = Arc::new(LossCounters::default());
         let writer_losses = losses.clone();
         // A dedicated OS thread: a live blocked sink cannot occupy Tokio's
@@ -87,11 +88,13 @@ impl Writer {
                     writer_losses.sink_io.fetch_add(1, Ordering::Relaxed);
                 }
             }
-            let _ = done.send(());
+            let (completed, notify) = &*writer_finished;
+            *completed.lock().unwrap_or_else(|e| e.into_inner()) = true;
+            notify.notify_all();
         });
         Self {
             sender: Mutex::new(Some(sender)),
-            finished: Mutex::new(finished),
+            finished,
             losses,
         }
     }
@@ -118,14 +121,15 @@ impl Writer {
         false
     }
 
-    fn shutdown(&self, budget: Duration) {
+    fn shutdown(&self, budget: Duration) -> bool {
         let sender = self.sender.lock().unwrap_or_else(|e| e.into_inner()).take();
         drop(sender);
-        let _ = self
-            .finished
-            .lock()
-            .unwrap_or_else(|e| e.into_inner())
-            .recv_timeout(budget);
+        let (completed, notify) = &*self.finished;
+        let completed = completed.lock().unwrap_or_else(|e| e.into_inner());
+        let (completed, _) = notify
+            .wait_timeout_while(completed, budget, |completed| !*completed)
+            .unwrap_or_else(|e| e.into_inner());
+        *completed
     }
 }
 
@@ -309,6 +313,45 @@ mod tests {
         release_tx.send(()).unwrap();
         writer.shutdown(Duration::from_secs(2));
         assert_eq!(*lines.lock().unwrap(), [vec![1], vec![2], vec![3]]);
+    }
+
+    #[test]
+    fn concurrent_log_shutdowns_have_independent_budgets_and_share_completion() {
+        let (entered, writing) = mpsc::channel();
+        let (release, released) = mpsc::channel();
+        let writer = Writer::new(
+            BlockingSink {
+                entered: Some(entered),
+                release: released,
+                lines: Arc::default(),
+            },
+            1,
+        );
+        assert!(writer.send(b"{}\n".to_vec()));
+        writing.recv_timeout(Duration::from_secs(2)).unwrap();
+
+        let (short_completed, elapsed, long_completed) = std::thread::scope(|scope| {
+            let long = scope.spawn(|| writer.shutdown(Duration::from_millis(1500)));
+            let start = std::time::Instant::now();
+            while writer.sender.lock().unwrap().is_some() {
+                assert!(start.elapsed() < Duration::from_secs(1));
+                std::thread::yield_now();
+            }
+            let start = std::time::Instant::now();
+            let short_completed = writer.shutdown(Duration::from_millis(20));
+            let elapsed = start.elapsed();
+            release.send(()).unwrap();
+            (short_completed, elapsed, long.join().unwrap())
+        });
+
+        assert!(!short_completed);
+        assert!(
+            elapsed < Duration::from_millis(600),
+            "short wait took {elapsed:?}"
+        );
+        assert!(long_completed);
+        assert!(writer.shutdown(Duration::ZERO));
+        assert!(writer.shutdown(Duration::ZERO));
     }
 
     #[test]

@@ -1797,7 +1797,8 @@ records. The Rust process reports observed losses on stderr after its bounded
 drain if any counter is nonzero. After requests drain, closure and enqueueing
 share a short guard. Closing the sole sender lets the writer drain all accepted
 records before disconnecting. Sink writes and the one-second drain wait happen
-outside the guard. A stalled sink may lose the tail when the process exits.
+outside the guard. Drain completion is shared, with an independent wait budget
+per caller. A stalled sink may lose the tail when the process exits.
 Health, SMTP outcomes and capacity release do not depend on stdout progress.
 Startup logging is best effort too, so a missing startup record alone does not
 prove startup failed. Python's retained logging path keeps its documented

@@ -358,7 +358,8 @@ process reports observed losses on stderr after its bounded drain if any
 counter is nonzero. The writer attempts to flush each successfully written
 record. After requests drain, shutdown closes the queue under the same guard
 used for enqueueing. The writer drains accepted records until disconnection.
-Sink writes and the one-second drain wait occur outside the guard. A stalled
+Sink writes and the one-second drain wait occur outside the guard. Drain
+completion is shared, with an independent wait budget per caller. A stalled
 sink may lose the tail when the process exits. Health, SMTP outcomes and
 capacity release do not depend on stdout progress. Startup logging is best
 effort too, so a missing startup record alone does not prove startup failed.
