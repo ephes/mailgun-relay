@@ -55,6 +55,9 @@ All notable changes to mailgun-relay are documented here.
 
 ### Parity harness
 
+- Decode chunked HTTP observations in one pass, with support for chunk
+  extensions and trailers.
+
 - Compare filenames inferred from `Content-Type` even when a MIME part has
   no `Content-Disposition` header.
 - Retain observed HTTP statuses and SMTP captures in the parity report when

@@ -126,14 +126,21 @@ class Response:
 
 
 def _dechunk(body: bytes) -> bytes:
-    out = b""
-    while body:
-        size_line, _, body = body.partition(b"\r\n")
-        size = int(size_line.split(b";")[0], 16)
+    out = bytearray()
+    cursor = 0
+    while cursor < len(body):
+        line_end = body.find(b"\r\n", cursor)
+        if line_end < 0:
+            raise ValueError("missing chunk size terminator")
+        extension = body.find(b";", cursor, line_end)
+        size = int(body[cursor : extension if extension >= 0 else line_end], 16)
         if size == 0:
             break
-        out, body = out + body[:size], body[size + 2 :]
-    return out
+        start = line_end + 2
+        end = start + size
+        out.extend(body[start:end])
+        cursor = end + 2
+    return bytes(out)
 
 
 def exchange(address: tuple[str, int], pieces: list[bytes], timeout: float = 60) -> Response:

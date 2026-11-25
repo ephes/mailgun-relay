@@ -340,6 +340,26 @@ def test_request_framing() -> None:
     assert run_parity._dechunk(b"2\r\nab\r\n1\r\nc\r\n0\r\n\r\n") == b"abc"
 
 
+def test_dechunk_many_small_chunks_without_copying_the_unread_suffix() -> None:
+    class MeasuredBody(bytes):
+        copied = 0
+
+        def partition(self, sep: Any, /) -> tuple[bytes, bytes, bytes]:
+            parts = super().partition(sep)
+            self.copied += sum(map(len, parts))
+            return parts
+
+        def __getitem__(self, key: Any, /) -> Any:
+            value = super().__getitem__(key)
+            if isinstance(value, bytes):
+                self.copied += len(value)
+            return value
+
+    body = MeasuredBody(b"1;test=on\r\nx\r\n" * 8192 + b"0\r\nX-Trailer: end\r\n\r\n")
+    assert run_parity._dechunk(body) == b"x" * 8192
+    assert body.copied < len(body) // 2
+
+
 def test_log_tail_splits_records_at_markers() -> None:
     tail = run_parity.LogTail()
     for line in ['{"event":"request","n":1}', "not json", '{"path_domain":"marker-1.parity"}']:

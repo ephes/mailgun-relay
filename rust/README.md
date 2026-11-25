@@ -383,7 +383,8 @@ retries at most five port selections if another process takes the port.
 Each HTTP exchange has a 60-second monotonic deadline covering connection,
 split request writes and all response reads. Responses are limited to 64 KiB
 of headers (before the separator) and 1 MiB of wire body, including chunk
-framing. A timeout or limit violation closes the socket; in a request case it
+framing. The harness decodes chunks in one pass and keeps the payload when
+chunk extensions or trailers are present. A timeout or limit violation closes the socket; in a request case it
 records a harness failure, while in a startup probe it unwinds the relay and sink
 and then aborts the run without a `--report` receipt. Started relay children and
 SMTP sinks are owned immediately; partial startup, probe errors and interruption
