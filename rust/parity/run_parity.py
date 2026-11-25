@@ -62,7 +62,7 @@ import sys
 import tempfile
 import threading
 import time
-from collections import Counter
+from collections import Counter, deque
 from collections.abc import Iterator
 from contextlib import ExitStack, contextmanager
 from dataclasses import dataclass, field
@@ -290,9 +290,12 @@ class LogTail:
 
     def __init__(self) -> None:
         self.records: list[dict[str, Any]] = []
-        self.lines: list[str] = []
+        self.lines: deque[str] = deque(maxlen=3)
         self.cond = threading.Condition()
-        self.position = 0
+
+    def recent_lines(self) -> list[str]:
+        with self.cond:
+            return list(self.lines)
 
     def feed(self, line: str) -> None:
         with self.cond:
@@ -342,7 +345,7 @@ class LogTail:
         deadline = time.monotonic() + timeout
         with self.cond:
             while True:
-                for record in self.records[self.position :]:
+                for record in self.records:
                     if predicate(record):
                         return record
                 remaining = deadline - time.monotonic()
@@ -353,20 +356,20 @@ class LogTail:
     def until_marker(self, n: int, timeout: float = 10) -> list[dict[str, Any]] | None:
         """The records since the last marker, up to marker ``n``."""
         domain = marker_domain(n)
-        found = self.wait(lambda r: r.get("path_domain") == domain, timeout)
-        if found is None:
-            return None
         with self.cond:
-            index = self.records.index(found, self.position)
-            records = self.records[self.position : index]
-            self.position = index + 1
-        return records
+            found = self.wait(lambda r: r.get("path_domain") == domain, timeout)
+            if found is None:
+                return None
+            index = self.records.index(found)
+            records = self.records[:index]
+            del self.records[: index + 1]
+            return records
 
 
 # ------------------------------------------------------------------ targets
 
 
-class CaptureTimeout(TimeoutError):
+class CaptureTimeoutError(TimeoutError):
     """The external sink still owns a capture from the current case."""
 
 
@@ -412,7 +415,9 @@ class Target:
         while self.in_flight():
             remaining = deadline - time.monotonic()
             if remaining <= 0:
-                raise CaptureTimeout(f"{self.name}: SMTP captures did not settle within 5 seconds")
+                raise CaptureTimeoutError(
+                    f"{self.name}: SMTP captures did not settle within 5 seconds"
+                )
             time.sleep(min(0.02, remaining))
         found = []
         for path in sorted(self.sink_dir.glob("*.json")):
@@ -754,8 +759,8 @@ def start(name: str, command: list[str], env: dict[str, str], sink: Sink) -> Tar
                 time.sleep(0.05)
         code = process.returncode
         if _port_free(port):
-            raise StartError(name, code, log.lines)
-    raise StartError(name, None, log.lines)
+            raise StartError(name, code, log.recent_lines())
+    raise StartError(name, None, log.recent_lines())
 
 
 def stop(process: subprocess.Popen[bytes]) -> int:
@@ -860,7 +865,7 @@ def run_cases(
         try:
             py_outcome = run_case(py, case, n)
             rs_outcome = run_case(rs, case, n)
-        except CaptureTimeout as exc:
+        except CaptureTimeoutError as exc:
             report.record(case.name, [f"harness error: {exc}"], None, verbose)
             report.skipped.extend(c.name for c in cases[index + 1 :])
             break

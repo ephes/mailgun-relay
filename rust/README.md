@@ -389,9 +389,9 @@ final response with valid body framing. Close-delimited replies require a clean
 EOF. A complete length-delimited, chunked or bodyless reply can still be observed
 if the peer resets the connection after sending it. Timeouts, limit violations
 and incomplete responses are harness failures. In a startup probe such a failure
-unwinds the relay and sink and aborts the run without a `--report` receipt. Started relay children and
-SMTP sinks are owned immediately; partial startup, probe errors and interruption
-unwind them in reverse acquisition order.
+unwinds the relay and sink and aborts the run without a `--report` receipt.
+The harness owns relay children and SMTP sinks immediately and unwinds them
+in reverse acquisition order on partial startup, probe errors or interruption.
 
 CI runs it in the `parity` job. The modules use the standard library only
 and run with a host's `python3` (3.12+): `--targets PY_URL,RS_URL --sinks
@@ -401,7 +401,9 @@ HOST:PORT --certs DIR --record-dir DIR`) and whose secrets come from
 `run_parity.py --write-secrets PATH` (the shadow of PLAN.md 10.1).
 When `--logs` is supplied, the harness opens both files and starts following
 from their initial end offsets before sending requests. An open or seek failure
-stops setup with the target and log path in the diagnostic.
+stops setup with the target and log path in the diagnostic. The harness
+discards records through each consumed marker and keeps later records for the
+next case. Startup failures show the three most recent raw log lines.
 
 Verification requires at least one runnable request case. A misspelled filter,
 a startup-only filter, or a `--targets` subset consisting entirely of unsupported

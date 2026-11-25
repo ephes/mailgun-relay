@@ -63,7 +63,8 @@ All notable changes to mailgun-relay are documented here.
   completed observations.
 - Set external log offsets before sending any parity requests and report
   initialization failures during setup.
-
+- Release consumed log records after each parity marker and keep a bounded
+  tail for startup diagnostics.
 - Compare filenames inferred from `Content-Type` even when a MIME part has
   no `Content-Disposition` header.
 - Retain observed HTTP statuses and SMTP captures in the parity report when

@@ -6,12 +6,16 @@ requires. The harness run against both implementations is the CI job
 
 from __future__ import annotations
 
+import argparse
 import copy
 import json
 import re
 import smtplib
+import socket
 import ssl
 import sys
+import threading
+import time
 from collections.abc import Iterator
 from email.message import EmailMessage
 from pathlib import Path
@@ -370,6 +374,35 @@ def test_log_tail_splits_records_at_markers() -> None:
     assert tail.until_marker(3, timeout=0.05) is None
 
 
+def test_log_tail_retires_only_consumed_records_and_bounds_diagnostics() -> None:
+    tail = run_parity.LogTail()
+    for n in range(1001):
+        tail.feed(json.dumps({"event": "first", "n": n}))
+        tail.feed(json.dumps({"event": "second", "n": n}))
+        tail.feed(json.dumps({"path_domain": run_parity.marker_domain(n)}))
+        if n:
+            assert tail.until_marker(n - 1, timeout=0) == [
+                {"event": "first", "n": n - 1},
+                {"event": "second", "n": n - 1},
+            ]
+    assert tail.records == [
+        {"event": "first", "n": 1000},
+        {"event": "second", "n": 1000},
+        {"path_domain": run_parity.marker_domain(1000)},
+    ]
+    assert tail.until_marker(1000, timeout=0) == [
+        {"event": "first", "n": 1000},
+        {"event": "second", "n": 1000},
+    ]
+    assert tail.records == []
+    for line in ("older", "startup details", "another diagnostic", "most recent"):
+        tail.feed(line)
+    assert len(tail.lines) == 3
+    err = run_parity.StartError("rust", 1, tail.recent_lines())
+    assert "older" not in str(err)
+    assert "['startup details', 'another diagnostic', 'most recent']" in str(err)
+
+
 def test_corpus_covers_the_s6_requirements() -> None:
     cases = corpus.request_cases()
     names = [c.name for c in cases]
@@ -451,9 +484,7 @@ def test_http_observation_requires_complete_framing(
 
     complete = b"HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n"
     peers = iter([[wire, termination]] * 2)
-    monkeypatch.setattr(
-        run_parity.socket, "create_connection", lambda *args, **kwargs: Peer(next(peers))
-    )
+    monkeypatch.setattr(socket, "create_connection", lambda *args, **kwargs: Peer(next(peers)))
     cases = [corpus.Case(name, corpus.Request(), 200) for name in ("first", "complete")]
     target = run_parity.Target("test", ("127.0.0.1", 1))
     report = run_parity.Report()
@@ -472,10 +503,6 @@ def test_http_observation_requires_complete_framing(
 def test_exchange_bounds_real_loopback_response(
     monkeypatch: pytest.MonkeyPatch, limit: str
 ) -> None:
-    import socket
-    import threading
-    import time
-
     monkeypatch.setattr(run_parity, "MAX_RESPONSE_HEADER_BYTES", 128, raising=False)
     monkeypatch.setattr(run_parity, "MAX_RESPONSE_BODY_BYTES", 128, raising=False)
     closed = threading.Event()
@@ -519,7 +546,6 @@ def test_exchange_bounds_real_loopback_response(
 @pytest.mark.parametrize("name", ["python", "rust"])
 def test_start_rejects_competing_listener(monkeypatch: pytest.MonkeyPatch, name: str) -> None:
     import io
-    import socket
     import subprocess
     from unittest.mock import Mock, call
 
@@ -561,7 +587,6 @@ def test_start_rejects_competing_listener(monkeypatch: pytest.MonkeyPatch, name:
 def test_start_unwinds_probe_failure(
     monkeypatch: pytest.MonkeyPatch, failure: BaseException
 ) -> None:
-    import socket
     import subprocess
 
     processes: list[subprocess.Popen[bytes]] = []
@@ -974,7 +999,7 @@ def test_target_mode_baselines_capture_names_without_reading_payloads(
         assert reads == [fresh]
 
     monkeypatch.setattr(run_parity, "run_cases", run_cases)
-    args = run_parity.argparse.Namespace(
+    args = argparse.Namespace(
         targets="http://127.0.0.1:1,http://127.0.0.1:2",
         sinks=f"{py_dir},{rs_dir}",
         logs=None,
@@ -984,8 +1009,6 @@ def test_target_mode_baselines_capture_names_without_reading_payloads(
 
 
 def test_directory_target_ignores_retained_incomplete_attempts(tmp_path: Path) -> None:
-    import time
-
     (tmp_path / "3.active").write_text("{}")
     target = run_parity.Target("rust", ("127.0.0.1", 1), sink_dir=tmp_path, startup_settle=0.1)
     started = time.monotonic()
@@ -998,8 +1021,6 @@ def test_directory_target_ignores_retained_incomplete_attempts(tmp_path: Path) -
 
 
 def test_directory_target_waits_for_a_capture_in_progress_at_startup(tmp_path: Path) -> None:
-    import threading
-
     (tmp_path / "5.active").write_text("{}")
 
     def finish() -> None:
@@ -1046,10 +1067,10 @@ def test_unsettled_capture_retires_target_pair(
             active.unlink(missing_ok=True)
         return _response(200, '{"status":"ok"}')
 
-    monkeypatch.setattr(run_parity.time, "monotonic", lambda: clock)
-    monkeypatch.setattr(run_parity.time, "sleep", sleep)
+    monkeypatch.setattr(time, "monotonic", lambda: clock)
+    monkeypatch.setattr(time, "sleep", sleep)
     monkeypatch.setattr(run_parity, "exchange", exchange)
-    args = run_parity.argparse.Namespace(
+    args = argparse.Namespace(
         targets="http://127.0.0.1:1,http://127.0.0.1:2",
         sinks=f"{py_dir},{rs_dir}",
         logs=None,
@@ -1072,8 +1093,6 @@ def test_unsettled_capture_retires_target_pair(
 def test_target_log_offset_is_set_before_follower_runs(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    import threading
-
     logs = [tmp_path / name for name in ("py.log", "rs.log")]
     for path in logs:
         path.write_text('{"event":"previous"}\n')
@@ -1089,7 +1108,7 @@ def test_target_log_offset_is_set_before_follower_runs(
 
         return thread(target=delayed_pump, **kwargs)
 
-    monkeypatch.setattr(run_parity.threading, "Thread", delayed_thread)
+    monkeypatch.setattr(threading, "Thread", delayed_thread)
 
     def run_cases(
         py: run_parity.Target,
@@ -1110,7 +1129,7 @@ def test_target_log_offset_is_set_before_follower_runs(
             assert target.log.until_marker(counter[0], timeout=0.5) == [{"event": "request"}]
 
     monkeypatch.setattr(run_parity, "run_cases", run_cases)
-    args = run_parity.argparse.Namespace(
+    args = argparse.Namespace(
         targets="http://127.0.0.1:1,http://127.0.0.1:2",
         sinks=f"{tmp_path},{tmp_path}",
         logs=",".join(map(str, logs)),
@@ -1129,9 +1148,9 @@ def test_target_log_open_failure_stops_setup(
         raise PermissionError("synthetic denial")
 
     monkeypatch.setattr(Path, "open", denied)
-    monkeypatch.setattr(run_parity.threading.Thread, "start", lambda self: None)
+    monkeypatch.setattr(threading.Thread, "start", lambda self: None)
     monkeypatch.setattr(run_parity, "run_cases", lambda *args: pytest.fail("unexpected cases"))
-    args = run_parity.argparse.Namespace(
+    args = argparse.Namespace(
         targets="http://127.0.0.1:1,http://127.0.0.1:2",
         sinks=f"{tmp_path},{tmp_path}",
         logs=f"{path},{path}",
