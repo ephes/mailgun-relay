@@ -376,8 +376,10 @@ request byte limit before polling. Per-frame checks enforce the same limit for
 streams with unknown sizes.
 
 Rust bounds form-body acquisition to 30 seconds total after admission, including
-trickling uploads. A full 25 MiB upload needs roughly 7 Mbit/s sustained throughput. Expiry returns HTTP 408 (`BodyTimeoutError`), drops the body
-and releases the admission slot before MIME or SMTP. Overload still returns 503
+stalled and trickling uploads and streams that are continuously ready. Empty
+data frames and trailers count toward cooperative scheduling. A full 25 MiB
+upload needs roughly 7 Mbit/s sustained throughput. Expiry returns HTTP 408
+(`BodyTimeoutError`), drops the body and releases admission before MIME or SMTP. Overload still returns 503
 before reading the body. Python rollback has no application body deadline.
 Rust also uses one `MAILGUN_RELAY_SMTP_TIMEOUT_S` budget for DNS resolution and
 all TCP connection attempts together. It tries each distinct socket address in

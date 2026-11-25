@@ -18,6 +18,7 @@ use axum::response::{IntoResponse, Response};
 use http_body_util::BodyExt;
 use serde::Serialize;
 use tokio::sync::{OwnedSemaphorePermit, Semaphore};
+use tokio::time::{Instant as TokioInstant, timeout_at};
 use tokio_util::task::TaskTracker;
 
 use crate::auth::authenticate;
@@ -141,6 +142,15 @@ impl Failure {
             result: "bad_request",
             class,
             message: message.into(),
+        }
+    }
+
+    fn body_timeout() -> Self {
+        Failure {
+            status: StatusCode::REQUEST_TIMEOUT,
+            result: "body_timeout",
+            class: "BodyTimeoutError",
+            message: "Request body deadline exceeded".to_owned(),
         }
     }
 
@@ -382,17 +392,13 @@ async fn decide(
     let encoding = form::encoding(content_type).map_err(form_failure)?;
     let mut bytes = Vec::new();
     if !matches!(encoding, form::Encoding::None) {
-        tokio::time::timeout(
-            BODY_READ_TIMEOUT,
-            read_body(body, settings.max_body_bytes, &mut bytes),
+        let deadline = TokioInstant::now() + BODY_READ_TIMEOUT;
+        timeout_at(
+            deadline,
+            read_body(body, settings.max_body_bytes, &mut bytes, deadline),
         )
         .await
-        .map_err(|_| Failure {
-            status: StatusCode::REQUEST_TIMEOUT,
-            result: "body_timeout",
-            class: "BodyTimeoutError",
-            message: "Request body deadline exceeded".to_owned(),
-        })??;
+        .map_err(|_| Failure::body_timeout())??;
     }
     let limits = Limits {
         max_files: settings.max_attachments.saturating_add(1),
@@ -567,12 +573,19 @@ async fn read_body(
     mut body: Body,
     max_body_bytes: i64,
     bytes: &mut Vec<u8>,
+    deadline: TokioInstant,
 ) -> Result<(), Failure> {
     let too_large = || Failure::too_large(format!("request body exceeds {max_body_bytes} bytes"));
     if u64::try_from(max_body_bytes).map_or(true, |limit| body.size_hint().lower() > limit) {
         return Err(too_large());
     }
-    while let Some(frame) = body.frame().await {
+    loop {
+        let frame = body.frame().await;
+        // The enclosing timer cannot run while the body keeps returning Ready.
+        if TokioInstant::now() >= deadline {
+            return Err(Failure::body_timeout());
+        }
+        let Some(frame) = frame else { break };
         let frame = frame.map_err(|_| Failure::bad_request("BadRequestError", "malformed form"))?;
         if let Ok(data) = frame.into_data() {
             if bytes
@@ -584,6 +597,8 @@ async fn read_body(
             }
             bytes.extend_from_slice(&data);
         }
+        // Empty data and trailers also count toward the task's poll budget.
+        tokio::task::consume_budget().await;
     }
     // Python counts at least one (possibly empty) chunk.
     if exceeds(bytes.len(), max_body_bytes) {

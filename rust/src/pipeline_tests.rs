@@ -799,13 +799,20 @@ async fn body_frame_limit_checked_before_copy() {
     }
 
     let mut bytes = Vec::new();
-    read_body(Body::empty(), 0, &mut bytes).await.unwrap();
+    let deadline = TokioInstant::now() + BODY_READ_TIMEOUT;
+    read_body(Body::empty(), 0, &mut bytes, deadline)
+        .await
+        .unwrap();
     assert!(bytes.is_empty());
-    read_body(body(b"de"), 5, &mut bytes).await.unwrap();
+    read_body(body(b"de"), 5, &mut bytes, deadline)
+        .await
+        .unwrap();
     assert_eq!(bytes, b"abcde");
 
     bytes.clear();
-    let failure = read_body(body(b"def"), 5, &mut bytes).await.unwrap_err();
+    let failure = read_body(body(b"def"), 5, &mut bytes, deadline)
+        .await
+        .unwrap_err();
     assert_eq!(failure.status, StatusCode::PAYLOAD_TOO_LARGE);
     assert_eq!(bytes, b"abc");
 }
@@ -1692,6 +1699,47 @@ async fn body_total_deadline_releases_admission() {
         );
         assert_eq!(h.recorder.calls.lock().unwrap().len(), 1);
     }
+}
+
+#[tokio::test(start_paused = true)]
+async fn ready_empty_body_frames_honor_deadline_and_release_admission() {
+    let h = Harness::with(Settings {
+        smtp_max_concurrency: 1,
+        ..settings()
+    });
+    let Encoded { content_type, body } = encode(Encoding::Multipart, &MINIMUM);
+    let mut valid_multipart = Some(body);
+    let mut empty_frames = 0;
+    let chunks = futures_util::stream::poll_fn(move |_| {
+        if empty_frames == 0 {
+            // Inject expiry while the admitted upload is continuously ready.
+            tokio::spawn(tokio::time::advance(BODY_READ_TIMEOUT));
+        }
+        // Without a cooperative yield, the upload reaches the valid form
+        // before the clock task can run. Keep that regression bounded.
+        let chunk = if empty_frames < 2048 {
+            empty_frames += 1;
+            Some(Vec::new())
+        } else {
+            valid_multipart.take()
+        };
+        std::task::Poll::Ready(chunk.map(Ok::<_, std::io::Error>))
+    });
+    let request = Request::builder()
+        .method("POST")
+        .uri("/v3/mg.wersdoerfer.de/messages")
+        .header(header::AUTHORIZATION, basic("api", HOMEPAGE_TOKEN))
+        .header(header::CONTENT_TYPE, content_type.unwrap())
+        .body(Body::from_stream(chunks))
+        .unwrap();
+    let reply = h.send(request).await;
+    assert_error(&reply, 408);
+    assert_eq!(h.records("request")[0]["result"], "body_timeout");
+    assert!(h.recorder.calls.lock().unwrap().is_empty());
+
+    let reply = h.homepage(encode(Encoding::Multipart, &MINIMUM)).await;
+    assert_queued(&reply);
+    assert_eq!(h.recorder.calls.lock().unwrap().len(), 1);
 }
 
 #[tokio::test]

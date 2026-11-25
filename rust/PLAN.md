@@ -449,7 +449,8 @@ change the outcome (logged as `smtp_cleanup_failed`); no QUIT when the server
 already closed the connection. The timeout `SMTP_TIMEOUT_S` applies per
 network operation, not to the whole session. Rust additionally bounds DNS and
 all TCP attempts together to that timeout, and admitted body reads to 30 seconds
-total (HTTP 408). Rust additionally bounds the pre-outcome SMTP exchange by
+total (HTTP 408), even when frames are continuously ready. Rust additionally
+bounds the pre-outcome SMTP exchange by
 `SMTP_SESSION_TIMEOUT_S` (default 120 s), from DNS through DATA's final reply.
 Expiry drops the connection and returns 503. A failure after DATA 354 without
 a complete final reply logs `smtp_outcome_unknown` and tells the caller to verify

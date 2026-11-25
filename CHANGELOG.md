@@ -23,6 +23,8 @@ All notable changes to mailgun-relay are documented here.
 - Report transport failures and timeouts after DATA 354 as
   `smtp_outcome_unknown` when there is no complete final reply. HTTP 503
   tells callers to verify delivery before retrying.
+- Enforce the form-body deadline while processing continuously ready frames,
+  including empty data or trailers, and release admission on HTTP 408.
 
 - Return HTTP 413 before polling supported form bodies with a known lower
   size bound above the request byte limit.
