@@ -8,8 +8,9 @@
 
 use std::collections::HashSet;
 use std::future::Future;
+use std::hash::{BuildHasher, RandomState};
 use std::pin::Pin;
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 use std::time::Instant;
 
 use axum::body::{Body, HttpBody};
@@ -618,6 +619,28 @@ fn require_text(key: &str, value: Value) -> Result<String, Failure> {
     }
 }
 
+/// Python's `name.lower() in seen_headers`. Lowercase names that fit the
+/// 76-byte ASCII limit are kept exactly; any other lowercase name (never
+/// admissible) is kept only as a keyed 64-bit hash, so its retained size is
+/// fixed. A hash collision can only turn a name-policy refusal into a
+/// duplicate refusal.
+fn repeats_header_name(name: &str, exact: &mut HashSet<String>, hashed: &mut HashSet<u64>) -> bool {
+    if name.len() <= MAX_HEADER_NAME_BYTES && name.is_ascii() {
+        return !exact.insert(name.to_ascii_lowercase());
+    }
+    let lower = name.to_lowercase();
+    if lower.len() <= MAX_HEADER_NAME_BYTES && lower.is_ascii() {
+        return !exact.insert(lower);
+    }
+    !hashed.insert(header_name_hasher().hash_one(lower.as_str()))
+}
+
+/// One random key per process for [`repeats_header_name`].
+fn header_name_hasher() -> &'static RandomState {
+    static STATE: OnceLock<RandomState> = OnceLock::new();
+    STATE.get_or_init(RandomState::new)
+}
+
 fn exceeds_char_limit(mut chars: impl Iterator<Item = char>, max: i64) -> bool {
     let Ok(limit) = usize::try_from(max) else {
         return max < 0;
@@ -670,6 +693,7 @@ fn parse_form(items: Vec<(String, Value)>, settings: &Settings) -> Result<Parsed
     let mut parsed = ParsedForm::default();
     let mut seen_singletons = HashSet::new();
     let mut seen_headers = HashSet::new();
+    let mut seen_header_hashes = HashSet::new();
     let mut total: usize = 0;
     let aggregate = |total: usize| -> Result<(), Failure> {
         if exceeds(total, settings.max_body_bytes) {
@@ -690,11 +714,9 @@ fn parse_form(items: Vec<(String, Value)>, settings: &Settings) -> Result<Parsed
             return Err(Failure::bad_request("BadRequestError", "unsupported field"));
         }
         if let Some(name) = key.strip_prefix("h:") {
-            // Duplicate detection precedes policy, with bounded name copies.
-            if name.len() <= MAX_HEADER_NAME_BYTES
-                && name.is_ascii()
-                && !seen_headers.insert(name.to_ascii_lowercase())
-            {
+            // Duplicate detection precedes policy, like Python's lowercase
+            // name set, and retains no copy of an inadmissible-size name.
+            if repeats_header_name(name, &mut seen_headers, &mut seen_header_hashes) {
                 return Err(Failure::bad_request(
                     "BadRequestError",
                     "duplicate custom header",

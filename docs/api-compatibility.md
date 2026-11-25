@@ -114,9 +114,11 @@ case-insensitively, including extension headers such as `X-Tag`; duplicates retu
 400 at form admission. Repeated `to`, `cc`, `bcc`, `attachment` and `inline` fields
 remain supported subject to existing limits and inline-ID uniqueness.
 
-Rust tracks ASCII custom header names of up to 76 bytes for duplicates before
-applying name policy, including names on the denylist. A repeated name in
-that range returns `duplicate custom header`. For text fields, Rust reports
+Both runtimes check custom header names for duplicates after Unicode
+lowercasing, before name and sender policy, including denylisted, non-ASCII
+and over-long names. A repeated name returns `duplicate custom header`. Rust
+keeps exact copies only of lowercase names within the 76-byte ASCII limit and
+a keyed 64-bit hash of any other name. For text fields, Rust reports
 name-policy errors after form, sender-policy and subject checks, in order
 with other custom header errors. A first occurrence of an inadmissible name
 on a file field gets the fixed 400 message `header must be a string`.

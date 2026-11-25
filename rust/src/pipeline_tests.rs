@@ -2113,10 +2113,13 @@ async fn custom_header_names_are_admitted_before_storage() {
             "HeaderInjectionError"
         );
 
-        let repeated_name = with(&[(&oversized, "one"), (&oversized, "two")]);
+        // Python's duplicate check covers every name, before name policy.
+        let upper = oversized.to_uppercase().replacen("H:", "h:", 1);
+        let repeated_name = with(&[(&oversized, "one"), (&upper, "two")]);
         let reply = h.homepage(encode(encoding, &repeated_name)).await;
         assert_eq!(reply.status(), 400);
-        assert_eq!(h.records("request")[4]["error_class"], "HeaderTooLongError");
+        assert_eq!(reply.json, json!({"message": "duplicate custom header"}));
+        assert_eq!(h.records("request")[4]["error_class"], "BadRequestError");
         assert!(h.recorder.calls.lock().unwrap().is_empty());
     }
 
@@ -2126,6 +2129,31 @@ async fn custom_header_names_are_admitted_before_storage() {
     assert_eq!(reply.status(), 400);
     assert_eq!(reply.json, json!({"message": "header must be a string"}));
     assert!(h.recorder.calls.lock().unwrap().is_empty());
+}
+
+#[test]
+fn repeated_header_names_match_python_lowercase() {
+    let long = format!("X-{}", "a".repeat(80));
+    for (first, second, repeated) in [
+        ("X-Tag", "x-TAG", true),
+        ("X-Tag", "X-Tags", false),
+        ("X-\u{e9}", "x-\u{c9}", true),
+        ("X-\u{e9}", "X-e", false),
+        // KELVIN SIGN lowercases to ASCII `k`, as in Python.
+        ("\u{212a}ey", "key", true),
+        ("key", "\u{212a}EY", true),
+        (long.as_str(), &long.to_uppercase(), true),
+        (long.as_str(), &format!("{long}b"), false),
+    ] {
+        let (mut exact, mut hashed) = (HashSet::new(), HashSet::new());
+        assert!(!repeats_header_name(first, &mut exact, &mut hashed));
+        assert_eq!(
+            repeats_header_name(second, &mut exact, &mut hashed),
+            repeated,
+            "{first:?} then {second:?}"
+        );
+        assert!(exact.iter().all(|name| name.len() <= 76 && name.is_ascii()));
+    }
 }
 
 #[tokio::test]

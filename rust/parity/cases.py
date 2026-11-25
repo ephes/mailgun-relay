@@ -992,6 +992,31 @@ def field_cases() -> list[Case]:
                     error_class=error_class,
                 )
             )
+    # Repeated names outside the admissible range are duplicates before name
+    # policy and sender policy, as in Python's lowercase name set.
+    long_name = "X-" + "a" * 80
+    for encoding in ("urlencoded", "multipart"):
+        for variant, first, second, sender, status, error_class in (
+            ("non-ascii", "X-\u00e9", "x-\u00c9", None, 400, "BadRequestError"),
+            ("kelvin", "\u212aey", "key", None, 400, "BadRequestError"),
+            ("long", long_name, long_name.upper(), None, 400, "BadRequestError"),
+            ("non-ascii single", "X-\u00e9", None, None, 400, "HeaderInjectionError"),
+            ("non-ascii denied sender", "X-\u00e9", "x-\u00c9", "x@evil.test", 400, None),
+            ("non-ascii single denied sender", "X-\u00e9", None, "x@evil.test", 403, None),
+        ):
+            names = [first] if second is None else [first, second]
+            overrides = {} if sender is None else {"from": sender}
+            cases.append(
+                Case(
+                    f"field repeated header {variant} {encoding}",
+                    post(
+                        [*minimal(**overrides), *((f"h:{n}", "v") for n in names)],
+                        encoding=encoding,
+                    ),
+                    status,
+                    error_class=error_class,
+                )
+            )
     # Bounded, value-free refusal diagnostics for both form decoders.
     for prefix in ("", "v:", "o:", "t:"):
         for shape, suffix in (("large", "x" * 900_000), ("control", "\x00\x1b[31m\u2028forged")):

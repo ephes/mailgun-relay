@@ -758,8 +758,10 @@ The shared `mime.json` corpus includes duplicate-ID refusal, distinct inline IDs
 same-name ordinary attachments, malformed inline types and attachment types.
 Process parity covers raw repeated form fields in both encodings, including
 denied header names. A single denied header records `DangerousHeaderError`.
-Repeated case variants record `BadRequestError` during form admission. Rust
-tracks ASCII names up to 76 bytes for this check. The harness also checks
+Repeated case variants record `BadRequestError` during form admission, also
+for non-ASCII and over-long names and before a sender-policy refusal. Rust
+keeps exact copies of lowercase names within the 76-byte ASCII limit and a
+keyed hash of any other name for this check. The harness also checks
 Unicode filenames and raw media-type metadata at and above a small configured
 limit, with synthetic loopback SMTP only.
 

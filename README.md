@@ -202,7 +202,9 @@ remain supported subject to existing limits and inline-ID uniqueness.
 
 Both runtimes cap custom header names at 76 ASCII bytes excluding `h:`.
 Longer names return HTTP 400 before MIME assembly or SMTP.
-Rust includes denied ASCII names within this bound in its duplicate check.
+The duplicate check runs before this limit and before name policy, so a
+repeated denied, non-ASCII or over-long name returns `duplicate custom header`
+in both runtimes.
 
 Uploaded leaf media types in both runtimes use two ASCII RFC 7230 tokens of
 1–127 characters each. Parameters are stripped; malformed types and container

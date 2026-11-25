@@ -32,9 +32,11 @@ All notable changes to mailgun-relay are documented here.
   size bound above the request byte limit.
 - Stop checking upload metadata length as soon as the Unicode character
   limit is exceeded.
-- Track case-insensitive duplicates for ASCII custom header names up to 76
-  bytes, including denied names. Validate names before retaining their values
-  in parsed headers. Malformed custom header uploads receive a bounded diagnostic.
+- Refuse repeated custom header names (compared after Unicode lowercasing,
+  like Python) before name and sender policy, including denied, non-ASCII and
+  over-long names. Rust keeps exact copies only of lowercase names within the
+  76-byte ASCII limit and a fixed-size keyed hash of any other name. Validate
+  names before retaining their values in parsed headers. Malformed custom header uploads receive a bounded diagnostic.
 - Count lost log records by encoding, queue and sink failure, and report observed
   losses on stderr at shutdown.
 - Close log admission before draining accepted records during shutdown.
