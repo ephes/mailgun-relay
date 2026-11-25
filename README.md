@@ -191,7 +191,8 @@ exactly after normalization. Ordinary attachments may share filenames. Upload
 filenames and raw content types (including parameters, after empty-value
 defaults) must each fit `MAX_HEADER_VALUE_LENGTH` Unicode code points,
 inclusive. Oversize metadata returns a fixed, value-free 400 before MIME
-assembly. Unicode filenames within the limit remain supported.
+assembly. Unicode filenames within the limit remain supported. Rust stops
+counting each metadata field as soon as it exceeds the character limit.
 
 `from` must occur exactly once. `subject`, `text`, `html` and `amp-html` may each
 occur at most once, even for identical or empty values. Every `h:*` name is unique

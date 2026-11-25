@@ -1887,6 +1887,16 @@ async fn duplicate_inline_ids_never_submit() {
     assert!(h.recorder.calls.lock().unwrap().is_empty());
 }
 
+#[test]
+fn upload_metadata_count_stops_after_limit() {
+    let mut checked = 0;
+    let chars = "é🦀界suffix".chars().inspect(|_| checked += 1);
+
+    assert!(exceeds_char_limit(chars, 2));
+    assert_eq!(checked, 3);
+    assert!(!exceeds_char_limit("é🦀".chars(), 2));
+}
+
 #[tokio::test]
 async fn upload_metadata_header_limit() {
     for field in ["attachment", "inline"] {

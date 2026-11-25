@@ -618,6 +618,13 @@ fn require_text(key: &str, value: Value) -> Result<String, Failure> {
     }
 }
 
+fn exceeds_char_limit(mut chars: impl Iterator<Item = char>, max: i64) -> bool {
+    let Ok(limit) = usize::try_from(max) else {
+        return max < 0;
+    };
+    chars.nth(limit).is_some()
+}
+
 /// `_read_upload`: the size limit, then Python's defaults for the filename
 /// and the content type.
 fn read_upload(value: Value, settings: &Settings) -> Result<Attachment, Failure> {
@@ -648,7 +655,7 @@ fn read_upload(value: Value, settings: &Settings) -> Result<Attachment, Failure>
     };
     if [&attachment.filename, &attachment.content_type]
         .iter()
-        .any(|value| exceeds(value.chars().count(), settings.max_header_value_length))
+        .any(|value| exceeds_char_limit(value.chars(), settings.max_header_value_length))
     {
         return Err(Failure::bad_request(
             "BadRequestError",

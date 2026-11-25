@@ -30,6 +30,8 @@ All notable changes to mailgun-relay are documented here.
 
 - Return HTTP 413 before polling supported form bodies with a known lower
   size bound above the request byte limit.
+- Stop checking upload metadata length as soon as the Unicode character
+  limit is exceeded.
 - Track case-insensitive duplicates for ASCII custom header names up to 76
   bytes, including denied names. Validate names before retaining their values
   in parsed headers. Malformed custom header uploads receive a bounded diagnostic.

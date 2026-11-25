@@ -739,7 +739,9 @@ bracket normalization; HTTP inline IDs come from filenames. Ordinary attachments
 may share filenames. Upload filenames and raw content types (including parameters,
 after empty-value defaults) must each fit `MAX_HEADER_VALUE_LENGTH` Unicode code
 points, inclusive; oversize metadata returns a fixed, value-free 400 before MIME
-assembly. Unicode filenames within the limit remain supported.
+assembly. Unicode filenames within the limit remain supported. Rust checks
+attachment size first and examines at most the character limit plus one
+Unicode code point per metadata field.
 
 `from` must occur exactly once. `subject`, `text`, `html` and `amp-html` may each
 occur at most once, even for identical or empty values. Every `h:*` name is unique

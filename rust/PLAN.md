@@ -356,7 +356,9 @@ the contract. Each step names its Python source.
      `max_attachment_bytes` → 413; `attachments + inline > max_attachments`
      → 413 (checked after each file); filename and raw content type (parameters
      included, after defaults) each exceeding `max_header_value_length` Unicode
-     code points → fixed value-free 400 before MIME assembly;
+     code points → fixed value-free 400 before MIME assembly. Rust checks
+     file size before metadata and stops counting each metadata field at the
+     first code point past the limit;
    - after the loop: not exactly one `from` → 400; no `subject` → 400 (an
      empty subject is allowed); neither `text` nor `html` present → 400.
 5. **Policy** (`relay:policy.py:79-99`):

@@ -101,7 +101,8 @@ attachments may share filenames. Upload filenames and raw content types
 (including parameters, after empty-value defaults) must each fit
 `MAX_HEADER_VALUE_LENGTH` Unicode code points, inclusive. Oversize metadata
 returns a fixed, value-free 400 before MIME assembly. Unicode filenames within
-the limit remain supported.
+the limit remain supported. Rust checks the attachment byte limit first, then
+counts each metadata field through at most one code point past the limit.
 
 Python MIME upload rejections return HTTP 400 with a fixed diagnostic:
 `invalid inline filename`, `invalid inline file`, or `invalid attachment`.

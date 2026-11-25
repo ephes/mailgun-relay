@@ -162,10 +162,12 @@ Duplicate singleton body fields and case-insensitive duplicate `h:*` names are
 comparison); ambiguity is refused before SMTP. Upload filenames and raw content
 types, including parameters after empty-value defaults, each obey the configured
 header-value character limit before MIME assembly. Oversize errors carry no
-uploaded value. Boundary Unicode filenames remain supported. Rust regression
-coverage: `duplicate_singletons_rejected`, `duplicate_inline_ids_never_submit`,
-`upload_metadata_header_limit`; Python has corresponding route tests and
-rejects unpaired brackets in explicit MIME helper IDs. Shared MIME fixtures
+uploaded value. Unicode filenames at the limit remain supported. Rust stops
+traversing each metadata field at the first code point past the limit. The
+Rust regressions `duplicate_singletons_rejected`, `duplicate_inline_ids_never_submit`,
+`upload_metadata_header_limit` and `upload_metadata_count_stops_after_limit`
+cover these checks. Python has corresponding route tests and rejects
+unpaired brackets in explicit MIME helper IDs. Shared MIME fixtures
 cover malformed inline filenames, unique inline parts and same-name ordinary
 attachments.
 
