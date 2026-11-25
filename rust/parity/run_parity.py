@@ -64,6 +64,7 @@ import time
 from collections import Counter
 from contextlib import ExitStack
 from dataclasses import dataclass, field
+from email.errors import MessageError
 from pathlib import Path
 from typing import IO, Any
 from urllib.parse import urlsplit
@@ -450,8 +451,16 @@ def _compare_smtp(py: Outcome, rs: Outcome) -> list[str]:
         if (p["message"] is None) != (r["message"] is None):
             diffs.append("SMTP message sent by one side only")
         elif p["message"] is not None:
-            py_view = semantic.semantic_message(p["message"])
-            rs_view = semantic.semantic_message(r["message"])
+            try:
+                py_view = semantic.semantic_message(p["message"])
+                rs_view = semantic.semantic_message(r["message"])
+            except (LookupError, UnicodeError, MessageError) as exc:
+                # Unknown codecs raise LookupError itself. Let indexing and
+                # mapping errors in the harness surface normally.
+                if isinstance(exc, (IndexError, KeyError)):
+                    raise
+                diffs.append(f"SMTP MIME comparison failed: {type(exc).__name__}")
+                continue
             if py_view != rs_view:
                 diffs.append(
                     "message differs:\n      python "
@@ -774,8 +783,8 @@ def run_cases(
         except (OSError, RuntimeError) as exc:
             report.record(case.name, [f"harness error: {exc}"], None, verbose)
             continue
-        diffs, divergence = compare(case, py_outcome, rs_outcome)
         note = report.observe(case, py_outcome, rs_outcome)
+        diffs, divergence = compare(case, py_outcome, rs_outcome)
         report.record(case.name, diffs, divergence, verbose, note)
 
 

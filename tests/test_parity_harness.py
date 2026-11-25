@@ -659,6 +659,42 @@ def test_target_subset_counts_exercised_cases(
     assert calls == ["python", "rust"]
 
 
+def test_report_retains_case_when_smtp_message_cannot_decode(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    cases = [corpus.Case(name, corpus.Request(), 200) for name in ("bad-charset", "valid")]
+    monkeypatch.setattr(corpus, "request_cases", lambda: cases)
+
+    def run_case(target: run_parity.Target, case: corpus.Case, n: int) -> run_parity.Outcome:
+        outcome = _outcome()
+        if target.name == "rust" and case.name == "bad-charset":
+            _set_message(outcome, b'charset="utf-8"', b'charset="synthetic-unknown-charset"')
+        return outcome
+
+    monkeypatch.setattr(run_parity, "run_case", run_case)
+    report = tmp_path / "report.json"
+    assert (
+        run_parity.main(
+            [
+                "--targets",
+                "http://127.0.0.1:1,http://127.0.0.1:2",
+                "--sinks",
+                f"{tmp_path},{tmp_path}",
+                "--report",
+                str(report),
+            ]
+        )
+        == 1
+    )
+    receipt = json.loads(report.read_text())
+    assert receipt["passed_checks"] == receipt["failed"] == 1
+    assert receipt["failures"] == [["bad-charset", ["SMTP MIME comparison failed: LookupError"]]]
+    assert [c["name"] for c in receipt["cases"]] == ["bad-charset", "valid"]
+    bad, _ = receipt["cases"]
+    assert bad["python"] == bad["rust"] == 200
+    assert bad["smtp_sessions"] == bad["messages"] == bad["request_records"] == 1
+
+
 def _record_one_case(args: Any, cases: list[corpus.Case], report: run_parity.Report) -> None:
     report.observe(cases[0], _outcome(), _outcome())
     report.record(cases[0].name, [], None, False)

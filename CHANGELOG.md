@@ -57,6 +57,8 @@ All notable changes to mailgun-relay are documented here.
 
 - Compare filenames inferred from `Content-Type` even when a MIME part has
   no `Content-Disposition` header.
+- Retain observed HTTP statuses and SMTP captures in the parity report when
+  MIME decoding fails, and continue with later cases.
 - Inspect every MIME header occurrence for parser defects and report duplicate
   singleton fields separately.
 - Compare multipart container Content-ID, disposition and filename alongside
