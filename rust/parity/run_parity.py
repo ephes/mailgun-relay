@@ -382,6 +382,7 @@ class Target:
         while any(self.sink_dir.glob("*.active")) and time.monotonic() < deadline:
             time.sleep(0.02)
         self.stale_active = {p.name for p in self.sink_dir.glob("*.active")}
+        self.seen_sessions.update(p.name for p in self.sink_dir.glob("*.json"))
 
     def in_flight(self) -> bool:
         assert self.sink_dir is not None
@@ -967,7 +968,6 @@ def run_targets(args: argparse.Namespace, cases: list[corpus.Case], report: Repo
             log = LogTail()
             log.follow_file(Path(log_path))
         target = Target(name, (parts.hostname, parts.port), sink_dir=Path(sink), log=log)
-        target.sessions()  # sessions recorded before this run are not ours
         targets.append(target)
     # Distinct markers per run: the log files may hold earlier runs.
     counter = [int(time.time()) * 1000]

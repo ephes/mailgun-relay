@@ -626,7 +626,9 @@ count; numbering advances beyond them. Inspect these attempts
 separately; only final JSON records are input to capture comparison. The
 `--targets` parity harness waits up to 5 seconds at startup for `.active`
 markers to clear and then ignores the remaining ones as retained attempts, so
-they do not stall each case.
+they do not stall each case. After this wait the harness records existing JSON
+filenames without reading their contents. Only captures first seen during the
+new run are decoded.
 
 Each session admits at most 64 MiB of aggregate input (including AUTH/DATA),
 4,096 commands and one retained message. The sink admits at most 16 simultaneous

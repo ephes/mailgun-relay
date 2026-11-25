@@ -942,6 +942,47 @@ def test_published_report_keeps_previous_or_umask_mode(
     assert list(tmp_path.iterdir()) == [report]
 
 
+def test_target_mode_baselines_capture_names_without_reading_payloads(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    py_dir, rs_dir = tmp_path / "py", tmp_path / "rs"
+    for directory in (py_dir, rs_dir):
+        directory.mkdir()
+        (directory / "1.json").write_text("invalid historic JSON")
+    reads: list[Path] = []
+    read_text = Path.read_text
+
+    def track_reads(path: Path, *args: Any, **kwargs: Any) -> str:
+        reads.append(path)
+        return read_text(path, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "read_text", track_reads)
+
+    def run_cases(
+        py: run_parity.Target,
+        rs: run_parity.Target,
+        cases: list[corpus.Case],
+        report: run_parity.Report,
+        counter: list[int],
+        verbose: bool,
+    ) -> None:
+        assert reads == []
+        fresh = py_dir / "2.json"
+        fresh.write_text(json.dumps({"message": None, "id": "fresh"}))
+        assert [session["id"] for session in py.sessions()] == ["fresh"]
+        assert py.sessions() == rs.sessions() == []
+        assert reads == [fresh]
+
+    monkeypatch.setattr(run_parity, "run_cases", run_cases)
+    args = run_parity.argparse.Namespace(
+        targets="http://127.0.0.1:1,http://127.0.0.1:2",
+        sinks=f"{py_dir},{rs_dir}",
+        logs=None,
+        verbose=False,
+    )
+    run_parity.run_targets(args, [], run_parity.Report())
+
+
 def test_directory_target_ignores_retained_incomplete_attempts(tmp_path: Path) -> None:
     import time
 
@@ -972,6 +1013,5 @@ def test_directory_target_waits_for_a_capture_in_progress_at_startup(tmp_path: P
     finally:
         timer.join()
     assert target.stale_active == set()
-    # The startup drain in run_targets absorbs it, so no parity case sees it.
-    assert [s["id"] for s in target.sessions()] == ["startup"]
+    assert target.seen_sessions == {"5.json"}
     assert target.sessions() == []
