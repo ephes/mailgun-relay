@@ -685,6 +685,35 @@ public request/response contract changes except the two noted under *Behavior*.
   catching everything else; no new dependency is added.
 - No code or API changes. Redeploy the relay to pick up the new lock.
 
+## rs-v0.2.6 — 2026-11-25
+
+Rust port release 0.2.6 (crate version 0.2.6), prepared for a local build and
+publication by `rust/scripts/local_release.py`; the tag, archive and checksum
+are recorded in `rust/README.md` once published. It carries the Rust fixes and
+regression tests merged since `rs-v0.2.5`; the Python implementation is not
+released by this tag. The entries themselves stay under *Unreleased* above; in
+short, for the Rust side:
+
+- SMTP: after DATA 354, a transport failure, timeout or other failure without
+  a parsable final reply code is logged as `result=smtp_outcome_unknown`
+  (HTTP 503 as before, with a message telling callers to verify delivery
+  before retrying); Python still logs `smtp_temporary` (decided divergence
+  D-23). Log filters that look for `smtp_temporary` should also match
+  `smtp_outcome_unknown`.
+- Request admission: the form-body deadline also applies while frames are
+  continuously ready (HTTP 408); a known body size hint above the limit is 413
+  before the body is read; custom header names are admitted before they are
+  copied, and every repeated custom header name (compared after Unicode
+  lowercasing, like Python) is refused before name and sender policy;
+  upload metadata length checks stop at the Unicode character limit.
+- Both relays: the AMP alternative comes before the HTML fallback, and AMP
+  markup above 200,000 UTF-8 bytes is 413 before SMTP submission.
+- Logging and shutdown: lost log records are counted and reported on stderr
+  at shutdown; log admission closes before the drain; the JSON line boundary
+  is restored after a failed write; a log writer that cannot start ends
+  startup before any listener is bound; an unconfirmed drain at the shutdown
+  deadline is reported.
+
 ## rs-v0.2.5 — 2026-11-24
 
 Rust port release 0.2.5 (crate version 0.2.5), built and published locally by
