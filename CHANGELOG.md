@@ -8,6 +8,8 @@ All notable changes to mailgun-relay are documented here.
 
 - Place the AMP alternative before the HTML fallback and keep inline files
   with the HTML part.
+- Reject AMP markup above 200,000 UTF-8 bytes with HTTP 413 before SMTP
+  submission.
 
 ### Python relay
 

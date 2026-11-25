@@ -288,7 +288,9 @@ none is planned.
 ### T11 Volume abuse (out of scope here)
 
 Request size, attachment count and size, recipient count and header length
-are limited (`MAX_*` settings, `413`). Rate limiting (`429`) is reserved but
+are limited (`MAX_*` settings, `413`). Both runtimes also reject decoded AMP
+markup above 200,000 UTF-8 bytes at form admission with HTTP 413 before SMTP.
+Rate limiting (`429`) is reserved but
 **not enforced**, by the relay or the proxy. It is tracked by the backlog item
 *Rate limiting and abuse controls*; the limits need an owner decision, and the
 Python rollback window (until 2026-11-16) keeps both implementations'

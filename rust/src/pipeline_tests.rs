@@ -630,6 +630,40 @@ async fn envelope_order_and_deduplication() {
 }
 
 #[tokio::test]
+async fn amp_markup_utf8_byte_limit() {
+    let prefix = "<html amp4email><body>";
+    let suffix = "</body></html>";
+    let padding = "a".repeat(200_000 - prefix.len() - suffix.len() - 1);
+    let at_limit = format!("{prefix}{padding}a{suffix}");
+    let over_limit = format!("{prefix}{padding}é{suffix}");
+    let ordinary_body = "b".repeat(200_001);
+    let fields = |amp| {
+        without(
+            &["text"],
+            &[
+                ("text", &ordinary_body),
+                ("html", &ordinary_body),
+                ("amp-html", amp),
+            ],
+        )
+    };
+    for encoding in ENCODINGS {
+        let h = Harness::new();
+        let accepted = h.homepage(encode(encoding, &fields(&at_limit))).await;
+        assert_queued(&accepted);
+        assert_eq!(h.recorder.calls.lock().unwrap().len(), 1);
+
+        let rejected = h.homepage(encode(encoding, &fields(&over_limit))).await;
+        assert_error(&rejected, 413);
+        assert_eq!(
+            rejected.json["message"],
+            "amp-html exceeds 200000 UTF-8 bytes"
+        );
+        assert_eq!(h.recorder.calls.lock().unwrap().len(), 1);
+    }
+}
+
+#[tokio::test]
 async fn limits_are_413() {
     let file = |field, name| (field, name, "text/plain", b"x".as_slice());
     let big = vec![b'x'; 600_000];

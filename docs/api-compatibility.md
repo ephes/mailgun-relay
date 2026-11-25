@@ -113,6 +113,12 @@ case-insensitively, including extension headers such as `X-Tag`; duplicates retu
 400 at form admission. Repeated `to`, `cc`, `bcc`, `attachment` and `inline` fields
 remain supported subject to existing limits and inline-ID uniqueness.
 
+Both runtimes allow up to 200,000 UTF-8 bytes in the decoded `amp-html` field,
+measured before MIME construction. Oversized AMP markup returns HTTP 413 with
+`{"message":"amp-html exceeds 200000 UTF-8 bytes"}` before SMTP submission.
+The configured request and aggregate body limits still apply, including to
+ordinary `text` and `html`. [AMP for Email format](https://amp.dev/documentation/guides-and-tutorials/email/learn/email-spec/amp-email-format)
+
 Uploaded leaf media types in both runtimes use two ASCII RFC 7230 tokens of
 1–127 characters each. Parameters are stripped; malformed types and container
 `multipart/*` or `message/*` types become `application/octet-stream`, preserving

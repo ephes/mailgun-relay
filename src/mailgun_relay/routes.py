@@ -64,6 +64,8 @@ _KNOWN_FORM_FIELDS = frozenset(
     {"from", "to", "cc", "bcc", "subject", "text", "html", "amp-html", "attachment", "inline"}
 )
 
+_MAX_AMP_MARKUP_BYTES = 200_000
+
 # Headroom above max_recipients for the non-recipient fields a request may
 # legitimately carry (from/subject/text/html/amp-html plus custom h:* headers),
 # so the multipart field cap never rejects a well-formed message.
@@ -532,11 +534,14 @@ def _parse_form(form: Any, settings: Settings) -> _ParsedForm:
 
     def _track_text(field_name: str, content: str) -> str:
         nonlocal total_body_bytes
-        total_body_bytes += len(content.encode("utf-8"))
+        content_bytes = len(content.encode("utf-8"))
+        total_body_bytes += content_bytes
         if total_body_bytes > settings.max_body_bytes:
             raise PayloadTooLargeError(
                 f"aggregate body size exceeds {settings.max_body_bytes} bytes ({field_name})"
             )
+        if field_name == "amp-html" and content_bytes > _MAX_AMP_MARKUP_BYTES:
+            raise PayloadTooLargeError(f"amp-html exceeds {_MAX_AMP_MARKUP_BYTES} UTF-8 bytes")
         return content
 
     for key, value in form.multi_items():

@@ -346,7 +346,8 @@ the contract. Each step names its Python source.
    - `to`/`cc`/`bcc` repeatable; duplicate `subject`/`text`/`html`/`amp-html`
      return 400, including identical/empty values; a file in a string field → 400;
    - running UTF-8 byte total of `text`/`html`/`amp-html` plus attachment
-     sizes `> max_body_bytes` → 413;
+     sizes `> max_body_bytes` → 413; decoded `amp-html` above 200,000 UTF-8
+     bytes → 413 before MIME assembly;
    - `attachment`/`inline` must be files (400); a file larger than
      `max_attachment_bytes` → 413; `attachments + inline > max_attachments`
      → 413 (checked after each file); filename and raw content type (parameters

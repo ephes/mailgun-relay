@@ -451,6 +451,30 @@ def test_huge_text_returns_413(client: TestClient, auth: dict[str, str], app_sta
     assert r.status_code == 413
 
 
+@pytest.mark.parametrize("encoding", _ENCODINGS)
+def test_amp_markup_utf8_byte_limit(
+    client: TestClient,
+    auth: dict[str, str],
+    recording_smtp: RecordingSubmitter,
+    encoding: str,
+) -> None:
+    prefix, suffix = "<html amp4email><body>", "</body></html>"
+    padding = "a" * (200_000 - len(prefix) - len(suffix) - 1)
+    ordinary_body = "b" * 200_001
+    form = _with({"amp-html": [f"{prefix}{padding}a{suffix}"], "html": [ordinary_body]})
+    form["text"] = [ordinary_body]
+    accepted = _post_form(client, auth, form, encoding=encoding)
+    assert accepted.status_code == 200, accepted.text
+    assert len(recording_smtp.calls) == 1
+
+    # Replace one ASCII character with a two-byte character.
+    form["amp-html"] = [f"{prefix}{padding}é{suffix}"]
+    rejected = _post_form(client, auth, form, encoding=encoding)
+    assert rejected.status_code == 413, rejected.text
+    assert rejected.json() == {"message": "amp-html exceeds 200000 UTF-8 bytes"}
+    assert len(recording_smtp.calls) == 1
+
+
 def test_inline_counts_toward_max_attachments_returns_413(
     client: TestClient, auth: dict[str, str]
 ) -> None:

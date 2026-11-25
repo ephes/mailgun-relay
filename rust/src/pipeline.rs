@@ -43,6 +43,8 @@ const FROM_LOG_MAX_LEN: usize = 320;
 /// otherwise be dropped by the log writer's per-record byte envelope.
 const PATH_DOMAIN_LOG_MAX_LEN: usize = 320;
 
+const MAX_AMP_MARKUP_BYTES: usize = 200_000;
+
 const KNOWN_FIELDS: &[&str] = &[
     "from",
     "to",
@@ -683,6 +685,11 @@ fn parse_form(items: Vec<(String, Value)>, settings: &Settings) -> Result<Parsed
                 let text = require_text(&key, value)?;
                 total += text.len();
                 aggregate(total)?;
+                if key == "amp-html" && text.len() > MAX_AMP_MARKUP_BYTES {
+                    return Err(Failure::too_large(format!(
+                        "amp-html exceeds {MAX_AMP_MARKUP_BYTES} UTF-8 bytes"
+                    )));
+                }
                 let slot = match key.as_str() {
                     "text" => &mut parsed.text,
                     "html" => &mut parsed.html,

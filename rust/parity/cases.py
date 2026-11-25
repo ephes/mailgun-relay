@@ -416,6 +416,17 @@ def production_cases() -> list[Case]:
             200,
         ),
     ]
+    amp_prefix, amp_suffix = "<html amp4email><body>", "</body></html>"
+    amp_padding = "a" * (200_000 - len(amp_prefix) - len(amp_suffix) - 1)
+    for character, status in (("a", 200), ("é", 413)):
+        markup = f"{amp_prefix}{amp_padding}{character}{amp_suffix}"
+        cases.append(
+            Case(
+                f"limit amp-html {len(markup.encode('utf-8'))} bytes",
+                post([*minimal(html="<p>fallback</p>"), ("amp-html", markup)]),
+                status,
+            )
+        )
     png = b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR" + bytes(range(256))
     pdf = b"%PDF-1.4\n" + bytes(range(256)) * 4
     attachments = [
