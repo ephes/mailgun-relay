@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+from email import policy
 from email.message import EmailMessage
+from email.parser import BytesParser
 from unittest.mock import call, patch
 
 import pytest
@@ -211,13 +213,28 @@ def test_inline_with_html_only_body_builds_related_root() -> None:
     assert image["Content-ID"] == "<logo.png>"
 
 
-def test_inline_with_amp_html_keeps_amp_alternative() -> None:
+@pytest.mark.parametrize("with_inline", [False, True])
+@pytest.mark.parametrize("text", [None, "hello"])
+def test_amp_precedes_html_fallback(with_inline: bool, text: str | None) -> None:
     msg, _, _ = build_message(
-        _base_input(html="<p>x</p>", amp_html="<html amp4email></html>", inline=[_png()])
+        _base_input(
+            text=text,
+            html='<img src="cid:logo.png">',
+            amp_html="<html amp4email></html>",
+            inline=[_png()] if with_inline else [],
+        )
     )
-    assert msg.get_content_type() == "multipart/alternative"
-    types = [p.get_content_type() for p in msg.iter_parts()]
-    assert types == ["text/plain", "multipart/related", "text/x-amp-html"]
+    parsed = BytesParser(policy=policy.default).parsebytes(bytes(msg))
+    assert parsed.get_content_type() == "multipart/alternative"
+    alternatives = list(parsed.iter_parts())
+    expected = ["text/plain"] if text else []
+    expected += ["text/x-amp-html", "multipart/related" if with_inline else "text/html"]
+    assert [part.get_content_type() for part in alternatives] == expected
+    if with_inline:
+        html, image = alternatives[-1].iter_parts()
+        assert html.get_content_type() == "text/html"
+        assert image.get_content_type() == "image/png"
+        assert image["Content-ID"] == "<logo.png>"
 
 
 def test_inline_with_text_only_message_still_builds() -> None:

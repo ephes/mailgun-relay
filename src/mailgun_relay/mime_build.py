@@ -141,17 +141,15 @@ def build_message(payload: MessageInput) -> tuple[EmailMessage, str, list[str]]:
     msg["Message-Id"] = message_id
     msg["Date"] = payload.date or formatdate(localtime=False, usegmt=True)
 
-    if payload.text and payload.html:
+    if payload.text:
         msg.set_content(payload.text)
-        msg.add_alternative(payload.html, subtype="html")
-    elif payload.html:
-        msg.set_content(payload.html, subtype="html")
-    else:
-        assert payload.text is not None
-        msg.set_content(payload.text)
-
     if payload.amp_html:
         msg.add_alternative(payload.amp_html, subtype="x-amp-html")
+    if payload.html:
+        if payload.text or payload.amp_html:
+            msg.add_alternative(payload.html, subtype="html")
+        else:
+            msg.set_content(payload.html, subtype="html")
 
     for name, value in payload.custom_headers.items():
         try:

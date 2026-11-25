@@ -633,8 +633,8 @@ impl Tree {
     }
 }
 
-/// Python's structure: text and html as `multipart/alternative` (amp-html
-/// last); inline parts with the html part in `multipart/related`, or in the
+/// Python's structure: plain text, AMP, then HTML in `multipart/alternative`;
+/// inline parts with the HTML part in `multipart/related`, or in the
 /// top-level `multipart/mixed` without html; attachments after them in
 /// `multipart/mixed`.
 fn body_tree(
@@ -653,6 +653,11 @@ fn body_tree(
     if let Some(text) = text {
         alternatives.push(Tree::Leaf(text_part(ContentType::TEXT_PLAIN, &text)));
     }
+    if let Some(amp) = amp_html {
+        let amp_type =
+            ContentType::parse("text/x-amp-html; charset=utf-8").expect("static content type");
+        alternatives.push(Tree::Leaf(text_part(amp_type, &amp)));
+    }
     if let Some(html) = html {
         let part = Tree::Leaf(text_part(ContentType::TEXT_HTML, &html));
         alternatives.push(if inline_parts.is_empty() {
@@ -662,11 +667,6 @@ fn body_tree(
             related.append(&mut inline_parts);
             Tree::Related(related)
         });
-    }
-    if let Some(amp) = amp_html {
-        let amp_type =
-            ContentType::parse("text/x-amp-html; charset=utf-8").expect("static content type");
-        alternatives.push(Tree::Leaf(text_part(amp_type, &amp)));
     }
     let mut tree = if alternatives.len() == 1 {
         alternatives.remove(0)
@@ -1098,6 +1098,51 @@ mod tests {
         build(base(overrides))
     }
 
+    #[test]
+    fn amp_precedes_html_fallback() {
+        for text in [None, Some("hello")] {
+            for with_inline in [false, true] {
+                let inline = if with_inline {
+                    vec![png("logo.png")]
+                } else {
+                    vec![]
+                };
+                let built = build_with(json!({
+                    "text": text, "html": "<img src=\"cid:logo.png\">",
+                    "amp_html": "<html amp4email></html>", "inline": inline,
+                }))
+                .unwrap();
+                let body = &semantic(&built.formatted)["body"];
+                assert_eq!(body["type"], "multipart/alternative");
+                let alternatives = body["parts"].as_array().unwrap();
+                let mut expected = vec![];
+                if text.is_some() {
+                    expected.push("text/plain");
+                }
+                expected.push("text/x-amp-html");
+                expected.push(if with_inline {
+                    "multipart/related"
+                } else {
+                    "text/html"
+                });
+                assert_eq!(
+                    alternatives
+                        .iter()
+                        .map(|part| part["type"].as_str().unwrap())
+                        .collect::<Vec<_>>(),
+                    expected,
+                );
+                if with_inline {
+                    let related = alternatives.last().unwrap()["parts"].as_array().unwrap();
+                    assert_eq!(related.len(), 2);
+                    assert_eq!(related[0]["type"], "text/html");
+                    assert_eq!(related[1]["type"], "image/png");
+                    assert_eq!(related[1]["content_id"], "<logo.png>");
+                }
+            }
+        }
+    }
+
     /// The counterparts of `tests/test_mime_build.py`.
     #[test]
     fn python_mime_build_tests() {
@@ -1186,20 +1231,6 @@ mod tests {
         assert_eq!(
             content_types(&parse(&related_root.unwrap())),
             ["multipart/related", "text/html", "image/png"]
-        );
-        let amp = build_with(json!({
-            "html": "<p>x</p>", "amp_html": "<html amp4email></html>", "inline": [png("logo.png")],
-        }));
-        assert_eq!(
-            content_types(&parse(&amp.unwrap())),
-            [
-                "multipart/alternative",
-                "text/plain",
-                "multipart/related",
-                "text/html",
-                "image/png",
-                "text/x-amp-html"
-            ]
         );
         let text_only = build_with(json!({"inline": [png("logo.png")]}));
         assert_eq!(

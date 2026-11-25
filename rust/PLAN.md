@@ -676,9 +676,10 @@ What must arrive the same (checked by the semantic comparison of 7.4):
   equal to Python's. A panic anywhere in message construction is a bug, not
   a 500 path (the handler catches it only as a last resort).
 - **Bodies**: only text → `text/plain`; only html → `text/html`; both →
-  `multipart/alternative` [plain, html]; `amp-html` adds `text/x-amp-html` as
-  the last alternative. Charset UTF-8. Decoded content equal up to line-ending
-  normalisation and one trailing newline. Rust stores a text as Python's
+  `multipart/alternative` [plain, html]; `amp-html` adds `text/x-amp-html`
+  after plain text and before the HTML fallback when those parts are present.
+  Charset UTF-8. Decoded content equal up to line-ending normalisation and one
+  trailing newline. Rust stores a text as Python's
   `set_content` does (CRLF, CR and LF become CRLF, a final line break is
   added; other characters are kept) and chooses 7bit, quoted-printable or
   base64 (lettre); a control character other than TAB forces base64.

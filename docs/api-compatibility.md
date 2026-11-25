@@ -58,7 +58,7 @@ Required fields:
 
 - `from`: sender address with optional display name.
 - At least one recipient across `to`, `cc`, or `bcc`.
-- At least one non-empty `text` or `html`. A request that carries only empty ones (`text=""`, `html=""`, or `text=""` with only `amp-html`) is `400`; `text=""` with a non-empty `html` is sent as HTML only.
+- At least one non-empty `text` or `html`. A request that carries only empty ones (`text=""`, `html=""`, or `text=""` with only `amp-html`) is `400`; `text=""` with a non-empty `html` omits the plain-text part.
 
 At field admission, unknown form keys return `{"message":"unknown field"}`
 with HTTP 400;
@@ -80,7 +80,7 @@ Supported fields:
 | `subject` | Yes | Header injection rejected. |
 | `text` | Yes | Text body. |
 | `html` | Yes | HTML body, combined with text as multipart alternative when both exist. |
-| `amp-html` | Yes | Added as `multipart/alternative` part with `text/x-amp-html` subtype. |
+| `amp-html` | Yes | Added as `text/x-amp-html` in `multipart/alternative`, after plain text and before the HTML fallback when those parts are present. Inline files stay with the HTML part in `multipart/related`. |
 | `h:Reply-To` | Yes | Parsed via RFC 5322 address-list parser (quoted commas in display names preserved). |
 | `h:*` custom headers | Yes | Strict ASCII header-name regex (full match), a 76-byte name limit excluding `h:`, CR/LF rejection and a dangerous-header denylist. An oversize name returns `400` with diagnostic class `HeaderTooLongError` before MIME assembly or SMTP. `h:In-Reply-To` and `h:References` must be ASCII after RFC 2047 decoding (`400` otherwise; such a value used to fail the SMTP submission with `502`). |
 | `attachment` | Yes | Per-file and aggregate body-size caps. A declared `multipart/*` or `message/*` content type is sent as `application/octet-stream`, because the upload is always one leaf part. |

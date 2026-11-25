@@ -4,6 +4,11 @@ All notable changes to mailgun-relay are documented here.
 
 ## Unreleased
 
+### Both relays
+
+- Place the AMP alternative before the HTML fallback and keep inline files
+  with the HTML part.
+
 ### Python relay
 
 - Preserve a complete final DATA acceptance at the session deadline. A

@@ -194,13 +194,13 @@
        },
        {
         "charset": "utf-8",
-        "text": "<p>hi</p>",
-        "type": "text/html"
+        "text": "<html amp4email></html>",
+        "type": "text/x-amp-html"
        },
        {
         "charset": "utf-8",
-        "text": "<html amp4email></html>",
-        "type": "text/x-amp-html"
+        "text": "<p>hi</p>",
+        "type": "text/html"
        }
       ],
       "type": "multipart/alternative"
@@ -326,13 +326,13 @@
       "parts": [
        {
         "charset": "utf-8",
-        "text": "<p>x</p>",
-        "type": "text/html"
+        "text": "<html amp4email>",
+        "type": "text/x-amp-html"
        },
        {
         "charset": "utf-8",
-        "text": "<html amp4email>",
-        "type": "text/x-amp-html"
+        "text": "<p>x</p>",
+        "type": "text/html"
        }
       ],
       "type": "multipart/alternative"
@@ -6339,6 +6339,11 @@
         "type": "text/plain"
        },
        {
+        "charset": "utf-8",
+        "text": "<html amp4email></html>",
+        "type": "text/x-amp-html"
+       },
+       {
         "parts": [
          {
           "charset": "utf-8",
@@ -6354,11 +6359,6 @@
          }
         ],
         "type": "multipart/related"
-       },
-       {
-        "charset": "utf-8",
-        "text": "<html amp4email></html>",
-        "type": "text/x-amp-html"
        }
       ],
       "type": "multipart/alternative"
