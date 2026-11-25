@@ -900,6 +900,11 @@ def field_cases() -> list[Case]:
         ("field header value 999", [*minimal(), ("h:X-Long", "x" * 999)], 400),
         ("field header name 76", [*minimal(), ("h:X-" + "a" * 74, "tag")], 200),
         ("field header name 77", [*minimal(), ("h:X-" + "a" * 75, "tag")], 400),
+        (
+            "field oversized header before valid-name duplicate",
+            [*minimal(), ("h:X-" + "a" * 4000, "tag"), ("h:X-Tag", "a"), ("h:x-tag", "b")],
+            400,
+        ),
         ("field subject 998", minimal(subject="s" * 998), 200),
         ("field subject 999", minimal(subject="s" * 999), 400),
         (
@@ -916,6 +921,7 @@ def field_cases() -> list[Case]:
         ("order foreign path before o:tag", None, 400),
         ("order policy before subject", None, 403),
         ("order policy before headers", None, 403),
+        ("order policy before oversized header name", None, 403),
         ("order subject before headers", None, 400),
         ("order recipients before addresses", None, 400),
         ("order empty text after policy", None, 403),
@@ -929,6 +935,9 @@ def field_cases() -> list[Case]:
         ),
         "order policy before headers": post(
             [*minimal(**{"from": "x@evil.test"}), ("h:Bcc", "x@y.de")]
+        ),
+        "order policy before oversized header name": post(
+            [*minimal(**{"from": "x@evil.test"}), ("h:X-" + "a" * 75, "tag")]
         ),
         "order subject before headers": post([*minimal(subject="a\r\nb"), ("h:Bcc", "x@y.de")]),
         "order recipients before addresses": post([(k, v) for k, v in minimal() if k != "to"]),

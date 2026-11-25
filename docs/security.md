@@ -180,6 +180,9 @@ attachments.
 - Both runtimes cap custom header names at 76 ASCII bytes excluding `h:`,
   matching the Rust encoder's limit. The HTTP 400 length error omits the name
   and value and is returned before MIME assembly or SMTP.
+- Rust checks custom header names without copying before duplicate tracking
+  or parsed-header storage. A file used as a custom header with an inadmissible
+  name gets a fixed diagnostic without the name.
 - RFC 2047 encoded words in `to`/`cc` display names that decode to a line
   break are refused (D-16).
 - Upload filenames with a line break are refused: CR and LF already by the

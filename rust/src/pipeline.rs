@@ -24,7 +24,9 @@ use crate::auth::authenticate;
 use crate::config::{Level, Settings};
 use crate::domain::normalize_domain;
 use crate::form::{self, FormError, Limits, Upload, Value};
-use crate::headers::{validate_custom_headers, validate_subject};
+use crate::headers::{
+    HeaderError, validate_custom_header_name, validate_custom_header_value, validate_subject,
+};
 use crate::log::Logger;
 use crate::mime::{self, Attachment, BuiltMessage, MessageInput};
 use crate::policy::{PolicyError, enforce_policy};
@@ -319,6 +321,7 @@ struct ParsedForm {
     html: Option<String>,
     amp_html: Option<String>,
     headers: Vec<(String, String)>,
+    header_name_error: Option<HeaderError>,
     attachments: Vec<Attachment>,
     inline: Vec<Attachment>,
 }
@@ -424,15 +427,19 @@ async fn decide(
     })?;
 
     // Steps 6 and 7.
-    let header_failure =
-        |error: crate::headers::HeaderError| Failure::bad_request(error.class(), "invalid header");
+    let header_failure = |error: HeaderError| Failure::bad_request(error.class(), "invalid header");
     let subject = validate_subject(
         parsed.subject.as_deref().unwrap_or_default(),
         settings.max_header_value_length,
     )
     .map_err(header_failure)?;
-    validate_custom_headers(&parsed.headers, settings.max_header_value_length)
-        .map_err(header_failure)?;
+    for (_, value) in &parsed.headers {
+        validate_custom_header_value(value, settings.max_header_value_length)
+            .map_err(header_failure)?;
+    }
+    if let Some(error) = parsed.header_name_error {
+        return Err(header_failure(error));
+    }
 
     // Step 8: counted before de-duplication.
     let envelope_count = parsed.to.len() + parsed.cc.len() + parsed.bcc.len();
@@ -652,7 +659,19 @@ fn parse_form(items: Vec<(String, Value)>, settings: &Settings) -> Result<Parsed
             return Err(Failure::bad_request("BadRequestError", "unsupported field"));
         }
         if let Some(name) = key.strip_prefix("h:") {
-            if !seen_headers.insert(name.to_lowercase()) {
+            if let Err(error) = validate_custom_header_name(name) {
+                if !matches!(value, Value::Text(_)) {
+                    return Err(Failure::bad_request(
+                        "BadRequestError",
+                        "header must be a string",
+                    ));
+                }
+                // Report the name error at step 7, after any preceding
+                // header value errors. Continue checking other form fields.
+                parsed.header_name_error.get_or_insert(error);
+                continue;
+            }
+            if !seen_headers.insert(name.to_ascii_lowercase()) {
                 return Err(Failure::bad_request(
                     "BadRequestError",
                     "duplicate custom header",
@@ -664,7 +683,9 @@ fn parse_form(items: Vec<(String, Value)>, settings: &Settings) -> Result<Parsed
                     format!("header {key} must be a string"),
                 ));
             };
-            parsed.headers.push((name.to_owned(), text));
+            if parsed.header_name_error.is_none() {
+                parsed.headers.push((name.to_owned(), text));
+            }
             continue;
         }
         if !KNOWN_FIELDS.contains(&key.as_str()) {

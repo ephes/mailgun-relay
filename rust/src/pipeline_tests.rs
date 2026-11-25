@@ -1943,6 +1943,63 @@ async fn empty_multipart_boundary_rejected_before_body() {
 }
 
 #[tokio::test]
+async fn custom_header_names_are_admitted_before_storage() {
+    let oversized = format!("h:X-{}", "a".repeat(4_000));
+    let fields = with(&[(&oversized, "harmless")]);
+    let items = fields
+        .iter()
+        .map(|&(key, value)| (key.to_owned(), Value::Text(value.to_owned())))
+        .collect();
+    let parsed = parse_form(items, &settings()).unwrap();
+    assert!(
+        parsed.headers.is_empty(),
+        "oversized header reached parsed storage"
+    );
+
+    for encoding in ENCODINGS {
+        let h = Harness::new();
+        let reply = h.homepage(encode(encoding, &fields)).await;
+        assert_eq!(reply.status(), 400);
+        assert_eq!(reply.json, json!({"message": "invalid header"}));
+        assert_eq!(h.records("request")[0]["error_class"], "HeaderTooLongError");
+
+        for extra in [
+            vec![("h:X-Tag", "one"), ("h:x-tag", "two")],
+            vec![
+                (&oversized, "harmless"),
+                ("h:X-Tag", "one"),
+                ("h:x-tag", "two"),
+            ],
+        ] {
+            let reply = h.homepage(encode(encoding, &with(&extra))).await;
+            assert_eq!(reply.status(), 400);
+            assert_eq!(reply.json, json!({"message": "duplicate custom header"}));
+        }
+
+        let preceding_value = with(&[("h:X-Tag", "a\rb"), (&oversized, "harmless")]);
+        let reply = h.homepage(encode(encoding, &preceding_value)).await;
+        assert_eq!(reply.status(), 400);
+        assert_eq!(
+            h.records("request")[3]["error_class"],
+            "HeaderInjectionError"
+        );
+
+        let repeated_name = with(&[(&oversized, "one"), (&oversized, "two")]);
+        let reply = h.homepage(encode(encoding, &repeated_name)).await;
+        assert_eq!(reply.status(), 400);
+        assert_eq!(h.records("request")[4]["error_class"], "HeaderTooLongError");
+        assert!(h.recorder.calls.lock().unwrap().is_empty());
+    }
+
+    let h = Harness::new();
+    let upload = (&*oversized, "file.txt", "text/plain", &b"test"[..]);
+    let reply = h.homepage(multipart(&MINIMUM, &[upload])).await;
+    assert_eq!(reply.status(), 400);
+    assert_eq!(reply.json, json!({"message": "header must be a string"}));
+    assert!(h.recorder.calls.lock().unwrap().is_empty());
+}
+
+#[tokio::test]
 async fn unrecognized_form_names_have_fixed_refusals() {
     let sentinel = "synthetic-private-field";
     for prefix in ["", "v:", "o:", "t:"] {

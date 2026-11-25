@@ -341,7 +341,9 @@ the contract. Each step names its Python source.
 4. **Field rules in form order, first error wins** (`routes.py:381-471`):
    - `v:*`, `o:*`, `t:*`, `recipient-variables`, `template` → 400;
    - `h:<name>`: must be a string (400 otherwise); duplicate names compared
-     case-insensitively return 400, including identical values;
+     case-insensitively return 400, including identical values. Rust tracks
+     duplicates only for names that pass the step 7 name checks. An upload
+     with an inadmissible name returns a fixed string-field error;
    - other names outside `from to cc bcc subject text html amp-html attachment
      inline` → 400;
    - `to`/`cc`/`bcc` repeatable; duplicate `subject`/`text`/`html`/`amp-html`
@@ -375,6 +377,9 @@ the contract. Each step names its Python source.
    matching lettre's limit) → 400 with diagnostic class `HeaderTooLongError`
    in both runtimes; control characters in the value → 400; value longer than
    `max_header_value_length` code points → 400.
+   Rust checks names when interpreting the form, before copying them. It
+   reports the first inadmissible text name here, after checking values for
+   preceding custom headers.
 8. **Recipient count** (`routes.py:177-183`): `len(to)+len(cc)+len(bcc)`
    before de-duplication; 0 → 400; `> max_recipients` → 413.
 9. **Message construction** (`relay:mime_build.py:97-201`), which in Python

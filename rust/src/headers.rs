@@ -55,8 +55,12 @@ const DANGEROUS: &[&str] = &[
 ];
 
 fn is_dangerous(name: &str) -> bool {
-    let lowered = name.to_lowercase();
-    DANGEROUS.contains(&lowered.as_str()) || lowered.starts_with("resent-")
+    DANGEROUS
+        .iter()
+        .any(|denied| name.eq_ignore_ascii_case(denied))
+        || name
+            .get(..7)
+            .is_some_and(|prefix| prefix.eq_ignore_ascii_case("resent-"))
 }
 
 /// `^[A-Za-z][A-Za-z0-9-]*$` as a full match (`fullmatch` in Python, so a
@@ -88,28 +92,29 @@ pub fn validate_subject(value: &str, max_length: i64) -> Result<String, HeaderEr
     Ok(stripped.to_owned())
 }
 
-/// The `h:*` headers in map order, first error wins: name syntax, denylist,
-/// name length, control characters in the value, value length.
-pub fn validate_custom_headers(
-    headers: &[(String, String)],
+/// Check name syntax, denylist and length in that order, without copying.
+pub(crate) fn validate_custom_header_name(name: &str) -> Result<(), HeaderError> {
+    if !is_header_name(name) {
+        return Err(HeaderError::Injection);
+    }
+    if is_dangerous(name) {
+        return Err(HeaderError::Dangerous);
+    }
+    if name.len() > MAX_HEADER_NAME_BYTES {
+        return Err(HeaderError::TooLong);
+    }
+    Ok(())
+}
+
+pub(crate) fn validate_custom_header_value(
+    value: &str,
     max_value_length: i64,
 ) -> Result<(), HeaderError> {
-    for (name, value) in headers {
-        if !is_header_name(name) {
-            return Err(HeaderError::Injection);
-        }
-        if is_dangerous(name) {
-            return Err(HeaderError::Dangerous);
-        }
-        if name.len() > MAX_HEADER_NAME_BYTES {
-            return Err(HeaderError::TooLong);
-        }
-        if contains_forbidden_control_chars(value) {
-            return Err(HeaderError::Injection);
-        }
-        if longer_than(value, max_value_length) {
-            return Err(HeaderError::TooLong);
-        }
+    if contains_forbidden_control_chars(value) {
+        return Err(HeaderError::Injection);
+    }
+    if longer_than(value, max_value_length) {
+        return Err(HeaderError::TooLong);
     }
     Ok(())
 }
@@ -119,6 +124,17 @@ mod tests {
     use serde_json::Value;
 
     use super::*;
+
+    fn validate_custom_headers(
+        headers: &[(String, String)],
+        max_value_length: i64,
+    ) -> Result<(), HeaderError> {
+        for (name, value) in headers {
+            validate_custom_header_name(name)?;
+            validate_custom_header_value(value, max_value_length)?;
+        }
+        Ok(())
+    }
 
     fn one(name: &str, value: &str) -> Result<(), HeaderError> {
         validate_custom_headers(&[(name.to_owned(), value.to_owned())], 998)
