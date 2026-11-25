@@ -26,7 +26,10 @@ contract says (``handoff/parity-contract.md``, PLAN.md 2):
 Error texts, other headers, MIME bytes and other log fields are not
 compared. Python's status must also match the case (the oracle). A case
 that differs on purpose names its divergence (``divergence="D-n"``, PLAN.md
-section 3) and the Rust status; every other difference fails the run.
+section 3) and the Rust status. A case whose status matches but whose JSON
+message or record ``result`` differs on purpose names it as
+``value_divergence`` with both expected values and is otherwise compared in
+full; every other difference fails the run.
 
 Usage (from the repository root, after ``cargo build --release``)::
 
@@ -365,8 +368,11 @@ def _status_ok(status: int, expected: int | frozenset[int]) -> bool:
     return status in expected if isinstance(expected, frozenset) else status == expected
 
 
-def _compare_http(py: Response, rs: Response) -> list[str]:
+def _compare_http(
+    py: Response, rs: Response, rust_values: dict[str, tuple[str, str]] | None = None
+) -> list[str]:
     diffs = []
+    rust_values = rust_values or {}
     if py.status != rs.status:
         return [f"status: python {py.status}, rust {rs.status}"]
     for name in ("www-authenticate", "allow", "location"):
@@ -384,6 +390,14 @@ def _compare_http(py: Response, rs: Response) -> list[str]:
             diffs.append(f"JSON keys: {sorted(py_json)} vs {sorted(rs_json)}")
         for key in ("message", "detail", "status"):
             text = py_json.get(key)
+            if key in rust_values:
+                # A decided value difference: both sides must show it.
+                if (text, rs_json.get(key)) != rust_values[key]:
+                    diffs.append(
+                        f"JSON {key}: {text!r} vs {rs_json.get(key)!r}, expected"
+                        f" {rust_values[key][0]!r} vs {rust_values[key][1]!r}"
+                    )
+                continue
             kept = text in KEPT_TEXTS or str(text).startswith("token not allowed for ")
             # 404/405 details and /health's status are kept as they are.
             if key != "message" or kept:
@@ -459,10 +473,13 @@ def _by_event(records: list[dict[str, Any]], event: str) -> list[dict[str, Any]]
     return [r for r in records if r.get("event") == event]
 
 
-def _compare_records(py: Outcome, rs: Outcome) -> list[str]:
+def _compare_records(
+    py: Outcome, rs: Outcome, rust_values: dict[str, tuple[str, str]] | None = None
+) -> list[str]:
     if py.records is None or rs.records is None:
         return []
     diffs = []
+    rust_values = rust_values or {}
     for event in ("request", "recipients_refused"):
         p, r = _by_event(py.records, event), _by_event(rs.records, event)
         if len(p) != len(r):
@@ -470,6 +487,14 @@ def _compare_records(py: Outcome, rs: Outcome) -> list[str]:
             continue
         for pr, rr in zip(p, r, strict=True):
             for key in (*RECORD_FIELDS, "refused"):
+                if event == "request" and key in rust_values:
+                    # A decided value difference: both sides must show it.
+                    if (pr.get(key), rr.get(key)) != rust_values[key]:
+                        diffs.append(
+                            f"{event} record {key}: {pr.get(key)!r} vs {rr.get(key)!r},"
+                            f" expected {rust_values[key][0]!r} vs {rust_values[key][1]!r}"
+                        )
+                    continue
                 if pr.get(key) != rr.get(key):
                     diffs.append(f"{event} record {key}: {pr.get(key)!r} vs {rr.get(key)!r}")
             py_id, rs_id = pr.get("message_id"), rr.get("message_id")
@@ -511,10 +536,10 @@ def compare(case: corpus.Case, py: Outcome, rs: Outcome) -> tuple[list[str], str
             if requests and requests[0].get("status_code") != rs.response.status:
                 diffs.append(f"rust record status_code {requests[0].get('status_code')}")
         return diffs, case.divergence
-    diffs += _compare_http(py.response, rs.response)
+    diffs += _compare_http(py.response, rs.response, case.rust_values)
     diffs += _compare_smtp(py, rs)
-    diffs += _compare_records(py, rs)
-    return diffs, None
+    diffs += _compare_records(py, rs, case.rust_values)
+    return diffs, case.value_divergence
 
 
 # ------------------------------------------------------------------ processes

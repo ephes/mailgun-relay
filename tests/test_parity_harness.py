@@ -270,6 +270,49 @@ def test_divergences_pin_the_rust_status_and_must_show() -> None:
     assert any("the case expects 400" in d for d in oracle), oracle
 
 
+def _unknown_outcome(message: str, result: str) -> run_parity.Outcome:
+    outcome = _outcome()
+    body = json.dumps({"message": message})
+    outcome.response = _response(503, body)
+    assert outcome.records is not None
+    outcome.records[0].update(result=result, status_code=503, message_id="-")
+    return outcome
+
+
+def test_value_divergences_pin_both_values_and_compare_the_rest() -> None:
+    (py_message, rs_message) = corpus.UNKNOWN_OUTCOME_VALUES["message"]
+    (py_result, rs_result) = corpus.UNKNOWN_OUTCOME_VALUES["result"]
+    case = corpus.Case(
+        "c",
+        corpus.Request(),
+        503,
+        value_divergence="D-23",
+        rust_values=corpus.UNKNOWN_OUTCOME_VALUES,
+    )
+    py = _unknown_outcome(py_message, py_result)
+    rs = _unknown_outcome(rs_message, rs_result)
+    assert run_parity.compare(case, py, rs) == ([], "D-23")
+    # Without the decision, both values are differences.
+    plain = corpus.Case("c", corpus.Request(), 503)
+    diffs, _ = run_parity.compare(plain, py, rs)
+    assert any("JSON message" in d for d in diffs) and any("result" in d for d in diffs), diffs
+    # A divergence that no longer shows (either side) is stale.
+    for stale_rs in (py, _unknown_outcome(rs_message, py_result)):
+        stale, _ = run_parity.compare(case, py, copy.deepcopy(stale_rs))
+        assert any("expected" in d for d in stale), stale
+    # Every other field is still compared.
+    other = copy.deepcopy(rs)
+    assert other.records is not None
+    other.records[0]["refused_count"] = 1
+    diffs, _ = run_parity.compare(case, py, other)
+    assert any("refused_count" in d for d in diffs), diffs
+
+
+def test_unknown_outcome_cases_are_the_transfer_faults() -> None:
+    marked = {c.name for c in corpus.request_cases() if c.value_divergence == "D-23"}
+    assert marked == {"smtp disconnect at data_end", "smtp timeout at data_end"}
+
+
 def test_request_framing() -> None:
     request = corpus.Request(headers=[("X-A", "1")], body=b"abc")
     [raw] = run_parity.request_pieces(request)
@@ -302,6 +345,9 @@ def test_corpus_covers_the_s6_requirements() -> None:
     for case in cases:
         if case.divergence is not None:
             assert case.divergence in decided and case.rust_status is not None, case.name
+        if case.value_divergence is not None:
+            assert case.value_divergence in decided and case.rust_values, case.name
+            assert case.divergence is None, case.name
     shown = {c.divergence for c in cases} | {c.divergence for c in corpus.STARTUP_CASES}
     assert shown >= {"D-3", "D-4", "D-9", "D-10", "D-11", "D-20", "D-21", "D-22"}
     for required in ("D-1", "D-12", "D-16", "D-19", "D-2"):

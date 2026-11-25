@@ -356,7 +356,10 @@ repeatable fields such as Received.
 The MIME tree compares Content-ID, disposition and its filename on containers
 as well as leaf parts.
 Expected differences name their entry of PLAN.md section 3; any other
-difference fails. From the repository root:
+difference fails. A difference that keeps the status (D-23:
+`smtp_outcome_unknown` and its JSON message after a transfer fault at the end
+of DATA) pins both the Python and the Rust value and compares the rest of the
+case in full. From the repository root:
 
 ```bash
 (cd rust && cargo build --release --locked)
