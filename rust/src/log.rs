@@ -60,8 +60,25 @@ impl Write for RecordBuffer {
 #[derive(Debug)]
 struct Writer {
     sender: Mutex<Option<mpsc::SyncSender<Box<[u8]>>>>,
-    finished: Arc<(Mutex<bool>, Condvar)>,
+    finished: Arc<WriterCompletion>,
     losses: Arc<LossCounters>,
+}
+
+type WriterCompletion = (Mutex<Option<DrainOutcome>>, Condvar);
+
+struct NotifyOnWriterExit<'a>(&'a WriterCompletion);
+
+impl Drop for NotifyOnWriterExit<'_> {
+    fn drop(&mut self) {
+        let outcome = if std::thread::panicking() {
+            DrainOutcome::WriterExited
+        } else {
+            DrainOutcome::Completed
+        };
+        let (completed, notify) = self.0;
+        *completed.lock().unwrap_or_else(|e| e.into_inner()) = Some(outcome);
+        notify.notify_all();
+    }
 }
 
 #[derive(Debug, Default)]
@@ -83,18 +100,21 @@ fn spawn_writer(task: WriterTask) -> io::Result<()> {
 
 impl Writer {
     fn new(
-        mut sink: impl Write + Send + 'static,
+        sink: impl Write + Send + 'static,
         capacity: usize,
         spawn: impl FnOnce(WriterTask) -> io::Result<()>,
     ) -> io::Result<Self> {
         let (sender, receiver) = mpsc::sync_channel::<Box<[u8]>>(capacity);
-        let finished = Arc::new((Mutex::new(false), Condvar::new()));
+        let finished = Arc::new((Mutex::new(None), Condvar::new()));
         let writer_finished = finished.clone();
         let losses = Arc::new(LossCounters::default());
         let writer_losses = losses.clone();
         // A dedicated OS thread: a live blocked sink cannot occupy Tokio's
         // runtime or its bounded blocking pool. It is detached on drain expiry.
         spawn(Box::new(move || {
+            // Publish completion on normal return and on unwind after dropping the sink.
+            let _notify = NotifyOnWriterExit(&writer_finished);
+            let mut sink = sink;
             // The channel yields all accepted records before disconnecting.
             let mut needs_boundary = false;
             for line in receiver {
@@ -108,9 +128,6 @@ impl Writer {
                     writer_losses.sink_io.fetch_add(1, Ordering::Relaxed);
                 }
             }
-            let (completed, notify) = &*writer_finished;
-            *completed.lock().unwrap_or_else(|e| e.into_inner()) = true;
-            notify.notify_all();
         }))?;
         Ok(Self {
             sender: Mutex::new(Some(sender)),
@@ -141,15 +158,15 @@ impl Writer {
         false
     }
 
-    fn shutdown(&self, budget: Duration) -> bool {
+    fn shutdown(&self, budget: Duration) -> DrainOutcome {
         let sender = self.sender.lock().unwrap_or_else(|e| e.into_inner()).take();
         drop(sender);
         let (completed, notify) = &*self.finished;
         let completed = completed.lock().unwrap_or_else(|e| e.into_inner());
         let (completed, _) = notify
-            .wait_timeout_while(completed, budget, |completed| !*completed)
+            .wait_timeout_while(completed, budget, |completed| completed.is_none())
             .unwrap_or_else(|e| e.into_inner());
-        *completed
+        completed.unwrap_or(DrainOutcome::TimedOut)
     }
 }
 
@@ -161,10 +178,11 @@ pub struct LogLosses {
     pub sink_io: u64,
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum DrainOutcome {
     Completed,
     TimedOut,
+    WriterExited,
 }
 
 #[derive(Debug, Clone)]
@@ -206,17 +224,11 @@ impl Logger {
 
     /// Stop admission and drain for a bounded interval after request shutdown.
     /// Completion means all accepted records were processed. Sink failures
-    /// are tracked separately. A timeout leaves the remaining tail unconfirmed.
+    /// are tracked separately. A timeout or abnormal exit leaves the tail unconfirmed.
     pub fn shutdown(&self, budget: Duration) -> DrainOutcome {
-        if self
-            .writer
+        self.writer
             .as_ref()
-            .is_none_or(|writer| writer.shutdown(budget))
-        {
-            DrainOutcome::Completed
-        } else {
-            DrainOutcome::TimedOut
-        }
+            .map_or(DrainOutcome::Completed, |writer| writer.shutdown(budget))
     }
 
     pub fn losses(&self) -> LogLosses {
@@ -375,12 +387,59 @@ mod tests {
         assert!(!writer.send(vec![4])); // Newest overflow is dropped.
         assert!(!writer.send(vec![0; MAX_LOG_RECORD_BYTES + 1]));
         let start = std::time::Instant::now();
-        writer.shutdown(Duration::from_millis(30));
+        assert_eq!(
+            writer.shutdown(Duration::from_millis(30)),
+            DrainOutcome::TimedOut
+        );
         assert!(start.elapsed() < Duration::from_millis(500));
         assert!(!writer.send(vec![5]));
         release_tx.send(()).unwrap();
         writer.shutdown(Duration::from_secs(2));
         assert_eq!(*lines.lock().unwrap(), [vec![1], vec![2], vec![3]]);
+    }
+
+    #[test]
+    fn panicked_writer_reports_exit_before_drain_deadline() {
+        struct PanickingSink(Option<mpsc::Sender<Vec<u8>>>);
+
+        impl Write for PanickingSink {
+            fn write(&mut self, bytes: &[u8]) -> io::Result<usize> {
+                let first_record = self.0.take().expect("scripted sink panic");
+                first_record.send(bytes.to_vec()).unwrap();
+                Ok(bytes.len())
+            }
+
+            fn flush(&mut self) -> io::Result<()> {
+                Ok(())
+            }
+        }
+
+        let (written, first_record) = mpsc::channel();
+        let logger = Logger {
+            threshold: Level::Info,
+            writer: Some(Arc::new(test_writer(PanickingSink(Some(written)), 2))),
+            capture: None,
+        };
+        let writer = logger.writer.as_ref().unwrap();
+        assert!(writer.send(b"first\n".to_vec()));
+        assert_eq!(
+            first_record.recv_timeout(Duration::from_secs(2)).unwrap(),
+            b"first\n"
+        );
+        assert!(writer.send(b"second\n".to_vec()));
+
+        let start = std::time::Instant::now();
+        let summary = crate::log_shutdown_summary(&logger, Duration::from_secs(2));
+        assert_eq!(
+            summary.as_deref(),
+            Some("log drain unconfirmed (writer exited unexpectedly)")
+        );
+        assert!(start.elapsed() < Duration::from_secs(1));
+        assert_eq!(logger.losses(), LogLosses::default());
+        assert_eq!(
+            crate::log_shutdown_summary(&logger, Duration::ZERO),
+            summary
+        );
     }
 
     #[test]
@@ -448,14 +507,14 @@ mod tests {
             (short_completed, elapsed, long.join().unwrap())
         });
 
-        assert!(!short_completed);
+        assert_eq!(short_completed, DrainOutcome::TimedOut);
         assert!(
             elapsed < Duration::from_millis(600),
             "short wait took {elapsed:?}"
         );
-        assert!(long_completed);
-        assert!(writer.shutdown(Duration::ZERO));
-        assert!(writer.shutdown(Duration::ZERO));
+        assert_eq!(long_completed, DrainOutcome::Completed);
+        assert_eq!(writer.shutdown(Duration::ZERO), DrainOutcome::Completed);
+        assert_eq!(writer.shutdown(Duration::ZERO), DrainOutcome::Completed);
     }
 
     #[test]
@@ -558,7 +617,10 @@ mod tests {
                 assert!(writer.send(b"{\"dropped\":2}\n".to_vec()));
             }
             assert!(writer.send(b"{\"healthy\":3}\n".to_vec()));
-            assert!(writer.shutdown(Duration::from_secs(2)));
+            assert_eq!(
+                writer.shutdown(Duration::from_secs(2)),
+                DrainOutcome::Completed
+            );
 
             let output = output.lock().unwrap();
             let mut lines = output.split(|byte| *byte == b'\n');

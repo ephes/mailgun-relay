@@ -48,6 +48,8 @@ All notable changes to mailgun-relay are documented here.
   start, before creating listeners.
 - Report an unconfirmed log drain on stderr when the shutdown deadline
   expires, even with no observed log losses.
+- Wake log drain callers when the writer panics and report the unexpected
+  exit with its own diagnostic.
 
 ### Parity harness
 

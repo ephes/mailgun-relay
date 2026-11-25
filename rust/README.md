@@ -274,19 +274,21 @@ On shutdown, Rust reports nonzero log losses in one best-effort stderr summary
 with counts for encoding failures (including oversized records), full queues,
 unavailable queues and stdout write or flush failures. Filtered records are
 excluded. If the drain deadline expires, the summary includes
-`log drain unconfirmed (deadline expired)` even when all loss counters are
-zero. The counters cover observed failures. Delivery of pending records is
-unknown. Shutdown waits at most 100 ms for the summary.
+`log drain unconfirmed (deadline expired)`. If the writer panics, it wakes
+shutdown callers and the summary includes
+`log drain unconfirmed (writer exited unexpectedly)`. Both diagnostics can
+appear with zero observed losses. Delivery of pending records is unknown.
+Shutdown waits at most 100 ms for the summary.
 On SIGTERM or SIGINT, the relay stops all listeners and waits for in-flight
 requests, including submissions whose clients disconnected. The relay then
 closes log admission before waiting up to one second for accepted records to
-drain. Shutdown callers wait independently and share the writer's completed
-drain state. A listener that exits early triggers the same drain. The relay
+drain. Shutdown callers wait independently and share the writer's drain
+result. A listener that exits early triggers the same drain. The relay
 reports the initiating listener failure after the drain and exits 1.
 Configuration and bind failures also exit 1. If the named log writer thread
 cannot start, the relay reports `cannot start the log writer` on stderr and
 exits 1 before creating any listeners.
-A signal-triggered shutdown exits 0 even if the log drain times out.
+A signal-triggered shutdown exits 0 even if the log drain is unconfirmed.
 
 Both secrets loaders refuse a label equal to the SMTP password or any loaded
 token digest, regardless of policy order; digest comparison trims whitespace

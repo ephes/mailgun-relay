@@ -152,11 +152,16 @@ fn log_shutdown_summary(logger: &Logger, budget: Duration) -> Option<String> {
             "log records lost: encoding={encoding} queue_full={queue_full} queue_unavailable={queue_unavailable} sink_io={sink_io}"
         );
     }
-    if drain == DrainOutcome::TimedOut {
+    let unconfirmed = match drain {
+        DrainOutcome::Completed => None,
+        DrainOutcome::TimedOut => Some("log drain unconfirmed (deadline expired)"),
+        DrainOutcome::WriterExited => Some("log drain unconfirmed (writer exited unexpectedly)"),
+    };
+    if let Some(unconfirmed) = unconfirmed {
         if !summary.is_empty() {
             summary.push(' ');
         }
-        summary.push_str("log drain unconfirmed (deadline expired)");
+        summary.push_str(unconfirmed);
     }
     (!summary.is_empty()).then_some(summary)
 }

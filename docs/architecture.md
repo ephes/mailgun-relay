@@ -356,15 +356,17 @@ records. The shared logger counts encoding failures, full or unavailable queues,
 and write or flush failures separately. Filtered records do not count. After
 its bounded drain, the Rust process attempts one stderr summary when any
 counter is nonzero or the drain remains unconfirmed. The summary counts
-observed losses and flags an expired drain deadline. The writer attempts to
-flush each successfully written record. After a failed write, the writer restores the line boundary with a
-newline before the next record. A failed separator write drops that next
+observed losses and distinguishes an expired drain deadline from a writer
+panic. The writer attempts to flush each successfully written record. After
+a failed write, it restores the line boundary with a newline before the next
+record. A failed separator write drops that next
 record and counts as a sink failure. After requests drain, shutdown closes the
 queue under the same guard used for enqueueing. The writer drains accepted
 records until disconnection.
 Sink writes and the one-second drain wait occur outside the guard. Drain
-completion is shared, with an independent wait budget per caller. A stalled
-sink may lose the tail when the process exits. Health, SMTP outcomes and
+completion or abnormal writer exit is shared, with an independent wait
+budget per caller. A stalled sink may lose the tail when the process exits.
+Health, SMTP outcomes and
 capacity release do not depend on stdout progress. If the log writer thread
 cannot start, the relay reports a fixed startup failure on stderr and exits 1
 before creating listeners. The startup log record is best effort.
