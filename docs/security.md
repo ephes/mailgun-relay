@@ -368,6 +368,10 @@ together, because the backend binds the login to the envelope sender (T5).
 
 ## Rust acquisition deadlines
 
+Rust refuses supported form bodies with a known lower size bound above the
+request byte limit before polling. Per-frame checks enforce the same limit for
+streams with unknown sizes.
+
 Rust bounds form-body acquisition to 30 seconds total after admission, including
 trickling uploads. A full 25 MiB upload needs roughly 7 Mbit/s sustained throughput. Expiry returns HTTP 408 (`BodyTimeoutError`), drops the body
 and releases the admission slot before MIME or SMTP. Overload still returns 503

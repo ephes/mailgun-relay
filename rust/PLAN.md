@@ -269,8 +269,9 @@ the contract. Each step names its Python source.
      at most one match.
 3. **Body read and form parse** (`routes.py:121-142`). The whole form is
    parsed before any field is checked.
-   - Streamed bytes beyond `max_body_bytes` → 413 (`request body exceeds N
-     bytes`).
+   - For supported form encodings, Rust refuses a body size hint whose lower
+     bound exceeds `max_body_bytes` before polling. The same 413
+     (`request body exceeds N bytes`) applies when streamed bytes cross the limit.
    - Content type: the singleton `Content-Type` header as python-multipart's
      `parse_options_header` reads it: without a `;` the whole value,
      lowercased and stripped; with parameters the part before the first `;`,

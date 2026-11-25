@@ -12,7 +12,7 @@ use std::pin::Pin;
 use std::sync::Arc;
 use std::time::Instant;
 
-use axum::body::Body;
+use axum::body::{Body, HttpBody};
 use axum::http::{HeaderMap, HeaderValue, StatusCode, header};
 use axum::response::{IntoResponse, Response};
 use http_body_util::BodyExt;
@@ -554,6 +554,9 @@ async fn read_body(
     bytes: &mut Vec<u8>,
 ) -> Result<(), Failure> {
     let too_large = || Failure::too_large(format!("request body exceeds {max_body_bytes} bytes"));
+    if u64::try_from(max_body_bytes).map_or(true, |limit| body.size_hint().lower() > limit) {
+        return Err(too_large());
+    }
     while let Some(frame) = body.frame().await {
         let frame = frame.map_err(|_| Failure::bad_request("BadRequestError", "malformed form"))?;
         if let Ok(data) = frame.into_data() {

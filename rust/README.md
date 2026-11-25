@@ -447,10 +447,10 @@ unchanged. Publication is not evidence of running-process protection.
 
 ## Rust acquisition deadlines
 
-For streamed form bodies, Rust checks each incoming data frame against the
-remaining `MAX_BODY_BYTES` allowance before copying it into the body buffer.
-The byte limit is inclusive. A frame over the remaining limit returns HTTP 413
-before form parsing.
+After authentication and admission, Rust returns HTTP 413 for a supported form
+whose body size hint has a lower bound above `MAX_BODY_BYTES`, before polling
+the body. Rust also checks each incoming data frame against the remaining
+allowance before copying it into the body buffer. The byte limit is inclusive.
 
 Rust bounds form-body acquisition to 30 seconds total after admission, including
 trickling uploads. A full 25 MiB upload needs roughly 7 Mbit/s sustained throughput. Expiry returns HTTP 408 (`BodyTimeoutError`), drops the body

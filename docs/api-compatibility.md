@@ -279,6 +279,10 @@ The service is not expected to implement:
 
 ## Rust acquisition deadlines
 
+For supported form encodings, a body size hint whose lower bound exceeds the
+configured request byte limit returns HTTP 413 before the first body read.
+Rust also enforces the limit as it reads body frames.
+
 Rust bounds form-body acquisition to 30 seconds total after admission, including
 trickling uploads. A full 25 MiB upload needs roughly 7 Mbit/s sustained throughput. Expiry returns HTTP 408 (`BodyTimeoutError`), drops the body
 and releases the admission slot before MIME or SMTP. Overload still returns 503

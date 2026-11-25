@@ -811,6 +811,40 @@ async fn body_frame_limit_checked_before_copy() {
 }
 
 #[tokio::test]
+async fn oversized_form_size_hint_refuses_without_polling() {
+    use axum::body::Bytes;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+
+    let h = Harness::with(Settings {
+        max_body_bytes: 5,
+        ..settings()
+    });
+    for (content_type, expected) in [
+        ("application/x-www-form-urlencoded", 413),
+        ("multipart/form-data; boundary=test", 413),
+        ("text/plain", 400),
+    ] {
+        let polls = Arc::new(AtomicUsize::new(0));
+        let body_polls = Arc::clone(&polls);
+        let body =
+            http_body_util::Full::new(Bytes::from_static(b"abcdef")).inspect_frame(move |_| {
+                body_polls.fetch_add(1, Ordering::Relaxed);
+            });
+        let request = Request::builder()
+            .method("POST")
+            .uri("/v3/mg.wersdoerfer.de/messages")
+            .header("authorization", basic("api", HOMEPAGE_TOKEN))
+            .header("content-type", content_type)
+            .body(Body::new(body))
+            .unwrap();
+        let reply = h.send(request).await;
+        assert_error(&reply, expected);
+        assert_eq!(polls.load(Ordering::Relaxed), 0, "{content_type}");
+    }
+    assert!(h.recorder.calls.lock().unwrap().is_empty());
+}
+
+#[tokio::test]
 async fn body_reading() {
     let h = Harness::new();
     // Malformed multipart: no boundary, broken framing.
