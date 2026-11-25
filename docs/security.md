@@ -397,8 +397,9 @@ trickling replies, STARTTLS and recipient/DATA operations. A failed TCP attempt
 closes its candidate socket. If close raises an OS error, the relay still tries
 the next address within the session budget and preserves the final connect error
 if all attempts fail. Cancellation still propagates after the close attempt.
-A session-owned socket
-shutdown interrupts blocking reads and TLS; QUIT has its own
+A session-owned socket shutdown interrupts blocking reads and TLS. Cleanup
+fences the timer before joining it and closes the duplicate socket once, even
+if the join is interrupted. QUIT has its own
 `min(SMTP_TIMEOUT_S, 5 seconds)` total budget. Confirmed DATA acceptance survives
 a later deadline check or cleanup failure once the complete final 250 reply
 has been read. A timeout or truncated reply without a complete final DATA

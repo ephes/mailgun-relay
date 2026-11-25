@@ -333,3 +333,38 @@ def test_data_outcome_at_deadline(monkeypatch: pytest.MonkeyPatch, final_reply: 
         with pytest.raises(SmtpSubmitError) as caught:
             send()
         assert caught.value.category is FailureCategory.TEMPORARY
+
+
+@pytest.mark.parametrize("stop_in_body", [False, True])
+def test_interrupted_timer_join_retires_watched_socket(
+    monkeypatch: pytest.MonkeyPatch, stop_in_body: bool
+) -> None:
+    timer = Mock()
+    interrupted = asyncio.CancelledError("synthetic timer join interruption")
+    timer.join.side_effect = [interrupted, asyncio.CancelledError("unexpected second join")]
+    monkeypatch.setattr(threading, "Timer", Mock(return_value=timer))
+    sock = Mock()
+    duplicate = sock.dup.return_value
+    budget = _SocketDeadline(30)
+
+    def close() -> None:
+        # A callback dispatched before cancellation can still run after an
+        # interrupted join. It must leave the retiring descriptor alone.
+        budget._expire()
+        raise OSError("synthetic duplicate close failure")
+
+    duplicate.close.side_effect = close
+    with pytest.raises(asyncio.CancelledError) as caught:
+        with budget:
+            budget.watch(sock)
+            if stop_in_body:
+                budget.stop()
+
+    assert caught.value is interrupted
+    timer.cancel.assert_called_once_with()
+    timer.join.assert_called_once_with()
+    duplicate.close.assert_called_once_with()
+    duplicate.shutdown.assert_not_called()
+    sock.close.assert_not_called()
+    assert budget.socket is None
+    assert not budget.expired

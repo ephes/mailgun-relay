@@ -8,6 +8,8 @@ All notable changes to mailgun-relay are documented here.
 
 - Preserve a complete final DATA acceptance at the session deadline. A
   timeout or truncated DATA reply still leaves delivery uncertain.
+- Release the SMTP deadline's duplicate socket when a timer join is
+  interrupted, preserving the interruption.
 
 ### Rust relay
 

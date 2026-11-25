@@ -247,6 +247,7 @@ journald, so `journalctl -u mailgun-relay -f` is the live view.
   skips QUIT and still closes the owned socket. The send result is preserved.
   Python supervisor/control-flow exceptions propagate after owned socket
   cleanup, including interrupts, process exit and asyncio cancellation.
+  An interrupted timer join still releases the deadline's duplicate socket.
 - `event=upload_cleanup_failed` — a Python rollback `WARNING` with only the
   exception class (at most 80 characters) when an upload close fails. Remaining
   uploads still get a close attempt under the cancellation shield; the HTTP

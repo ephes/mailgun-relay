@@ -70,12 +70,13 @@ class _SocketDeadline:
 
     A duplicate descriptor keeps ownership stable while SSL detaches/replaces
     smtplib's socket. shutdown(), unlike close(), wakes a blocked file read.
-    Stop/join the timer before closing descriptors or starting cleanup.
+    Fence the timer before joining it or relinquishing the duplicate.
     """
 
     def __init__(self, seconds: float) -> None:
         self.ends_at = time.monotonic() + seconds
         self.expired = False
+        self.stopped = False
         self.socket: socket.socket | None = None
         self.lock = threading.Lock()
         self.timer = threading.Timer(seconds, self._expire)
@@ -87,6 +88,8 @@ class _SocketDeadline:
 
     def _expire(self) -> None:
         with self.lock:
+            if self.stopped:
+                return
             self.expired = True
             if self.socket is not None:
                 with contextlib.suppress(OSError):
@@ -100,20 +103,31 @@ class _SocketDeadline:
 
     def watch(self, sock: socket.socket) -> None:
         with self.lock:
-            if self.socket is not None:
-                self.socket.close()
+            previous, self.socket = self.socket, None
+            if previous is not None:
+                previous.close()
             self.socket = sock.dup()
             self.remaining(1e9)
 
     def stop(self) -> None:
+        # Once fenced, the callback cannot touch the socket even if cancel
+        # or join is interrupted. Context exit does not retry either call.
+        with self.lock:
+            if self.stopped:
+                return
+            self.stopped = True
         self.timer.cancel()
         self.timer.join()
 
     def __exit__(self, *args: object) -> None:
-        self.stop()
-        if self.socket is not None:
-            with contextlib.suppress(OSError):
-                self.socket.close()
+        try:
+            self.stop()
+        finally:
+            with self.lock:
+                watched, self.socket = self.socket, None
+            if watched is not None:
+                with contextlib.suppress(OSError):
+                    watched.close()
 
 
 class _ReplyReader(io.BufferedReader):
