@@ -137,6 +137,7 @@ class Case:
     # body) and "result" (request record); everything else is compared.
     value_divergence: str | None = None
     rust_values: dict[str, tuple[str, str]] = field(default_factory=dict)
+    error_class: str | None = None  # expected request diagnostic in both relays
 
 
 # D-23: after DATA 354, a transport failure without a complete final reply
@@ -843,7 +844,6 @@ def field_cases() -> list[Case]:
         ("field subject encoded word", minimal(subject="=?utf-8?q?Gr=C3=BC=C3=9Fe?="), 200),
         ("field subject control char", minimal(subject="a\x01b"), 400),
         ("field subject tab", minimal(subject="a\tb"), 200),
-        ("field h:Bcc", [*minimal(), ("h:Bcc", "x@evil.test")], 400),
         ("field h:Resent-From", [*minimal(), ("h:Resent-From", "x@evil.test")], 400),
         ("field h:content-type lower", [*minimal(), ("h:content-type", "text/html")], 400),
         ("field h:X-Foo final newline (D-19)", [*minimal(), ("h:X-Foo\n", "v")], 400),
@@ -968,6 +968,30 @@ def field_cases() -> list[Case]:
         # Both encodings of the same fields (PLAN.md 2.3 step 3).
         cases.append(Case(name, post(fields), status))
         cases.append(Case(f"{name} [multipart]", post(fields, encoding="multipart"), status))
+    for encoding in ("urlencoded", "multipart"):
+        for variant, extra, error_class in (
+            ("single", [], "DangerousHeaderError"),
+            ("repeated", [("h:bCC", "b@example.org")], "BadRequestError"),
+        ):
+            cases.append(
+                Case(
+                    f"field denied header {variant} {encoding}",
+                    post(
+                        [
+                            *minimal(
+                                **{"from": "sender@example.org", "to": "recipient@example.org"}
+                            ),
+                            ("h:Bcc", "a@example.org"),
+                            *extra,
+                        ],
+                        label="parity-domain-only",
+                        domain="mg.example.org",
+                        encoding=encoding,
+                    ),
+                    400,
+                    error_class=error_class,
+                )
+            )
     # Bounded, value-free refusal diagnostics for both form decoders.
     for prefix in ("", "v:", "o:", "t:"):
         for shape, suffix in (("large", "x" * 900_000), ("control", "\x00\x1b[31m\u2028forged")):

@@ -342,8 +342,9 @@ the contract. Each step names its Python source.
    - `v:*`, `o:*`, `t:*`, `recipient-variables`, `template` → 400;
    - `h:<name>`: must be a string (400 otherwise); duplicate names compared
      case-insensitively return 400, including identical values. Rust tracks
-     duplicates only for names that pass the step 7 name checks. An upload
-     with an inadmissible name returns a fixed string-field error;
+     ASCII names up to 76 bytes before the step 7 name checks, including names
+     denied by policy. A first occurrence of an inadmissible name on an
+     upload returns a fixed string-field error;
    - other names outside `from to cc bcc subject text html amp-html attachment
      inline` → 400;
    - `to`/`cc`/`bcc` repeatable; duplicate `subject`/`text`/`html`/`amp-html`

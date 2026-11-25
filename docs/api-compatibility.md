@@ -113,12 +113,12 @@ case-insensitively, including extension headers such as `X-Tag`; duplicates retu
 400 at form admission. Repeated `to`, `cc`, `bcc`, `attachment` and `inline` fields
 remain supported subject to existing limits and inline-ID uniqueness.
 
-Rust admits custom header names before adding them to duplicate tracking or
-retaining their values. For text fields, a name-policy error is reported after
-form, sender-policy and subject checks, in order with other custom header
-errors. Repeated inadmissible names are handled by name policy. A file field
-with an inadmissible custom header name gets the fixed 400 message
-`header must be a string`.
+Rust tracks ASCII custom header names of up to 76 bytes for duplicates before
+applying name policy, including names on the denylist. A repeated name in
+that range returns `duplicate custom header`. For text fields, Rust reports
+name-policy errors after form, sender-policy and subject checks, in order
+with other custom header errors. A first occurrence of an inadmissible name
+on a file field gets the fixed 400 message `header must be a string`.
 
 Both runtimes allow up to 200,000 UTF-8 bytes in the decoded `amp-html` field,
 measured before MIME construction. Oversized AMP markup returns HTTP 413 with

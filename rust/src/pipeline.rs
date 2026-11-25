@@ -26,7 +26,8 @@ use crate::config::{Level, Settings};
 use crate::domain::normalize_domain;
 use crate::form::{self, FormError, Limits, Upload, Value};
 use crate::headers::{
-    HeaderError, validate_custom_header_name, validate_custom_header_value, validate_subject,
+    HeaderError, MAX_HEADER_NAME_BYTES, validate_custom_header_name, validate_custom_header_value,
+    validate_subject,
 };
 use crate::log::Logger;
 use crate::mime::{self, Attachment, BuiltMessage, MessageInput};
@@ -682,6 +683,16 @@ fn parse_form(items: Vec<(String, Value)>, settings: &Settings) -> Result<Parsed
             return Err(Failure::bad_request("BadRequestError", "unsupported field"));
         }
         if let Some(name) = key.strip_prefix("h:") {
+            // Duplicate detection precedes policy, with bounded name copies.
+            if name.len() <= MAX_HEADER_NAME_BYTES
+                && name.is_ascii()
+                && !seen_headers.insert(name.to_ascii_lowercase())
+            {
+                return Err(Failure::bad_request(
+                    "BadRequestError",
+                    "duplicate custom header",
+                ));
+            }
             if let Err(error) = validate_custom_header_name(name) {
                 if !matches!(value, Value::Text(_)) {
                     return Err(Failure::bad_request(
@@ -693,12 +704,6 @@ fn parse_form(items: Vec<(String, Value)>, settings: &Settings) -> Result<Parsed
                 // header value errors. Continue checking other form fields.
                 parsed.header_name_error.get_or_insert(error);
                 continue;
-            }
-            if !seen_headers.insert(name.to_ascii_lowercase()) {
-                return Err(Failure::bad_request(
-                    "BadRequestError",
-                    "duplicate custom header",
-                ));
             }
             let Value::Text(text) = value else {
                 return Err(Failure::bad_request(

@@ -30,8 +30,9 @@ All notable changes to mailgun-relay are documented here.
 
 - Return HTTP 413 before polling supported form bodies with a known lower
   size bound above the request byte limit.
-- Admit custom header names before copying them for duplicate tracking or
-  parsed storage. Malformed custom header uploads receive a bounded diagnostic.
+- Track case-insensitive duplicates for ASCII custom header names up to 76
+  bytes, including denied names. Validate names before retaining their values
+  in parsed headers. Malformed custom header uploads receive a bounded diagnostic.
 - Count lost log records by encoding, queue and sink failure, and report observed
   losses on stderr at shutdown.
 - Close log admission before draining accepted records during shutdown.

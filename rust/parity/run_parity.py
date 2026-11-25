@@ -23,10 +23,11 @@ contract says (``handoff/parity-contract.md``, PLAN.md 2):
   ``token_label``, ``result``, ``status_code``, counts and refusals, and the
   ``event=startup`` record of both.
 
-Error texts, other headers, MIME bytes and other log fields are not
-compared. Python's status must also match the case (the oracle). A case
-that differs on purpose names its divergence (``divergence="D-n"``, PLAN.md
-section 3) and the Rust status. A case whose status matches but whose JSON
+Cases can also pin the diagnostic ``error_class`` for both relays. Other
+non-contract error texts, headers, MIME bytes and log fields are omitted.
+Python's status must also match the case (the oracle). A case that differs
+on purpose names its divergence (``divergence="D-n"``, PLAN.md section 3)
+and the Rust status. A case whose status matches but whose JSON
 message or record ``result`` differs on purpose names it as
 ``value_divergence`` with both expected values and is otherwise compared in
 full; every other difference fails the run.
@@ -474,7 +475,11 @@ def _by_event(records: list[dict[str, Any]], event: str) -> list[dict[str, Any]]
 
 
 def _compare_records(
-    py: Outcome, rs: Outcome, rust_values: dict[str, tuple[str, str]] | None = None
+    py: Outcome,
+    rs: Outcome,
+    rust_values: dict[str, tuple[str, str]] | None = None,
+    *,
+    error_class: str | None = None,
 ) -> list[str]:
     if py.records is None or rs.records is None:
         return []
@@ -503,6 +508,10 @@ def _compare_records(
     for name, outcome in (("python", py), ("rust", rs)):
         assert outcome.records is not None
         requests = _by_event(outcome.records, "request")
+        if error_class is not None:
+            actual = [record.get("error_class") for record in requests]
+            if actual != [error_class]:
+                diffs.append(f"{name}: request error_class {actual!r}, expected {[error_class]!r}")
         if requests and requests[0].get("status_code") != outcome.response.status:
             diffs.append(f"{name}: record status_code {requests[0].get('status_code')}")
         body = outcome.response.json()
@@ -538,7 +547,7 @@ def compare(case: corpus.Case, py: Outcome, rs: Outcome) -> tuple[list[str], str
         return diffs, case.divergence
     diffs += _compare_http(py.response, rs.response, case.rust_values)
     diffs += _compare_smtp(py, rs)
-    diffs += _compare_records(py, rs, case.rust_values)
+    diffs += _compare_records(py, rs, case.rust_values, error_class=case.error_class)
     return diffs, case.value_divergence
 
 

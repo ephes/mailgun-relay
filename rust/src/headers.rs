@@ -72,7 +72,7 @@ fn is_header_name(name: &str) -> bool {
 }
 
 /// The maximum name length accepted by lettre's `HeaderName`.
-const MAX_HEADER_NAME_BYTES: usize = 76;
+pub(crate) const MAX_HEADER_NAME_BYTES: usize = 76;
 
 /// Python's `len()`: code points. A negative maximum refuses every value.
 fn longer_than(value: &str, max: i64) -> bool {
