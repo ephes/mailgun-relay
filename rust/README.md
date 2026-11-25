@@ -7,7 +7,7 @@ production. [`TESTMAP.md`](TESTMAP.md) maps every Python test to its Rust
 counterpart.
 
 **Status: slices S1 to S7 of PLAN.md section 6 are done; the current
-release is [`rs-v0.2.5`](https://github.com/ephes/mailgun-relay/releases/tag/rs-v0.2.5)**;
+release is [`rs-v0.2.6`](https://github.com/ephes/mailgun-relay/releases/tag/rs-v0.2.6)**;
 S3 adds subject and header validation, form parsing and
 `POST /v3/{domain}/messages` with every decision of the Python route. The
 binary loads and validates the configuration, answers `GET /health`, the
@@ -639,6 +639,20 @@ material. A `.NAME.previous` directory is the recovery generation if interruptio
 occurs between renames; the next preparation restores it when NAME is absent.
 A successful replacement refreshes the complete two-day fixture generation;
 it never changes relay TLS verification or the host trust store.
+
+## Published release 0.2.6
+
+Rust 0.2.6 carries the Rust fixes merged since 0.2.5 (CHANGELOG `rs-v0.2.6`):
+`smtp_outcome_unknown` after DATA 354, the form-body deadline for ready frames,
+size-hint and header-name admission, repeated header names, AMP order and
+limit, log loss accounting and drain reporting. Built with the same hardened
+builder images as 0.2.5 (rustc 1.99.0). The tag `rs-v0.2.6` (annotated,
+created through the GitHub API) points at
+`750a3dadccada6f277a9a63532e8c944f66ad65d`, which the binary embeds; the
+archive `mailgun-relay-0.2.6-x86_64-unknown-linux-gnu.tar.gz` has SHA256
+`db07ba20b2aac7febb49ec944a6c5e572246983763146e3f05c7e40abd78255d`, checked
+after the upload by download and byte comparison, and again through the public
+download URL. Publication is not evidence of running-process protection.
 
 ## Published release 0.2.5
 
