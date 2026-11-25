@@ -995,15 +995,16 @@ def field_cases() -> list[Case]:
     # Repeated names outside the admissible range are duplicates before name
     # policy and sender policy, as in Python's lowercase name set.
     long_name = "X-" + "a" * 80
+    repeated: list[tuple[str, str, str | None, str | None, int, str | None]] = [
+        ("non-ascii", "X-\u00e9", "x-\u00c9", None, 400, "BadRequestError"),
+        ("kelvin", "\u212aey", "key", None, 400, "BadRequestError"),
+        ("long", long_name, long_name.upper(), None, 400, "BadRequestError"),
+        ("non-ascii single", "X-\u00e9", None, None, 400, "HeaderInjectionError"),
+        ("non-ascii denied sender", "X-\u00e9", "x-\u00c9", "x@evil.test", 400, None),
+        ("non-ascii single denied sender", "X-\u00e9", None, "x@evil.test", 403, None),
+    ]
     for encoding in ("urlencoded", "multipart"):
-        for variant, first, second, sender, status, error_class in (
-            ("non-ascii", "X-\u00e9", "x-\u00c9", None, 400, "BadRequestError"),
-            ("kelvin", "\u212aey", "key", None, 400, "BadRequestError"),
-            ("long", long_name, long_name.upper(), None, 400, "BadRequestError"),
-            ("non-ascii single", "X-\u00e9", None, None, 400, "HeaderInjectionError"),
-            ("non-ascii denied sender", "X-\u00e9", "x-\u00c9", "x@evil.test", 400, None),
-            ("non-ascii single denied sender", "X-\u00e9", None, "x@evil.test", 403, None),
-        ):
+        for variant, first, second, sender, expected, expected_class in repeated:
             names = [first] if second is None else [first, second]
             overrides = {} if sender is None else {"from": sender}
             cases.append(
@@ -1013,8 +1014,8 @@ def field_cases() -> list[Case]:
                         [*minimal(**overrides), *((f"h:{n}", "v") for n in names)],
                         encoding=encoding,
                     ),
-                    status,
-                    error_class=error_class,
+                    expected,
+                    error_class=expected_class,
                 )
             )
     # Bounded, value-free refusal diagnostics for both form decoders.
