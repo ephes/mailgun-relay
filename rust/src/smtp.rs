@@ -14,7 +14,7 @@
 //! - every failure without a reply code (connect, timeout, disconnect, TLS,
 //!   certificate, STARTTLS or AUTH not offered, a reply lettre cannot parse)
 //!   is temporary before message transfer. After DATA 354, a failure
-//!   without a complete final reply leaves the outcome unknown (503);
+//!   without a parsable final reply code leaves the outcome unknown (503);
 //! - AUTH: PLAIN, then LOGIN, as `smtplib.login` tries them; refused with
 //!   codes (but 421) by both, permanent; credentials are never sent without
 //!   TLS (permanent);

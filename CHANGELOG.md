@@ -20,8 +20,8 @@ All notable changes to mailgun-relay are documented here.
 
 ### Rust relay
 
-- Report transport failures and timeouts after DATA 354 as
-  `smtp_outcome_unknown` when there is no complete final reply. HTTP 503
+- Report transport failures, timeouts and other failures without a parsable
+  final reply code after DATA 354 as `smtp_outcome_unknown`. HTTP 503
   tells callers to verify delivery before retrying.
   The parity harness records this as decided divergence D-23 and still
   compares every other field of those cases.

@@ -392,7 +392,9 @@ through the delivery outcome together. Expiry closes the connection, returns
 HTTP 503, and releases admission. A transport failure or timeout before DATA
 354 is a temporary failure (`smtp_temporary`). After DATA 354, loss of the
 connection or expiry without a complete final reply leaves the outcome unknown
-(`smtp_outcome_unknown`). A complete final reply retains its normal status.
+(`smtp_outcome_unknown`). So does any other failure without a parsable final
+reply code after DATA 354, such as an unparsable reply or exhausting the
+inbound wire-byte cap. A final reply with a code retains its normal status.
 Verify upstream delivery before retrying an unknown outcome to avoid duplicate
 mail. The relay never retries automatically.
 
