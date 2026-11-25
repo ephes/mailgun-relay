@@ -405,7 +405,7 @@ a startup-only filter, or a `--targets` subset consisting entirely of unsupporte
 cases exits nonzero before starting relays or reading capture files. The explicit
 `--write-secrets` utility remains exempt. Reports distinguish
 `selected_request_cases` (before target-mode exclusions) from `request_cases`
-(runnable requests), and list skipped cases separately.
+(requests attempted), and list skipped cases separately.
 
 `--report FILE` serializes a complete success or failure receipt first, writes a
 sibling temporary file, flushes and fsyncs it, then atomically replaces FILE
@@ -628,7 +628,9 @@ separately; only final JSON records are input to capture comparison. The
 markers to clear and then ignores the remaining ones as retained attempts, so
 they do not stall each case. After this wait the harness records existing JSON
 filenames without reading their contents. Only captures first seen during the
-new run are decoded.
+new run are decoded. If a new active capture remains after a case's five-second
+settle period, the harness reports a capture error for that case and skips the
+remaining cases for the pair. Earlier case results remain in the report.
 
 Each session admits at most 64 MiB of aggregate input (including AUTH/DATA),
 4,096 commands and one retained message. The sink admits at most 16 simultaneous

@@ -59,6 +59,8 @@ All notable changes to mailgun-relay are documented here.
   extensions and trailers.
 - Report incomplete HTTP responses as harness errors before comparison.
 - Baseline existing SMTP capture filenames without decoding old payloads.
+- Stop external parity cases when an SMTP capture fails to settle, preserving
+  completed observations.
 
 - Compare filenames inferred from `Content-Type` even when a MIME part has
   no `Content-Disposition` header.

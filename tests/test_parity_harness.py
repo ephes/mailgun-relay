@@ -1015,3 +1015,55 @@ def test_directory_target_waits_for_a_capture_in_progress_at_startup(tmp_path: P
     assert target.stale_active == set()
     assert target.seen_sessions == {"5.json"}
     assert target.sessions() == []
+
+
+def test_unsettled_capture_retires_target_pair(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    py_dir, rs_dir = tmp_path / "py", tmp_path / "rs"
+    for directory in (py_dir, rs_dir):
+        directory.mkdir()
+    active = rs_dir / "1.active"
+    late = rs_dir / "1.json"
+    cases = [
+        corpus.Case(name, corpus.Request(method="GET", path=f"/{name}"), 200)
+        for name in ("done", "held", "next")
+    ]
+    requests: list[tuple[int, bytes]] = []
+    clock = 0.0
+
+    def sleep(delay: float) -> None:
+        nonlocal clock
+        clock += delay
+
+    def exchange(address: tuple[str, int], pieces: list[bytes]) -> run_parity.Response:
+        path = pieces[0].split()[1]
+        requests.append((address[1], path))
+        if (address[1], path) == (2, b"/held"):
+            active.touch()
+        if path == b"/next":
+            late.write_text(json.dumps({"message": None, "id": "late"}))
+            active.unlink(missing_ok=True)
+        return _response(200, '{"status":"ok"}')
+
+    monkeypatch.setattr(run_parity.time, "monotonic", lambda: clock)
+    monkeypatch.setattr(run_parity.time, "sleep", sleep)
+    monkeypatch.setattr(run_parity, "exchange", exchange)
+    args = run_parity.argparse.Namespace(
+        targets="http://127.0.0.1:1,http://127.0.0.1:2",
+        sinks=f"{py_dir},{rs_dir}",
+        logs=None,
+        verbose=False,
+    )
+    report = run_parity.Report()
+    run_parity.run_targets(args, cases, report)
+    late.write_text(json.dumps({"message": None, "id": "late"}))
+    active.unlink(missing_ok=True)
+
+    assert requests == [(1, b"/done"), (2, b"/done"), (1, b"/held"), (2, b"/held")]
+    assert [case["name"] for case in report.cases] == ["done"]
+    assert report.passed == 1
+    assert report.failures == [
+        ("held", ["harness error: rust: SMTP captures did not settle within 5 seconds"])
+    ]
+    assert report.skipped == ["next"]

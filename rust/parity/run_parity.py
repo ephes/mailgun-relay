@@ -356,6 +356,10 @@ class LogTail:
 # ------------------------------------------------------------------ targets
 
 
+class CaptureTimeout(TimeoutError):
+    """The external sink still owns a capture from the current case."""
+
+
 @dataclass
 class Target:
     """One implementation under test: its HTTP address, its SMTP sink and
@@ -395,8 +399,11 @@ class Target:
         if self.sink_dir is None:
             return []
         deadline = time.monotonic() + 5
-        while self.in_flight() and time.monotonic() < deadline:
-            time.sleep(0.02)
+        while self.in_flight():
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise CaptureTimeout(f"{self.name}: SMTP captures did not settle within 5 seconds")
+            time.sleep(min(0.02, remaining))
         found = []
         for path in sorted(self.sink_dir.glob("*.json")):
             if path.name not in self.seen_sessions:
@@ -837,12 +844,16 @@ def run_cases(
     counter: list[int],
     verbose: bool,
 ) -> None:
-    for case in cases:
+    for index, case in enumerate(cases):
         counter[0] += 1
         n = counter[0]
         try:
             py_outcome = run_case(py, case, n)
             rs_outcome = run_case(rs, case, n)
+        except CaptureTimeout as exc:
+            report.record(case.name, [f"harness error: {exc}"], None, verbose)
+            report.skipped.extend(c.name for c in cases[index + 1 :])
+            break
         except (OSError, RuntimeError) as exc:
             report.record(case.name, [f"harness error: {exc}"], None, verbose)
             continue
@@ -1072,7 +1083,7 @@ def main(argv: list[str] | None = None) -> int:
     elapsed = time.monotonic() - report.started
     summary = {
         "selected_request_cases": selected_count,
-        "request_cases": len(cases),
+        "request_cases": selected_count - len(report.skipped),
         "passed_checks": report.passed,
         "failed": len(report.failures),
         "skipped": len(report.skipped),
