@@ -61,6 +61,8 @@ All notable changes to mailgun-relay are documented here.
 - Baseline existing SMTP capture filenames without decoding old payloads.
 - Stop external parity cases when an SMTP capture fails to settle, preserving
   completed observations.
+- Set external log offsets before sending any parity requests and report
+  initialization failures during setup.
 
 - Compare filenames inferred from `Content-Type` even when a MIME part has
   no `Content-Disposition` header.

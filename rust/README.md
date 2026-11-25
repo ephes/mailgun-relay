@@ -399,6 +399,9 @@ PY_DIR,RS_DIR [--logs PY_LOG,RS_LOG]` runs the corpus against two running
 instances whose SMTP goes to capture sinks (`parity/smtp_fake.py --listen
 HOST:PORT --certs DIR --record-dir DIR`) and whose secrets come from
 `run_parity.py --write-secrets PATH` (the shadow of PLAN.md 10.1).
+When `--logs` is supplied, the harness opens both files and starts following
+from their initial end offsets before sending requests. An open or seek failure
+stops setup with the target and log path in the diagnostic.
 
 Verification requires at least one runnable request case. A misspelled filter,
 a startup-only filter, or a `--targets` subset consisting entirely of unsupported

@@ -1067,3 +1067,77 @@ def test_unsettled_capture_retires_target_pair(
         ("held", ["harness error: rust: SMTP captures did not settle within 5 seconds"])
     ]
     assert report.skipped == ["next"]
+
+
+def test_target_log_offset_is_set_before_follower_runs(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    import threading
+
+    logs = [tmp_path / name for name in ("py.log", "rs.log")]
+    for path in logs:
+        path.write_text('{"event":"previous"}\n')
+    release = threading.Event()
+    thread = threading.Thread
+
+    def delayed_thread(**kwargs: Any) -> threading.Thread:
+        pump = kwargs.pop("target")
+
+        def delayed_pump() -> None:
+            if release.wait(2):
+                pump()
+
+        return thread(target=delayed_pump, **kwargs)
+
+    monkeypatch.setattr(run_parity.threading, "Thread", delayed_thread)
+
+    def run_cases(
+        py: run_parity.Target,
+        rs: run_parity.Target,
+        cases: list[corpus.Case],
+        report: run_parity.Report,
+        counter: list[int],
+        verbose: bool,
+    ) -> None:
+        marker = run_parity.marker_domain(counter[0])
+        for path in logs:
+            with path.open("a") as stream:
+                stream.write('{"event":"request"}\n')
+                stream.write(json.dumps({"path_domain": marker}) + "\n")
+        release.set()
+        for target in (py, rs):
+            assert target.log is not None
+            assert target.log.until_marker(counter[0], timeout=0.5) == [{"event": "request"}]
+
+    monkeypatch.setattr(run_parity, "run_cases", run_cases)
+    args = run_parity.argparse.Namespace(
+        targets="http://127.0.0.1:1,http://127.0.0.1:2",
+        sinks=f"{tmp_path},{tmp_path}",
+        logs=",".join(map(str, logs)),
+        verbose=False,
+    )
+    run_parity.run_targets(args, [], run_parity.Report())
+
+
+def test_target_log_open_failure_stops_setup(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    path = tmp_path / "relay.log"
+    path.touch()
+
+    def denied(*args: Any, **kwargs: Any) -> Any:
+        raise PermissionError("synthetic denial")
+
+    monkeypatch.setattr(Path, "open", denied)
+    monkeypatch.setattr(run_parity.threading.Thread, "start", lambda self: None)
+    monkeypatch.setattr(run_parity, "run_cases", lambda *args: pytest.fail("unexpected cases"))
+    args = run_parity.argparse.Namespace(
+        targets="http://127.0.0.1:1,http://127.0.0.1:2",
+        sinks=f"{tmp_path},{tmp_path}",
+        logs=f"{path},{path}",
+        verbose=False,
+    )
+    with pytest.raises(
+        SystemExit, match=r"python: cannot initialize log capture.*synthetic denial"
+    ):
+        run_parity.run_targets(args, [], run_parity.Report())

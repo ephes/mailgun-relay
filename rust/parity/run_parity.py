@@ -63,7 +63,8 @@ import tempfile
 import threading
 import time
 from collections import Counter
-from contextlib import ExitStack
+from collections.abc import Iterator
+from contextlib import ExitStack, contextmanager
 from dataclasses import dataclass, field
 from email.errors import MessageError
 from pathlib import Path
@@ -311,22 +312,31 @@ class LogTail:
 
         threading.Thread(target=pump, daemon=True).start()
 
-    def follow_file(self, path: Path) -> None:
-        def pump() -> None:
-            with path.open("rb") as stream:
-                stream.seek(0, os.SEEK_END)
+    @contextmanager
+    def follow_file(self, path: Path) -> Iterator[None]:
+        stopped = threading.Event()
+        with path.open("rb") as stream:
+            stream.seek(0, os.SEEK_END)
+
+            def pump() -> None:
                 buffer = b""
-                while True:
+                while not stopped.is_set():
                     chunk = stream.readline()
                     if not chunk:
-                        time.sleep(0.05)
+                        stopped.wait(0.05)
                         continue
                     buffer += chunk
                     if buffer.endswith(b"\n"):
                         self.feed(buffer.decode("utf-8", "replace").rstrip("\n"))
                         buffer = b""
 
-        threading.Thread(target=pump, daemon=True).start()
+            worker = threading.Thread(target=pump, daemon=True)
+            worker.start()
+            try:
+                yield
+            finally:
+                stopped.set()
+                worker.join()
 
     def wait(self, predicate: Any, timeout: float) -> dict[str, Any] | None:
         deadline = time.monotonic() + timeout
@@ -968,21 +978,27 @@ def run_targets(args: argparse.Namespace, cases: list[corpus.Case], report: Repo
     logs = args.logs.split(",") if args.logs else [None, None]
     if not len(urls) == len(sinks) == len(logs) == 2:
         raise SystemExit("--targets, --sinks and --logs take two values each (python,rust)")
-    targets = []
-    for name, url, sink, log_path in zip(("python", "rust"), urls, sinks, logs, strict=True):
-        if not Path(sink).is_dir() or (log_path is not None and not Path(log_path).is_file()):
-            raise SystemExit(f"{name}: no capture directory {sink} or log file {log_path}")
-        parts = urlsplit(url)
-        assert parts.hostname is not None and parts.port is not None, url
-        log = None
-        if log_path is not None:
-            log = LogTail()
-            log.follow_file(Path(log_path))
-        target = Target(name, (parts.hostname, parts.port), sink_dir=Path(sink), log=log)
-        targets.append(target)
-    # Distinct markers per run: the log files may hold earlier runs.
-    counter = [int(time.time()) * 1000]
-    run_cases(targets[0], targets[1], cases, report, counter, args.verbose)
+    with ExitStack() as captures:
+        targets = []
+        for name, url, sink, log_path in zip(("python", "rust"), urls, sinks, logs, strict=True):
+            if not Path(sink).is_dir() or (log_path is not None and not Path(log_path).is_file()):
+                raise SystemExit(f"{name}: no capture directory {sink} or log file {log_path}")
+            parts = urlsplit(url)
+            assert parts.hostname is not None and parts.port is not None, url
+            log = None
+            if log_path is not None:
+                log = LogTail()
+                try:
+                    captures.enter_context(log.follow_file(Path(log_path)))
+                except OSError as exc:
+                    raise SystemExit(
+                        f"{name}: cannot initialize log capture {log_path}: {exc}"
+                    ) from exc
+            target = Target(name, (parts.hostname, parts.port), sink_dir=Path(sink), log=log)
+            targets.append(target)
+        # Distinct markers per run: the log files may hold earlier runs.
+        counter = [int(time.time()) * 1000]
+        run_cases(targets[0], targets[1], cases, report, counter, args.verbose)
 
 
 class ReportDurabilityError(OSError):
