@@ -4,11 +4,14 @@ from __future__ import annotations
 
 import asyncio
 import dataclasses
+import io
+import smtplib
 import socket
 import socketserver
 import threading
 import time
-from collections.abc import Iterator
+from collections.abc import Buffer, Iterator
+from email.message import EmailMessage
 from typing import cast
 from unittest.mock import Mock
 
@@ -16,11 +19,18 @@ import pytest
 from fastapi.testclient import TestClient
 from httpx import Response
 
+from mailgun_relay import smtp_client
 from mailgun_relay.app import create_app
 from mailgun_relay.routes import AppState
-from mailgun_relay.smtp_client import _SessionSMTP, _SocketDeadline, submit
+from mailgun_relay.smtp_client import (
+    FailureCategory,
+    SmtpSubmitError,
+    _SessionSMTP,
+    _SocketDeadline,
+    submit,
+)
 from tests.test_messages_endpoint import _minimum_form, basic
-from tests.test_smtp_submission import _plain_transport
+from tests.test_smtp_submission import _msg, _plain_transport
 
 
 class Peer(socketserver.ThreadingTCPServer):
@@ -198,9 +208,6 @@ def test_app_passes_session_budget_to_transport(
 
 
 def test_late_resolver_result_does_not_open_connection(monkeypatch: pytest.MonkeyPatch) -> None:
-    from mailgun_relay.smtp_client import FailureCategory, SmtpSubmitError
-    from tests.test_smtp_submission import _msg
-
     addresses = socket.getaddrinfo("127.0.0.1", 25, type=socket.SOCK_STREAM)
 
     def resolve(*args: object, **kwargs: object) -> object:
@@ -264,3 +271,65 @@ def test_failed_candidate_close_preserves_connect_result(
         banner.assert_called_once_with()
     first.connect.assert_called_once_with(addresses[0][4])
     first.close.assert_called_once_with()
+
+
+@pytest.mark.parametrize(
+    "final_reply", [b"250 queued\r\n", b"", b"250 queued", b"550 rejected", b"250-queued\r\n"]
+)
+def test_data_outcome_at_deadline(monkeypatch: pytest.MonkeyPatch, final_reply: bytes) -> None:
+    now = 0.0
+    transport = _plain_transport(25)
+    accepted = final_reply == b"250 queued\r\n"
+    # The 550 RCPT refusal must still be returned when DATA succeeds.
+    replies = io.BytesIO(
+        b"220 synthetic SMTP\r\n250 synthetic\r\n250 sender ok\r\n"
+        b"250 recipient ok\r\n550 recipient refused\r\n354 send data\r\n"
+        + final_reply
+        + (b"221 bye\r\n" if accepted else b"")
+    )
+
+    class ReplyStream(io.RawIOBase):
+        def readable(self) -> bool:
+            return True
+
+        def readinto(self, buffer: Buffer, /) -> int:
+            data = replies.readinto(buffer)
+            if data == 0 and not final_reply:
+                raise TimeoutError("synthetic DATA read timeout")
+            return data
+
+    sock = Mock()
+    sock.makefile.side_effect = lambda *_, **kw: (
+        ReplyStream() if kw.get("buffering") == 0 else io.BufferedReader(ReplyStream())
+    )
+
+    def connect(smtp: _SessionSMTP, *_args: object, **_kwargs: object) -> tuple[int, bytes]:
+        smtp.sock = sock
+        return smtp.getreply()
+
+    def send_message(
+        smtp: _SessionSMTP, message: EmailMessage, *, from_addr: str, to_addrs: list[str]
+    ) -> smtp_client.RefusedRecipients:
+        nonlocal now
+        refused = smtplib.SMTP.send_message(smtp, message, from_addr=from_addr, to_addrs=to_addrs)
+        now = transport.session_timeout_s + 1
+        return refused
+
+    monkeypatch.setattr(smtp_client, "time", Mock(monotonic=lambda: now))
+    monkeypatch.setattr(_SessionSMTP, "connect", connect)
+    monkeypatch.setattr(_SessionSMTP, "send_message", send_message)
+
+    def send() -> smtp_client.RefusedRecipients:
+        return submit(
+            _msg(),
+            envelope_sender="sender@example.test",
+            recipients=["accepted@example.test", "refused@example.test"],
+            transport=transport,
+        )
+
+    if accepted:
+        assert send() == {"refused@example.test": (550, b"recipient refused")}
+    else:
+        with pytest.raises(SmtpSubmitError) as caught:
+            send()
+        assert caught.value.category is FailureCategory.TEMPORARY

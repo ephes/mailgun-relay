@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import contextlib
+import io
 import logging
 import math
 import smtplib
@@ -115,6 +116,16 @@ class _SocketDeadline:
                 self.socket.close()
 
 
+class _ReplyReader(io.BufferedReader):
+    def readline(self, size: int | None = -1, /) -> bytes:
+        line = super().readline(size)
+        # shutdown can yield a reply prefix followed by EOF. Leave lines at
+        # the size limit to smtplib's existing overlong-line handling.
+        if line and not line.endswith(b"\n") and (size is None or size < 0 or len(line) < size):
+            raise ConnectionError("incomplete SMTP reply line")
+        return line
+
+
 class _SessionSMTP(smtplib.SMTP):
     """Use smtplib's public connect/reply boundary with one owned TCP budget."""
 
@@ -170,6 +181,11 @@ class _SessionSMTP(smtplib.SMTP):
         if error is not None:
             raise error
         raise OSError("no SMTP addresses")
+
+    def getreply(self) -> tuple[int, bytes]:
+        if self.file is None and self.sock is not None:
+            self.file = _ReplyReader(self.sock.makefile("rb", buffering=0))
+        return super().getreply()
 
 
 def _tls_context(transport: SmtpTransport) -> ssl.SSLContext:
@@ -280,9 +296,6 @@ def submit(
                     from_addr=envelope_sender,
                     to_addrs=recipients,
                 )
-                # shutdown can expose a partial reply as EOF to smtplib.
-                # A result returned after expiry is an uncertain outcome.
-                budget.remaining(transport.timeout_s)
             finally:
                 # QUIT and its timer are optional once the send has an outcome.
                 try:
@@ -324,8 +337,8 @@ def submit(
         raise
     except Exception as exc:
         if budget is not None and budget.expired:
-            # A truncated response may contain a 5xx prefix; expiry still
-            # means no complete outcome was established inside the budget.
+            # Preserve the temporary classification for failed operations
+            # interrupted by the session timer.
             raise SmtpSubmitError(FailureCategory.TEMPORARY, reason="TimeoutError") from exc
         category = _category_for(exc)
         raise SmtpSubmitError(category, reason=_safe_reason(exc)) from exc

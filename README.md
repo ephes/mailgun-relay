@@ -155,10 +155,11 @@ files, and a zero header length permits only empty subject/header values.
 Python rollback uses `MAILGUN_RELAY_SMTP_SESSION_TIMEOUT_S` (default 120 s,
 with the same finite `(0, 1e9]` validation) for the complete SMTP outcome,
 including TCP attempts, banner, TLS, AUTH and recipients/DATA. QUIT gets a separate
-`min(SMTP_TIMEOUT_S, 5 seconds)` budget; cleanup failure preserves confirmed DATA
-acceptance. An expired or missing final DATA result is HTTP 503 with uncertain
-delivery: inspect the upstream outcome before a deliberate retry, which may
-otherwise duplicate mail. The service never automatically replays a send.
+`min(SMTP_TIMEOUT_S, 5 seconds)` budget. A complete final DATA 250 reply
+preserves acceptance even if the session deadline passes before the result
+returns. A timeout or truncated reply without a complete final DATA result
+returns HTTP 503 with uncertain delivery. Inspect the upstream outcome before
+a deliberate retry to avoid duplicating mail. The service never automatically replays a send.
 Socket shutdown cannot interrupt Python's libc DNS calls; their elapsed time
 is charged, late results are refused and admission stays occupied until they
 return. See [the deadline contract](docs/security.md#rust-acquisition-deadlines).

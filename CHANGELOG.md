@@ -4,6 +4,11 @@ All notable changes to mailgun-relay are documented here.
 
 ## Unreleased
 
+### Python relay
+
+- Preserve a complete final DATA acceptance at the session deadline. A
+  timeout or truncated DATA reply still leaves delivery uncertain.
+
 ### Rust relay
 
 - Count lost log records by encoding, queue and sink failure, and report observed
