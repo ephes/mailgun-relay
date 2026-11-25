@@ -55,6 +55,8 @@ All notable changes to mailgun-relay are documented here.
 
 ### Parity harness
 
+- Compare filenames inferred from `Content-Type` even when a MIME part has
+  no `Content-Disposition` header.
 - Inspect every MIME header occurrence for parser defects and report duplicate
   singleton fields separately.
 - Compare multipart container Content-ID, disposition and filename alongside

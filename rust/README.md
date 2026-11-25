@@ -357,8 +357,9 @@ envelope, the message as Python's parser reads it, and the log records.
 The parser defect check inspects each header occurrence on each MIME part.
 It reports duplicates of singleton fields by case-insensitive name and allows
 repeatable fields such as Received.
-The MIME tree compares Content-ID, disposition and its filename on containers
-as well as leaf parts.
+The MIME tree compares Content-ID, disposition and parsed filenames on
+containers and leaf parts. A `Content-Type` `name` parameter supplies a
+filename even when the part has no `Content-Disposition` header.
 Expected differences name their entry of PLAN.md section 3; any other
 difference fails. A difference that keeps the status (D-23:
 `smtp_outcome_unknown` and its JSON message after a transfer fault at the end

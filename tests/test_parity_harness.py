@@ -138,6 +138,20 @@ def test_identical_outcomes_pass() -> None:
     assert _differences(lambda rust: None) == []
 
 
+def test_mime_comparison_catches_content_type_filename_without_disposition() -> None:
+    def named_part(filename: str) -> bytes:
+        part = EmailMessage()
+        part.set_content(b"same bytes", maintype="application", subtype="octet-stream")
+        part.set_param("name", filename)
+        return part.as_bytes()
+
+    first = semantic.semantic_message(named_part("first.bin"))
+    assert first != semantic.semantic_message(named_part("second.bin"))
+    assert first == semantic.semantic_message(named_part("first.bin"))
+    assert first["body"]["filename"] == "first.bin"
+    assert "disposition" not in first["body"]
+
+
 @pytest.mark.parametrize("invalid_first", [False, True])
 def test_mime_defects_include_each_duplicate_header_value(invalid_first: bool) -> None:
     headers = [b"Content-Type: text/plain", b"cOnTeNt-TyPe: invalid"]
