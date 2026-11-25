@@ -160,6 +160,8 @@ preserves acceptance even if the session deadline passes before the result
 returns. A timeout or truncated reply without a complete final DATA result
 returns HTTP 503 with uncertain delivery. Inspect the upstream outcome before
 a deliberate retry to avoid duplicating mail. The service never automatically replays a send.
+A complete SMTP rejection whose failure surfaces after the session timer fired
+is still reported as temporary (HTTP 503); a retry normally gets the same rejection.
 Socket shutdown cannot interrupt Python's libc DNS calls; their elapsed time
 is charged, late results are refused and admission stays occupied until they
 return. See [the deadline contract](docs/security.md#rust-acquisition-deadlines).
