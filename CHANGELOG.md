@@ -50,6 +50,8 @@ All notable changes to mailgun-relay are documented here.
   expires, even with no observed log losses.
 - Wake log drain callers when the writer panics and report the unexpected
   exit with its own diagnostic.
+- Bound the final service error report within the same 100 ms stderr budget
+  as the log drain summary. Listener failures still exit 1 when stderr stalls.
 
 ### Parity harness
 

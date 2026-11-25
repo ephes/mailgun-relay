@@ -366,10 +366,12 @@ records until disconnection.
 Sink writes and the one-second drain wait occur outside the guard. Drain
 completion or abnormal writer exit is shared, with an independent wait
 budget per caller. A stalled sink may lose the tail when the process exits.
-Health, SMTP outcomes and
-capacity release do not depend on stdout progress. If the log writer thread
-cannot start, the relay reports a fixed startup failure on stderr and exits 1
-before creating listeners. The startup log record is best effort.
+The log summary and any final service error share a single 100 ms stderr
+reporting budget after the drain. Listener failures still exit 1 if stderr
+stalls. Health, SMTP outcomes and capacity release do not depend on stdout
+progress. If the log writer thread cannot start, the relay reports a fixed
+startup failure on stderr and exits 1 before creating listeners. The startup
+log record is best effort.
 Python's retained logging path keeps its documented exception-isolation behavior.
 
 A completed DATA whose final 250 is lost remains uncertain: HTTP 503 cannot

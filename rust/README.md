@@ -278,13 +278,15 @@ excluded. If the drain deadline expires, the summary includes
 shutdown callers and the summary includes
 `log drain unconfirmed (writer exited unexpectedly)`. Both diagnostics can
 appear with zero observed losses. Delivery of pending records is unknown.
-Shutdown waits at most 100 ms for the summary.
+Shutdown waits at most 100 ms total for the summary and any final service
+error on stderr.
 On SIGTERM or SIGINT, the relay stops all listeners and waits for in-flight
 requests, including submissions whose clients disconnected. The relay then
 closes log admission before waiting up to one second for accepted records to
 drain. Shutdown callers wait independently and share the writer's drain
 result. A listener that exits early triggers the same drain. The relay
-reports the initiating listener failure after the drain and exits 1.
+attempts to report the initiating listener failure after the drain and exits 1
+even if stderr stalls.
 Configuration and bind failures also exit 1. If the named log writer thread
 cannot start, the relay reports `cannot start the log writer` on stderr and
 exits 1 before creating any listeners.

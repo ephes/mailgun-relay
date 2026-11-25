@@ -339,11 +339,12 @@ mod tests {
         let exit = crate::serve_with(
             || Logger::with_spawner(Level::Info, |_| Err(io::ErrorKind::WouldBlock.into())),
             setup_listeners,
+            |_| {},
         );
         assert_eq!(exit, ExitCode::FAILURE);
         assert_eq!(listener_setups.get(), 0);
 
-        let exit = crate::serve_with(|| Logger::new(Level::Info), setup_listeners);
+        let exit = crate::serve_with(|| Logger::new(Level::Info), setup_listeners, |_| {});
         assert_eq!(exit, ExitCode::SUCCESS);
         assert_eq!(listener_setups.get(), 1);
     }

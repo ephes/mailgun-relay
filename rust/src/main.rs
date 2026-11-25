@@ -110,12 +110,16 @@ fn serve() -> ExitCode {
                 run(settings, secrets, smtp, logger.clone(), listeners).await
             })
         },
+        |message| {
+            let _ = writeln!(io::stderr().lock(), "mailgun-relay: {message}");
+        },
     )
 }
 
 fn serve_with(
     start_logger: impl FnOnce() -> io::Result<Logger>,
     run_service: impl FnOnce(&Logger) -> Result<(), String>,
+    write_diagnostic: impl Fn(&str) + Send + 'static,
 ) -> ExitCode {
     let Ok(logger) = start_logger() else {
         let _ = writeln!(
@@ -125,16 +129,14 @@ fn serve_with(
         return ExitCode::FAILURE;
     };
     let result = run_service(&logger);
-    if let Some(summary) = log_shutdown_summary(&logger, Duration::from_secs(1)) {
-        report_log_shutdown(summary);
-    }
-    match result {
-        Ok(()) => ExitCode::SUCCESS,
-        Err(message) => {
-            eprintln!("mailgun-relay: {message}");
-            ExitCode::FAILURE
-        }
-    }
+    let summary = log_shutdown_summary(&logger, Duration::from_secs(1));
+    let exit = if result.is_ok() {
+        ExitCode::SUCCESS
+    } else {
+        ExitCode::FAILURE
+    };
+    report_shutdown(summary, result.err(), write_diagnostic);
+    exit
 }
 
 fn log_shutdown_summary(logger: &Logger, budget: Duration) -> Option<String> {
@@ -166,11 +168,20 @@ fn log_shutdown_summary(logger: &Logger, budget: Duration) -> Option<String> {
     (!summary.is_empty()).then_some(summary)
 }
 
-fn report_log_shutdown(summary: String) {
+fn report_shutdown(
+    summary: Option<String>,
+    service_error: Option<String>,
+    write_diagnostic: impl Fn(&str) + Send + 'static,
+) {
+    if summary.is_none() && service_error.is_none() {
+        return;
+    }
     // Stderr can share the same stalled destination as stdout.
     let (done, finished) = mpsc::channel();
     let _ = std::thread::Builder::new().spawn(move || {
-        let _ = writeln!(io::stderr().lock(), "mailgun-relay: {summary}");
+        for message in [summary, service_error].into_iter().flatten() {
+            write_diagnostic(&message);
+        }
         let _ = done.send(());
     });
     let _ = finished.recv_timeout(Duration::from_millis(100));
@@ -440,6 +451,52 @@ mod bind_tests {
 mod shutdown_tests {
     use super::*;
     use tokio::sync::oneshot;
+
+    #[test]
+    fn listener_failure_exits_while_terminal_diagnostic_is_blocked() {
+        let (writing, diagnostic) = mpsc::channel();
+        let (release, released) = mpsc::channel();
+        let (done, finished) = mpsc::channel();
+        let service = std::thread::spawn(move || {
+            let exit = serve_with(
+                || Ok(Logger::capturing(Level::Info).0),
+                |_| {
+                    tokio::runtime::Builder::new_current_thread()
+                        .build()
+                        .unwrap()
+                        .block_on(async {
+                            let (stop, _) = watch::channel(false);
+                            let mut servers = JoinSet::new();
+                            servers.spawn(async {
+                                Err(io::Error::other("scripted listener failure"))
+                            });
+                            supervise_listeners(
+                                servers,
+                                stop,
+                                &TaskTracker::new(),
+                                std::future::pending(),
+                            )
+                            .await
+                        })
+                },
+                move |message| {
+                    writing.send(message.to_owned()).unwrap();
+                    let _ = released.recv();
+                },
+            );
+            done.send(exit).unwrap();
+        });
+        let message = diagnostic.recv_timeout(Duration::from_secs(2)).unwrap();
+        assert!(message.starts_with("server stopped: "), "{message}");
+        assert!(message.contains("scripted listener failure"), "{message}");
+        let exit = finished.recv_timeout(Duration::from_secs(1));
+        let _ = release.send(());
+        assert_eq!(
+            exit.expect("service waited for the blocked terminal diagnostic"),
+            ExitCode::FAILURE
+        );
+        service.join().unwrap();
+    }
 
     #[tokio::test]
     async fn listener_exit_stops_other_listeners_and_drains_submissions() {

@@ -398,9 +398,10 @@ Rust stdout has a dedicated writer thread with a 256-record queue and 64 KiB
 cap on JSON encoding, including the trailing newline. Oversized records drop
 during encoding, and queue saturation drops the newest record. Shutdown drains
 for at most one second after requests finish, so a stalled sink may lose records,
-including startup. The relay reports an unconfirmed log drain on stderr when
+including startup. The relay attempts to report an unconfirmed log drain when
 the deadline expires or the writer exits unexpectedly, with a distinct
-diagnostic for each. Health and delivery never wait for stdout. See
+diagnostic for each. The log summary and any final service error share a
+100 ms stderr reporting budget. Health and delivery never wait for stdout. See
 [architecture](docs/architecture.md) for ownership and drain details.
 
 ## Multipart completion
