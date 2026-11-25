@@ -394,6 +394,80 @@ def test_corpus_covers_the_s6_requirements() -> None:
     assert any(name.startswith("smtp strict partial") for name in names)
 
 
+@pytest.mark.parametrize(
+    ("wire", "termination", "case_names"),
+    [
+        (b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nx", b"", ["complete"]),
+        (
+            b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nx",
+            ConnectionResetError(),
+            ["complete"],
+        ),
+        (b"HTTP/1.1 200 OK\r\nContent-Length: 0", b"", ["complete"]),
+        (b"HTTP/1.1 200 OK\r\n\r\npartial", ConnectionResetError(), ["complete"]),
+        (b"HTTP/1.1 100 Continue\r\n\r\n", b"", ["complete"]),
+        (b"HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n1\r\nx\r\n", b"", ["complete"]),
+        (b"HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n0\r\nX: y\r\n", b"", ["complete"]),
+        (b"HTTP/1.1 200 OK\r\n\r\nEOF body", b"", ["first", "complete"]),
+        (
+            b"HTTP/1.1 200 OK\r\nContent-Length: 1\r\n\r\nx",
+            ConnectionResetError(),
+            ["first", "complete"],
+        ),
+        (
+            b"HTTP/1.1 100 Continue\r\n\r\nHTTP/1.1 200 OK\r\nContent-Length: 1\r\n\r\nx",
+            b"",
+            ["first", "complete"],
+        ),
+    ],
+)
+def test_http_observation_requires_complete_framing(
+    monkeypatch: pytest.MonkeyPatch,
+    wire: bytes,
+    termination: bytes | ConnectionResetError,
+    case_names: list[str],
+) -> None:
+    class Peer:
+        def __init__(self, chunks: list[bytes | ConnectionResetError]) -> None:
+            self.chunks = iter(chunks)
+
+        def __enter__(self) -> Peer:
+            return self
+
+        def __exit__(self, *args: object) -> None:
+            pass
+
+        def settimeout(self, seconds: float) -> None:
+            pass
+
+        def sendall(self, data: bytes) -> None:
+            pass
+
+        def recv(self, size: int) -> bytes:
+            chunk = next(self.chunks)
+            if isinstance(chunk, ConnectionResetError):
+                raise chunk
+            return chunk
+
+    complete = b"HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n"
+    peers = iter([[wire, termination]] * 2)
+    monkeypatch.setattr(
+        run_parity.socket, "create_connection", lambda *args, **kwargs: Peer(next(peers))
+    )
+    cases = [corpus.Case(name, corpus.Request(), 200) for name in ("first", "complete")]
+    target = run_parity.Target("test", ("127.0.0.1", 1))
+    report = run_parity.Report()
+    run_parity.run_cases(target, target, cases[:1], report, [0], False)
+    peers = iter([[complete, b""]] * 2)
+    run_parity.run_cases(target, target, cases[1:], report, [1], False)
+    assert [case["name"] for case in report.cases] == case_names
+    if case_names == ["complete"]:
+        assert report.failures[0][0] == "first"
+        assert report.failures[0][1][0].startswith("harness error: ")
+    else:
+        assert report.failures == []
+
+
 @pytest.mark.parametrize("limit", ["deadline", "header", "body"])
 def test_exchange_bounds_real_loopback_response(
     monkeypatch: pytest.MonkeyPatch, limit: str

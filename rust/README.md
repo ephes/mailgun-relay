@@ -384,9 +384,12 @@ Each HTTP exchange has a 60-second monotonic deadline covering connection,
 split request writes and all response reads. Responses are limited to 64 KiB
 of headers (before the separator) and 1 MiB of wire body, including chunk
 framing. The harness decodes chunks in one pass and keeps the payload when
-chunk extensions or trailers are present. A timeout or limit violation closes the socket; in a request case it
-records a harness failure, while in a startup probe it unwinds the relay and sink
-and then aborts the run without a `--report` receipt. Started relay children and
+chunk extensions or trailers are present. Comparison requires a complete
+final response with valid body framing. Close-delimited replies require a clean
+EOF. A complete length-delimited, chunked or bodyless reply can still be observed
+if the peer resets the connection after sending it. Timeouts, limit violations
+and incomplete responses are harness failures. In a startup probe such a failure
+unwinds the relay and sink and aborts the run without a `--report` receipt. Started relay children and
 SMTP sinks are owned immediately; partial startup, probe errors and interruption
 unwind them in reverse acquisition order.
 

@@ -53,6 +53,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import signal
 import socket
 import stat
@@ -128,19 +129,31 @@ class Response:
 def _dechunk(body: bytes) -> bytes:
     out = bytearray()
     cursor = 0
-    while cursor < len(body):
+    while True:
         line_end = body.find(b"\r\n", cursor)
         if line_end < 0:
-            raise ValueError("missing chunk size terminator")
-        extension = body.find(b";", cursor, line_end)
-        size = int(body[cursor : extension if extension >= 0 else line_end], 16)
-        if size == 0:
             break
+        extension = body.find(b";", cursor, line_end)
+        size_field = body[cursor : extension if extension >= 0 else line_end]
+        if not re.fullmatch(rb"[0-9a-fA-F]+", size_field):
+            raise RuntimeError("invalid HTTP response chunk size")
+        size = int(size_field, 16)
         start = line_end + 2
+        if size == 0:
+            if body.startswith(b"\r\n", start):
+                trailer_end = start + 2
+            else:
+                separator = body.find(b"\r\n\r\n", start)
+                trailer_end = separator + 4 if separator >= 0 else -1
+            if trailer_end == len(body):
+                return bytes(out)
+            break
         end = start + size
+        if end > len(body) or not body.startswith(b"\r\n", end):
+            break
         out.extend(body[start:end])
         cursor = end + 2
-    return bytes(out)
+    raise RuntimeError("incomplete or invalid HTTP response chunk framing")
 
 
 def exchange(address: tuple[str, int], pieces: list[bytes], timeout: float = 60) -> Response:
@@ -163,7 +176,11 @@ def exchange(address: tuple[str, int], pieces: list[bytes], timeout: float = 60)
             except (BrokenPipeError, ConnectionResetError):
                 break  # the server answered early (413) and closed
         data = bytearray()
-        header_end = -1
+        head_start = 0
+        search_from = 0
+        body_start = None
+        status = 0
+        reset = False
         while True:
             sock.settimeout(remaining())
             try:
@@ -171,27 +188,65 @@ def exchange(address: tuple[str, int], pieces: list[bytes], timeout: float = 60)
             except TimeoutError as exc:
                 raise TimeoutError("HTTP exchange deadline exceeded") from exc
             except ConnectionResetError:
+                reset = True
                 break
             if not chunk:
                 break
             data.extend(chunk)
-            if header_end < 0:
-                header_end = data.find(b"\r\n\r\n")
+            while body_start is None:
+                header_end = data.find(b"\r\n\r\n", search_from)
                 if (header_end if header_end >= 0 else len(data)) > MAX_RESPONSE_HEADER_BYTES:
                     raise RuntimeError("HTTP response header limit exceeded")
-            if header_end >= 0 and len(data) - header_end - 4 > MAX_RESPONSE_BODY_BYTES:
+                if header_end < 0:
+                    search_from = max(head_start, len(data) - 3)
+                    break
+                status_line = data[head_start:header_end].split(b"\r\n", 1)[0]
+                fields = status_line.split()
+                if (
+                    len(fields) < 2
+                    or not fields[0].startswith(b"HTTP/")
+                    or not re.fullmatch(rb"[1-5][0-9]{2}", fields[1])
+                ):
+                    raise RuntimeError("invalid HTTP response status line")
+                status = int(fields[1])
+                if status >= 200:
+                    body_start = header_end + 4
+                elif status == 101:
+                    raise RuntimeError("unexpected HTTP protocol upgrade")
+                else:
+                    head_start = search_from = header_end + 4
+            if body_start is not None and len(data) - body_start > MAX_RESPONSE_BODY_BYTES:
                 raise RuntimeError("HTTP response body limit exceeded")
-    head, _, body = bytes(data).partition(b"\r\n\r\n")
-    lines = head.decode("latin-1").split("\r\n")
-    if not lines[0].startswith("HTTP/"):
-        raise RuntimeError(f"no HTTP response: {data[:200]!r}")
+
+    if body_start is None:
+        raise RuntimeError("incomplete HTTP response headers")
+    lines = data[head_start : body_start - 4].decode("latin-1").split("\r\n")
     headers: dict[str, str] = {}
+    lengths: list[str] = []
     for line in lines[1:]:
-        name, _, value = line.partition(":")
-        headers.setdefault(name.strip().lower(), value.strip())
-    if "chunked" in headers.get("transfer-encoding", "").lower():
+        name, separator, value = line.partition(":")
+        if not separator or not name.strip():
+            raise RuntimeError("invalid HTTP response header")
+        name, value = name.strip().lower(), value.strip()
+        headers.setdefault(name, value)
+        if name == "content-length":
+            lengths.extend(item.strip() for item in value.split(","))
+
+    body = bytes(data[body_start:])
+    if status in (204, 304) or (pieces and pieces[0].startswith(b"HEAD ")):
+        if body:
+            raise RuntimeError("unexpected HTTP response body")
+    elif headers.get("transfer-encoding", "").split(",")[-1].strip().lower() == "chunked":
         body = _dechunk(body)
-    return Response(int(lines[0].split()[1]), headers, body)
+    elif lengths and "transfer-encoding" not in headers:
+        if any(
+            not re.fullmatch(r"[0-9]+", length) or (length.lstrip("0") or "0") != str(len(body))
+            for length in lengths
+        ):
+            raise RuntimeError("invalid or incomplete HTTP response Content-Length framing")
+    elif reset:
+        raise RuntimeError("HTTP response reset before a clean EOF")
+    return Response(status, headers, body)
 
 
 def request_pieces(request: corpus.Request) -> list[bytes]:

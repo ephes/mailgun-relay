@@ -57,6 +57,7 @@ All notable changes to mailgun-relay are documented here.
 
 - Decode chunked HTTP observations in one pass, with support for chunk
   extensions and trailers.
+- Report incomplete HTTP responses as harness errors before comparison.
 
 - Compare filenames inferred from `Content-Type` even when a MIME part has
   no `Content-Disposition` header.
