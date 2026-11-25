@@ -451,8 +451,9 @@ network operation, not to the whole session. Rust additionally bounds DNS and
 all TCP attempts together to that timeout, and admitted body reads to 30 seconds
 total (HTTP 408). Rust additionally bounds the pre-outcome SMTP exchange by
 `SMTP_SESSION_TIMEOUT_S` (default 120 s), from DNS through DATA's final reply.
-Expiry drops the connection and returns 503; interrupted DATA may already have
-been accepted, so retries can duplicate delivery. QUIT has a separate total
+Expiry drops the connection and returns 503. A failure after DATA 354 without
+a complete final reply logs `smtp_outcome_unknown` and tells the caller to verify
+delivery before retrying. QUIT has a separate total
 `min(SMTP_TIMEOUT_S, 5 s)` budget, preserving the outcome. RelayStream admits at
 most 16 MiB of inbound wire bytes including TLS handshake/record overhead and
 cleanup. Exhaustion is a safe transport failure, with no raw reply logs; accepted
@@ -833,11 +834,11 @@ client repositories (`phase1-code-clients.md` 3.3, re-checked for this plan).
 Decision: the Rust logger keeps every event name, every field name and every
 `result` value of Python (`ok`, `partial_refusal`, `auth_error`,
 `bad_request`, `policy_error`, `too_large`, `smtp_temporary`,
-`smtp_permanent`, `error`, `internal_error`, `overloaded`), the field order and compact
-separators. `error_class` carries Rust error names (free; values are
-documented, not consumed). Rust also emits `result=body_timeout` with
-`BodyTimeoutError` and 408 for the intentional 30-second upload deadline.
-Apart from this acquisition difference, only D-13 differs. Before cutover the coordinator
+`smtp_permanent`, `error`, `internal_error`, `overloaded`), the field order and
+compact separators. `error_class` carries Rust error names (free; values are
+documented, not consumed). Rust also emits `body_timeout` with HTTP 408 for the
+30-second upload deadline and `smtp_outcome_unknown` with HTTP 503 for an
+unconfirmed SMTP outcome after DATA 354. Before cutover the coordinator
 asks once whether any generic journald forwarding filters on relay fields
 (none found).
 
@@ -1823,12 +1824,9 @@ submission opens a fresh session. Synthetic TLS tests vary AUTH by phase and
 session (PLAIN → LOGIN, then no AUTH, then PLAIN) and prove removed mechanisms
 cannot leak into authentication or message submission.
 
-A disconnect after complete DATA but before the final 250 is an **uncertain
-submission**, returned as retryable HTTP 503 (`smtp_temporary`). The peer may
-already have stored/delivered the message. The relay never retries internally,
-keeps no durable replay queue and performs no unsolicited SMTP transaction on
-restart. A caller retry may therefore duplicate delivery; this adapter does not
-provide durable exactly-once delivery. This differs from a consumed final 250:
-a subsequent QUIT failure still returns success. A full-binary loopback test
-records one DATA per explicit HTTP request, reuses admission after a lost ACK,
-and observes an idle restart without replay.
+After DATA 354, a disconnect or timeout without a complete final reply returns
+HTTP 503 and logs `smtp_outcome_unknown`. The peer may already have stored
+the message. Verify delivery before retrying. The relay performs no automatic
+retry or replay on restart. A consumed final 250 remains successful if QUIT
+fails. A full-binary loopback test records one DATA per explicit HTTP request,
+reuses admission after a lost reply, and observes an idle restart without replay.

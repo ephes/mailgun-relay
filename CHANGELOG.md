@@ -20,6 +20,10 @@ All notable changes to mailgun-relay are documented here.
 
 ### Rust relay
 
+- Report transport failures and timeouts after DATA 354 as
+  `smtp_outcome_unknown` when there is no complete final reply. HTTP 503
+  tells callers to verify delivery before retrying.
+
 - Return HTTP 413 before polling supported form bodies with a known lower
   size bound above the request byte limit.
 - Admit custom header names before copying them for duplicate tracking or

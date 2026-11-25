@@ -238,6 +238,9 @@ journald, so `journalctl -u mailgun-relay -f` is the live view.
   Requests ending in HTTP 5xx (including internal errors) log at `ERROR`;
   other outcomes log at `INFO`. Thus `WARNING` keeps failure records visible
   while suppressing normal traffic. The request record is still emitted once.
+  The Rust relay logs `smtp_outcome_unknown` when transfer has started after
+  DATA 354 and a transport failure or timeout prevents a complete final reply.
+  Include this result alongside `smtp_temporary` in SMTP failure filters.
 - `event=recipients_refused` — a `WARNING` emitted when the SMTP server
   accepted the message for some recipients and refused others. It carries the
   same `request_id`/`message_id` as the request record, `refused_count`, and a

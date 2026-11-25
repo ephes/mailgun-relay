@@ -68,10 +68,11 @@ pub struct Refusal {
     pub code: Option<u16>,
 }
 
-/// A failed submission: 503 (`TEMPORARY`) or 502 (`PERMANENT`, `AUTH`).
+/// A failed submission, including a potentially accepted message (503).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SubmitError {
     Temporary,
+    OutcomeUnknown,
     Permanent,
 }
 
@@ -486,6 +487,13 @@ async fn decide(
             result: "smtp_temporary",
             class: "SmtpSubmitError",
             message: "Upstream SMTP temporarily unavailable".to_owned(),
+        },
+        SubmitError::OutcomeUnknown => Failure {
+            status: StatusCode::SERVICE_UNAVAILABLE,
+            result: "smtp_outcome_unknown",
+            class: "SmtpSubmitError",
+            message: "Upstream SMTP delivery outcome unknown; verify delivery before retrying"
+                .to_owned(),
         },
         SubmitError::Permanent => Failure {
             status: StatusCode::BAD_GATEWAY,

@@ -211,7 +211,8 @@ table below is therefore the contract the relay implements:
 | Request too large | 413 | Body, attachment, or recipient limits. |
 | Rate limited | 429 | Per-token or global. |
 | Admission capacity exhausted before body parsing | 503 | `Relay busy; retry later`; no send attempted. Retry with backoff. No application wait queue. |
-| SMTP temporary failure (4xx sender/HELO/DATA or any all-refused recipient reply), timeout/connection refused | 503 | Anymail does not retry on its own; the caller surfaces the status as `AnymailRequestsAPIError.status_code`. |
+| SMTP temporary failure (4xx sender/HELO/DATA or any all-refused recipient reply), timeout/connection loss before Rust DATA 354 | 503 | Anymail does not retry on its own; the caller surfaces the status as `AnymailRequestsAPIError.status_code`. |
+| Rust SMTP outcome unknown after DATA 354 | 503 | `Upstream SMTP delivery outcome unknown; verify delivery before retrying`. The peer may already have accepted the message. |
 | SMTP permanent rejection (5xx response; all recipients refused without any 4xx reply) | 502 | Same Anymail exception shape; permanent vs. temporary is informational for callers that inspect `.status_code`. |
 | Some (not all) recipients refused | 200 (default) or 502 | 200 with the normal success body plus a `recipients_refused` WARNING log; 502 only with `MAILGUN_RELAY_FAIL_ON_PARTIAL_REFUSAL=true`. See *Partial recipient refusal*. |
 | SMTP authentication failure (relay → backend) | 502 | Treated as a permanent upstream failure. Never exposes the credential. |
@@ -300,10 +301,13 @@ remaining addresses so a stalled address permits fallback; expiry is retryable H
 socket operations retain their individual timeouts. In addition,
 `MAILGUN_RELAY_SMTP_SESSION_TIMEOUT_S` (default 120 seconds, finite and
 `0 < value <= 1e9`) bounds DNS, connect, banner, EHLO, STARTTLS, AUTH and DATA
-through the delivery outcome together. Expiry closes the connection and returns
-retryable HTTP 503, releasing admission. If DATA was interrupted before its final
-250 was received, delivery is ambiguous: the upstream may have accepted it;
-retrying can duplicate mail. There is no automatic retry.
+through the delivery outcome together. Expiry closes the connection, returns
+HTTP 503, and releases admission. A transport failure or timeout before DATA
+354 is a temporary failure (`smtp_temporary`). After DATA 354, loss of the
+connection or expiry without a complete final reply leaves the outcome unknown
+(`smtp_outcome_unknown`). A complete final reply retains its normal status.
+Verify upstream delivery before retrying an unknown outcome to avoid duplicate
+mail. The relay never retries automatically.
 
 QUIT has a separate total budget of `min(SMTP_TIMEOUT_S, 5 seconds)` and never
 changes an already determined outcome, including accepted DATA. Rust also caps
@@ -311,8 +315,9 @@ inbound wire bytes at 16 MiB per connection, counted before TLS decryption and
 including the handshake, TLS overhead, replies and cleanup. This conservative
 ceiling bounds lettre's allocation even for a reply without a newline; it can
 refuse unusually verbose sessions (including those with raised recipient limits).
-Exhaustion maps to the same safe transport failure (503 before the outcome;
-cleanup warning only after acceptance), without logging reply contents. OS socket
+Exhaustion follows the same phase-dependent transport classification (503
+before the outcome, cleanup warning only after acceptance), without logging
+reply contents. OS socket
 buffers and TLS's bounded internal buffers are separate from this wire-read cap.
 Python rollback now also validates and applies `SMTP_SESSION_TIMEOUT_S` (the
 same default and bounds) through the SMTP outcome, including TCP attempts,
@@ -379,15 +384,12 @@ submission opens a fresh session. Synthetic TLS tests vary AUTH by phase and
 session (PLAIN → LOGIN, then no AUTH, then PLAIN) and prove removed mechanisms
 cannot leak into authentication or message submission.
 
-A disconnect after complete DATA but before the final 250 is an **uncertain
-submission**, returned as retryable HTTP 503 (`smtp_temporary`). The peer may
-already have stored/delivered the message. The relay never retries internally,
-keeps no durable replay queue and performs no unsolicited SMTP transaction on
-restart. A caller retry may therefore duplicate delivery; this adapter does not
-provide durable exactly-once delivery. This differs from a consumed final 250:
-a subsequent QUIT failure still returns success. A full-binary loopback test
-records one DATA per explicit HTTP request, reuses admission after a lost ACK,
-and observes an idle restart without replay.
+After DATA 354, a disconnect or timeout without a complete final reply returns
+HTTP 503 and logs `smtp_outcome_unknown`. The peer may already have stored
+the message. Verify delivery before retrying. The relay performs no automatic
+retry or replay on restart. A consumed final 250 remains successful if QUIT
+fails. A full-binary loopback test records one DATA per explicit HTTP request,
+reuses admission after a lost reply, and observes an idle restart without replay.
 
 ## Multipart completion
 

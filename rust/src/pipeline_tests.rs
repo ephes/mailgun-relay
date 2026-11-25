@@ -1555,6 +1555,77 @@ async fn smtp_outcomes_through_the_endpoint() {
     assert_eq!(h.records("smtp_cleanup_failed").len(), 1);
 }
 
+#[tokio::test]
+async fn smtp_data_outcomes_distinguish_an_unknown_result() {
+    const UNCERTAIN: &str =
+        "Upstream SMTP delivery outcome unknown; verify delivery before retrying";
+    for (scenario, status, result, message, transferred) in [
+        (
+            json!({"fault": {"data": "close"}}),
+            503,
+            "smtp_temporary",
+            "Upstream SMTP temporarily unavailable",
+            false,
+        ),
+        (
+            json!({"fault": {"data_end": "close"}}),
+            503,
+            "smtp_outcome_unknown",
+            UNCERTAIN,
+            true,
+        ),
+        (
+            json!({"fault": {"data_end": "hang"}}),
+            503,
+            "smtp_outcome_unknown",
+            UNCERTAIN,
+            true,
+        ),
+        (
+            json!({"data_end": 450}),
+            503,
+            "smtp_temporary",
+            "Upstream SMTP temporarily unavailable",
+            true,
+        ),
+        (
+            json!({"data_end": 552}),
+            502,
+            "smtp_permanent",
+            "Upstream SMTP rejected the message",
+            true,
+        ),
+    ] {
+        let (h, server) = smtp_harness(
+            scenario.clone(),
+            Settings {
+                smtp_session_timeout_s: 1.0,
+                ..settings()
+            },
+        )
+        .await;
+        let reply = h.homepage(encode(Encoding::Urlencoded, &MINIMUM)).await;
+        assert_error(&reply, status);
+        assert_eq!(reply.json["message"], message, "{scenario}");
+        let records = h.records("request");
+        assert_eq!(records.len(), 1, "{scenario}");
+        assert_eq!(records[0]["result"], result, "{scenario}");
+        let sessions = server.sessions();
+        assert_eq!(sessions.len(), 1, "{scenario}");
+        let session = &sessions[0];
+        assert_eq!(
+            session
+                .commands()
+                .iter()
+                .filter(|command| *command == "DATA")
+                .count(),
+            1,
+            "{scenario}",
+        );
+        assert_eq!(session.message.is_some(), transferred, "{scenario}");
+    }
+}
+
 /// PLAN.md 2.9: `/health` answers while an SMTP session hangs.
 #[tokio::test]
 async fn health_answers_while_an_smtp_session_hangs() {

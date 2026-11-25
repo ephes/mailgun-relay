@@ -140,7 +140,7 @@ async fn run(scenario: Json, recipients: &[&str]) -> Run {
 fn status_of(outcome: &Result<Vec<Refusal>, SubmitError>) -> u16 {
     match outcome {
         Ok(_) => 200,
-        Err(SubmitError::Temporary) => 503,
+        Err(SubmitError::Temporary | SubmitError::OutcomeUnknown) => 503,
         Err(SubmitError::Permanent) => 502,
     }
 }
@@ -434,16 +434,19 @@ async fn cleanup_never_changes_the_outcome() {
     }
 
     // The server already closed the channel: no QUIT, no record.
-    for scenario in [
-        json!({"data": 421}),
-        json!({"data_end": 421}),
-        json!({"mail": 421}),
-        json!({"rcpt": {"a": 421}}),
-        json!({"fault": {"data_end": "close"}}),
-        json!({"fault": {"mail": "close"}}),
+    for (scenario, expected) in [
+        (json!({"data": 421}), SubmitError::Temporary),
+        (json!({"data_end": 421}), SubmitError::Temporary),
+        (json!({"mail": 421}), SubmitError::Temporary),
+        (json!({"rcpt": {"a": 421}}), SubmitError::Temporary),
+        (
+            json!({"fault": {"data_end": "close"}}),
+            SubmitError::OutcomeUnknown,
+        ),
+        (json!({"fault": {"mail": "close"}}), SubmitError::Temporary),
     ] {
         let run = run(scenario.clone(), &["a@example.test"]).await;
-        assert_eq!(run.outcome, Err(SubmitError::Temporary), "{scenario}");
+        assert_eq!(run.outcome, Err(expected), "{scenario}");
         assert!(!run.commands().contains(&"QUIT".to_owned()), "{scenario}");
         assert!(run.cleanup_records().is_empty(), "{scenario}");
     }
@@ -455,7 +458,7 @@ async fn cleanup_never_changes_the_outcome() {
         0.2,
     )
     .await;
-    assert_eq!(timeout.outcome, Err(SubmitError::Temporary));
+    assert_eq!(timeout.outcome, Err(SubmitError::OutcomeUnknown));
     assert!(!timeout.commands().contains(&"QUIT".to_owned()));
     assert!(timeout.cleanup_records().is_empty());
 

@@ -498,7 +498,7 @@ fn shutdown_waits_for_a_submission_whose_client_left() {
     server.stdout.read_to_string(&mut records).unwrap();
     let record: serde_json::Value = serde_json::from_str(records.trim()).unwrap();
     assert_eq!(record["event"], "request");
-    assert_eq!(record["result"], "smtp_temporary");
+    assert_eq!(record["result"], "smtp_outcome_unknown");
     assert_eq!(record["status_code"], 503);
 }
 
@@ -1011,7 +1011,7 @@ fn lost_final_data_ack_is_uncertain_without_replay_even_after_restart() {
     assert!(terminate(&mut server.child).success());
     let records = request_records(&mut server);
     assert_eq!(records.len(), 2, "{records:?}");
-    assert_eq!(records[0]["result"], "smtp_temporary");
+    assert_eq!(records[0]["result"], "smtp_outcome_unknown");
     assert_eq!(records[0]["error_class"], "SmtpSubmitError");
     assert_eq!(records[0]["status_code"], 503);
     assert_eq!(records[1]["result"], "ok");

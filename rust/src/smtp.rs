@@ -13,7 +13,8 @@
 //!   that code;
 //! - every failure without a reply code (connect, timeout, disconnect, TLS,
 //!   certificate, STARTTLS or AUTH not offered, a reply lettre cannot parse)
-//!   is temporary (Q3, D-3);
+//!   is temporary before message transfer. After DATA 354, a failure
+//!   without a complete final reply leaves the outcome unknown (503);
 //! - AUTH: PLAIN, then LOGIN, as `smtplib.login` tries them; refused with
 //!   codes (but 421) by both, permanent; credentials are never sent without
 //!   TLS (permanent);
@@ -289,6 +290,7 @@ impl SmtpSubmitter {
 
         // The timed future owns the stream/connection, so expiry closes it.
         // Stop this deadline at the DATA outcome; QUIT has its own budget.
+        let mut transfer_started = false;
         let (mut connection, outcome) = tokio::time::timeout(self.config.session_timeout, async {
             let written = Arc::new(AtomicBool::new(false));
             let stream = self
@@ -306,12 +308,18 @@ impl SmtpSubmitter {
                     Err(error) => return Err(self.ehlo_failure(&error)),
                 };
             let outcome = self
-                .transaction(&mut connection, &recipients, message)
+                .transaction(&mut connection, &recipients, message, &mut transfer_started)
                 .await;
             Ok((connection, outcome))
         })
         .await
-        .map_err(|_| SubmitError::Temporary)??;
+        .map_err(|_| {
+            if transfer_started {
+                SubmitError::OutcomeUnknown
+            } else {
+                SubmitError::Temporary
+            }
+        })??;
         let open = match &outcome {
             Ok(_) => true,
             Err(failure) => failure.open,
@@ -355,6 +363,7 @@ impl SmtpSubmitter {
         connection: &mut AsyncSmtpConnection,
         recipients: &[(Address, &str)],
         message: &BuiltMessage,
+        transfer_started: &mut bool,
     ) -> Result<Vec<Refusal>, Failure> {
         let config = &self.config;
         if let Some(tls) = &config.tls
@@ -427,6 +436,7 @@ impl SmtpSubmitter {
 
         let data = connection.command(Data).await.map_err(|e| failure(&e))?;
         require(&data, &[354])?;
+        *transfer_started = true;
         // The message goes with its own final CRLF: lettre (0.11.24) ends
         // data that ends in CRLF with "." CRLF and anything else with CRLF
         // "." CRLF, so the wire bytes are those `smtplib` sends (the final
@@ -434,7 +444,16 @@ impl SmtpSubmitter {
         let end = connection
             .message_iter(message.formatted.chunks(MESSAGE_CHUNK))
             .await
-            .map_err(|e| failure(&e))?;
+            .map_err(|e| {
+                if code(&e).is_some() {
+                    failure(&e)
+                } else {
+                    Failure {
+                        error: SubmitError::OutcomeUnknown,
+                        open: false,
+                    }
+                }
+            })?;
         require(&end, &[250])?;
         Ok(refused)
     }
