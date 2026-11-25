@@ -697,19 +697,23 @@ short, for the Rust side:
 - SMTP: after DATA 354, a transport failure, timeout or other failure without
   a parsable final reply code is logged as `result=smtp_outcome_unknown`
   (HTTP 503 as before, with a message telling callers to verify delivery
-  before retrying); Python still logs `smtp_temporary` (decided divergence
-  D-23). Log filters that look for `smtp_temporary` should also match
+  before retrying); for the disconnect and timeout cases Python still logs
+  `smtp_temporary` (decided divergence D-23). Log filters that look for `smtp_temporary` should also match
   `smtp_outcome_unknown`.
 - Request admission: the form-body deadline also applies while frames are
   continuously ready (HTTP 408); a known body size hint above the limit is 413
-  before the body is read; custom header names are admitted before they are
-  copied, and every repeated custom header name (compared after Unicode
-  lowercasing, like Python) is refused before name and sender policy;
+  before the body is read; custom header names are validated before a header
+  and its value are retained in the parsed form, and every repeated custom
+  header name (compared after Unicode lowercasing, like Python) is refused
+  before name and sender policy, tracked as bounded lowercase copies or
+  fixed-size keyed hashes;
   upload metadata length checks stop at the Unicode character limit.
 - Both relays: the AMP alternative comes before the HTML fallback, and AMP
   markup above 200,000 UTF-8 bytes is 413 before SMTP submission.
 - Logging and shutdown: lost log records are counted and reported on stderr
-  at shutdown; log admission closes before the drain; the JSON line boundary
+  at shutdown; log admission closes before the drain; a completed drain is
+  visible to concurrent and later shutdown callers, each keeping its own wait
+  budget; the JSON line boundary
   is restored after a failed write; a log writer that cannot start ends
   startup before any listener is bound; an unconfirmed drain at the shutdown
   deadline is reported.
