@@ -235,6 +235,48 @@ def test_cli_version_and_tag(tmp_path: Path) -> None:
     assert "release check failed: tag 'rs-v0.3.0'" in result.stderr
 
 
+@pytest.mark.parametrize(
+    ("data", "diagnostic"),
+    [
+        ([], "cargo metadata root must be an object"),
+        ({}, "cargo metadata packages must be an array"),
+        ({"packages": {}}, "cargo metadata packages must be an array"),
+        (
+            {
+                "packages": [
+                    "synthetic-invalid-entry",
+                    {"name": "mailgun-relay", "version": "1.2.3"},
+                ]
+            },
+            "cargo metadata packages[0] must be an object",
+        ),
+        (
+            {"packages": [{"name": "mailgun-relay"}]},
+            "cargo metadata packages[0].version must be a string",
+        ),
+        (
+            {"packages": [{"name": 3, "version": "1.2.3"}]},
+            "cargo metadata packages[0].name must be a string",
+        ),
+        (
+            metadata(("mailgun-relay", "1.2.3-rc.1\u0662")),
+            "mailgun-relay version is not semver (without build metadata)",
+        ),
+    ],
+)
+def test_cli_version_reports_invalid_metadata(
+    tmp_path: Path, data: object, diagnostic: str
+) -> None:
+    path = tmp_path / "metadata.json"
+    path.write_text(json.dumps(data), encoding="utf-8")
+    result = run_script("version", "--metadata", str(path))
+    assert (result.returncode, result.stdout, result.stderr) == (
+        1,
+        "",
+        f"release check failed: {diagnostic}\n",
+    )
+
+
 def test_cli_pack_writes_archive_and_sha256sum_line(tmp_path: Path) -> None:
     binary = tmp_path / "mailgun-relay"
     binary.write_bytes(b"binary")

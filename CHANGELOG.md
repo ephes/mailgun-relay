@@ -108,6 +108,8 @@ All notable changes to mailgun-relay are documented here.
 
 ### Release process
 
+- Validate Cargo metadata before selecting the relay package version and
+  require the same ASCII semver in version selection and artifact names.
 - Preserve the primary release-helper error and report cleanup failures after
   attempting to retire the process group, reap the helper and close both pipes.
 - Attempt both artifact restores after a failed pack. If rollback fails, retain

@@ -42,7 +42,6 @@ import tarfile
 import tempfile
 import time
 from pathlib import Path
-from typing import Any
 
 PACKAGE = "mailgun-relay"
 TAG_PREFIX = "rs-v"
@@ -52,7 +51,8 @@ TAG_PREFIX = "rs-v"
 SEMVER = re.compile(
     r"(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)"
     r"(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)"
-    r"(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?"
+    r"(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?",
+    re.ASCII,
 )
 SUPPORTED_TARGETS = frozenset({"x86_64-unknown-linux-gnu"})
 COMMIT = re.compile(r"[0-9a-f]{40}")
@@ -203,18 +203,30 @@ def parse_version(text: str) -> tuple[int, ...]:
     return tuple(int(part) for part in text.split("."))
 
 
-def package_version(metadata: dict[str, Any]) -> str:
+def package_version(metadata: object) -> str:
     """The `mailgun-relay` version from `cargo metadata --no-deps` output."""
-    versions = [
-        package["version"]
-        for package in metadata.get("packages", [])
-        if package.get("name") == PACKAGE
-    ]
+    if not isinstance(metadata, dict):
+        raise CheckError("cargo metadata root must be an object")
+    packages = metadata.get("packages")
+    if not isinstance(packages, list):
+        raise CheckError("cargo metadata packages must be an array")
+    versions = []
+    for index, package in enumerate(packages):
+        if not isinstance(package, dict):
+            raise CheckError(f"cargo metadata packages[{index}] must be an object")
+        name = package.get("name")
+        version = package.get("version")
+        if not isinstance(name, str):
+            raise CheckError(f"cargo metadata packages[{index}].name must be a string")
+        if not isinstance(version, str):
+            raise CheckError(f"cargo metadata packages[{index}].version must be a string")
+        if name == PACKAGE:
+            versions.append(version)
     if len(versions) != 1:
         raise CheckError(f"expected one {PACKAGE} package in cargo metadata, found {len(versions)}")
     version = versions[0]
-    if not isinstance(version, str) or not SEMVER.fullmatch(version):
-        raise CheckError(f"{PACKAGE} version {version!r} is not semver (without build metadata)")
+    if not SEMVER.fullmatch(version):
+        raise CheckError(f"{PACKAGE} version is not semver (without build metadata)")
     return version
 
 
@@ -314,7 +326,7 @@ def run_check_config(binary: Path) -> str:
 
 
 def archive_name(version: str, target: str) -> str:
-    if not SEMVER.fullmatch(version) or not version.isascii():
+    if not SEMVER.fullmatch(version):
         raise CheckError("artifact version must be semver without build metadata")
     if target not in SUPPORTED_TARGETS:
         raise CheckError("unsupported artifact target")

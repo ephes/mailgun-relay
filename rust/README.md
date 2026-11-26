@@ -200,7 +200,13 @@ process group, including pipe-holding descendants, then attempts to reap the
 helper and close each pipe. Cleanup failures report the failed operations
 alongside any original command failure.
 
-`pack` accepts ASCII semver without build metadata and the supported
+`version` requires a Cargo metadata object with a `packages` array of objects
+with string `name` and `version` fields. It selects exactly one
+`mailgun-relay` package. Shape errors identify the invalid field or array
+position without echoing metadata. Both `version` and `pack` require ASCII
+semver without build metadata for the relay version.
+
+`pack` also requires the supported
 `x86_64-unknown-linux-gnu` target, before reading inputs or creating output.
 It locks the output directory, stages and verifies both files, syncs them and
 publishes the pair with rollback on handled failures. A durable
