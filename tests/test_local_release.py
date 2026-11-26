@@ -8,6 +8,7 @@ network, no GitHub).
 
 from __future__ import annotations
 
+import errno
 import hashlib
 import importlib.util
 import io
@@ -858,7 +859,7 @@ def test_build_never_mixes_into_an_output_filled_meanwhile(
                 out.mkdir()
                 (out / "build.json").write_text("other build")
 
-    with pytest.raises(release.ReleaseError, match="filled by another build"):
+    with pytest.raises(release.ReleaseError, match="filled by another build") as exc:
         release.build(
             False,
             out,
@@ -870,8 +871,44 @@ def test_build_never_mixes_into_an_output_filled_meanwhile(
             run_host_checks=no_host_checks,
             log=lambda line: None,
         )
+    cause = exc.value.__cause__
+    assert isinstance(cause, OSError)
+    assert cause.errno in {errno.EEXIST, errno.ENOTEMPTY}
+    assert (out / "build.json").read_text() == "other build"
     assert [path.name for path in out.iterdir()] == ["build.json"]
     assert [path.name for path in tmp_path.iterdir()] == ["out"]
+
+
+@pytest.mark.parametrize("code", [errno.EACCES, errno.EROFS, errno.EXDEV])
+def test_build_reports_install_errors_with_their_errno(
+    release: ModuleType, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, code: int
+) -> None:
+    out = tmp_path / "out"
+    fault = OSError(code, os.strerror(code))
+
+    def fail_rename(source: Path, destination: Path) -> None:
+        assert source.parent == destination.parent and destination == out
+        raise fault
+
+    monkeypatch.setattr(os, "rename", fail_rename)
+    with pytest.raises(
+        release.ReleaseError, match=rf"cannot install build at .*Errno {code}"
+    ) as exc:
+        release.build(
+            False,
+            out,
+            config=release.parse_config(linux_data()),
+            git=FakeGit(REPO),
+            github=FakeGitHub(),
+            docker=FakeDocker(),
+            version="1.2.3",
+            run_host_checks=no_host_checks,
+            log=lambda line: None,
+        )
+
+    assert exc.value.__cause__ is fault
+    assert "another build" not in str(exc.value)
+    assert not list(tmp_path.iterdir())
 
 
 def test_build_lists_archive_before_installing(

@@ -111,6 +111,8 @@ All notable changes to mailgun-relay are documented here.
 - Sync staged local build files and directories before reporting success.
   Report uncertain durability and retain the installed build if a directory
   sync fails after installation.
+- Report a concurrent local build only for an occupied destination and retain
+  the filesystem error and errno for other installation failures.
 - Refuse incomplete or incorrectly typed local build records before changing
   GitHub tags or releases.
 - Prepare the archive listing before installing a local build and report

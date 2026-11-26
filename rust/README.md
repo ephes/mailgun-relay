@@ -158,7 +158,9 @@ as a dry run that `publish` refuses). Then:
 4. The archive, its `.sha256`, `build.json` (commit, sha256, images, package
    and toolchain versions) and `notes.md` land in
    `rust/target/local-release/mailgun-relay-<version>/`, staged privately and
-   moved there in one rename, so a concurrent build never mixes into it.
+   moved there in one rename. If another build fills the destination first,
+   the rename reports the collision and preserves that build. Other rename
+   failures report the underlying filesystem error and its errno.
    Before the rename, the build prepares the archive listing and syncs all
    four files and the staging directory. A failure at either step leaves
    the destination untouched. After the rename it syncs the
