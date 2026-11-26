@@ -188,6 +188,31 @@ def test_failed_pki_generation_preserves_previous_material(
     smtp_fake.server_contexts(smtp_fake.make_certificates(directory))
 
 
+def test_first_pki_publication_failure_retires_generation(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    directory = tmp_path / "pki"
+    sync_directory = smtp_fake.sync_directory
+    parent_syncs: list[bytes] = []
+
+    def fail_first_publication(path: Path) -> None:
+        if path == tmp_path and directory.exists():
+            parent_syncs.append((directory / "ca.pem").read_bytes())
+            if len(parent_syncs) == 1:
+                raise OSError("first publication sync failed")
+        sync_directory(path)
+
+    monkeypatch.setattr(smtp_fake, "sync_directory", fail_first_publication)
+    with pytest.raises(OSError, match="first publication sync failed"):
+        smtp_fake.make_certificates(directory)
+    assert not directory.exists()
+
+    smtp_fake.server_contexts(smtp_fake.make_certificates(directory))
+    assert smtp_fake.usable_certificates(directory)
+    assert len(parent_syncs) == 2
+    assert parent_syncs[0] != parent_syncs[1] == (directory / "ca.pem").read_bytes()
+
+
 @pytest.mark.parametrize("expired", ["ca", "good"])
 def test_pki_checks_each_expiry_and_reuses_only_fresh_material(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, expired: str

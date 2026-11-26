@@ -147,6 +147,7 @@ def make_certificates(directory: Path) -> dict[str, str]:
         if not directory.exists() and previous.exists():
             os.replace(previous, directory)
         if usable_certificates(directory):
+            sync_directory(directory.parent)
             return certificate_paths(directory)
         with tempfile.TemporaryDirectory(
             prefix=f".{directory.name}-pki-", dir=directory.parent
@@ -164,13 +165,15 @@ def make_certificates(directory: Path) -> dict[str, str]:
             had_previous = directory.exists()
             if had_previous:
                 os.replace(directory, previous)
+            installed = False
             try:
                 os.replace(stage, directory)
+                installed = True
                 sync_directory(directory.parent)
             except BaseException:
+                if installed:
+                    shutil.rmtree(directory)
                 if had_previous:
-                    if directory.exists():
-                        shutil.rmtree(directory)
                     os.replace(previous, directory)
                 raise
             if previous.exists():

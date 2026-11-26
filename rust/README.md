@@ -656,7 +656,9 @@ hour remaining for the CA and all leaves. The deliberately wrong-host and
 self-signed leaves remain negative TLS cases. Replacement material is generated
 and checked in a private staging directory before publication under a parent
 directory lock. Handled generation/publication failure preserves the preceding
-material. A `.NAME.previous` directory is the recovery generation if interruption
+material. A failed first publication retires the unconfirmed generation.
+Reuse confirms the parent directory sync before returning fixture paths.
+A `.NAME.previous` directory is the recovery generation if interruption
 occurs between renames; the next preparation restores it when NAME is absent.
 A successful replacement refreshes the complete two-day fixture generation;
 it never changes relay TLS verification or the host trust store.

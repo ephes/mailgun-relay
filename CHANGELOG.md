@@ -55,6 +55,8 @@ All notable changes to mailgun-relay are documented here.
 
 ### Parity harness
 
+- Retire the first SMTP fixture PKI generation if publication fails and
+  confirm the parent directory sync before reusing fixture material.
 - Decode chunked HTTP observations in one pass, with support for chunk
   extensions and trailers.
 - Report incomplete HTTP responses as harness errors before comparison.
