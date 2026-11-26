@@ -567,6 +567,40 @@ def publish(release: ModuleType, out: Path, github: Any = None) -> None:
     )
 
 
+@pytest.mark.parametrize(
+    ("field", "replacement", "expected"),
+    [
+        (None, [], "expected a JSON object"),
+        ("sha256", None, "sha256 must be a string"),
+        ("version", 123, "version must be a string"),
+        ("compare_released", None, "compare_released must be a boolean"),
+        ("compare_released", "false", "compare_released must be a boolean"),
+        ("checks", [123], "checks must be an array of strings"),
+        ("environment", {"image": 123}, "environment must be an object of strings"),
+    ],
+)
+def test_publish_refuses_incomplete_build_records(
+    release: ModuleType, built: Path, field: str | None, replacement: Any, expected: str
+) -> None:
+    path = built / "build.json"
+    record = json.loads(path.read_text())
+    if field is None:
+        record = replacement
+    elif replacement is None:
+        del record[field]
+    else:
+        record[field] = replacement
+    path.write_text(json.dumps(record))
+    github = FakeGitHub()
+
+    with pytest.raises(release.ReleaseError, match=rf"build\.json: {expected}"):
+        publish(release, built, github)
+
+    assert not github.tagged
+    assert not github.created
+    assert not github.uploaded
+
+
 def test_publish_refuses_a_dry_run_and_changed_builds(release: ModuleType, built: Path) -> None:
     record = json.loads((built / "build.json").read_text())
     (built / "build.json").write_text(json.dumps({**record, "compare_released": True}))

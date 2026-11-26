@@ -108,6 +108,8 @@ All notable changes to mailgun-relay are documented here.
 
 ### Release process
 
+- Refuse incomplete or incorrectly typed local build records before changing
+  GitHub tags or releases.
 - Validate Cargo metadata before selecting the relay package version and
   require the same ASCII semver in version selection and artifact names.
 - Report invalid UTF-8 or malformed Cargo metadata JSON as a release-check

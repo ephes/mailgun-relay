@@ -1172,13 +1172,29 @@ def publish(
     github = github or GitHub(config.github_repository)
     github.check_cli()
     out = out_dir or default_out_dir(config, version or crate_version(CRATE))
+    record_path = out / BUILD_JSON
     try:
-        record = json.loads((out / BUILD_JSON).read_text(encoding="utf-8"))
+        record = json.loads(record_path.read_text(encoding="utf-8"))
     except (OSError, ValueError) as error:
         raise ReleaseError(f"no build in {out}: {error}") from None
-    if record.get("binary") != config.binary or record.get("target") != config.target:
+    if not isinstance(record, dict):
+        raise ReleaseError(f"{record_path}: expected a JSON object")
+    for field in ("binary", "version", "tag", "commit", "target", "mode", "archive", "sha256"):
+        if not isinstance(record.get(field), str):
+            raise ReleaseError(f"{record_path}: {field} must be a string")
+    if not isinstance(record.get("compare_released"), bool):
+        raise ReleaseError(f"{record_path}: compare_released must be a boolean")
+    checks = record.get("checks")
+    if not isinstance(checks, list) or not all(isinstance(check, str) for check in checks):
+        raise ReleaseError(f"{record_path}: checks must be an array of strings")
+    environment = record.get("environment")
+    if not isinstance(environment, dict) or not all(
+        isinstance(value, str) for value in environment.values()
+    ):
+        raise ReleaseError(f"{record_path}: environment must be an object of strings")
+    if record["binary"] != config.binary or record["target"] != config.target:
         raise ReleaseError(f"{out} holds a build of something else")
-    if record.get("compare_released"):
+    if record["compare_released"]:
         raise ReleaseError(f"{out} is a --compare-released dry run; it is never published")
     version, tag, commit, archive = (
         record["version"],
@@ -1193,7 +1209,7 @@ def publish(
         and COMMIT.fullmatch(commit)
     )
     if not consistent:
-        raise ReleaseError(f"{out}/{BUILD_JSON} is inconsistent")
+        raise ReleaseError(f"{record_path} is inconsistent")
     names = (archive, f"{archive}.sha256")
     extra = sorted({path.name for path in out.iterdir()} - {*names, BUILD_JSON, NOTES})
     if extra:
