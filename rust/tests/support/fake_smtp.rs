@@ -222,11 +222,21 @@ pub struct FakeSmtp {
 impl FakeSmtp {
     /// Serve the scenario on the current tokio runtime.
     pub async fn start(scenario: &Value, tls: Option<Arc<ServerConfig>>) -> FakeSmtp {
+        Self::start_with_quit_hook(scenario, tls, || {}).await
+    }
+
+    /// Run the hook after recording QUIT and before replying.
+    pub async fn start_with_quit_hook(
+        scenario: &Value,
+        tls: Option<Arc<ServerConfig>>,
+        before_quit_reply: impl Fn() + Send + Sync + 'static,
+    ) -> FakeSmtp {
         let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
         let port = listener.local_addr().unwrap().port();
         let sessions = Arc::new(Mutex::new(Vec::new()));
         let script = Arc::new(Script::new(scenario));
         let recorded = Arc::clone(&sessions);
+        let before_quit_reply = Arc::new(before_quit_reply);
         tokio::spawn(async move {
             loop {
                 let Ok((tcp, _)) = listener.accept().await else {
@@ -235,6 +245,7 @@ impl FakeSmtp {
                 let script = Arc::clone(&script);
                 let tls = tls.clone();
                 let recorded = Arc::clone(&recorded);
+                let before_quit_reply = Arc::clone(&before_quit_reply);
                 tokio::spawn(async move {
                     let index = {
                         let mut sessions = recorded.lock().unwrap();
@@ -249,6 +260,7 @@ impl FakeSmtp {
                         index,
                         stream: BufReader::new(io),
                         rcpts: Vec::new(),
+                        before_quit_reply: &*before_quit_reply,
                     };
                     handler.serve().await;
                 });
@@ -289,6 +301,7 @@ struct Handler<'a> {
     index: usize,
     stream: BufReader<Box<dyn Io>>,
     rcpts: Vec<String>,
+    before_quit_reply: &'a (dyn Fn() + Send + Sync),
 }
 
 impl Handler<'_> {
@@ -502,6 +515,7 @@ impl Handler<'_> {
                     self.reply("rset", 250, &["reset".to_owned()]).await
                 }
                 "QUIT" => {
+                    (self.before_quit_reply)();
                     self.simple("quit", "bye").await;
                     return;
                 }

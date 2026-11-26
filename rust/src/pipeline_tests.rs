@@ -168,9 +168,11 @@ impl Harness {
     }
 
     async fn send(&self, request: Request<Body>) -> Reply {
-        let state = Arc::new(AppState {
-            relay: Arc::clone(&self.relay),
-        });
+        Self::send_to(Arc::clone(&self.relay), request).await
+    }
+
+    async fn send_to(relay: Arc<Relay>, request: Request<Body>) -> Reply {
+        let state = Arc::new(AppState { relay });
         let response = router(state).oneshot(request).await.unwrap();
         let status = response.status();
         let headers = response.headers().clone();
@@ -1560,6 +1562,85 @@ async fn smtp_outcomes_through_the_endpoint() {
     let reply = h.homepage(encode(Encoding::Urlencoded, &MINIMUM)).await;
     assert_error(&reply, 503);
     assert_eq!(h.records("smtp_cleanup_failed").len(), 1);
+}
+
+#[tokio::test]
+async fn smtp_data_verdict_survives_quit_and_log_writer_failure() {
+    for (code, status, message) in [
+        (250, 200, "Queued. Thank you."),
+        (451, 503, "Upstream SMTP temporarily unavailable"),
+        (552, 502, "Upstream SMTP rejected the message"),
+    ] {
+        let logger = Logger::new(Level::Info).unwrap();
+        let retiring_logger = logger.clone();
+        let server = FakeSmtp::start_with_quit_hook(
+            &json!({"data_end": code, "quit": 500}),
+            Some(PKI.by_name("good")),
+            move || {
+                // The client has consumed the final DATA reply and is waiting for QUIT.
+                assert_eq!(
+                    retiring_logger.shutdown(Duration::from_secs(2)),
+                    crate::log::DrainOutcome::Completed
+                );
+            },
+        )
+        .await;
+        let smtp = smtp_submitter(server.port, true, 5.0, logger.clone());
+        let relay = Arc::new(Relay::new(
+            Settings {
+                public_host: "relay.example.test".to_owned(),
+                ..Settings::from_env([]).unwrap()
+            },
+            vec![token(
+                "test",
+                "test-token",
+                "example.test",
+                "example.test",
+                &[],
+            )],
+            logger.clone(),
+            Box::new(smtp),
+        ));
+        let body = encode(
+            Encoding::Urlencoded,
+            &[
+                ("from", "sender@example.test"),
+                ("to", "receiver@example.test"),
+                ("subject", "test"),
+                ("text", "test"),
+            ],
+        );
+        let request = Request::post("/v3/example.test/messages")
+            .header("content-type", body.content_type.unwrap())
+            .header("authorization", basic("api", "test-token"))
+            .body(Body::from(body.body))
+            .unwrap();
+
+        let reply = Harness::send_to(relay, request).await;
+        assert_eq!(reply.status(), status, "DATA {code}: {}", reply.json);
+        assert_eq!(reply.json["message"], message);
+        assert_eq!(
+            logger.losses().queue_unavailable,
+            2,
+            "cleanup and request logs"
+        );
+
+        let sessions = server.sessions();
+        let [session] = sessions.as_slice() else {
+            panic!("expected exactly one SMTP session for DATA {code}");
+        };
+        let commands = session.commands();
+        assert_eq!(commands.iter().filter(|verb| *verb == "DATA").count(), 1);
+        assert_eq!(commands.last().map(String::as_str), Some("QUIT"));
+        assert_eq!(session.log.last().map(String::as_str), Some("S: 500 bye"));
+        let wire = std::str::from_utf8(session.message.as_ref().unwrap()).unwrap();
+        if code == 250 {
+            let id = reply.json["id"].as_str().unwrap();
+            assert!(wire.contains(&format!("\r\nMessage-ID: {id}\r\n")));
+        } else {
+            assert_error(&reply, status);
+        }
+    }
 }
 
 #[tokio::test]

@@ -632,6 +632,12 @@ pending. A cleanup timeout must preserve HTTP 200, the same message ID and one
 success receipt, with exactly one SMTP transaction. The peer uses a synthetic
 CA and withholds its QUIT reply.
 
+A route regression also retires the shared log writer after the fake SMTP peer
+receives QUIT, then returns SMTP 500 for QUIT. It checks that the relay preserves
+final DATA acceptance or rejection even when the cleanup and request logs
+cannot enqueue. HTTP 200 carries the transmitted Message-ID, DATA 451 and 552
+keep their HTTP 503 and 502 mappings, and each request submits DATA once.
+
 Multi-listener startup is tested at the production `bind_addresses` seam using
 explicit IPv4 loopback addresses, independent of DNS ordering and IPv6 support.
 A later address-in-use error must release earlier listeners immediately; after
