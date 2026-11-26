@@ -839,11 +839,12 @@ client repositories (`phase1-code-clients.md` 3.3, re-checked for this plan).
 Decision: the Rust logger keeps every event name, every field name and every
 `result` value of Python (`ok`, `partial_refusal`, `auth_error`,
 `bad_request`, `policy_error`, `too_large`, `smtp_temporary`,
-`smtp_permanent`, `error`, `internal_error`, `overloaded`), the field order and
-compact separators. `error_class` carries Rust error names (free; values are
-documented, not consumed). Rust also emits `body_timeout` with HTTP 408 for the
-30-second upload deadline and `smtp_outcome_unknown` with HTTP 503 for an
-unconfirmed SMTP outcome after DATA 354. Before cutover the coordinator
+`smtp_permanent`, `smtp_outcome_unknown`, `error`, `internal_error`,
+`overloaded`), the field order and compact separators. `error_class` carries
+Rust error names (free; values are documented, not consumed). Both relays emit
+`smtp_outcome_unknown` with HTTP 503 for an unconfirmed SMTP outcome after
+DATA 354. Rust also emits `body_timeout` with HTTP 408 for the 30-second upload
+deadline. Before cutover the coordinator
 asks once whether any generic journald forwarding filters on relay fields
 (none found).
 
