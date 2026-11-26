@@ -1066,6 +1066,10 @@ def build(
         # Everything goes into a private staging directory first, which then
         # replaces the (missing or empty) output directory in one rename: a
         # concurrent build cannot mix its files into this one.
+        # A first build also needs to persist the entries for any new parents.
+        publishing_dirs = [out.parent]
+        while not publishing_dirs[-1].exists():
+            publishing_dirs.append(publishing_dirs[-1].parent)
         out.parent.mkdir(parents=True, exist_ok=True)
         staging = Path(tempfile.mkdtemp(prefix=f".{out.name}-", dir=out.parent))
         try:
@@ -1107,7 +1111,23 @@ def build(
             receipt.append(
                 f"dry run of the released {config.binary} {version}: {out} cannot be published"
             )
+        try:
+            for name in [*found, BUILD_JSON, NOTES]:
+                sync_path(staging / name)
+            sync_path(staging)
+        except OSError as error:
+            raise ReleaseError(
+                f"build not installed at {out}: syncing staging failed: {error}"
+            ) from error
         install_dir(staging, out)
+        try:
+            for directory in publishing_dirs:
+                sync_path(directory)
+        except OSError as error:
+            raise ReleaseError(
+                f"build installed at {out}, but durability is uncertain: "
+                f"syncing {directory} failed: {error}"
+            ) from error
     finally:
         shutil.rmtree(staging, ignore_errors=True)
     try:
@@ -1118,6 +1138,14 @@ def build(
             f"build installed at {out}, but writing the receipt failed: {error}"
         ) from None
     return out
+
+
+def sync_path(path: Path) -> None:
+    descriptor = os.open(path, os.O_RDONLY)
+    try:
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
 
 
 def install_dir(staging: Path, out: Path) -> None:

@@ -159,10 +159,14 @@ as a dry run that `publish` refuses). Then:
    and toolchain versions) and `notes.md` land in
    `rust/target/local-release/mailgun-relay-<version>/`, staged privately and
    moved there in one rename, so a concurrent build never mixes into it.
-   The archive listing is prepared before the rename. If listing fails, the
-   output directory stays missing or empty. If writing the summary fails
-   after the rename, the command reports the installed directory and leaves
-   the complete build available for inspection or publication.
+   Before the rename, the build prepares the archive listing and syncs all
+   four files and the staging directory. A failure at either step leaves
+   the destination untouched. After the rename it syncs the
+   publishing directory and the directories needed to persist newly created
+   parents, then prints the summary. A directory sync failure after the
+   rename leaves the complete build installed and reports uncertain durability.
+   If writing the summary fails, the command reports the installed directory
+   and leaves the complete build available for inspection or publication.
 
 `publish` takes that directory. It checks that `gh` is 2.74.0 or newer and
 requires `build.json` to be an object with all fields emitted by `build` and

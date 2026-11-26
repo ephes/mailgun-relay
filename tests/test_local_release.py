@@ -12,6 +12,7 @@ import hashlib
 import importlib.util
 import io
 import json
+import os
 import subprocess
 import sys
 import tarfile
@@ -903,6 +904,85 @@ def test_build_lists_archive_before_installing(
 
     assert not list(out.iterdir())
     assert list(tmp_path.iterdir()) == [out]
+
+
+@pytest.mark.parametrize(
+    "failure",
+    [None, "archive", "checksum", "build.json", "notes.md", "stage", "parent", "ancestor"],
+)
+def test_build_syncs_before_reporting_success(
+    release: ModuleType, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, failure: str | None
+) -> None:
+    out = tmp_path / "releases" / "out"
+    config = release.parse_config(linux_data())
+    archive = config.archive("1.2.3")
+    names = {
+        "archive": archive,
+        "checksum": f"{archive}.sha256",
+        "build.json": "build.json",
+        "notes.md": "notes.md",
+    }
+    steps = [*names, "stage", "parent", "ancestor"]
+    observed: list[str] = []
+    receipt: list[str] = []
+    real_fsync = os.fsync
+
+    def sync(fd: int) -> None:
+        dirs = {"parent": out.parent, "ancestor": tmp_path}
+        stages = list(out.parent.glob(".out-*"))
+        if stages:
+            (stage,) = stages
+            assert not out.exists()
+            paths = {key: stage / name for key, name in names.items()}
+            paths["stage"] = stage
+        else:
+            assert {path.name for path in out.iterdir()} == set(names.values())
+            paths = dirs
+        step = next(
+            key for key, path in paths.items() if os.path.samestat(os.fstat(fd), path.stat())
+        )
+        assert not receipt
+        observed.append(step)
+        if step == failure:
+            raise OSError(f"sync fault at {step}")
+        real_fsync(fd)
+
+    def log(line: str) -> None:
+        if line.endswith(f"  {archive}"):
+            receipt.append(line)
+
+    def build() -> Path:
+        result: Path = release.build(
+            False,
+            out,
+            config=config,
+            git=FakeGit(REPO),
+            github=FakeGitHub(),
+            docker=FakeDocker(),
+            version="1.2.3",
+            run_host_checks=no_host_checks,
+            log=log,
+        )
+        return result
+
+    monkeypatch.setattr(os, "fsync", sync)
+    if failure is None:
+        assert build() == out
+        assert observed == steps
+        assert receipt
+    else:
+        installed = failure in {"parent", "ancestor"}
+        verdict = (
+            r"build installed at .*durability is uncertain" if installed else r"build not installed"
+        )
+        with pytest.raises(release.ReleaseError, match=rf"{verdict}.*sync fault at {failure}"):
+            build()
+        assert observed == steps[: steps.index(failure) + 1]
+        assert not receipt
+        assert out.exists() == installed
+        if installed:
+            assert {path.name for path in out.iterdir()} == set(names.values())
+    assert not list(out.parent.glob(".out-*"))
 
 
 def test_build_reports_installed_output_when_receipt_fails(
