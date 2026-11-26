@@ -660,7 +660,6 @@
   },
   {
    "cert": "good",
-   "divergence": "D-3",
    "expected": {
     "data_for": [
      "ok1@example.com",
@@ -671,15 +670,6 @@
     "status": 503
    },
    "name": "garbage at data_end",
-   "python": {
-    "data_for": [
-     "ok1@example.com",
-     "bad@example.com",
-     "ok2@example.com"
-    ],
-    "refused": [],
-    "status": 502
-   },
    "recipients": [
     "ok1@example.com",
     "bad@example.com",

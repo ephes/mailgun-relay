@@ -23,13 +23,14 @@ class FailureCategory(StrEnum):
     PERMANENT = "permanent"
     TEMPORARY = "temporary"
     AUTH = "auth"
+    OUTCOME_UNKNOWN = "outcome_unknown"
 
 
 class SmtpSubmitError(Exception):
     """Raised by submit() when SMTP delivery fails.
 
     The category attribute drives the HTTP status the route returns:
-    PERMANENT -> 502, TEMPORARY -> 503, AUTH -> 502.
+    PERMANENT and AUTH -> 502, TEMPORARY and OUTCOME_UNKNOWN -> 503.
     Never carries SMTP credentials; only the SMTP server response code/text.
     """
 
@@ -144,6 +145,7 @@ class _SessionSMTP(smtplib.SMTP):
     """Use smtplib's public connect/reply boundary with one owned TCP budget."""
 
     def __init__(self, host: str, port: int, *, timeout: float, budget: _SocketDeadline) -> None:
+        self._data_phase: str | None = None
         self.budget = budget
         self.inactivity_timeout = timeout
         try:
@@ -196,10 +198,30 @@ class _SessionSMTP(smtplib.SMTP):
             raise error
         raise OSError("no SMTP addresses")
 
+    def data(self, msg: str | Buffer) -> tuple[int, bytes]:
+        self._data_phase = "command"
+        try:
+            reply = super().data(msg)
+            if not 200 <= reply[0] <= 599:
+                raise ConnectionError("invalid final SMTP DATA reply code")
+            return reply
+        except OSError as exc:
+            if self._data_phase == "transfer":
+                raise SmtpSubmitError(
+                    FailureCategory.OUTCOME_UNKNOWN, reason=type(exc).__name__
+                ) from exc
+            raise
+        finally:
+            self._data_phase = None
+
     def getreply(self) -> tuple[int, bytes]:
         if self.file is None and self.sock is not None:
             self.file = _ReplyReader(self.sock.makefile("rb", buffering=0))
-        return super().getreply()
+        reply = super().getreply()
+        # smtplib sends the body only after the DATA command receives 354.
+        if self._data_phase == "command" and reply[0] == 354:
+            self._data_phase = "transfer"
+        return reply
 
 
 def _tls_context(transport: SmtpTransport) -> ssl.SSLContext:
@@ -282,6 +304,7 @@ def submit(
             smtp = _SessionSMTP(
                 transport.host, transport.port, timeout=transport.timeout_s, budget=budget
             )
+            outcome_unknown = False
             try:
                 budget.remaining(transport.timeout_s)
                 smtp.ehlo()
@@ -310,12 +333,15 @@ def submit(
                     from_addr=envelope_sender,
                     to_addrs=recipients,
                 )
+            except SmtpSubmitError as exc:
+                outcome_unknown = exc.category is FailureCategory.OUTCOME_UNKNOWN
+                raise
             finally:
                 # QUIT and its timer are optional once the send has an outcome.
                 try:
                     budget.stop()
                     # smtplib already closes on 421 and connection loss.
-                    if smtp.sock is not None and not budget.expired:
+                    if smtp.sock is not None and not budget.expired and not outcome_unknown:
                         with _SocketDeadline(min(transport.timeout_s, 5.0)) as cleanup:
                             if budget.socket is not None:
                                 cleanup.watch(budget.socket)

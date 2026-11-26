@@ -425,9 +425,10 @@ fences the timer before joining it and closes the duplicate socket once, even
 if the join is interrupted. QUIT has its own
 `min(SMTP_TIMEOUT_S, 5 seconds)` total budget. Confirmed DATA acceptance survives
 a later deadline check or cleanup failure once the complete final 250 reply
-has been read. A timeout or truncated reply without a complete final DATA
-result returns HTTP 503 and can leave delivery uncertain. Neither runtime
-automatically retries it.
+has been read. Both relays return `smtp_outcome_unknown` after DATA 354 if
+a transport failure or malformed reply prevents a final verdict. Before DATA
+354, a transport failure remains `smtp_temporary`. Verify delivery before
+retrying an unknown outcome. Neither runtime retries it automatically.
 Python's blocking libc DNS calls (remote resolution and local EHLO hostname
 lookup) cannot be interrupted by socket shutdown. Their elapsed time consumes
 the budget and late results are refused before further SMTP work; admission stays

@@ -312,7 +312,11 @@ def register_routes(app: FastAPI) -> None:
             return _err_response(status_code, str(exc))
         except SmtpSubmitError as exc:
             error_class = type(exc).__name__
-            if exc.category is FailureCategory.TEMPORARY:
+            if exc.category is FailureCategory.OUTCOME_UNKNOWN:
+                result = "smtp_outcome_unknown"
+                status_code = 503
+                msg_out = "Upstream SMTP delivery outcome unknown; verify delivery before retrying"
+            elif exc.category is FailureCategory.TEMPORARY:
                 result = "smtp_temporary"
                 status_code = 503
                 msg_out = "Upstream SMTP temporarily unavailable"

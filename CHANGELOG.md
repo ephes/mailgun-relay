@@ -13,6 +13,10 @@ All notable changes to mailgun-relay are documented here.
 
 ### Python relay
 
+- Distinguish temporary transport failures before DATA 354 from uncertain
+  delivery after DATA 354. An uncertain outcome returns HTTP 503 with a
+  verification prompt and logs `smtp_outcome_unknown`, matching Rust.
+
 - Preserve a complete final DATA acceptance at the session deadline. A
   timeout or truncated DATA reply still leaves delivery uncertain.
 - Release the SMTP deadline's duplicate socket when a timer join is
@@ -29,8 +33,6 @@ All notable changes to mailgun-relay are documented here.
 - Report transport failures, timeouts and other failures without a parsable
   final reply code after DATA 354 as `smtp_outcome_unknown`. HTTP 503
   tells callers to verify delivery before retrying.
-  The parity harness records this as decided divergence D-23 and still
-  compares every other field of those cases.
 - Enforce the form-body deadline while processing continuously ready frames,
   including empty data or trailers, and release admission on HTTP 408.
 

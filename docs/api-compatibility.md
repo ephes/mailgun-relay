@@ -215,7 +215,7 @@ table below is therefore the contract the relay implements:
 | Rate limited | 429 | Per-token or global. |
 | Admission capacity exhausted before body parsing | 503 | `Relay busy; retry later`; no send attempted. Retry with backoff. No application wait queue. |
 | SMTP temporary failure (4xx sender/HELO/DATA or any all-refused recipient reply), timeout/connection loss before Rust DATA 354 | 503 | Anymail does not retry on its own; the caller surfaces the status as `AnymailRequestsAPIError.status_code`. |
-| Rust SMTP outcome unknown after DATA 354 | 503 | `Upstream SMTP delivery outcome unknown; verify delivery before retrying`. The peer may already have accepted the message. |
+| SMTP outcome unknown after DATA 354 | 503 | `Upstream SMTP delivery outcome unknown; verify delivery before retrying`. The peer may already have accepted the message. |
 | SMTP permanent rejection (5xx response; all recipients refused without any 4xx reply) | 502 | Same Anymail exception shape; permanent vs. temporary is informational for callers that inspect `.status_code`. |
 | Some (not all) recipients refused | 200 (default) or 502 | 200 with the normal success body plus a `recipients_refused` WARNING log; 502 only with `MAILGUN_RELAY_FAIL_ON_PARTIAL_REFUSAL=true`. See *Partial recipient refusal*. |
 | SMTP authentication failure (relay → backend) | 502 | Treated as a permanent upstream failure. Never exposes the credential. |
@@ -332,9 +332,10 @@ trickling replies, STARTTLS and recipient/DATA operations. A session-owned socke
 shutdown interrupts blocking reads and TLS; QUIT has its own
 `min(SMTP_TIMEOUT_S, 5 seconds)` total budget. Confirmed DATA acceptance survives
 a later deadline check or cleanup failure once the complete final 250 reply
-has been read. A timeout or truncated reply without a complete final DATA
-result returns HTTP 503 and can leave delivery uncertain. Neither runtime
-automatically retries it.
+has been read. Both relays return `smtp_outcome_unknown` after DATA 354 if
+a transport failure or malformed reply prevents a final verdict. Before DATA
+354, a transport failure remains `smtp_temporary`. Verify delivery before
+retrying an unknown outcome. Neither runtime retries it automatically.
 Python's blocking libc DNS calls (remote resolution and local EHLO hostname
 lookup) cannot be interrupted by socket shutdown. Their elapsed time consumes
 the budget and late results are refused before further SMTP work; admission stays

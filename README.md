@@ -157,9 +157,9 @@ with the same finite `(0, 1e9]` validation) for the complete SMTP outcome,
 including TCP attempts, banner, TLS, AUTH and recipients/DATA. QUIT gets a separate
 `min(SMTP_TIMEOUT_S, 5 seconds)` budget. A complete final DATA 250 reply
 preserves acceptance even if the session deadline passes before the result
-returns. A timeout or truncated reply without a complete final DATA result
-returns HTTP 503 with uncertain delivery. Inspect the upstream outcome before
-a deliberate retry to avoid duplicating mail. The service never automatically replays a send.
+returns. After DATA 354, a missing or malformed final reply returns HTTP 503
+with instructions to verify delivery before retrying. A transport failure before
+DATA 354 remains temporary. The service never automatically replays a send.
 A complete SMTP rejection whose failure surfaces after the session timer fired
 is still reported as temporary (HTTP 503); a retry normally gets the same rejection.
 Socket shutdown cannot interrupt Python's libc DNS calls; their elapsed time
@@ -242,7 +242,7 @@ journald, so `journalctl -u mailgun-relay -f` is the live view.
   Requests ending in HTTP 5xx (including internal errors) log at `ERROR`;
   other outcomes log at `INFO`. Thus `WARNING` keeps failure records visible
   while suppressing normal traffic. The request record is still emitted once.
-  The Rust relay logs `smtp_outcome_unknown` when transfer has started after
+  Both relays log `smtp_outcome_unknown` when transfer has started after
   DATA 354 and a transport failure, timeout or unparsable reply prevents a final
   reply code.
   Include this result alongside `smtp_temporary` in SMTP failure filters.

@@ -140,18 +140,6 @@ class Case:
     error_class: str | None = None  # expected request diagnostic in both relays
 
 
-# D-23: after DATA 354, a transport failure without a complete final reply
-# leaves the SMTP outcome unknown in Rust; Python reports it as temporary.
-UNKNOWN_OUTCOME_FAULTS = frozenset({"close", "hang"})
-UNKNOWN_OUTCOME_VALUES = {
-    "message": (
-        "Upstream SMTP temporarily unavailable",
-        "Upstream SMTP delivery outcome unknown; verify delivery before retrying",
-    ),
-    "result": ("smtp_temporary", "smtp_outcome_unknown"),
-}
-
-
 @dataclass
 class StartupCase:
     name: str
@@ -1389,10 +1377,6 @@ def smtp_cases() -> list[Case]:
     cases = []
     for entry in fixture["cases"]:
         python = entry.get("python", entry["expected"])
-        unknown = (
-            "divergence" not in entry
-            and entry["scenario"].get("fault", {}).get("data_end") in UNKNOWN_OUTCOME_FAULTS
-        )
         fields = [("from", HOMEPAGE_FROM)] + [("to", r) for r in entry["recipients"]]
         fields += [("subject", "SMTP"), ("text", "Ergebnis")]
         cases.append(
@@ -1405,8 +1389,6 @@ def smtp_cases() -> list[Case]:
                 profile="default" if entry["starttls"] else "plain",
                 divergence=entry.get("divergence"),
                 rust_status=entry["expected"]["status"] if "divergence" in entry else None,
-                value_divergence="D-23" if unknown else None,
-                rust_values=UNKNOWN_OUTCOME_VALUES if unknown else {},
             )
         )
     partial = [

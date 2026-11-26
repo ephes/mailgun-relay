@@ -3142,7 +3142,6 @@ SMTP_DIVERGENCES = {
     "garbage at banner": "D-3",
     "garbage at mail": "D-3",
     "garbage at rcpt": "D-3",
-    "garbage at data_end": "D-3",
     "auth only CRAM-MD5": "D-4",
 }
 
@@ -3255,7 +3254,11 @@ def _python_submit(smtp: ScriptedSmtp, case: dict[str, Any], ca_file: str) -> di
         status = 200
         refused = [[address, code] for address, (code, _reply) in result.items()]
     except SmtpSubmitError as exc:
-        status = 503 if exc.category is FailureCategory.TEMPORARY else 502
+        status = (
+            503
+            if exc.category in {FailureCategory.TEMPORARY, FailureCategory.OUTCOME_UNKNOWN}
+            else 502
+        )
     finally:
         smtp.stop(sink)
     data_for = next((s["data_for"] for s in sink.sessions if s["data_for"] is not None), None)

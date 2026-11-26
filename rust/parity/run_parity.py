@@ -87,6 +87,7 @@ KEPT_TEXTS = {
     "Payload Too Large",
     "Queued. Thank you.",
     "Upstream SMTP temporarily unavailable",
+    "Upstream SMTP delivery outcome unknown; verify delivery before retrying",
     "Upstream SMTP rejected the message",
     "Internal Server Error",
 }

@@ -332,7 +332,7 @@ def test_data_outcome_at_deadline(monkeypatch: pytest.MonkeyPatch, final_reply: 
     else:
         with pytest.raises(SmtpSubmitError) as caught:
             send()
-        assert caught.value.category is FailureCategory.TEMPORARY
+        assert caught.value.category is FailureCategory.OUTCOME_UNKNOWN
 
 
 @pytest.mark.parametrize("stop_in_body", [False, True])

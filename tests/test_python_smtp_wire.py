@@ -161,3 +161,64 @@ def test_python_starttls_handshake_before_auth_and_data(
         assert transport.password not in caplog.text
     finally:
         python_smtp.stop(sink)
+
+
+@pytest.mark.parametrize(
+    ("phase", "fault", "result", "message"),
+    [
+        ("data", "close", "smtp_temporary", "Upstream SMTP temporarily unavailable"),
+        (
+            "data_end",
+            "close",
+            "smtp_outcome_unknown",
+            "Upstream SMTP delivery outcome unknown; verify delivery before retrying",
+        ),
+        (
+            "data_end",
+            "garbage",
+            "smtp_outcome_unknown",
+            "Upstream SMTP delivery outcome unknown; verify delivery before retrying",
+        ),
+    ],
+)
+def test_http_distinguishes_lost_data_acknowledgement(
+    python_smtp: ScriptedSmtp,
+    python_pki: dict[str, str],
+    app_state: AppState,
+    homepage_token: str,
+    caplog: pytest.LogCaptureFixture,
+    phase: str,
+    fault: str,
+    result: str,
+    message: str,
+) -> None:
+    sink = python_smtp.start({"fault": {phase: fault}})
+    state = dataclasses.replace(
+        app_state, transport=_transport(sink.port, python_pki), smtp_submit=submit
+    )
+    try:
+        with TestClient(create_app(app_state=state)) as client:
+            response = client.post(
+                "/v3/mg.wersdoerfer.de/messages",
+                data={
+                    "from": "jochen-homepage@wersdoerfer.de",
+                    "to": "recipient@example.test",
+                    "subject": "SMTP acknowledgement",
+                    "text": "synthetic delivery probe",
+                },
+                auth=("api", homepage_token),
+            )
+        assert response.status_code == 503
+        assert response.json() == {"message": message}
+        [record] = [r for r in caplog.records if getattr(r, "event", None) == "request"]
+        assert vars(record)["result"] == result
+        sink.settle()
+        [session] = sink.take()
+        assert session["commands"].count("DATA") == 1
+        assert session["commands"][-1] == "DATA"
+        if phase == "data_end":
+            assert b"synthetic delivery probe" in session["message"]
+        else:
+            assert session["message"] is None
+    finally:
+        python_smtp.stop(sink)

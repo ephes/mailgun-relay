@@ -391,10 +391,8 @@ If the captured MIME cannot be decoded, the case fails with the parser
 exception class. The report still includes its observed HTTP statuses and
 capture counts, and the harness runs the remaining cases.
 Expected differences name their entry of PLAN.md section 3; any other
-difference fails. A difference that keeps the status (D-23:
-`smtp_outcome_unknown` and its JSON message after a transfer fault at the end
-of DATA) pins both the Python and the Rust value and compares the rest of the
-case in full. From the repository root:
+difference fails. A difference that keeps the status pins both differing values
+and compares the rest of the case in full. From the repository root:
 
 ```bash
 (cd rust && cargo build --release --locked)
@@ -542,9 +540,10 @@ trickling replies, STARTTLS and recipient/DATA operations. A session-owned socke
 shutdown interrupts blocking reads and TLS; QUIT has its own
 `min(SMTP_TIMEOUT_S, 5 seconds)` total budget. Confirmed DATA acceptance survives
 a later deadline check or cleanup failure once the complete final 250 reply
-has been read. A timeout or truncated reply without a complete final DATA
-result returns HTTP 503 and can leave delivery uncertain. Neither runtime
-automatically retries it.
+has been read. Both relays return `smtp_outcome_unknown` after DATA 354 if
+a transport failure or malformed reply prevents a final verdict. Before DATA
+354, a transport failure remains `smtp_temporary`. Verify delivery before
+retrying an unknown outcome. Neither runtime retries it automatically.
 Python's blocking libc DNS calls (remote resolution and local EHLO hostname
 lookup) cannot be interrupted by socket shutdown. Their elapsed time consumes
 the budget and late results are refused before further SMTP work; admission stays

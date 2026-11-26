@@ -72,8 +72,9 @@ SMTP submission is blocking `smtplib` I/O, bounded per step by
 TLS, AUTH and all recipients/DATA share that budget. QUIT has a separate total
 budget of `min(SMTP_TIMEOUT_S, 5 seconds)` and preserves confirmed acceptance.
 Blocking libc DNS cannot be interrupted: late results are refused and admission
-is retained until the call returns. A timed-out DATA result may be ambiguous;
-there is no automatic replay. The route runs SMTP in a worker
+is retained until the call returns. After DATA 354, a missing or malformed
+final reply returns HTTP 503 and logs `smtp_outcome_unknown`. Verify delivery
+before retrying. The relay performs no automatic replay. The route runs SMTP in a worker
 thread so a slow or unreachable backend never blocks the event loop: `/health`
 and other requests keep answering while a send is in flight. At most
 `MAILGUN_RELAY_SMTP_MAX_CONCURRENCY` (default 8) requests are admitted at once, from body parsing through SMTP completion.
@@ -289,7 +290,7 @@ table in `docs/api-compatibility.md`):
 - `413 Payload Too Large`: body, attachment, or recipient count limit exceeded.
 - `429 Too Many Requests`: reserved for future per-token / global rate limiting; not enforced by the relay today.
 - `502 Bad Gateway`: SMTP permanent failure (5xx response, all recipients refused without any 4xx reply, backend auth failure), and a partial recipient refusal when `MAILGUN_RELAY_FAIL_ON_PARTIAL_REFUSAL=true` (by default a partial refusal is a logged `200`).
-- `503 Service Unavailable`: SMTP temporary failure (4xx sender/HELO/DATA response, any 4xx reply when all recipients are refused including mixed 4xx/5xx replies, connection refused, timeout, OSError).
+- `503 Service Unavailable`: SMTP temporary failure (4xx sender/HELO/DATA response, any 4xx reply when all recipients are refused including mixed 4xx/5xx replies, connection refused, timeout, OSError), or an unknown delivery outcome after DATA 354.
 
 All non-2xx responses use the body shape `{"message": "<human readable>"}`.
 `django-anymail` makes no transient/permanent distinction internally (every

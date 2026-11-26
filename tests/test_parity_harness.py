@@ -298,14 +298,14 @@ def _unknown_outcome(message: str, result: str) -> run_parity.Outcome:
 
 
 def test_value_divergences_pin_both_values_and_compare_the_rest() -> None:
-    (py_message, rs_message) = corpus.UNKNOWN_OUTCOME_VALUES["message"]
-    (py_result, rs_result) = corpus.UNKNOWN_OUTCOME_VALUES["result"]
+    py_message, rs_message = "Internal Server Error", "rust message"
+    py_result, rs_result = "python_result", "rust_result"
     case = corpus.Case(
         "c",
         corpus.Request(),
         503,
         value_divergence="D-23",
-        rust_values=corpus.UNKNOWN_OUTCOME_VALUES,
+        rust_values={"message": (py_message, rs_message), "result": (py_result, rs_result)},
     )
     py = _unknown_outcome(py_message, py_result)
     rs = _unknown_outcome(rs_message, rs_result)
@@ -324,11 +324,6 @@ def test_value_divergences_pin_both_values_and_compare_the_rest() -> None:
     other.records[0]["refused_count"] = 1
     diffs, _ = run_parity.compare(case, py, other)
     assert any("refused_count" in d for d in diffs), diffs
-
-
-def test_unknown_outcome_cases_are_the_transfer_faults() -> None:
-    marked = {c.name for c in corpus.request_cases() if c.value_divergence == "D-23"}
-    assert marked == {"smtp disconnect at data_end", "smtp timeout at data_end"}
 
 
 def test_request_framing() -> None:
