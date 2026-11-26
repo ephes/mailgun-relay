@@ -112,6 +112,8 @@ All notable changes to mailgun-relay are documented here.
   require the same ASCII semver in version selection and artifact names.
 - Report invalid UTF-8 or malformed Cargo metadata JSON as a release-check
   error.
+- Reject archive timestamps outside gzip's unsigned 32-bit range before
+  reading pack inputs.
 - Treat trailing zero components as insignificant in glibc floor comparisons.
 - Preserve the primary release-helper error and report cleanup failures after
   attempting to retire the process group, reap the helper and close both pipes.

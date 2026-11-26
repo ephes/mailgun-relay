@@ -55,6 +55,7 @@ SEMVER = re.compile(
     re.ASCII,
 )
 SUPPORTED_TARGETS = frozenset({"x86_64-unknown-linux-gnu"})
+MAX_GZIP_MTIME = 2**32 - 1
 COMMIT = re.compile(r"[0-9a-f]{40}")
 
 # Shared libraries a glibc build may link to (PLAN.md 8: only glibc and
@@ -501,7 +502,9 @@ def main(argv: list[str] | None = None) -> int:
     pack.add_argument("--license", type=Path, required=True)
     pack.add_argument("--version", required=True)
     pack.add_argument("--target", required=True)
-    pack.add_argument("--mtime", type=int, required=True, help="Unix time for all entries")
+    pack.add_argument(
+        "--mtime", type=int, required=True, help=f"Unix time from 0 to {MAX_GZIP_MTIME}"
+    )
     pack.add_argument("--out-dir", type=Path, required=True)
 
     args = parser.parse_args(argv)
@@ -532,6 +535,8 @@ def main(argv: list[str] | None = None) -> int:
             print(run_check_config(args.binary), end="")
         else:
             name = archive_name(args.version, args.target)
+            if not 0 <= args.mtime <= MAX_GZIP_MTIME:
+                raise CheckError(f"--mtime must be between 0 and {MAX_GZIP_MTIME}")
             binary = args.binary.read_bytes()
             license_text = args.license.read_bytes()
             data = build_archive(binary, license_text, args.mtime)

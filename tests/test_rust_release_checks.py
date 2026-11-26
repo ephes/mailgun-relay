@@ -311,11 +311,52 @@ def test_cli_version_reports_metadata_input_failures(
     assert len(result.stderr.splitlines()) == 1
 
 
-def test_cli_pack_writes_archive_and_sha256sum_line(tmp_path: Path) -> None:
+@pytest.mark.parametrize("mtime", [0, 1_700_000_000, 2**32 - 1])
+def test_cli_pack_writes_archive_and_sha256sum_line(tmp_path: Path, mtime: int) -> None:
     binary = tmp_path / "mailgun-relay"
     binary.write_bytes(b"binary")
     license_path = tmp_path / "LICENSE"
     license_path.write_bytes(b"MIT\n")
+    out = tmp_path / "dist"
+    args = (
+        "pack",
+        "--binary",
+        str(binary),
+        "--license",
+        str(license_path),
+        "--version",
+        "0.2.0",
+        "--target",
+        "x86_64-unknown-linux-gnu",
+        "--mtime",
+        str(mtime),
+        "--out-dir",
+        str(out),
+    )
+    name = "mailgun-relay-0.2.0-x86_64-unknown-linux-gnu.tar.gz"
+    result = run_script(*args)
+    assert (result.returncode, result.stdout) == (0, f"{name}\n")
+    data = (out / name).read_bytes()
+    assert int.from_bytes(data[4:8], "little") == mtime
+    with tarfile.open(fileobj=io.BytesIO(data), mode="r:gz") as archive:
+        assert {member.mtime for member in archive.getmembers()} == {mtime}
+    assert (out / f"{name}.sha256").read_text(encoding="utf-8") == (
+        f"{hashlib.sha256(data).hexdigest()}  {name}\n"
+    )
+    assert run_script(*args).returncode == 0
+    assert (out / name).read_bytes() == data
+
+
+@pytest.mark.parametrize("mtime", [-1, 2**32])
+@pytest.mark.parametrize("inputs_exist", [True, False])
+def test_cli_pack_rejects_out_of_range_mtime_before_reading_inputs(
+    tmp_path: Path, mtime: int, inputs_exist: bool
+) -> None:
+    binary = tmp_path / "mailgun-relay"
+    license_path = tmp_path / "LICENSE"
+    if inputs_exist:
+        binary.write_bytes(b"binary")
+        license_path.write_bytes(b"MIT\n")
     out = tmp_path / "dist"
     result = run_script(
         "pack",
@@ -328,16 +369,16 @@ def test_cli_pack_writes_archive_and_sha256sum_line(tmp_path: Path) -> None:
         "--target",
         "x86_64-unknown-linux-gnu",
         "--mtime",
-        "1700000000",
+        str(mtime),
         "--out-dir",
         str(out),
     )
-    name = "mailgun-relay-0.2.0-x86_64-unknown-linux-gnu.tar.gz"
-    assert (result.returncode, result.stdout) == (0, f"{name}\n")
-    data = (out / name).read_bytes()
-    assert (out / f"{name}.sha256").read_text(encoding="utf-8") == (
-        f"{hashlib.sha256(data).hexdigest()}  {name}\n"
+    assert (result.returncode, result.stdout, result.stderr) == (
+        1,
+        "",
+        "release check failed: --mtime must be between 0 and 4294967295\n",
     )
+    assert not out.exists()
 
 
 # A stand-in for the binary: `--version` as the release build prints it;

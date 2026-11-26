@@ -200,21 +200,23 @@ process group, including pipe-holding descendants, then attempts to reap the
 helper and close each pipe. Cleanup failures report the failed operations
 alongside any original command failure.
 
-`version` requires UTF-8 JSON containing a Cargo metadata object with a `packages` array of objects
-with string `name` and `version` fields. It selects exactly one
-`mailgun-relay` package. Shape errors identify the invalid field or array
+`version` requires UTF-8 JSON containing a Cargo metadata object with a
+`packages` array of objects with string `name` and `version` fields. It selects
+exactly one `mailgun-relay` package. Shape errors identify the invalid field or array
 position without echoing metadata. Invalid UTF-8 and invalid JSON each produce a
 single release-check diagnostic on stderr and exit status 1 with no version
 output. File read failures keep their filesystem diagnostic.
-Both `version` and `pack` require ASCII
-semver without build metadata for the relay version.
+Both `version` and `pack` require ASCII semver without build metadata for the
+relay version.
 
 `glibc-floor` compares numeric versions with trailing zero components ignored,
 so `2.35` and `2.35.0` are equivalent. Output preserves the symbol and floor
 spellings.
 
-`pack` also requires the supported
-`x86_64-unknown-linux-gnu` target, before reading inputs or creating output.
+`pack` requires the supported `x86_64-unknown-linux-gnu` target and a
+`--mtime` Unix timestamp from 0 to 4,294,967,295 seconds inclusive. It checks
+both before reading inputs or creating output. The gzip header and tar
+entries use the same timestamp.
 It locks the output directory, stages and verifies both files, syncs them and
 publishes the pair with rollback on handled failures. A durable
 `.mailgun-relay-<version>-<target>.tar.gz.incomplete` marker identifies an
