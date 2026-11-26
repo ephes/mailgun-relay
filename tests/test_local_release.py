@@ -18,7 +18,7 @@ import tarfile
 from collections.abc import Iterator, Mapping, Sequence
 from pathlib import Path
 from types import ModuleType, SimpleNamespace
-from typing import Any
+from typing import Any, Literal
 
 import pytest
 
@@ -388,6 +388,7 @@ def test_linux_build_and_publish(release: ModuleType, tmp_path: Path) -> None:
     config = release.parse_config(linux_data())
     docker = FakeDocker()
     git = FakeGit(REPO)
+    build_lines: list[str] = []
     out = release.build(
         False,
         tmp_path / "out",
@@ -397,7 +398,7 @@ def test_linux_build_and_publish(release: ModuleType, tmp_path: Path) -> None:
         docker=docker,
         version="1.2.3",
         run_host_checks=no_host_checks,
-        log=lambda line: None,
+        log=build_lines.append,
     )
     archive = "example-1.2.3-x86_64-unknown-linux-gnu.tar.gz"
     assert sorted(path.name for path in out.iterdir()) == sorted(
@@ -414,6 +415,10 @@ def test_linux_build_and_publish(release: ModuleType, tmp_path: Path) -> None:
     assert build_env["MTIME"] == "1700000000"
     record = json.loads((out / "build.json").read_text())
     assert record["commit"] == COMMIT and record["compare_released"] is False
+    assert build_lines[-2:] == [
+        f"{record['sha256']}  {archive}",
+        "    example (0o755, 3 bytes)",
+    ]
     notes = (out / "notes.md").read_text()
     assert f"sha256 of {archive}: {record['sha256']}" in notes
     assert "glibc >= 2.35" in notes
@@ -866,6 +871,76 @@ def test_build_never_mixes_into_an_output_filled_meanwhile(
         )
     assert [path.name for path in out.iterdir()] == ["build.json"]
     assert [path.name for path in tmp_path.iterdir()] == ["out"]
+
+
+def test_build_lists_archive_before_installing(
+    release: ModuleType, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    out = tmp_path / "out"
+    out.mkdir()
+    real_open = tarfile.open
+
+    def fail_listing(
+        name: Path | None = None, mode: Literal["r", "r:gz", "w:gz"] = "r", **kwargs: Any
+    ) -> tarfile.TarFile:
+        if mode == "r:gz":
+            raise tarfile.ReadError("listing failed")
+        return real_open(name, mode, **kwargs)
+
+    monkeypatch.setattr(tarfile, "open", fail_listing)
+    with pytest.raises(release.ReleaseError, match=r"cannot list.*listing failed"):
+        release.build(
+            False,
+            out,
+            config=release.parse_config(linux_data()),
+            git=FakeGit(REPO),
+            github=FakeGitHub(),
+            docker=FakeDocker(),
+            version="1.2.3",
+            run_host_checks=no_host_checks,
+            log=lambda line: None,
+        )
+
+    assert not list(out.iterdir())
+    assert list(tmp_path.iterdir()) == [out]
+
+
+def test_build_reports_installed_output_when_receipt_fails(
+    release: ModuleType, tmp_path: Path
+) -> None:
+    out = tmp_path / "out"
+    config = release.parse_config(linux_data())
+    archive = config.archive("1.2.3")
+
+    def fail_receipt(line: str) -> None:
+        if line.endswith(f"  {archive}"):
+            raise BrokenPipeError("sink closed")
+
+    with pytest.raises(
+        release.ReleaseError, match=r"build installed at .*receipt.*sink closed"
+    ) as exc:
+        release.build(
+            False,
+            out,
+            config=config,
+            git=FakeGit(REPO),
+            github=FakeGitHub(),
+            docker=FakeDocker(),
+            version="1.2.3",
+            run_host_checks=no_host_checks,
+            log=fail_receipt,
+        )
+
+    assert str(out) in str(exc.value)
+    assert {path.name for path in out.iterdir()} == {
+        archive,
+        f"{archive}.sha256",
+        "build.json",
+        "notes.md",
+    }
+    github = FakeGitHub()
+    publish(release, out, github)
+    assert github.created == [("rs-v1.2.3", False)]
 
 
 class FakeApi:

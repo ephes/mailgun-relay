@@ -1094,15 +1094,29 @@ def build(
         (staging / BUILD_JSON).write_text(json.dumps(record, indent=2) + "\n", encoding="utf-8")
         notes = release_notes(config, record, result["checks_log"])
         (staging / NOTES).write_text(notes, encoding="utf-8")
+        receipt = [f"{digest}  {archive}"]
+        try:
+            with tarfile.open(staging / archive, "r:gz") as tar:
+                for index, member in enumerate(tar):
+                    if index == 2:  # pack writes only the binary and LICENSE
+                        raise ReleaseError(f"{archive} has more than two members")
+                    receipt.append(f"    {member.name} ({oct(member.mode)}, {member.size} bytes)")
+        except (tarfile.TarError, OSError, EOFError) as error:
+            raise ReleaseError(f"cannot list {archive}: {error}") from None
+        if compare_released:
+            receipt.append(
+                f"dry run of the released {config.binary} {version}: {out} cannot be published"
+            )
         install_dir(staging, out)
     finally:
         shutil.rmtree(staging, ignore_errors=True)
-    log(f"{digest}  {archive}")
-    with tarfile.open(out / archive, "r:gz") as tar:
-        for member in tar.getmembers():
-            log(f"    {member.name} ({oct(member.mode)}, {member.size} bytes)")
-    if compare_released:
-        log(f"dry run of the released {config.binary} {version}: {out} cannot be published")
+    try:
+        for line in receipt:
+            log(line)
+    except Exception as error:
+        raise ReleaseError(
+            f"build installed at {out}, but writing the receipt failed: {error}"
+        ) from None
     return out
 
 
@@ -1253,7 +1267,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = parser.parse_args(argv)
     try:
         if args.command == "build":
-            build(args.compare_released, args.out_dir)
+            build(args.compare_released, args.out_dir, log=lambda line: print(line, flush=True))
         else:
             publish(args.out_dir)
     except ReleaseError as error:
