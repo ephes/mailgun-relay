@@ -170,11 +170,25 @@ def make_certificates(directory: Path) -> dict[str, str]:
                 os.replace(stage, directory)
                 installed = True
                 sync_directory(directory.parent)
-            except BaseException:
-                if installed:
-                    shutil.rmtree(directory)
-                if had_previous:
-                    os.replace(previous, directory)
+            except BaseException as publication_error:
+                previous_pending = had_previous
+                phase = "remove unconfirmed generation"
+                try:
+                    if installed:
+                        shutil.rmtree(directory)
+                    if previous_pending:
+                        phase = "restore previous generation"
+                        os.replace(previous, directory)
+                        previous_pending = False
+                    if installed or had_previous:
+                        phase = "sync parent directory"
+                        sync_directory(directory.parent)
+                except BaseException as rollback_error:
+                    publication_error.add_note(
+                        f"fixture PKI rollback could not {phase}: {rollback_error}"
+                    )
+                    if previous_pending:
+                        publication_error.add_note(f"previous fixture PKI retained at {previous}")
                 raise
             if previous.exists():
                 shutil.rmtree(previous)

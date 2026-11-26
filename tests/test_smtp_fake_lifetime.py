@@ -213,6 +213,63 @@ def test_first_pki_publication_failure_retires_generation(
     assert parent_syncs[0] != parent_syncs[1] == (directory / "ca.pem").read_bytes()
 
 
+@pytest.mark.parametrize("rollback_failure", [None, "restore", "sync"])
+def test_pki_publication_error_survives_rollback(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, rollback_failure: str | None
+) -> None:
+    directory = tmp_path / "pki"
+    previous = tmp_path / ".pki.previous"
+    smtp_fake.make_certificates(directory)
+    old_ca = (directory / "ca.pem").read_bytes()
+    usable_certificates = smtp_fake.usable_certificates
+    sync_directory = smtp_fake.sync_directory
+    replace = os.replace
+    publication_error = OSError("publication sync failed")
+    parent_syncs = 0
+
+    def force_refresh(path: Path) -> bool:
+        return path != directory and usable_certificates(path)
+
+    def fail_publication(path: Path) -> None:
+        nonlocal parent_syncs
+        if path == tmp_path:
+            parent_syncs += 1
+            if parent_syncs == 1:
+                raise publication_error
+            assert (directory / "ca.pem").read_bytes() == old_ca
+            if rollback_failure == "sync":
+                raise OSError("rollback sync failed")
+        sync_directory(path)
+
+    def restore(source: Path, target: Path) -> None:
+        if source == previous and rollback_failure == "restore":
+            raise OSError("restore rename failed")
+        replace(source, target)
+
+    monkeypatch.setattr(smtp_fake, "usable_certificates", force_refresh)
+    monkeypatch.setattr(smtp_fake, "sync_directory", fail_publication)
+    monkeypatch.setattr(os, "replace", restore)
+    with pytest.raises(OSError, match="publication sync failed") as caught:
+        smtp_fake.make_certificates(directory)
+
+    assert caught.value is publication_error
+    notes = "\n".join(getattr(caught.value, "__notes__", []))
+    if rollback_failure == "restore":
+        assert "restore rename failed" in notes
+        assert str(previous) in notes
+        assert (previous / "ca.pem").read_bytes() == old_ca
+        assert not directory.exists()
+        assert parent_syncs == 1
+    else:
+        assert parent_syncs == 2
+        assert (directory / "ca.pem").read_bytes() == old_ca
+        assert not previous.exists()
+        if rollback_failure == "sync":
+            assert "rollback sync failed" in notes
+        else:
+            assert not notes
+
+
 @pytest.mark.parametrize("expired", ["ca", "good"])
 def test_pki_checks_each_expiry_and_reuses_only_fresh_material(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, expired: str
