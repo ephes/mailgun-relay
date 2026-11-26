@@ -206,6 +206,10 @@ with string `name` and `version` fields. It selects exactly one
 position without echoing metadata. Both `version` and `pack` require ASCII
 semver without build metadata for the relay version.
 
+`glibc-floor` compares numeric versions with trailing zero components ignored,
+so `2.35` and `2.35.0` are equivalent. Output preserves the symbol and floor
+spellings.
+
 `pack` also requires the supported
 `x86_64-unknown-linux-gnu` target, before reading inputs or creating output.
 It locks the output directory, stages and verifies both files, syncs them and

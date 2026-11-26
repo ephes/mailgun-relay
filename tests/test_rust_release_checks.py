@@ -112,6 +112,19 @@ def test_glibc_floor_accepts_the_ubuntu_22_04_build(checks: ModuleType) -> None:
     assert checks.check_glibc(OBJDUMP_OK, "2.35") == "2.35"
 
 
+@pytest.mark.parametrize("floor", ["2.35", "2.35.0"])
+@pytest.mark.parametrize("symbol", ["2.35", "2.35.0", "2.35.0.0"])
+def test_glibc_floor_ignores_trailing_zero_components(
+    checks: ModuleType, floor: str, symbol: str
+) -> None:
+    assert checks.check_glibc(OBJDUMP_OK.replace("GLIBC_2.35", f"GLIBC_{symbol}"), floor) == symbol
+    too_new = OBJDUMP_OK.replace("GLIBC_2.35", "GLIBC_2.35.1")
+    with pytest.raises(
+        checks.CheckError, match=re.escape(f"glibc newer than {floor}: GLIBC_2.35.1")
+    ):
+        checks.check_glibc(too_new, floor)
+
+
 def test_glibc_floor_compares_numerically(checks: ModuleType) -> None:
     # 2.4 < 2.14 < 2.35 numerically, not as strings.
     text = OBJDUMP_OK.replace("GLIBC_2.35", "GLIBC_2.4")

@@ -197,10 +197,13 @@ def _retire_helper(process: subprocess.Popen[bytes]) -> list[str]:
 
 
 def parse_version(text: str) -> tuple[int, ...]:
-    """`2.35` → (2, 35); anything but dot-separated decimals is an error."""
+    """Compare dot-separated decimals without insignificant trailing zeros."""
     if not re.fullmatch(r"\d+(?:\.\d+)*", text):
         raise CheckError(f"not a glibc version: {text!r}")
-    return tuple(int(part) for part in text.split("."))
+    parts = [int(part) for part in text.split(".")]
+    while len(parts) > 1 and parts[-1] == 0:
+        parts.pop()
+    return tuple(parts)
 
 
 def package_version(metadata: object) -> str:
@@ -258,7 +261,7 @@ def check_glibc(objdump_text: str, maximum: str) -> str:
             parsed[version] = parse_version(version)
         except CheckError:
             raise CheckError(f"unexpected glibc symbol version GLIBC_{version}") from None
-    newest = max(parsed, key=lambda version: parsed[version])
+    newest = max(parsed, key=lambda version: (parsed[version], version))
     too_new = sorted(
         (version for version, value in parsed.items() if value > limit),
         key=lambda version: parsed[version],
