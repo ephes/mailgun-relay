@@ -387,11 +387,12 @@ data frames and trailers count toward cooperative scheduling. A full 25 MiB
 upload needs roughly 7 Mbit/s sustained throughput. Expiry returns HTTP 408
 (`BodyTimeoutError`), drops the body and releases admission before MIME or SMTP. Overload still returns 503
 before reading the body. Python rollback has no application body deadline.
-Rust also uses one `MAILGUN_RELAY_SMTP_TIMEOUT_S` budget for DNS resolution and
+Both relays use one `MAILGUN_RELAY_SMTP_TIMEOUT_S` budget for DNS resolution and
 all TCP connection attempts together. It tries each distinct socket address in
 first resolver order and divides the remaining time equally among untried
 addresses, so a stalled address permits fallback. Expiry returns retryable
-HTTP 503. Each later SMTP socket operation has its own timeout. In addition,
+HTTP 503. Each later SMTP socket operation has its own timeout. STARTTLS
+verifies the configured SMTP hostname. In addition,
 `MAILGUN_RELAY_SMTP_SESSION_TIMEOUT_S` (default 120 seconds, finite and
 `0 < value <= 1e9`) bounds DNS, connect, banner, EHLO, STARTTLS, AUTH and DATA
 through the delivery outcome together. Expiry closes the connection, returns
@@ -418,7 +419,7 @@ Python rollback now also validates and applies `SMTP_SESSION_TIMEOUT_S` (the
 same default and bounds) through the SMTP outcome, including TCP attempts,
 trickling replies, STARTTLS and recipient/DATA operations. A failed TCP attempt
 closes its candidate socket. If close raises an OS error, the relay still tries
-the next address within the session budget and preserves the final connect error
+the next address within the connect deadline and preserves the final connect error
 if all attempts fail. Cancellation still propagates after the close attempt.
 A session-owned socket shutdown interrupts blocking reads and TLS. Cleanup
 fences the timer before joining it and closes the duplicate socket once, even

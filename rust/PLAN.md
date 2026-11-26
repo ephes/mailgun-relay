@@ -451,19 +451,19 @@ Session rules (exact): one new connection per request; STARTTLS mandatory when
 (always, given the secrets schema); no retry; QUIT and close failures never
 change the outcome (logged as `smtp_cleanup_failed`); no QUIT when the server
 already closed the connection. The timeout `SMTP_TIMEOUT_S` applies per
-network operation, not to the whole session. Rust additionally bounds DNS and
-all TCP attempts together to that timeout, and admitted body reads to 30 seconds
-total (HTTP 408), even when frames are continuously ready. Rust additionally
-bounds the pre-outcome SMTP exchange by
-`SMTP_SESSION_TIMEOUT_S` (default 120 s), from DNS through DATA's final reply.
+network operation. Both relays bound DNS and all TCP attempts together to that
+timeout and split the remaining time among distinct untried addresses. Rust
+also bounds admitted body reads to 30 seconds total (HTTP 408), even when
+frames are continuously ready. Both relays bound the pre-outcome SMTP exchange
+by `SMTP_SESSION_TIMEOUT_S` (default 120 s), from DNS through DATA's final reply.
 Expiry drops the connection and returns 503. A failure after DATA 354 without
 a complete final reply logs `smtp_outcome_unknown` and tells the caller to verify
 delivery before retrying. QUIT has a separate total
 `min(SMTP_TIMEOUT_S, 5 s)` budget, preserving the outcome. RelayStream admits at
 most 16 MiB of inbound wire bytes including TLS handshake/record overhead and
 cleanup. Exhaustion is a safe transport failure, with no raw reply logs; accepted
-DATA still wins over cleanup failure. Python retains its original acquisition
-behavior; see D-23.
+DATA still wins over cleanup failure. See D-23 for the remaining wire-byte
+limit difference.
 
 ### 2.5 JSON shapes (exact)
 

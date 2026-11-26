@@ -300,10 +300,12 @@ data frames and trailers count toward cooperative scheduling. A full 25 MiB
 upload needs roughly 7 Mbit/s sustained throughput. Expiry returns HTTP 408
 (`BodyTimeoutError`), drops the body and releases admission before MIME or SMTP. Overload still returns 503
 before reading the body. Python rollback has no application body deadline.
-Rust also uses one `MAILGUN_RELAY_SMTP_TIMEOUT_S` budget for DNS resolution and
-all TCP connection attempts together, sharing remaining time equally among
-remaining addresses so a stalled address permits fallback; expiry is retryable HTTP 503. Later SMTP
-socket operations retain their individual timeouts. In addition,
+Both relays use one `MAILGUN_RELAY_SMTP_TIMEOUT_S` budget for DNS resolution and
+all TCP connection attempts together. Each distinct socket address is tried in
+resolver order, with the remaining time shared equally among untried addresses
+so a stalled address permits fallback. Expiry is retryable HTTP 503. After TCP
+connect, SMTP socket operations use their individual timeouts. STARTTLS verifies
+the configured SMTP hostname. In addition,
 `MAILGUN_RELAY_SMTP_SESSION_TIMEOUT_S` (default 120 seconds, finite and
 `0 < value <= 1e9`) bounds DNS, connect, banner, EHLO, STARTTLS, AUTH and DATA
 through the delivery outcome together. Expiry closes the connection, returns

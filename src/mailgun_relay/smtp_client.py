@@ -161,27 +161,41 @@ class _SessionSMTP(smtplib.SMTP):
         port: int = 0,
         source_address: tuple[Any, ...] | str | Buffer | None = None,
     ) -> tuple[int, bytes]:
+        connect_deadline = time.monotonic() + self.inactivity_timeout
+
+        def connect_remaining() -> float:
+            left = connect_deadline - time.monotonic()
+            if left <= 0:
+                raise TimeoutError("SMTP connect deadline")
+            return self.budget.remaining(left)
+
         # libc resolution cannot be interrupted by socket shutdown. Charge its
         # elapsed time and refuse a late result before creating any connection.
-        self.budget.remaining(self.inactivity_timeout)
+        connect_remaining()
         # SMTP.starttls uses the hostname stored by connect for SNI and
         # verification, independently of the resolved TCP address.
         self._host = host
         sys.audit("smtplib.connect", self, host, port)
-        addresses = socket.getaddrinfo(host, port or smtplib.SMTP_PORT, type=socket.SOCK_STREAM)
+        resolved = socket.getaddrinfo(host, port or smtplib.SMTP_PORT, type=socket.SOCK_STREAM)
+        addresses = dict.fromkeys(
+            (family, kind, proto, address) for family, kind, proto, _, address in resolved
+        )
+        connect_remaining()
         error: OSError | None = None
-        for family, kind, proto, _, address in addresses:
-            timeout = self.budget.remaining(self.inactivity_timeout)
+        for index, (family, kind, proto, address) in enumerate(addresses):
+            connect_remaining()
             sock = socket.socket(family, kind, proto)
             try:
                 self.budget.watch(sock)
-                sock.settimeout(timeout)
                 if source_address is not None:
                     sock.bind(source_address)
+                # Reserve time for every distinct candidate still untried.
+                sock.settimeout(connect_remaining() / (len(addresses) - index))
                 sock.connect(address)
                 # shutdown can race a not-yet-connected TCP socket. Never
                 # start reading a greeting from a connection returned late.
-                self.budget.remaining(self.inactivity_timeout)
+                connect_remaining()
+                sock.settimeout(self.budget.remaining(self.inactivity_timeout))
             except OSError as exc:
                 with contextlib.suppress(OSError):
                     sock.close()

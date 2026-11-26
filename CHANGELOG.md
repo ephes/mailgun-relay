@@ -13,6 +13,9 @@ All notable changes to mailgun-relay are documented here.
 
 ### Python relay
 
+- Share one DNS and TCP deadline across distinct SMTP addresses, reserving
+  time for fallback while preserving hostname verification in STARTTLS.
+
 - Distinguish temporary transport failures before DATA 354 from uncertain
   delivery after DATA 354. An uncertain outcome returns HTTP 503 with a
   verification prompt and logs `smtp_outcome_unknown`, matching Rust.

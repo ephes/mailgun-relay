@@ -154,7 +154,11 @@ attachments disables uploads; a zero attachment byte limit permits only empty
 files, and a zero header length permits only empty subject/header values.
 Python rollback uses `MAILGUN_RELAY_SMTP_SESSION_TIMEOUT_S` (default 120 s,
 with the same finite `(0, 1e9]` validation) for the complete SMTP outcome,
-including TCP attempts, banner, TLS, AUTH and recipients/DATA. QUIT gets a separate
+including TCP attempts, banner, TLS, AUTH and recipients/DATA.
+`MAILGUN_RELAY_SMTP_TIMEOUT_S` also caps SMTP DNS resolution and all TCP attempts
+together. Python tries distinct addresses in resolver order, dividing the
+remaining budget among untried addresses. STARTTLS verifies the configured
+SMTP hostname. QUIT gets a separate
 `min(SMTP_TIMEOUT_S, 5 seconds)` budget. A complete final DATA 250 reply
 preserves acceptance even if the session deadline passes before the result
 returns. After DATA 354, a missing or malformed final reply returns HTTP 503

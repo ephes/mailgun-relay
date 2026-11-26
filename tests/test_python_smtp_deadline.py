@@ -223,6 +223,100 @@ def test_late_resolver_result_does_not_open_connection(monkeypatch: pytest.Monke
     assert caught.value.reason == "TimeoutError"
 
 
+@pytest.mark.parametrize(("session_timeout", "connect_cap"), [(30.0, 6.0), (4.0, 4.0)])
+def test_connect_budget_reserves_time_for_distinct_fallback(
+    monkeypatch: pytest.MonkeyPatch, session_timeout: float, connect_cap: float
+) -> None:
+    now = 0.0
+    first = Mock()
+    second = Mock()
+    addresses = [
+        (socket.AF_INET, socket.SOCK_STREAM, socket.IPPROTO_TCP, "", (host, 25))
+        for host in ("192.0.2.1", "192.0.2.1", "192.0.2.2")
+    ]
+
+    def resolve(*args: object, **kwargs: object) -> object:
+        nonlocal now
+        now += 2
+        return addresses
+
+    def stall(address: object) -> None:
+        nonlocal now
+        now += first.settimeout.call_args.args[0]
+        raise TimeoutError("synthetic stalled first address")
+
+    def connect(address: object) -> None:
+        nonlocal now
+        now += 0.25
+
+    first.connect.side_effect = stall
+    second.connect.side_effect = connect
+    candidates = Mock(side_effect=[first, second])
+    monkeypatch.setattr(smtp_client, "time", Mock(monotonic=lambda: now))
+    monkeypatch.setattr(socket, "getaddrinfo", resolve)
+    monkeypatch.setattr(socket, "socket", candidates)
+    budget = _SocketDeadline(session_timeout)
+    monkeypatch.setattr(budget, "watch", Mock())
+    smtp = _SessionSMTP("", 0, timeout=6, budget=budget)
+    monkeypatch.setattr(smtp, "getreply", Mock(return_value=(220, b"synthetic SMTP")))
+
+    assert smtp.connect("smtp.example.test", 25) == (220, b"synthetic SMTP")
+    assert candidates.call_count == 2
+    first.connect.assert_called_once_with(addresses[0][4])
+    first.close.assert_called_once_with()
+    second.connect.assert_called_once_with(addresses[2][4])
+    share = (connect_cap - 2) / 2
+    first.settimeout.assert_called_once_with(share)
+    assert second.settimeout.call_args_list[0].args == (share,)
+    assert second.settimeout.call_args_list[1].args == (min(6, session_timeout - now),)
+    assert now < connect_cap
+
+    monkeypatch.setattr(smtp, "ehlo_or_helo_if_needed", Mock())
+    monkeypatch.setattr(smtp, "has_extn", Mock(return_value=True))
+    monkeypatch.setattr(smtp, "docmd", Mock(return_value=(220, b"ready for TLS")))
+    context = Mock()
+    smtp.starttls(context=context)
+    context.wrap_socket.assert_called_once_with(second, server_hostname="smtp.example.test")
+
+
+@pytest.mark.parametrize("late_phase", ["dns", "connect"])
+def test_connect_deadline_rejects_late_results(
+    monkeypatch: pytest.MonkeyPatch, late_phase: str
+) -> None:
+    now = 0.0
+    sock = Mock()
+    address = (socket.AF_INET, socket.SOCK_STREAM, socket.IPPROTO_TCP, "", ("192.0.2.1", 25))
+
+    def resolve(*args: object, **kwargs: object) -> object:
+        nonlocal now
+        if late_phase == "dns":
+            now = 6.0
+        return [address]
+
+    def connect(address: object) -> None:
+        nonlocal now
+        now = 6.0
+
+    sock.connect.side_effect = connect
+    candidates = Mock(return_value=sock)
+    monkeypatch.setattr(smtp_client, "time", Mock(monotonic=lambda: now))
+    monkeypatch.setattr(socket, "getaddrinfo", resolve)
+    monkeypatch.setattr(socket, "socket", candidates)
+    budget = _SocketDeadline(30)
+    monkeypatch.setattr(budget, "watch", Mock())
+    smtp = _SessionSMTP("", 0, timeout=6, budget=budget)
+    banner = Mock(return_value=(220, b"synthetic SMTP"))
+    monkeypatch.setattr(smtp, "getreply", banner)
+
+    with pytest.raises(TimeoutError, match="SMTP connect deadline"):
+        smtp.connect("smtp.example.test", 25)
+    banner.assert_not_called()
+    if late_phase == "dns":
+        candidates.assert_not_called()
+    else:
+        sock.close.assert_called_once_with()
+
+
 @pytest.mark.parametrize("outcome", ["fallback", "exhausted", "cancelled"])
 def test_failed_candidate_close_preserves_connect_result(
     monkeypatch: pytest.MonkeyPatch, outcome: str

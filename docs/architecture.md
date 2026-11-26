@@ -69,7 +69,9 @@ fails closed rather than leaking the credentials in cleartext.
 SMTP submission is blocking `smtplib` I/O, bounded per step by
 `MAILGUN_RELAY_SMTP_TIMEOUT_S` (default 30 s), with a shared pre-outcome budget
 `MAILGUN_RELAY_SMTP_SESSION_TIMEOUT_S` (default 120 s). TCP attempts, greeting,
-TLS, AUTH and all recipients/DATA share that budget. QUIT has a separate total
+TLS, AUTH and all recipients/DATA share that budget. DNS and TCP attempts also
+share one `SMTP_TIMEOUT_S` deadline, with remaining time divided among distinct
+untried addresses in resolver order. QUIT has a separate total
 budget of `min(SMTP_TIMEOUT_S, 5 seconds)` and preserves confirmed acceptance.
 Blocking libc DNS cannot be interrupted: late results are refused and admission
 is retained until the call returns. After DATA 354, a missing or malformed
