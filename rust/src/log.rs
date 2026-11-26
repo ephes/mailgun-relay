@@ -128,6 +128,10 @@ impl Writer {
                     writer_losses.sink_io.fetch_add(1, Ordering::Relaxed);
                 }
             }
+            // The next process may append to the same sink.
+            if needs_boundary && (sink.write_all(b"\n").is_err() || sink.flush().is_err()) {
+                writer_losses.sink_io.fetch_add(1, Ordering::Relaxed);
+            }
         }))?;
         Ok(Self {
             sender: Mutex::new(Some(sender)),
@@ -223,8 +227,9 @@ impl Logger {
     }
 
     /// Stop admission and drain for a bounded interval after request shutdown.
-    /// Completion means all accepted records were processed. Sink failures
-    /// are tracked separately. A timeout or abnormal exit leaves the tail unconfirmed.
+    /// Completion means all accepted records were processed and any pending
+    /// line boundary was attempted. Sink failures are tracked
+    /// separately. A timeout or abnormal exit leaves the tail unconfirmed.
     pub fn shutdown(&self, budget: Duration) -> DrainOutcome {
         self.writer
             .as_ref()
@@ -571,44 +576,49 @@ mod tests {
         assert_eq!(writer.losses.queue_unavailable.load(Ordering::Relaxed), 1);
     }
 
+    struct PartialSink {
+        writes: usize,
+        fail_first_separator: bool,
+        fail_flush: bool,
+        output: Arc<Mutex<Vec<u8>>>,
+    }
+
+    impl Write for PartialSink {
+        fn write(&mut self, bytes: &[u8]) -> io::Result<usize> {
+            self.writes += 1;
+            match self.writes {
+                1 => {
+                    self.output.lock().unwrap().extend_from_slice(&bytes[..1]);
+                    return Ok(1);
+                }
+                2 => return Err(io::ErrorKind::BrokenPipe.into()),
+                _ if self.fail_first_separator && bytes == b"\n" => {
+                    self.fail_first_separator = false;
+                    return Err(io::ErrorKind::BrokenPipe.into());
+                }
+                _ => {}
+            }
+            self.output.lock().unwrap().extend_from_slice(bytes);
+            Ok(bytes.len())
+        }
+
+        fn flush(&mut self) -> io::Result<()> {
+            if self.fail_flush {
+                return Err(io::ErrorKind::BrokenPipe.into());
+            }
+            Ok(())
+        }
+    }
+
     #[test]
     fn a_partial_log_write_leaves_the_next_record_on_its_own_line() {
-        struct PartialSink {
-            writes: usize,
-            fail_first_separator: bool,
-            output: Arc<Mutex<Vec<u8>>>,
-        }
-
-        impl Write for PartialSink {
-            fn write(&mut self, bytes: &[u8]) -> io::Result<usize> {
-                self.writes += 1;
-                match self.writes {
-                    1 => {
-                        self.output.lock().unwrap().extend_from_slice(&bytes[..1]);
-                        return Ok(1);
-                    }
-                    2 => return Err(io::ErrorKind::BrokenPipe.into()),
-                    _ if self.fail_first_separator && bytes == b"\n" => {
-                        self.fail_first_separator = false;
-                        return Err(io::ErrorKind::BrokenPipe.into());
-                    }
-                    _ => {}
-                }
-                self.output.lock().unwrap().extend_from_slice(bytes);
-                Ok(bytes.len())
-            }
-
-            fn flush(&mut self) -> io::Result<()> {
-                Ok(())
-            }
-        }
-
         for fail_first_separator in [false, true] {
             let output = Arc::new(Mutex::new(Vec::new()));
             let writer = test_writer(
                 PartialSink {
                     writes: 0,
                     fail_first_separator,
+                    fail_flush: false,
                     output: output.clone(),
                 },
                 3,
@@ -634,6 +644,55 @@ mod tests {
                 writer.losses.sink_io.load(Ordering::Relaxed),
                 1 + u64::from(fail_first_separator)
             );
+        }
+    }
+
+    #[test]
+    fn drain_frames_a_failed_final_record_before_sink_reuse() {
+        let output = Arc::new(Mutex::new(Vec::new()));
+        let writer = test_writer(
+            PartialSink {
+                writes: 0,
+                fail_first_separator: false,
+                fail_flush: false,
+                output: output.clone(),
+            },
+            1,
+        );
+        assert!(writer.send(b"{\"partial\":1}\n".to_vec()));
+        assert_eq!(
+            writer.shutdown(Duration::from_secs(2)),
+            DrainOutcome::Completed
+        );
+        assert_eq!(writer.losses.sink_io.load(Ordering::Relaxed), 1);
+
+        let mut output = output.lock().unwrap();
+        output.extend_from_slice(b"{\"restarted\":2}\n");
+        let mut lines = output.split(|byte| *byte == b'\n');
+        assert_eq!(lines.next().unwrap(), b"{");
+        let recovered = serde_json::from_slice::<serde_json::Value>(lines.next().unwrap());
+        assert_eq!(recovered.unwrap(), serde_json::json!({"restarted": 2}));
+        assert_eq!(lines.next(), Some(b"".as_slice()));
+    }
+
+    #[test]
+    fn drain_counts_failed_final_boundary_write_or_flush() {
+        for fail_first_separator in [false, true] {
+            let writer = test_writer(
+                PartialSink {
+                    writes: 0,
+                    fail_first_separator,
+                    fail_flush: !fail_first_separator,
+                    output: Arc::default(),
+                },
+                1,
+            );
+            assert!(writer.send(b"{}\n".to_vec()));
+            assert_eq!(
+                writer.shutdown(Duration::from_secs(2)),
+                DrainOutcome::Completed
+            );
+            assert_eq!(writer.losses.sink_io.load(Ordering::Relaxed), 2);
         }
     }
 
@@ -682,10 +741,13 @@ mod tests {
         producer.emit(Level::Warning, "x", "oversized", &oversized);
         producer.emit(Level::Warning, "x", "overflow", &fields);
         let before_drain = logger.losses();
-        for _ in 0..2 {
+        for _ in 0..3 {
             release.send(()).unwrap();
         }
-        logger.shutdown(Duration::from_secs(2));
+        assert_eq!(
+            logger.shutdown(Duration::from_secs(2)),
+            DrainOutcome::Completed
+        );
         assert_eq!(
             before_drain,
             LogLosses {
@@ -697,7 +759,7 @@ mod tests {
         assert_eq!(
             logger.losses(),
             LogLosses {
-                sink_io: 2,
+                sink_io: 3,
                 ..before_drain
             }
         );

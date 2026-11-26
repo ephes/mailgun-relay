@@ -20,6 +20,9 @@ All notable changes to mailgun-relay are documented here.
 
 ### Rust relay
 
+- Attempt and flush a newline after a failed final log write during shutdown
+  so a later process can append independently framed records. Count final
+  separator write or flush failures within the existing bounded drain.
 - Report transport failures, timeouts and other failures without a parsable
   final reply code after DATA 354 as `smtp_outcome_unknown`. HTTP 503
   tells callers to verify delivery before retrying.

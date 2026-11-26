@@ -359,10 +359,11 @@ counter is nonzero or the drain remains unconfirmed. The summary counts
 observed losses and distinguishes an expired drain deadline from a writer
 panic. The writer attempts to flush each successfully written record. After
 a failed write, it restores the line boundary with a newline before the next
-record. A failed separator write drops that next
-record and counts as a sink failure. After requests drain, shutdown closes the
-queue under the same guard used for enqueueing. The writer drains accepted
-records until disconnection.
+record. A failed separator write drops that next record and counts as a sink
+failure. After requests drain, shutdown closes the queue under the same guard
+used for enqueueing. At queue disconnection, the writer attempts any pending
+newline and flushes it before reporting drain completion. A failure of that
+final write or flush also counts as a sink failure.
 Sink writes and the one-second drain wait occur outside the guard. Drain
 completion or abnormal writer exit is shared, with an independent wait
 budget per caller. A stalled sink may lose the tail when the process exits.
