@@ -507,7 +507,12 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     try:
         if args.command == "version":
-            metadata = json.loads(args.metadata.read_text(encoding="utf-8"))
+            try:
+                metadata = json.loads(args.metadata.read_text(encoding="utf-8"))
+            except UnicodeDecodeError:
+                raise CheckError("cargo metadata is not valid UTF-8") from None
+            except json.JSONDecodeError:
+                raise CheckError("cargo metadata is not valid JSON") from None
             found = package_version(metadata)
             if args.tag is not None:
                 check_tag(args.tag, found)

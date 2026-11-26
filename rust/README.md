@@ -200,10 +200,13 @@ process group, including pipe-holding descendants, then attempts to reap the
 helper and close each pipe. Cleanup failures report the failed operations
 alongside any original command failure.
 
-`version` requires a Cargo metadata object with a `packages` array of objects
+`version` requires UTF-8 JSON containing a Cargo metadata object with a `packages` array of objects
 with string `name` and `version` fields. It selects exactly one
 `mailgun-relay` package. Shape errors identify the invalid field or array
-position without echoing metadata. Both `version` and `pack` require ASCII
+position without echoing metadata. Invalid UTF-8 and invalid JSON each produce a
+single release-check diagnostic on stderr and exit status 1 with no version
+output. File read failures keep their filesystem diagnostic.
+Both `version` and `pack` require ASCII
 semver without build metadata for the relay version.
 
 `glibc-floor` compares numeric versions with trailing zero components ignored,

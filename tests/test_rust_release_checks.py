@@ -290,6 +290,27 @@ def test_cli_version_reports_invalid_metadata(
     )
 
 
+@pytest.mark.parametrize(
+    ("data", "diagnostic"),
+    [
+        (b'{"packages": [', "cargo metadata is not valid JSON"),
+        (b'{"packages": ["\xff"]}', "cargo metadata is not valid UTF-8"),
+        (None, "No such file or directory"),
+    ],
+)
+def test_cli_version_reports_metadata_input_failures(
+    tmp_path: Path, data: bytes | None, diagnostic: str
+) -> None:
+    path = tmp_path / "metadata.json"
+    if data is not None:
+        path.write_bytes(data)
+    result = run_script("version", "--metadata", str(path))
+    assert (result.returncode, result.stdout) == (1, "")
+    assert result.stderr.startswith("release check failed: ")
+    assert diagnostic in result.stderr
+    assert len(result.stderr.splitlines()) == 1
+
+
 def test_cli_pack_writes_archive_and_sha256sum_line(tmp_path: Path) -> None:
     binary = tmp_path / "mailgun-relay"
     binary.write_bytes(b"binary")

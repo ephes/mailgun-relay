@@ -110,6 +110,8 @@ All notable changes to mailgun-relay are documented here.
 
 - Validate Cargo metadata before selecting the relay package version and
   require the same ASCII semver in version selection and artifact names.
+- Report invalid UTF-8 or malformed Cargo metadata JSON as a release-check
+  error.
 - Treat trailing zero components as insignificant in glibc floor comparisons.
 - Preserve the primary release-helper error and report cleanup failures after
   attempting to retire the process group, reap the helper and close both pipes.
